@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ---------------------------------------------------------------------------------------------------------
+minimum_pre_commit_version: 4.0.0
+exclude: ^LICENSES/|\.(html|csv|svg)$
+
+default_stages: [pre-commit]
+ci:
+  autofix_prs: false
+  autoupdate_schedule: monthly
+
+repos:
+  # pre-commit 基础检查
+  - repo: https://gitcode.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-json
+        exclude: .*_runtime_kb\.json$
+
+  # C++ 代码格式化检查
+  - repo: https://gitcode.com/pre-commit-clang/mirrors-clang-format
+    rev: v18.1.8
+    hooks:
+      - id: clang-format
+        files: \.(c|h|cpp|hpp|cc|hh|cxx|hxx|asc)$
+        args:
+          - "--style=file"
+          - "--verbose"
+          - "-i"
+        exclude: ^build/|tests/third_party/
+
+  # Python 代码检查
+  - repo: https://gitcode.com/gh_mirrors/ru/ruff-pre-commit
+    rev: v0.14.14
+    hooks:
+      - id: ruff-check
+        args: ["--output-format", "github", "--fix"]
+        types: [python]
+      - id: ruff-format
+        types: [python]
+
+  # 拼写检查
+  - repo: https://gitcode.com/gh_mirrors/co/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args: [
+            "-L",
+            "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,tbe,copyin,alog,wIh,dout,indexs,inH,padD,outWeight",
+            "--skip",
+            "*.py,*.cpp,*.hpp,*.c,*.h",
+          ]
+
+  # OAT 合规性检查 (Open Source Audit Tool)
+  - repo: local
+    hooks:
+      - id: oat-check
+        name: OAT Compliance Check
+        entry: bash scripts/oat_check.sh
+        language: system
+        pass_filenames: true
+        require_serial: true
+        types: [file]
+        stages: [pre-commit]
+        verbose: true
+
+  # pre-push 本地编译门禁（构建 + UT）
+  # 安装：pre-commit install --hook-type pre-push
+  # 旁路：git push --no-verify  /  SKIP=pre-push-build git push  /  PRE_PUSH_BUILD=0 git push
+  # 默认即快速增量模式（有漏检风险，合入前需跑完整模式）
+  # 完整对齐模式：PRE_PUSH_FULL=1 git push（100% 复刻 CI 门禁语义）
+  - repo: local
+    hooks:
+      - id: pre-push-build
+        name: Pre-Push Build & UT Gate
+        entry: bash scripts/ci/pre_push_build.sh
+        language: system
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-push]
+        verbose: true

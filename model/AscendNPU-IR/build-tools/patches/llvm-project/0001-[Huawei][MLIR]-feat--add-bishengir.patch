@@ -1,0 +1,45 @@
+diff --git a/mlir/include/mlir/Config/mlir-config.h.cmake b/mlir/include/mlir/Config/mlir-config.h.cmake
+index dc5579439ec8..ea7cf71fafb2 100644
+--- a/mlir/include/mlir/Config/mlir-config.h.cmake
++++ b/mlir/include/mlir/Config/mlir-config.h.cmake
+@@ -43,4 +43,7 @@
+    and targets. */
+ #cmakedefine01 MLIR_ENABLE_ROCM_CONVERSIONS
+ 
++/* If set, enables BiShengIR extention to MLIR. */
++#cmakedefine01 BSPUB_DAVINCI_BISHENGIR
++
+ #endif
+diff --git a/mlir/test/lit.cfg.py b/mlir/test/lit.cfg.py
+index 98d0ddd9a2be..141cabd59a00 100644
+--- a/mlir/test/lit.cfg.py
++++ b/mlir/test/lit.cfg.py
+@@ -255,3 +255,6 @@ if config.run_rocm_tests:
+ 
+ if config.arm_emulator_executable:
+     config.available_features.add("arm-emulator")
++
++if config.bspub_davinci_bishengir:
++    config.available_features.add("bspub_davinci_bishengir")
+diff --git a/mlir/test/lit.site.cfg.py.in b/mlir/test/lit.site.cfg.py.in
+index 411a02849f9d..a781cd16cf00 100644
+--- a/mlir/test/lit.site.cfg.py.in
++++ b/mlir/test/lit.site.cfg.py.in
+@@ -2,6 +2,9 @@
+ 
+ import sys
+ 
++ON = 1
++OFF = 0
++
+ config.target_triple = "@LLVM_TARGET_TRIPLE@"
+ config.llvm_src_root = "@LLVM_SOURCE_DIR@"
+ config.llvm_tools_dir = lit_config.substitute("@LLVM_TOOLS_DIR@")
+@@ -63,6 +66,7 @@ config.riscv_vector_emulator_executable = "@RISCV_VECTOR_EMULATOR_EXECUTABLE@"
+ config.riscv_vector_emulator_options = "@RISCV_VECTOR_EMULATOR_OPTIONS@"
+ config.riscv_emulator_lli_executable = "@RISCV_EMULATOR_LLI_EXECUTABLE@"
+ config.riscv_emulator_utils_lib_dir = "@RISCV_EMULATOR_UTILS_LIB_DIR@"
++config.bspub_davinci_bishengir = @BSPUB_DAVINCI_BISHENGIR@
+ 
+ import lit.llvm
+ lit.llvm.initialize(lit_config, config)

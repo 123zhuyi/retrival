@@ -1,0 +1,213 @@
+{
+  "op_type": "ArgMaxWithValue",
+  "op_list": [
+    {
+      "bin_filename": "ArgMaxWithValue_float16",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "indice",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "values",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dimension",
+          "dtype": "int",
+          "value": 0
+        },
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "ArgMaxWithValue_bfloat16",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "indice",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "values",
+          "index": 1,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dimension",
+          "dtype": "int",
+          "value": 0
+        },
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "ArgMaxWithValue_float32",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "indice",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "values",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dimension",
+          "dtype": "int",
+          "value": 0
+        },
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "ArgMaxWithValue_int16",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "indice",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "values",
+          "index": 1,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dimension",
+          "dtype": "int",
+          "value": 0
+        },
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

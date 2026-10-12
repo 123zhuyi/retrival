@@ -1,0 +1,370 @@
+//===- Utils.cpp - BiShengIR Tools Common Utils ------------------*- C++-*-===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Tools/Utils/Utils.h"
+#include "bishengir/Tools/RetriablePassManager/RetriablePassManager.h"
+#include "bishengir/Tools/bishengir-compile/Config.h"
+
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Support/FileUtilities.h"
+#include "mlir/Support/LLVM.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/Process.h"
+#include "llvm/Support/Program.h"
+#include "llvm/Support/Regex.h"
+#include "llvm/Support/VersionTuple.h"
+#include "llvm/Support/raw_ostream.h"
+
+#define DEBUG_TYPE "bishengir-tools-utils"
+#define LDBG(X) LLVM_DEBUG(llvm::dbgs() << X << "\n")
+
+using namespace mlir;
+using namespace llvm;
+using namespace bishengir;
+
+namespace {
+thread_local CompileTiming *currentCompileTiming = nullptr;
+} // namespace
+
+mlir::TimingScope *bishengir::getCurrentCompileTimingScope() {
+  return currentCompileTiming ? currentCompileTiming->getRootScope() : nullptr;
+}
+
+ScopedCompileTimingContext::ScopedCompileTimingContext(CompileTiming *timing)
+    : previousTiming(currentCompileTiming) {
+  currentCompileTiming = timing;
+}
+
+ScopedCompileTimingContext::~ScopedCompileTimingContext() {
+  currentCompileTiming = previousTiming;
+}
+
+CompileTiming::CompileTiming() {
+  mlir::applyDefaultTimingManagerCLOptions(manager);
+  if (manager.isEnabled())
+    rootScope = std::make_unique<mlir::TimingScope>(manager.getRootScope());
+  context = std::make_unique<ScopedCompileTimingContext>(this);
+}
+
+int ExternalToolProfiler::run(StringRef name, std::function<int()> fn) {
+  std::optional<mlir::TimingScope> toolTimingScope;
+  mlir::TimingScope *timingScope = getCurrentCompileTimingScope();
+  if (timingScope)
+    toolTimingScope.emplace(timingScope->nest(name));
+  return fn();
+}
+
+LogicalResult bishengir::runPipeline(
+    ModuleOp mod, const std::function<void(mlir::PassManager &)> &buildPipeline,
+    BiShengIRCompileMainConfig &config, const std::string &pipelineName) {
+  RetriablePassManager rpm(config, mod->getContext());
+  return rpm.runOnce(mod, buildPipeline, pipelineName);
+}
+
+llvm::LogicalResult
+bishengir::checkInOutOptionsValidity(BiShengIRCompileConfigBase &config) {
+  std::string inputFile = config.getInputFile();
+  StringTmpPath inputPath(config.getInputFile());
+  if (llvm::errorCodeToError(canonicalizePath(inputPath))) {
+    llvm::errs() << "[ERROR] Failed to canonicalize input file path: "
+                 << inputFile << "\n";
+    return failure();
+  }
+  config.setInputFile(inputPath.str().str());
+
+  std::string outputFile = config.getOutputFile();
+  StringTmpPath outputPath(outputFile);
+  if (llvm::errorCodeToError(canonicalizePath(outputPath))) {
+    llvm::errs() << "[ERROR] Failed to canonicalize output file path: "
+                 << outputFile << "\n";
+    return failure();
+  }
+
+  config.setOutputFile(outputPath.str().str());
+  outputFile = config.getOutputFile();
+  auto filename = llvm::sys::path::filename(outputFile);
+  if (filename == "/" || filename == "." || filename.empty()) {
+    llvm::errs() << "[ERROR] Invalid output file path: " << filename << "\n";
+    return failure();
+  }
+
+  auto parentPath = llvm::sys::path::parent_path(outputFile);
+  if (!parentPath.empty() && !llvm::sys::fs::exists(parentPath)) {
+    if (llvm::sys::fs::create_directories(parentPath)) {
+      llvm::errs() << "[ERROR] Can not create parent path: " << parentPath.str()
+                   << "\n";
+      return failure();
+    }
+  }
+
+  return success();
+}
+
+std::error_code bishengir::canonicalizePath(StringTmpPath &path) {
+  if (path == "-") {
+    return {};
+  }
+  std::error_code errorCode = llvm::sys::fs::make_absolute(path);
+  if (errorCode)
+    return errorCode;
+  llvm::sys::path::remove_dots(path, /*removedotdot*/ true);
+  return {};
+}
+
+/// True if \p path is \p root or a path nested under \p root (not e.g.
+/// /tmpfoo).
+static bool isPathUnderPrefix(StringRef path, StringRef root) {
+  if (path == root)
+    return true;
+  if (!path.starts_with(root))
+    return false;
+  if (root.size() >= path.size())
+    return false;
+  return llvm::sys::path::is_separator(path[root.size()],
+                                       llvm::sys::path::Style::native);
+}
+
+void TempDirectoriesStore::assertInsideTmp(StringTmpPath path) const {
+  llvm::cantFail(llvm::errorCodeToError(canonicalizePath(path)),
+                 "failed to canonicalize temp path.");
+  llvm::SmallString<256> tempRoot;
+  llvm::sys::path::system_temp_directory(/*erasedOnReboot=*/true, tempRoot);
+  std::error_code ec = llvm::sys::fs::make_absolute(tempRoot);
+  llvm::cantFail(llvm::errorCodeToError(ec),
+                 "failed to canonicalize system temp directory");
+  llvm::sys::path::remove_dots(tempRoot, /*remove_dot_dot=*/true);
+  if (!isPathUnderPrefix(path, tempRoot))
+    llvm::report_fatal_error(
+        "unexpected temp folder created outside of system temp dir");
+}
+
+TempDirectoriesStore::~TempDirectoriesStore() {
+  for (auto &dir : dirs) {
+    assertInsideTmp(dir);
+    llvm::sys::fs::remove_directories(dir, true);
+  }
+}
+
+std::unique_ptr<llvm::ToolOutputFile>
+bishengir::getTempFile(const std::string &outputFile,
+                       TempDirectoriesStore &tempDirsStore) {
+  if (outputFile == "-") {
+    return nullptr;
+  }
+
+  StringTmpPath path;
+  std::error_code ec =
+      llvm::sys::fs::createUniqueDirectory("bishengir-compile", path);
+  if (ec) {
+    llvm::errs() << "[ERROR] Failed to generate temporary directory.\n";
+    return nullptr;
+  }
+
+  tempDirsStore.dirs.push_back(path);
+  LLVM_DEBUG(tempDirsStore.dirs.pop_back());
+
+  std::string errorMessage;
+  llvm::sys::path::append(path, llvm::sys::path::filename(outputFile));
+  auto tempFile = openOutputFile(path, &errorMessage);
+  if (!tempFile) {
+    llvm::errs() << "[ERROR] " << errorMessage << "\n";
+    return nullptr;
+  }
+
+  LLVM_DEBUG(tempFile->keep());
+  return tempFile;
+}
+
+LogicalResult bishengir::execute(StringRef binName, StringRef installPath,
+                                 SmallVectorImpl<StringRef> &arguments,
+                                 std::optional<llvm::StringRef> outputFile,
+                                 unsigned timeoutSeconds) {
+  std::string binPath;
+  if (!installPath.empty()) {
+    if (auto binPathOrErr =
+            llvm::sys::findProgramByName(binName, {installPath})) {
+      binPath = binPathOrErr.get();
+    } else {
+      llvm::errs() << "[WARNING] Cannot find " << binName << " under "
+                   << installPath << "\n";
+    }
+  }
+  if (binPath.empty()) {
+    if (auto binPathOrErr = llvm::sys::findProgramByName(binName)) {
+      binPath = binPathOrErr.get();
+    } else {
+      llvm::errs() << "[ERROR] Cannot find " << binName << " under "
+                   << "$PATH \n";
+      return failure();
+    }
+  }
+  arguments[0] = binPath;
+
+  LLVM_DEBUG({
+    llvm::dbgs() << "[DEBUG] Executing: ";
+    llvm::interleave(
+        arguments, llvm::dbgs(),
+        [](const StringRef &arg) { llvm::dbgs() << arg; }, " ");
+    llvm::dbgs() << "\n";
+  });
+
+  SmallVector<std::optional<StringRef>> redirects = {
+      /*stdin(0)=*/std::nullopt, /*stdout(1)=*/outputFile,
+      /*stderr(2)=*/std::nullopt};
+  std::string profilerName = llvm::sys::path::filename(binPath).str();
+  if (ExternalToolProfiler::run(profilerName, [&]() {
+        return llvm::sys::ExecuteAndWait(binPath, arguments,
+                                         /*Env=*/std::nullopt,
+                                         /*Redirects=*/redirects);
+      }) != 0) {
+    llvm::errs() << "[ERROR] Executing: ";
+    llvm::interleave(
+        arguments, llvm::errs(),
+        [](const StringRef &arg) { llvm::errs() << arg; }, " ");
+    llvm::errs() << "\n";
+    return failure();
+  }
+  return success();
+}
+
+std::optional<llvm::VersionTuple>
+bishengir::parseHIVMCVersion(llvm::StringRef content) {
+  llvm::VersionTuple version;
+  bool fail = version.tryParse(content.trim());
+  if (!fail) {
+    return version;
+  }
+  return std::nullopt;
+}
+
+llvm::VersionTuple findHIVMCVersion(llvm::StringRef content) {
+  StringRef versionLine = content.split('\n').first;
+  Regex R("^(hivmc) "                        // name
+          "([0-9]+\\.[0-9]+\\.[0-9]+) "      // version
+          "\\(([0-9a-fA-F]{6,40}) "          // commit hash
+          "([0-9]{4}-[0-9]{2}-[0-9]{2})\\)$" // build date
+  );
+
+  // additional version pattern check
+  // this handles the case when we have --version like this:
+  //                hivmc 0.3.0
+  // the first regex check will fail, however the version
+  // can still be parsed, so use RSimple pattern
+  Regex RSimple("^(hivmc) "                 // name
+              "([0-9]+\\.[0-9]+\\.[0-9]+)" // version
+              );
+
+  SmallVector<StringRef, 4> M;
+  if (!R.match(versionLine, &M) &&
+      !RSimple.match(versionLine, &M)) {
+      return llvm::VersionTuple();
+    }
+
+  StringRef versionStr = M[2];
+  auto version = bishengir::parseHIVMCVersion(versionStr);
+  if (version.has_value()) {
+    return version.value();
+  }
+
+  return llvm::VersionTuple();
+}
+
+std::optional<llvm::VersionTuple>
+bishengir::detectHIVMCVersion(StringRef hivmcName) {
+
+  TempDirectoriesStore tempDirsStore;
+  auto fileHandler = getTempFile("version.out", tempDirsStore);
+  if (!fileHandler) {
+    llvm::dbgs() << "[ERROR] Failed to create temporary input file needed to "
+                    "detect hivmc version.\n";
+    return std::nullopt;
+  }
+  std::string fileName = fileHandler->outputFilename();
+  fileHandler->os().flush();
+
+  SmallVector<StringRef> args{"", "--version"};
+  StringRef outputFile = fileHandler->getFilename();
+  if (failed(execute(hivmcName, getBiShengInstallPath(), args, outputFile))) {
+    llvm::dbgs() << "[ERROR] Failed to run `hivmc --version`.\n";
+    return std::nullopt;
+  }
+
+  std::string errorMsg;
+  std::unique_ptr<llvm::MemoryBuffer> buffer =
+      mlir::openInputFile(fileName, &errorMsg);
+  if (!buffer) {
+    llvm::dbgs() << "[ERROR] Failed to open file: " << fileName << "\n";
+    return std::nullopt;
+  }
+
+  return findHIVMCVersion(buffer->getBuffer());
+}
+
+std::string bishengir::getBiShengInstallPath() {
+  const char *kBiShengInstallPathEnv = "BISHENG_INSTALL_PATH";
+  const char *kBiShengInstallPath = getenv(kBiShengInstallPathEnv);
+  if (!kBiShengInstallPath) {
+    LLVM_DEBUG(llvm::dbgs() << "[DEBUG] BISHENG_INSTALL_PATH is not set.\n");
+    return "";
+  }
+
+  llvm::SmallString<128> path;
+  path.append(kBiShengInstallPath);
+  std::error_code errorCode = llvm::sys::fs::make_absolute(path);
+  if (errorCode)
+    llvm::report_fatal_error("Failed to get absolute path for " + path +
+                             " please verify its validity");
+  return path.str().str();
+}
+
+std::string bishengir::getExecutablePath(const char *argv0, void *mainAddr) {
+  std::string path = llvm::sys::fs::getMainExecutable(argv0, mainAddr);
+  if (!path.empty()) {
+    llvm::SmallString<256> realPath;
+    if (!llvm::sys::fs::real_path(path, realPath))
+      return std::string(realPath.str());
+    return path;
+  }
+  llvm::SmallString<256> absPath(argv0);
+  if (llvm::sys::fs::make_absolute(absPath))
+    return "";
+  llvm::SmallString<256> realPath;
+  if (llvm::sys::fs::real_path(absPath, realPath))
+    return std::string(absPath.str());
+  return std::string(realPath.str());
+}
+
+mlir::LogicalResult bishengir::handleDiagnostic(const mlir::Diagnostic &diag) {
+  auto &os = llvm::outs();
+  auto loc = diag.getLocation();
+  if (!llvm::isa<mlir::UnknownLoc>(loc)) {
+    os << loc << ": ";
+  }
+
+  // Handle warning.
+  if (diag.getSeverity() == mlir::DiagnosticSeverity::Warning) {
+    os << "warning: " << diag.str() << "\n";
+    return mlir::success();
+  }
+
+  // Any other severity - treat as failure.
+  return mlir::failure();
+}

@@ -1,0 +1,419 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv3d_v2_base_tiling_check_attrs.cpp
+ * \brief
+ */
+#include "conv3d_v2_base_tiling.h"
+
+namespace optiling {
+namespace conv_ops_tiling {
+ge::graphStatus Conv3dBaseTilingV2::ParseQuantDtypeLegal()
+{
+    if (!flagInfo_.quantFlag) {
+        return ge::GRAPH_SUCCESS;
+    }
+    auto quantDtypePtr = context_->GetAttrs()->GetInt(ATTR_QUANT_DTYPE_INDEX);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, quantDtypePtr);
+
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::CheckOriAttrShape()
+{
+    auto attrStrideIndex = flagInfo_.quantFlag ? ATTR_QUANT_STRIDE_INDEX : ATTR_STRIDE_INDEX;
+    if (oriShapeAttrInfo_.oriStrideD < 1 || oriShapeAttrInfo_.oriStrideD > MAX_STRIDE_D_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "strides",
+            VectorToString(GetAttrShapeVec(context_, attrStrideIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         conv3dOriginFormatAixsPosInfo_.dIndex, 1, MAX_STRIDE_D_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriStrideH < 1 || oriShapeAttrInfo_.oriStrideH > MAX_STRIDE_H_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "strides",
+            VectorToString(GetAttrShapeVec(context_, attrStrideIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         conv3dOriginFormatAixsPosInfo_.hIndex, 1, MAX_STRIDE_H_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriStrideW < 1 || oriShapeAttrInfo_.oriStrideW > MAX_STRIDE_W_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "strides",
+            VectorToString(GetAttrShapeVec(context_, attrStrideIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         conv3dOriginFormatAixsPosInfo_.wIndex, 1, MAX_STRIDE_W_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriStrideN != 1 || oriShapeAttrInfo_.oriStrideC != 1) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "strides",
+            VectorToString(GetAttrShapeVec(context_, attrStrideIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] and shape[%zu] of this parameter must be equal to %ld",
+                         conv3dOriginFormatAixsPosInfo_.nIndex, conv3dOriginFormatAixsPosInfo_.cIndex, 1)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParseStrideLegal()
+{
+    auto attrStrideIndex = flagInfo_.quantFlag ? ATTR_QUANT_STRIDE_INDEX : ATTR_STRIDE_INDEX;
+    auto stridePtr = context_->GetAttrs()->GetListInt(attrStrideIndex);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, stridePtr);
+    if (stridePtr->GetSize() != CONV3D_DIM_SIZE_LIMIT) {
+        OP_LOGE_FOR_INVALID_SHAPEDIM(context_->GetNodeType(), "strides", std::to_string(stridePtr->GetSize()).c_str(),
+                                     std::to_string(CONV3D_DIM_SIZE_LIMIT).c_str());
+        return ge::GRAPH_FAILED;
+    }
+    oriShapeAttrInfo_.oriStrideN = stridePtr->GetData()[conv3dOriginFormatAixsPosInfo_.nIndex];
+    oriShapeAttrInfo_.oriStrideC = stridePtr->GetData()[conv3dOriginFormatAixsPosInfo_.cIndex];
+    oriShapeAttrInfo_.oriStrideD = stridePtr->GetData()[conv3dOriginFormatAixsPosInfo_.dIndex];
+    oriShapeAttrInfo_.oriStrideH = stridePtr->GetData()[conv3dOriginFormatAixsPosInfo_.hIndex];
+    oriShapeAttrInfo_.oriStrideW = stridePtr->GetData()[conv3dOriginFormatAixsPosInfo_.wIndex];
+    if (CheckOriAttrShape() == ge::GRAPH_FAILED) {
+        return ge::GRAPH_FAILED;
+    }
+    attrInfo_.strideD = static_cast<uint64_t>(oriShapeAttrInfo_.oriStrideD);
+    attrInfo_.strideH = static_cast<uint64_t>(oriShapeAttrInfo_.oriStrideH);
+    attrInfo_.strideW = static_cast<uint64_t>(oriShapeAttrInfo_.oriStrideW);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::CheckOriDilationShape()
+{
+    auto attrDilationIndex = flagInfo_.quantFlag ? ATTR_QUANT_DILATION_INDEX : ATTR_DILATION_INDEX;
+    if (oriShapeAttrInfo_.oriDilationD < 1 || oriShapeAttrInfo_.oriDilationD > MAX_DILATION_D_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "dilations",
+            VectorToString(GetAttrShapeVec(context_, attrDilationIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         conv3dOriginFormatAixsPosInfo_.dIndex, 1, MAX_DILATION_D_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriDilationH < 1 || oriShapeAttrInfo_.oriDilationH > MAX_DILATION_H_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "dilations",
+            VectorToString(GetAttrShapeVec(context_, attrDilationIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         conv3dOriginFormatAixsPosInfo_.hIndex, 1, MAX_DILATION_H_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriDilationW < 1 || oriShapeAttrInfo_.oriDilationW > MAX_DILATION_W_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "dilations",
+            VectorToString(GetAttrShapeVec(context_, attrDilationIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         conv3dOriginFormatAixsPosInfo_.wIndex, 1, MAX_DILATION_W_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriDilationN != 1 || oriShapeAttrInfo_.oriDilationC != 1) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "dilations",
+            VectorToString(GetAttrShapeVec(context_, attrDilationIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] and shape[%zu] of this parameter must be equal to %ld",
+                         conv3dOriginFormatAixsPosInfo_.nIndex, conv3dOriginFormatAixsPosInfo_.cIndex, 1)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParseDilationLegal()
+{
+    auto attrDilationIndex = flagInfo_.quantFlag ? ATTR_QUANT_DILATION_INDEX : ATTR_DILATION_INDEX;
+    auto dilationPtr = context_->GetAttrs()->GetListInt(attrDilationIndex);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, dilationPtr);
+    if (dilationPtr->GetSize() != CONV3D_DIM_SIZE_LIMIT) {
+        OP_LOGE_FOR_INVALID_SHAPEDIM(context_->GetNodeType(), "dilations",
+                                     std::to_string(dilationPtr->GetSize()).c_str(),
+                                     std::to_string(CONV3D_DIM_SIZE_LIMIT).c_str());
+        return ge::GRAPH_FAILED;
+    }
+    oriShapeAttrInfo_.oriDilationN = dilationPtr->GetData()[conv3dOriginFormatAixsPosInfo_.nIndex];
+    oriShapeAttrInfo_.oriDilationC = dilationPtr->GetData()[conv3dOriginFormatAixsPosInfo_.cIndex];
+    oriShapeAttrInfo_.oriDilationD = dilationPtr->GetData()[conv3dOriginFormatAixsPosInfo_.dIndex];
+    oriShapeAttrInfo_.oriDilationH = dilationPtr->GetData()[conv3dOriginFormatAixsPosInfo_.hIndex];
+    oriShapeAttrInfo_.oriDilationW = dilationPtr->GetData()[conv3dOriginFormatAixsPosInfo_.wIndex];
+    if (CheckOriDilationShape() == ge::GRAPH_FAILED) {
+        return ge::GRAPH_FAILED;
+    }
+    attrInfo_.dilationD = static_cast<uint64_t>(oriShapeAttrInfo_.oriDilationD);
+    attrInfo_.dilationH = static_cast<uint64_t>(oriShapeAttrInfo_.oriDilationH);
+    attrInfo_.dilationW = static_cast<uint64_t>(oriShapeAttrInfo_.oriDilationW);
+    return ge::GRAPH_SUCCESS;
+}
+
+// optiling recaculate pad for kernel directed call process
+ge::graphStatus Conv3dBaseTilingV2::GetOriPadFromAttrPad()
+{
+    auto attrPadIndex = flagInfo_.quantFlag ? ATTR_QUANT_PAD_INDEX : ATTR_PAD_INDEX;
+    auto padPtr = context_->GetAttrs()->GetListInt(attrPadIndex);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, padPtr);
+    if (padPtr->GetSize() != FORMAT_PAD_DIM) {
+        OP_LOGE_FOR_INVALID_SHAPEDIM(context_->GetNodeType(), "pads", std::to_string(padPtr->GetSize()).c_str(),
+                                     std::to_string(FORMAT_PAD_DIM).c_str());
+        return ge::GRAPH_FAILED;
+    }
+    oriShapeAttrInfo_.oriPadHead = padPtr->GetData()[PAD_HEAD_INDEX];
+    oriShapeAttrInfo_.oriPadTail = padPtr->GetData()[PAD_TAIL_INDEX];
+    oriShapeAttrInfo_.oriPadTop = padPtr->GetData()[PAD_TOP_INDEX];
+    oriShapeAttrInfo_.oriPadBottom = padPtr->GetData()[PAD_BOTTOM_INDEX];
+    oriShapeAttrInfo_.oriPadLeft = padPtr->GetData()[PAD_LEFT_INDEX];
+    oriShapeAttrInfo_.oriPadRight = padPtr->GetData()[PAD_RIGHT_INDEX];
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::CheckOriPadLegal()
+{
+    auto attrPadIndex = flagInfo_.quantFlag ? ATTR_QUANT_PAD_INDEX : ATTR_PAD_INDEX;
+    if (oriShapeAttrInfo_.oriPadHead < 0 || oriShapeAttrInfo_.oriPadHead > MAX_PAD_D_SHAPE ||
+        oriShapeAttrInfo_.oriPadTail < 0 || oriShapeAttrInfo_.oriPadTail > MAX_PAD_D_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "pads",
+            VectorToString(GetAttrShapeVec(context_, attrPadIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] and shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         PAD_HEAD_INDEX, PAD_TAIL_INDEX, 0, MAX_PAD_D_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriPadTop < 0 || oriShapeAttrInfo_.oriPadTop > MAX_PAD_H_SHAPE ||
+        oriShapeAttrInfo_.oriPadBottom < 0 || oriShapeAttrInfo_.oriPadBottom > MAX_PAD_H_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "pads",
+            VectorToString(GetAttrShapeVec(context_, attrPadIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] and shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         PAD_TOP_INDEX, PAD_BOTTOM_INDEX, 0, MAX_PAD_H_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriPadLeft < 0 || oriShapeAttrInfo_.oriPadLeft > MAX_PAD_W_SHAPE ||
+        oriShapeAttrInfo_.oriPadRight < 0 || oriShapeAttrInfo_.oriPadRight > MAX_PAD_W_SHAPE) {
+        OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(
+            context_->GetNodeType(), "pads",
+            VectorToString(GetAttrShapeVec(context_, attrPadIndex), IntToString<int64_t>).c_str(),
+            FormatString("Shape[%zu] and shape[%zu] of this parameter must be within the range [%ld, %ld]",
+                         PAD_LEFT_INDEX, PAD_RIGHT_INDEX, 0, MAX_PAD_W_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::GetOriPadFromPadMode()
+{
+    auto attrPadModeIndex = flagInfo_.quantFlag ? ATTR_QUANT_PADMODE_INDEX : ATTR_PAD_MODE_INDEX;
+    auto padModePtr = context_->GetAttrs()->GetStr(attrPadModeIndex);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, padModePtr);
+    string padMode(padModePtr);
+    auto iter = find(PADMODE_WHITELIST.begin(), PADMODE_WHITELIST.end(), padMode);
+    if (iter == PADMODE_WHITELIST.end()) {
+        string padModeSupport = "[VALID, SPECIFIC, SAME, SAME_UPPER, SAME_LOWER]";
+        OP_LOGE_FOR_INVALID_VALUE(context_->GetNodeType(), "pad_mode", padMode.c_str(), padModeSupport.c_str());
+        return ge::GRAPH_FAILED;
+    }
+
+    if (padMode == "SPECIFIC") {
+        return ge::GRAPH_SUCCESS;
+    }
+
+    if (padMode == "VALID") {
+        oriShapeAttrInfo_.oriPadHead = 0;
+        oriShapeAttrInfo_.oriPadTail = 0;
+        oriShapeAttrInfo_.oriPadTop = 0;
+        oriShapeAttrInfo_.oriPadBottom = 0;
+        oriShapeAttrInfo_.oriPadLeft = 0;
+        oriShapeAttrInfo_.oriPadRight = 0;
+        return ge::GRAPH_SUCCESS;
+    } else {
+        return ApplySamesPad(padMode);
+    }
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ApplySamesPad(const string& padMode)
+{
+    int64_t padD = (ConvCeilDiv(shapeInfo_.di, attrInfo_.strideD) - 1) * attrInfo_.strideD +
+                   attrInfo_.dilationD * (shapeInfo_.kd - 1) - shapeInfo_.di + 1;
+    int64_t padH = (ConvCeilDiv(shapeInfo_.hi, attrInfo_.strideH) - 1) * attrInfo_.strideH +
+                   attrInfo_.dilationH * (shapeInfo_.kh - 1) - shapeInfo_.hi + 1;
+    int64_t padW = (ConvCeilDiv(shapeInfo_.wi, attrInfo_.strideW) - 1) * attrInfo_.strideW +
+                   attrInfo_.dilationW * (shapeInfo_.kw - 1) - shapeInfo_.wi + 1;
+    if (padMode == "SAME" || padMode == "SAME_UPPER") {
+        if (padMode == "SAME") {
+            padD = padD < 0 ? 0 : padD;
+            padH = padH < 0 ? 0 : padH;
+            padW = padW < 0 ? 0 : padW;
+        }
+        oriShapeAttrInfo_.oriPadTail = ConvCeilDiv(padD, PAD_MODE_DIV_FACTOR);
+        oriShapeAttrInfo_.oriPadHead = padD - oriShapeAttrInfo_.oriPadTail;
+        oriShapeAttrInfo_.oriPadBottom = ConvCeilDiv(padH, PAD_MODE_DIV_FACTOR);
+        oriShapeAttrInfo_.oriPadTop = padH - oriShapeAttrInfo_.oriPadBottom;
+        oriShapeAttrInfo_.oriPadRight = ConvCeilDiv(padW, PAD_MODE_DIV_FACTOR);
+        oriShapeAttrInfo_.oriPadLeft = padW - oriShapeAttrInfo_.oriPadRight;
+    } else {
+        // padMode is "SAME_LOWER"
+        oriShapeAttrInfo_.oriPadHead = ConvCeilDiv(padD, PAD_MODE_DIV_FACTOR);
+        oriShapeAttrInfo_.oriPadTail = padD - oriShapeAttrInfo_.oriPadHead;
+        oriShapeAttrInfo_.oriPadTop = ConvCeilDiv(padH, PAD_MODE_DIV_FACTOR);
+        oriShapeAttrInfo_.oriPadBottom = padH - oriShapeAttrInfo_.oriPadTop;
+        oriShapeAttrInfo_.oriPadLeft = ConvCeilDiv(padW, PAD_MODE_DIV_FACTOR);
+        oriShapeAttrInfo_.oriPadRight = padW - oriShapeAttrInfo_.oriPadLeft;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParsePadLegal()
+{
+    OP_LOGE_IF(GetOriPadFromAttrPad() != ge::GRAPH_SUCCESS, ge::GRAPH_FAILED, context_->GetNodeName(),
+               "%s AscendC: GetOriPadFromAttrPad Failed.", paramInfo_.nodeType.c_str());
+
+    OP_LOGE_IF(GetOriPadFromPadMode() != ge::GRAPH_SUCCESS, ge::GRAPH_FAILED, context_->GetNodeName(),
+               "%s AscendC: GetOriPadFromPadMode Failed.", paramInfo_.nodeType.c_str());
+
+    if (CheckOriPadLegal() != ge::GRAPH_SUCCESS) {
+        return ge::GRAPH_FAILED;
+    }
+
+    attrInfo_.padHead = static_cast<uint64_t>(oriShapeAttrInfo_.oriPadHead);
+    attrInfo_.padTail = static_cast<uint64_t>(oriShapeAttrInfo_.oriPadTail);
+    attrInfo_.padTop = static_cast<uint64_t>(oriShapeAttrInfo_.oriPadTop);
+    attrInfo_.padBottom = static_cast<uint64_t>(oriShapeAttrInfo_.oriPadBottom);
+    attrInfo_.padLeft = static_cast<uint64_t>(oriShapeAttrInfo_.oriPadLeft);
+    attrInfo_.padRight = static_cast<uint64_t>(oriShapeAttrInfo_.oriPadRight);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParseGroupLegal()
+{
+    auto attrGroupIndex = flagInfo_.quantFlag ? ATTR_QUANT_GROUP_INDEX : ATTR_GROUP_INDEX;
+    auto groupsPtr = context_->GetAttrs()->GetInt(attrGroupIndex);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, groupsPtr);
+    oriShapeAttrInfo_.oriGroups = *groupsPtr;
+    if (flagInfo_.isConv3dDequant && oriShapeAttrInfo_.oriGroups != 1) {
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+            context_->GetNodeType(), "groups", std::to_string(oriShapeAttrInfo_.oriGroups).c_str(),
+            FormatString("If the dtype of input x is int8, parameter %s must be %d", "groups", 1).c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriGroups < 1 || static_cast<uint64_t>(oriShapeAttrInfo_.oriGroups) > MAX_GROUP_SHAPE) {
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+            context_->GetNodeType(), "groups", std::to_string(oriShapeAttrInfo_.oriGroups).c_str(),
+            FormatString("The current value is not within the valid range. The valid range is [%lu, %lu]", 1,
+                         MAX_GROUP_SHAPE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+
+    attrInfo_.groups = static_cast<uint32_t>(oriShapeAttrInfo_.oriGroups);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParseQuantDataFormatLegal()
+{
+    if (!flagInfo_.quantFlag) {
+        return ge::GRAPH_SUCCESS;
+    }
+    auto DataFormatPtr = context_->GetAttrs()->GetStr(ATTR_QUANT_DATAFORMAT_INDEX);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, DataFormatPtr);
+    string dataFormat(DataFormatPtr);
+    if (dataFormat != "NCDHW") {
+        OP_LOGE_FOR_INVALID_VALUE(context_->GetNodeType(), "data_format", dataFormat.c_str(), "NCDHW");
+        return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParseQuantOffsetXLegal()
+{
+    if (!flagInfo_.quantFlag) {
+        return ge::GRAPH_SUCCESS;
+    }
+    auto offsetXPtr = context_->GetAttrs()->GetInt(ATTR_QUANT_OFFSETX_INDEX);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, offsetXPtr);
+    oriShapeAttrInfo_.oriOffsetX = *offsetXPtr;
+    auto fMapDesc = context_->GetInputDesc(INPUT_FMAP_INDEX);
+    bool hif8Fp8Mode = ((fMapDesc->GetDataType() == ge::DataType::DT_HIFLOAT8) ||
+                        (fMapDesc->GetDataType() == ge::DataType::DT_FLOAT8_E4M3FN));
+    if (hif8Fp8Mode && (oriShapeAttrInfo_.oriOffsetX != 0)) {
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+            context_->GetNodeType(), "offset_x", std::to_string(oriShapeAttrInfo_.oriOffsetX).c_str(),
+            FormatString("If the dtype of input x is hifloat8 or float8_e4m3fn, parameter %s must be %ld", "offset_x",
+                         0)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    if (oriShapeAttrInfo_.oriOffsetX > OFFSET_X_MAX_VALUE || oriShapeAttrInfo_.oriOffsetX < OFFSET_X_MIN_VALUE) {
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+            context_->GetNodeType(), "offset_x", std::to_string(oriShapeAttrInfo_.oriOffsetX).c_str(),
+            FormatString("The current value is not within the valid range. The valid range is [%lu, %lu]",
+                         OFFSET_X_MIN_VALUE, OFFSET_X_MAX_VALUE)
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    attrInfo_.offsetx = static_cast<int32_t>(oriShapeAttrInfo_.oriOffsetX);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3dBaseTilingV2::ParseQuantRoundModeLegal()
+{
+    if (!flagInfo_.quantFlag) {
+        return ge::GRAPH_SUCCESS;
+    }
+    auto roundModePtr = context_->GetAttrs()->GetStr(ATTR_QUANT_ROUNDMODE_INDEX);
+    OPS_CHECK_NULL_WITH_CONTEXT(context_, roundModePtr);
+    string roundMode(roundModePtr);
+    auto outputDesc = context_->GetOutputDesc(OUTPUT_INDEX);
+    if (outputDesc->GetDataType() == ge::DataType::DT_INT8 ||
+        outputDesc->GetDataType() == ge::DataType::DT_FLOAT8_E4M3FN) {
+        if (roundMode != "rint") {
+            OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                context_->GetNodeType(), "round_mode", roundMode.c_str(),
+                FormatString("If the dtype of output y is int8 or float8_e4m3fn, parameter %s must be %s", "round_mode",
+                             "rint")
+                    .c_str());
+            return ge::GRAPH_FAILED;
+        }
+    } else if (outputDesc->GetDataType() == ge::DataType::DT_HIFLOAT8) {
+        if (roundMode != "round") {
+            OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                context_->GetNodeType(), "round_mode", roundMode.c_str(),
+                FormatString("If the dtype of output y is hifloat8, parameter %s must be %s", "round_mode", "round")
+                    .c_str());
+            return ge::GRAPH_FAILED;
+        }
+    } else {
+        if (roundMode.empty()) {
+            return ge::GRAPH_SUCCESS;
+        }
+        OP_LOGW(context_->GetNodeName(), "%s AscendC: the input round_mode is suggested to be set as an empty str",
+                paramInfo_.nodeType.c_str());
+        if (!convBase_.CheckValidString(roundMode, context_)) {
+            OP_LOGE(context_->GetNodeName(), "%s AscendC: the input round_mode has invalid str",
+                    paramInfo_.nodeType.c_str());
+            return ge::GRAPH_FAILED;
+        }
+    }
+    if (STR_TO_ROUNDMODE.find(roundMode) != STR_TO_ROUNDMODE.end()) {
+        attrInfo_.roundMode = STR_TO_ROUNDMODE.at(roundMode);
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+} // namespace conv_ops_tiling
+} // namespace optiling

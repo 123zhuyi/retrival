@@ -1,0 +1,227 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file batch_norm_grad_common.h
+ * \brief
+ */
+#ifndef __BATCH_NORM_GRAD_COMMON_H__
+#define __BATCH_NORM_GRAD_COMMON_H__
+
+#include "kernel_operator.h"
+#include "../inc/platform.h"
+#include "kernel_tiling/kernel_tiling.h"
+#include "../../norm_common/reduce_common_regbase.h"
+
+namespace BatchNormGrad {
+using namespace AscendC;
+using AscendC::Reg::LoadAlign;
+using AscendC::Reg::LoadDist;
+using AscendC::Reg::MaskReg;
+using AscendC::Reg::RegTensor;
+using AscendC::Reg::StoreAlign;
+
+static constexpr uint32_t ONE = 1;
+static constexpr uint32_t TWO = 2;
+static constexpr uint32_t THREE = 3;
+static constexpr uint32_t FOUR = 4;
+static constexpr uint32_t ONE_BLK_SIZE = platform::GetUbBlockSize();
+static constexpr uint32_t TWO_BLK_SIZE = ONE_BLK_SIZE * TWO;
+static constexpr uint16_t VECTOR_LENGTH = platform::GetVRegSize();
+static constexpr uint64_t MOVE_ALIGN_LOOP_SIZE_SHIFT = 21;
+static constexpr uint64_t MOVE_ALIGN_LOOP_STRIDE_SHIFT = 40;
+static constexpr uint64_t MOVE_ALIGN_LOOP_ONCE = 2097153ULL;
+static constexpr uint32_t VL_FP32 = VECTOR_LENGTH / sizeof(float);
+
+static constexpr uint32_t DIGIT_TWO = 2;
+static constexpr uint32_t DIGIT_THREE = 3;
+static constexpr uint32_t CACHE_BUFF_SIZE = 6 * 1024 + 2 * VECTOR_LENGTH;
+static constexpr uint32_t DGAMA_CACHE_INDEX = 3 * VECTOR_LENGTH;
+static constexpr uint32_t CACHE_LEVEL0_INDEX = 0;
+static constexpr uint32_t CACHE_LEVEL1_INDEX = VECTOR_LENGTH;
+static constexpr uint32_t CACHE_LEVEL2_INDEX = 2 * VECTOR_LENGTH;
+static constexpr uint32_t DBETA_FOLD_CACHE_INDEX = 6 * VECTOR_LENGTH;
+static constexpr uint32_t DGAMA_FOLD_CACHE_INDEX = 6 * VECTOR_LENGTH + VL_FP32;
+static constexpr uint32_t FOLD_CACHE_CAPACITY = VL_FP32;
+static constexpr uint32_t ONE_LEVEL_BINARRY_ADD_CACHE_CAPACITY = VECTOR_LENGTH;
+
+using BinaryAddParam = struct BNGBinaryAddParam {
+    uint32_t binaryAddQuotient = 0;
+    uint32_t binaryAddk = 0;
+    uint32_t binaryAddLastNum = 0;
+};
+
+__aicore__ inline uint32_t CeilDiv(uint32_t x, uint32_t y)
+{
+    if (y > 0) {
+        return (x + y - 1) / y;
+    }
+    return 0;
+}
+
+__aicore__ inline uint32_t RoundUpOneBlock(uint32_t x) { return (x + ONE_BLK_SIZE - 1) / ONE_BLK_SIZE * ONE_BLK_SIZE; }
+
+__aicore__ inline uint32_t RoundUpTwoBlock(uint32_t x) { return (x + TWO_BLK_SIZE - 1) / TWO_BLK_SIZE * TWO_BLK_SIZE; }
+
+static constexpr Reg::CastTrait castTraitB162B32 = {Reg::RegLayout::ZERO, Reg::SatMode::UNKNOWN,
+                                                    Reg::MaskMergeMode::ZEROING, RoundMode::UNKNOWN};
+
+static constexpr Reg::CastTrait castTraitB322B16 = {Reg::RegLayout::ZERO, Reg::SatMode::NO_SAT,
+                                                    Reg::MaskMergeMode::ZEROING, RoundMode::CAST_RINT};
+
+template <typename T>
+__aicore__ inline void LoadOneTensor(const __ubuf__ void* input, Reg::RegTensor<float>& dst, Reg::MaskReg& preg,
+                                     uint32_t offset)
+{
+    if constexpr (IsSameType<T, half>::value) {
+        Reg::RegTensor<half> xFp16;
+        LoadAlign<half, Reg::LoadDist::DIST_UNPACK_B16>(xFp16, (__ubuf__ half*)(input) + offset);
+        Cast<float, half, castTraitB162B32>(dst, xFp16, preg);
+    } else if constexpr (IsSameType<T, bfloat16_t>::value) {
+        Reg::RegTensor<bfloat16_t> xBf16;
+        LoadAlign<bfloat16_t, Reg::LoadDist::DIST_UNPACK_B16>(xBf16, (__ubuf__ bfloat16_t*)(input) + offset);
+        Cast<float, bfloat16_t, castTraitB162B32>(dst, xBf16, preg);
+    } else {
+        LoadAlign(dst, (__ubuf__ float*)(input) + offset);
+    }
+}
+
+__aicore__ inline void LoadOneTensorBrcVL(const __ubuf__ void* input, Reg::RegTensor<float>& dst, uint32_t offset)
+{
+    LoadAlign<float, Reg::LoadDist::DIST_BLK>(dst, (__ubuf__ float*)(input) + offset);
+}
+
+template <typename T>
+__aicore__ inline void LoadsTensorForDtypeT(const __ubuf__ void* src, Reg::RegTensor<float>& dst, Reg::MaskReg& preg,
+                                            uint32_t offset)
+{
+    if constexpr (IsSameType<T, float>::value) {
+        LoadAlign<float, LoadDist::DIST_BRC_B32>(dst, (__ubuf__ float*)src + offset);
+    } else { // fp16、bf16
+        RegTensor<T> xFp16;
+        LoadAlign<T, LoadDist::DIST_BRC_B16>(xFp16, ((__ubuf__ T*)src + offset));
+        Cast<float, T, castTraitB162B32>(dst, xFp16, preg);
+    }
+}
+
+template <typename T>
+__aicore__ inline void StoreOneTensor(const __ubuf__ void* output, Reg::RegTensor<float>& src, Reg::MaskReg& preg,
+                                      uint32_t offset)
+{
+    if constexpr (IsSameType<T, half>::value) {
+        Reg::RegTensor<half> xFp16;
+        Cast<half, float, castTraitB322B16>(xFp16, src, preg);
+        StoreAlign<half, Reg::StoreDist::DIST_PACK_B32>((__ubuf__ half*)(output) + offset, xFp16, preg);
+    } else if constexpr (IsSameType<T, bfloat16_t>::value) {
+        Reg::RegTensor<bfloat16_t> xBf16;
+        Cast<bfloat16_t, float, castTraitB322B16>(xBf16, src, preg);
+        StoreAlign<bfloat16_t, Reg::StoreDist::DIST_PACK_B32>((__ubuf__ bfloat16_t*)(output) + offset, xBf16, preg);
+    } else {
+        StoreAlign((__ubuf__ float*)(output) + offset, src, preg);
+    }
+}
+
+template <typename T>
+__aicore__ inline void LoadOneElement(const __ubuf__ void* input, Reg::RegTensor<float>& dst, Reg::MaskReg& preg,
+                                      uint32_t offset)
+{
+    if constexpr (IsSameType<T, half>::value) {
+        Reg::RegTensor<half> xFp16;
+        LoadAlign<half, Reg::LoadDist::DIST_BRC_B16>(xFp16, (__ubuf__ half*)(input) + offset);
+        Cast<float, half, castTraitB162B32>(dst, xFp16, preg);
+    } else if constexpr (IsSameType<T, bfloat16_t>::value) {
+        Reg::RegTensor<bfloat16_t> xBf16;
+        LoadAlign<bfloat16_t, Reg::LoadDist::DIST_BRC_B16>(xBf16, (__ubuf__ bfloat16_t*)(input) + offset);
+        Cast<float, bfloat16_t, castTraitB162B32>(dst, xBf16, preg);
+    } else {
+        LoadAlign<float, Reg::LoadDist::DIST_BRC_B32>(dst, ((__ubuf__ float*)(input)) + offset);
+    }
+}
+
+template <typename T>
+__aicore__ inline void StoreOneElement(const __ubuf__ void* output, Reg::RegTensor<float>& src, Reg::MaskReg& preg,
+                                       uint32_t offset)
+{
+    if constexpr (IsSameType<T, half>::value) {
+        Reg::RegTensor<half> xFp16;
+        Cast<half, float, castTraitB322B16>(xFp16, src, preg);
+        StoreAlign<half, Reg::StoreDist::DIST_FIRST_ELEMENT_B16>((__ubuf__ half*)(output) + offset, xFp16, preg);
+    } else if constexpr (IsSameType<T, bfloat16_t>::value) {
+        Reg::RegTensor<bfloat16_t> xBf16;
+        Cast<bfloat16_t, float, castTraitB322B16>(xBf16, src, preg);
+        StoreAlign<bfloat16_t, Reg::StoreDist::DIST_FIRST_ELEMENT_B16>((__ubuf__ bfloat16_t*)(output) + offset, xBf16,
+                                                                       preg);
+    } else {
+        StoreAlign<float, Reg::StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)output) + offset, src, preg);
+    }
+}
+
+__aicore__ inline void LoadTwoTensorSum(const __ubuf__ void* input, Reg::RegTensor<float>& dst, Reg::MaskReg& preg,
+                                        uint32_t offset0, uint32_t offset1)
+{
+    Reg::RegTensor<float> a, b;
+    LoadAlign(a, (__ubuf__ float*)(input) + offset0);
+    LoadAlign(b, (__ubuf__ float*)(input) + offset1);
+    Add<float, Reg::MaskMergeMode::ZEROING>(dst, a, b, preg);
+}
+
+template <typename T>
+__aicore__ inline void CopyOut(const GlobalTensor<T>& dstTensor, const LocalTensor<T>& srcTensor, int64_t n)
+{
+    DataCopyExtParams params;
+    params.blockCount = 1;
+    params.blockLen = n * sizeof(T);
+    DataCopyPad(dstTensor, srcTensor, params);
+}
+
+template <typename T>
+__aicore__ inline void CopyIn(const LocalTensor<T>& dstTensor, const GlobalTensor<T>& srcTensor, int64_t n)
+{
+    // CopyIn
+    DataCopyExtParams params;
+    params.blockCount = 1;
+    params.blockLen = n * sizeof(T);
+    DataCopyPadExtParams<T> padParams;
+    padParams.isPad = false;
+    DataCopyPad(dstTensor, srcTensor, params, padParams);
+}
+
+template <typename T>
+__aicore__ inline void CopyOut(const GlobalTensor<T>& dstTensor, const LocalTensor<T>& srcTensor, int64_t rowSize,
+                               int64_t colSize, int64_t dstStride, int64_t srcStride)
+{
+    // CopyOut
+    DataCopyExtParams params;
+    params.blockCount = rowSize;
+    params.blockLen = colSize * sizeof(T);
+    params.dstStride = dstStride * sizeof(T) - params.blockLen;
+    params.srcStride = (srcStride * sizeof(T) - RoundUpOneBlock(params.blockLen)) / ONE_BLK_SIZE;
+    DataCopyPad(dstTensor, srcTensor, params);
+}
+
+template <typename T>
+__aicore__ inline void CopyIn(const LocalTensor<T>& dstTensor, const GlobalTensor<T>& srcTensor, int64_t rowSize,
+                              int64_t colSize, int64_t dstStride, int64_t srcStride)
+{
+    // CopyIn
+    DataCopyExtParams params;
+    params.blockLen = colSize * sizeof(T);
+    params.blockCount = rowSize;
+    params.dstStride = (dstStride * sizeof(T) - RoundUpOneBlock(params.blockLen)) / ONE_BLK_SIZE;
+    params.srcStride = srcStride * sizeof(T) - params.blockLen;
+    DataCopyPadExtParams<T> padParams;
+    padParams.isPad = false;
+    DataCopyPad(dstTensor, srcTensor, params, padParams);
+}
+
+__aicore__ inline int64_t GetCacheID(const int64_t idx) { return ScalarGetCountOfValue<1>(idx ^ (idx + 1)) - 1; }
+
+} // namespace BatchNormGrad
+#endif

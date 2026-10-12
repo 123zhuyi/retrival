@@ -1,0 +1,326 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv2d_v2.h
+ * \brief
+ */
+
+#ifndef CONV_2D_H
+#define CONV_2D_H
+
+#include "kernel_tiling/kernel_tiling.h"
+#include "../../common/arch35/conv_common.h"
+#include "conv2d_v2_api.h"
+
+#define mDim hoDim
+
+using namespace AscendC;
+using namespace conv2d;
+
+template <int8_t FmapTiling, int8_t WeightTiling, int8_t L1PingPong, int8_t L0PingPong, int8_t OutputOrder,
+          int8_t IterOrder, int8_t GroupType, int8_t EnableSmallChannel, int8_t WeightUbTrans, int8_t FmapCopyMode,
+          int8_t InnerBatch, int8_t DisContinuous = 0, int8_t BatchOne = 0, int8_t NoPad = 0, int8_t SmallWeight = 0,
+          IsExtendConv2D ExtendConv2DFlag = IsExtendConv2D::FALSE, typename Output1T = half, int8_t FmapDataSrc = 0>
+struct Conv2DV1Param : public Conv2dParam {
+    __aicore__ inline Conv2DV1Param() {}
+    constexpr static int8_t fmapTiling = FmapTiling;
+    constexpr static int8_t weightTiling = WeightTiling;
+    constexpr static int8_t l1PingPong = L1PingPong;
+    constexpr static int8_t l0PingPong = L0PingPong;
+    constexpr static int8_t outputOrder = OutputOrder;
+    constexpr static int8_t iterOrder = IterOrder;
+    constexpr static int8_t groupType = GroupType;
+    constexpr static int8_t enableSmallChannel = EnableSmallChannel;
+    constexpr static int8_t weightUbTrans = WeightUbTrans;
+    constexpr static int8_t fmapCopyMode = FmapCopyMode;
+    constexpr static int8_t innerBatch = InnerBatch;
+    constexpr static int8_t disContinuous = DisContinuous;
+    constexpr static int8_t isBatchOne = BatchOne;
+    constexpr static int8_t isNoPad = NoPad;
+    constexpr static int8_t smallWeight = SmallWeight;
+    constexpr static int8_t isExtendConv2d = static_cast<int8_t>(ExtendConv2DFlag);
+    using Output1Dtype = Output1T;
+    constexpr static int8_t fmapDataSrc = FmapDataSrc; // 0 for DDR; 1 for L1
+};
+
+template <class FMAP_TYPE, class WEIGHT_TYPE, class OUTPUT_TYPE, class BIAS_TYPE, class SCALE_TYPE, class CONV_CFG>
+class Conv2dBase {
+public:
+    __aicore__ inline Conv2dBase() {}
+
+    __aicore__ inline void RunConv2dKernel(GM_ADDR x, GM_ADDR filter, GM_ADDR bias, GM_ADDR y,
+                                           const Conv2DTilingData& convTilingData,
+                                           const ExtendParams* extendParams = nullptr);
+
+protected:
+    // Conv2d op kernel init intf
+    __aicore__ inline bool Conv2dKernelInit(GM_ADDR x, GM_ADDR filter, GM_ADDR bias, GM_ADDR y,
+                                            const ExtendParams* extendParams, const Conv2DTilingData& tilingData);
+
+    __aicore__ inline bool InitSingleCoreData(const uint32_t& blockPerNDim, uint32_t blockPerMDim,
+                                              uint32_t blockPerHoDim, uint32_t blockPerWoDim);
+
+    __aicore__ inline void InitBuffer(GM_ADDR x, GM_ADDR filter, GM_ADDR bias, GM_ADDR y,
+                                      const ExtendParams* extendParams);
+
+    // Conv2d op kernel impl intf
+    __aicore__ inline void Conv2dKernelImpl();
+
+public:
+    // Get dtype
+    using FMAP_T = typename FMAP_TYPE::T;
+    using WEIGHT_T = typename WEIGHT_TYPE::T;
+    using OUTPUT_T = typename OUTPUT_TYPE::T;
+    using OUTPUT1_T = typename CONV_CFG::Output1Dtype;
+    using BIAS_T = typename BIAS_TYPE::T;
+    using SCALE_T = typename SCALE_TYPE::T;
+    using RELU_WEIGHT_T = float;
+    using CLIP_VALUE_0_T = typename OUTPUT_TYPE::T;
+    using CLIP_VALUE_1_T = typename CONV_CFG::Output1Dtype;
+
+    // Conv2d API
+    Conv2d<FMAP_TYPE, WEIGHT_TYPE, OUTPUT_TYPE, BIAS_TYPE, SCALE_TYPE, CONV_CFG> conv;
+    ConvCommon<Conv2dBase, Conv2DTilingData> convCommon;
+
+    const Conv2DTilingData* convTilingData;
+
+    // Input and output tensor declare
+    GlobalTensor<FMAP_T> fmapGm;
+    GlobalTensor<WEIGHT_T> filterGm;
+    GlobalTensor<OUTPUT_T> outputGm;
+    GlobalTensor<OUTPUT1_T> output1Gm; // extend conv2d dual output
+    GlobalTensor<BIAS_T> biasGm;
+    GlobalTensor<SCALE_T> scaleGm;
+    Extendconv2dFixpipeParams<SCALE_T, RELU_WEIGHT_T, CLIP_VALUE_0_T, CLIP_VALUE_1_T> fixpipeParams;
+
+    uint64_t batchIdxStart = 0;
+    uint64_t nIdxStart = 0;
+    uint64_t mIdxStart = 0;
+    uint64_t hoIdxStart = 0;
+    uint64_t woIdxStart = 0;
+
+    // Single core data
+    uint64_t singleCoreBatch = 0;
+    uint64_t singleCoreCi = 0;
+    uint64_t singleCoreN = 0;
+    uint64_t singleCoreM = 0;
+    uint64_t singleCoreHo = 0;
+    uint64_t singleCoreWo = 0;
+    int64_t singleCoreHiStartPos = 0;
+    int64_t singleCoreWiStartPos = 0;
+
+    // block num
+    uint32_t batchBlockNums = 0;
+    uint32_t nBlockNums = 0;
+    uint32_t hoBlockNums = 0; // also mBlockNums
+    uint32_t woBlockNums = 0;
+
+    bool isBatchDimTail = false;
+    bool isNDimTail = false;
+    bool isMDimTail = false;
+    bool isHoDimTail = false;
+    bool isWoDimTail = false;
+    bool hasScale = false;
+    uint64_t fmapOneBatchSize = 0;
+    uint64_t outputOneBatchSize = 0;
+
+    constexpr static uint32_t din = 1;
+    constexpr static uint32_t dout = 1;
+    constexpr static uint32_t kd = 1;
+
+    constexpr static ConvFormat A_FORMAT = FMAP_TYPE::format;
+    constexpr static ConvFormat B_FORMAT = WEIGHT_TYPE::format;
+    constexpr static ConvFormat C_FORMAT = OUTPUT_TYPE::format;
+    constexpr static bool isMMode = CONV_CFG::outputOrder == static_cast<int8_t>(ConvOutputOrder::M_MODE);
+    constexpr static bool isQuant = (IsSameType<FMAP_T, int8_t>::value && IsSameType<OUTPUT_T, half>::value) ||
+                                    (IsSameType<FMAP_T, int8_t>::value && IsSameType<OUTPUT_T, int8_t>::value) ||
+                                    (IsSameType<FMAP_T, hifloat8_t>::value) ||
+                                    (IsSameType<FMAP_T, fp8_e4m3fn_t>::value);
+    constexpr static int8_t IS_EXTEND_CONV2D = CONV_CFG::isExtendConv2d;
+#if defined(__DAV_35_FAMILY__)
+    constexpr static bool IS_OPTGROUP_PRELOAD = false;
+#else
+    constexpr static bool IS_OPTGROUP_PRELOAD = (CONV_CFG::fmapTiling ==
+                                                     static_cast<int8_t>(ConvFmapTiling::FULLLOAD_AL1) ||
+                                                 CONV_CFG::fmapTiling == static_cast<int8_t>(ConvFmapTiling::OTHER)) &&
+                                                CONV_CFG::weightTiling ==
+                                                    static_cast<int8_t>(ConvWeightTiling::FULLLOAD_BL1) &&
+                                                CONV_CFG::groupType ==
+                                                    static_cast<int8_t>(ConvGroupType::OPT_GROUP_CONV) &&
+                                                CONV_CFG::l1PingPong == static_cast<int8_t>(ConvL1PingPong::ALL_OPEN);
+#endif
+    constexpr static bool DIS_CONTINUOUS = CONV_CFG::disContinuous ==
+                                           static_cast<int8_t>(ConvDisContinuous::INPUT_HWNC);
+
+    constexpr static uint8_t k0 = SINGLE_BLOCK_SIZE / sizeof(WEIGHT_T);
+};
+
+template <class FMAP_TYPE, class WEIGHT_TYPE, class OUTPUT_TYPE, class BIAS_TYPE, class SCALE_TYPE, class CONV_CFG>
+__aicore__ inline void Conv2dBase<FMAP_TYPE, WEIGHT_TYPE, OUTPUT_TYPE, BIAS_TYPE, SCALE_TYPE,
+                                  CONV_CFG>::RunConv2dKernel(GM_ADDR x, GM_ADDR filter, GM_ADDR bias, GM_ADDR y,
+                                                             const Conv2DTilingData& convTilingData,
+                                                             const ExtendParams* extendParams)
+{
+    if (Conv2dKernelInit(x, filter, bias, y, extendParams, convTilingData)) {
+        Conv2dKernelImpl();
+    }
+}
+
+template <class FMAP_TYPE, class WEIGHT_TYPE, class OUTPUT_TYPE, class BIAS_TYPE, class SCALE_TYPE, class CONV_CFG>
+__aicore__ inline bool Conv2dBase<FMAP_TYPE, WEIGHT_TYPE, OUTPUT_TYPE, BIAS_TYPE, SCALE_TYPE,
+                                  CONV_CFG>::Conv2dKernelInit(GM_ADDR x, GM_ADDR filter, GM_ADDR bias, GM_ADDR y,
+                                                              const ExtendParams* extendParams,
+                                                              const Conv2DTilingData& tilingData)
+{
+    hasScale = (extendParams != nullptr);
+    convTilingData = &tilingData;
+    convCommon.Init(this, convTilingData, hasScale);
+
+    conv.Init(convTilingData);
+
+    if constexpr (A_FORMAT == ConvFormat::NCHW) {
+        if constexpr (isMMode) {
+            if (!InitSingleCoreData(convTilingData->mDim, 1, 0, 0)) {
+                return false;
+            }
+        } else {
+            if (!InitSingleCoreData(convTilingData->hoDim * convTilingData->woDim, 0, convTilingData->woDim, 1)) {
+                return false;
+            }
+        }
+    } else {
+        if constexpr (isMMode) {
+            if (!InitSingleCoreData(1, convTilingData->nDim, 0, 0)) {
+                return false;
+            }
+        } else {
+            if (!InitSingleCoreData(1, 0, convTilingData->woDim * convTilingData->nDim, convTilingData->nDim)) {
+                return false;
+            }
+        }
+    }
+
+    InitBuffer(x, filter, bias, y, extendParams);
+
+    return true;
+}
+
+template <class FMAP_TYPE, class WEIGHT_TYPE, class OUTPUT_TYPE, class BIAS_TYPE, class SCALE_TYPE, class CONV_CFG>
+__aicore__ inline bool Conv2dBase<FMAP_TYPE, WEIGHT_TYPE, OUTPUT_TYPE, BIAS_TYPE, SCALE_TYPE,
+                                  CONV_CFG>::InitSingleCoreData(const uint32_t& blockPerNDim, uint32_t blockPerMDim,
+                                                                uint32_t blockPerHoDim, uint32_t blockPerWoDim)
+{
+    DimDataToFill batchToFill(singleCoreBatch, batchIdxStart, isBatchDimTail);
+    bool isRealDim = convCommon.CalcDimData(convTilingData->hoDim * convTilingData->nDim * convTilingData->woDim,
+                                            convTilingData->batchDim, convTilingData->batch, convTilingData->batch,
+                                            batchToFill);
+    if (unlikely(!isRealDim)) {
+        return false;
+    }
+
+    DimDataToFill nToFill(singleCoreN, nIdxStart, isNDimTail);
+    isRealDim = convCommon.CalcNDimDataAlign(blockPerNDim, convTilingData->nDim, convTilingData->cout, nToFill);
+    if (unlikely(!isRealDim)) {
+        return false;
+    }
+
+    if constexpr (isMMode) {
+        DimDataToFill mToFill(singleCoreM, mIdxStart, isMDimTail);
+        uint64_t totalM = convTilingData->hout * convTilingData->wout;
+        isRealDim = convCommon.CalcDimData(blockPerMDim, convTilingData->mDim, convCommon.AlignB(totalM, M0), totalM,
+                                           mToFill);
+        if (unlikely(!isRealDim)) {
+            return false;
+        }
+    } else {
+        DimDataToFill hoToFill(singleCoreHo, hoIdxStart, isHoDimTail);
+        isRealDim = convCommon.CalcDimData(blockPerHoDim, convTilingData->hoDim, convTilingData->hout,
+                                           convTilingData->hout, hoToFill);
+        if (unlikely(!isRealDim)) {
+            return false;
+        }
+
+        DimDataToFill woToFill(singleCoreWo, woIdxStart, isWoDimTail);
+        isRealDim = convCommon.CalcDimData(blockPerWoDim, convTilingData->woDim, convTilingData->wout,
+                                           convTilingData->wout, woToFill);
+        if (unlikely(!isRealDim)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+template <class FMAP_TYPE, class WEIGHT_TYPE, class OUTPUT_TYPE, class BIAS_TYPE, class SCALE_TYPE, class CONV_CFG>
+__aicore__ inline void Conv2dBase<FMAP_TYPE, WEIGHT_TYPE, OUTPUT_TYPE, BIAS_TYPE, SCALE_TYPE, CONV_CFG>::InitBuffer(
+    GM_ADDR x, GM_ADDR filter, GM_ADDR bias, GM_ADDR y, const ExtendParams* extendParams)
+{
+    if constexpr (A_FORMAT == ConvFormat::NCHW) {
+        if constexpr (isMMode) {
+            convCommon.CalcStartAddrMMode(din, dout, kd);
+        } else {
+            convCommon.CalcStartAddrHWode(din, dout, kd);
+        }
+    } else {
+        if constexpr (isMMode) {
+            convCommon.CalcStartAddrMModeHWC(din, dout);
+        } else {
+            convCommon.CalcStartAddrHWodeHWC(din, dout);
+        }
+    }
+
+    convCommon.InitBufferCommon(x, filter, bias, y, extendParams);
+}
+
+template <class FMAP_TYPE, class WEIGHT_TYPE, class OUTPUT_TYPE, class BIAS_TYPE, class SCALE_TYPE, class CONV_CFG>
+__aicore__ inline void
+Conv2dBase<FMAP_TYPE, WEIGHT_TYPE, OUTPUT_TYPE, BIAS_TYPE, SCALE_TYPE, CONV_CFG>::Conv2dKernelImpl()
+{
+    if constexpr (isMMode) {
+        if (unlikely(isNDimTail || isMDimTail || isBatchDimTail)) {
+            conv.SetSingleOutputShape(singleCoreN, singleCoreM, singleCoreBatch);
+        }
+
+        conv.SetFmapStartPosition(mIdxStart);
+    } else {
+        if (unlikely(isNDimTail || isHoDimTail || isWoDimTail || isBatchDimTail)) {
+            conv.SetSingleOutputShape(singleCoreN, singleCoreHo, singleCoreWo, singleCoreBatch);
+        }
+
+        conv.SetFmapStartPosition(singleCoreHiStartPos, singleCoreWiStartPos);
+    }
+
+    conv.SetWeight(filterGm);
+    if (convTilingData->hasBias) {
+        conv.SetBias(biasGm);
+    }
+
+    if constexpr (isQuant || CONV_CFG::isExtendConv2d) {
+        if (hasScale) {
+            conv.SetFixpipeParams(fixpipeParams);
+        }
+    }
+
+    conv.SetFmap(fmapGm);
+    if constexpr (CONV_CFG::isExtendConv2d) {
+        if (convTilingData->dualOutput) {
+            conv.IterateAll(outputGm, output1Gm);
+        } else {
+            conv.IterateAll(outputGm);
+        }
+    } else {
+        conv.IterateAll(outputGm);
+    }
+
+    conv.End();
+}
+
+#endif // CONV_2D_H

@@ -1,0 +1,169 @@
+diff --git a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+index d890f8c629ac..5332ab4ba341 100644
+--- a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+@@ -607,6 +607,67 @@ struct PackingMetadata {
+ // repeated N^2 counts).
+ PackingMetadata computePackingMetadata(int64_t packedRank,
+                                        ArrayRef<int64_t> innerDimPos);
++#if BSPUB_DAVINCI_BISHENGIR
++void putInExpandShape(int64_t shape, SmallVector<int64_t> &newExpandShape,
++                      ReassociationIndices &bottomIndices);
++
++bool areLooseReassociationsCompatible(
++    SmallVector<ReassociationIndices> &supposedExpand,
++    SmallVector<ReassociationIndices> &supposedCollapse,
++    SmallVector<int64_t> sourceShape, // Copy this because want to calculate
++    SmallVector<int64_t> resultShape, SmallVector<int64_t> &newExpandShape);
++
++void renumberReassoc(SmallVector<ReassociationIndices> &newReassociation);
++
++template <typename MainOpTy, typename SourceOpTy, typename ExpandOpTy,
++          typename CollapseOpTy>
++struct ComposeReshapeLoosely : public OpRewritePattern<MainOpTy> {
++  using OpRewritePattern<MainOpTy>::OpRewritePattern;
++  LogicalResult matchAndRewrite(MainOpTy mainOp,
++                                PatternRewriter &rewriter) const override {
++
++    SmallVector<ReassociationIndices> supposedExpand, supposedCollapse;
++    SmallVector<int64_t> newExpandShape;
++    Value mainOpSrcVal = mainOp.getSrc();
++    auto sourceOp = mainOpSrcVal.getDefiningOp<SourceOpTy>();
++    if (!sourceOp)
++      return failure();
++    SmallVector<int64_t> collapseSourceShape = llvm::to_vector(
++        cast<ShapedType>(sourceOp.getSrc().getType()).getShape());
++    SmallVector<int64_t> expandShapeResult =
++        llvm::to_vector(cast<ShapedType>(mainOp.getResultType()).getShape());
++    bool canFold = areLooseReassociationsCompatible(
++        supposedExpand, supposedCollapse, collapseSourceShape,
++        expandShapeResult, newExpandShape);
++    if (!canFold)
++      return rewriter.notifyMatchFailure(mainOp, "cannot fold dimension");
++    // Fold here
++
++    renumberReassoc(supposedExpand);
++    renumberReassoc(supposedCollapse);
++    if (supposedCollapse.empty() || supposedExpand.empty())
++      return failure();
++    rewriter.setInsertionPointAfterValue(sourceOp.getSrc());
++
++    if (supposedCollapse.size() == supposedCollapse.back().back() + 1) {
++      // Only need one expand
++      auto newExpandOp =
++          rewriter.create<ExpandOpTy>(mainOp.getLoc(), mainOp.getResultType(),
++                                      sourceOp.getSrc(), supposedExpand);
++      rewriter.replaceOp(mainOp, newExpandOp);
++      return success();
++    }
++    if (supposedExpand.size() == supposedExpand.back().back() + 1) {
++      auto newCollapseOp =
++          rewriter.create<CollapseOpTy>(mainOp.getLoc(), mainOp.getResultType(),
++                                        sourceOp.getSrc(), supposedCollapse);
++      rewriter.replaceOp(mainOp, newCollapseOp);
++      return success();
++    }
++    return failure();
++  }
++};
++#endif
+ } // namespace mlir
+ 
+ #endif // MLIR_DIALECT_UTILS_RESHAPEOPSUTILS_H
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+index f0ce375e9ad2..11dd0f4c7db7 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+@@ -1991,6 +1991,10 @@ void ExpandShapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
+   results.add<
+ #if BSPUB_DAVINCI_BISHENGIR
+       FoldConstantDimOfOutputShape<ExpandShapeOp, CastOp>,
++      ComposeReshapeLoosely<ExpandShapeOp, CollapseShapeOp, ExpandShapeOp,
++                            CollapseShapeOp>,
++      ComposeReshapeLoosely<CollapseShapeOp, ExpandShapeOp, ExpandShapeOp,
++                            CollapseShapeOp>,
+ #endif
+       ComposeReassociativeReshapeOps<ExpandShapeOp, ReshapeOpKind::kExpand>,
+       ComposeExpandOfCollapseOp<ExpandShapeOp, CollapseShapeOp>,
+diff --git a/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp b/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp
+index d2ab4cabb32b..289b10fb9ae2 100644
+--- a/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp
++++ b/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp
+@@ -483,3 +483,76 @@ PackingMetadata mlir::computePackingMetadata(int64_t packedRank,
+   }
+   return res;
+ }
++
++#if BSPUB_DAVINCI_BISHENGIR
++void mlir::putInExpandShape(int64_t shape, SmallVector<int64_t> &newExpandShape,
++                            ReassociationIndices &bottomIndices) {
++  size_t currentIndex = newExpandShape.size();
++  newExpandShape.push_back(shape);
++  bottomIndices.push_back(currentIndex);
++}
++
++void mlir::renumberReassoc(
++    SmallVector<ReassociationIndices> &newReassociation) {
++  int shapeCounter = 0;
++  for (auto &reassociationIndex : newReassociation) {
++    for (auto &shapeIndex : reassociationIndex) {
++      shapeIndex = shapeCounter++;
++    }
++  }
++}
++
++bool mlir::areLooseReassociationsCompatible(
++    SmallVector<ReassociationIndices> &supposedExpand,
++    SmallVector<ReassociationIndices> &supposedCollapse,
++    SmallVector<int64_t> sourceShape, // Copy this because want to calculate
++    SmallVector<int64_t> resultShape, SmallVector<int64_t> &newExpandShape) {
++  // Check if collapse and expand reassociations are inverses of each other
++  uint64_t topPointer = 0;
++  uint64_t bottomPointer = 0;
++  if (sourceShape.empty()) {
++    return llvm::all_of(resultShape, [](auto x) { return x == 1; });
++  }
++  supposedExpand.assign(sourceShape.size(), {});
++  supposedCollapse.assign(resultShape.size(), {});
++  while (topPointer < sourceShape.size() &&
++         bottomPointer < resultShape.size()) {
++    supposedExpand[topPointer].push_back(-1);
++    if (resultShape[bottomPointer] == sourceShape[topPointer]) {
++      putInExpandShape(resultShape[bottomPointer], newExpandShape,
++                       supposedCollapse[bottomPointer]);
++      resultShape[bottomPointer] = sourceShape[topPointer] = 1;
++      bottomPointer++;
++      topPointer++;
++    } else if (resultShape[bottomPointer] % sourceShape[topPointer] == 0) {
++      putInExpandShape(sourceShape[topPointer], newExpandShape,
++                       supposedCollapse[bottomPointer]);
++      resultShape[bottomPointer] /= sourceShape[topPointer];
++      topPointer++;
++    } else if (sourceShape[topPointer] % resultShape[bottomPointer] == 0) {
++      putInExpandShape(resultShape[bottomPointer], newExpandShape,
++                       supposedCollapse[bottomPointer]);
++      sourceShape[topPointer] /= resultShape[bottomPointer];
++      bottomPointer++;
++    } else
++      return false;
++  }
++  while (topPointer < sourceShape.size()) {
++    if (sourceShape[topPointer] != 1) {
++      return false;
++    }
++    putInExpandShape(1, newExpandShape, supposedCollapse[bottomPointer - 1]);
++    supposedExpand[topPointer].push_back(-1);
++    topPointer++;
++  }
++  while (bottomPointer < resultShape.size()) {
++    if (resultShape[bottomPointer] != 1) {
++      return false;
++    }
++    putInExpandShape(1, newExpandShape, supposedCollapse[bottomPointer]);
++    supposedExpand.back().push_back(-1);
++    bottomPointer++;
++  }
++  return true;
++}
++#endif
+\ No newline at end of file

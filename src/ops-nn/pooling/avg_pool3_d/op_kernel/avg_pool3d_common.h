@@ -1,0 +1,485 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file avg_pool3_d_common.h
+ * \brief
+ */
+
+#ifndef AVG_POOL3D_COMMON_H_
+#define AVG_POOL3D_COMMON_H_
+
+#include "kernel_operator.h"
+
+namespace AvgPool3d {
+using namespace AscendC;
+
+constexpr uint64_t TRANS_ADDR_LEN = 16;
+constexpr uint64_t UINT8_BITS = 8;
+constexpr uint64_t BLOCK_SIZE = 32;
+constexpr uint64_t BLOCK_NUM_16 = BLOCK_SIZE / sizeof(half);
+constexpr uint64_t BLOCK_NUM_32 = BLOCK_SIZE / sizeof(float);
+constexpr uint64_t UNIT_BLOCK_LEN = BLOCK_SIZE / sizeof(float);
+constexpr float ZERO = 0.0f;
+constexpr uint32_t DEFAULT_CLEAR_UB_SIZE = 1024;
+
+__aicore__ inline int64_t Max(int64_t a, int64_t b) { return a > b ? a : b; }
+
+__aicore__ inline int64_t Min(int64_t a, int64_t b) { return a < b ? a : b; }
+
+__aicore__ inline int64_t CeilDiv(uint64_t a, uint64_t b) { return b == 0 ? a : (a + b - 1) / b; }
+
+__aicore__ inline int64_t CeilValue(int64_t a, int64_t b) { return b == 0 ? a : (a + b - 1) / b * b; }
+
+struct PoolShape {
+    int64_t N, C, D, H, W;
+    int64_t strideN, strideC, strideD, strideH, strideW;
+
+    __aicore__ inline PoolShape() {}
+
+    __aicore__ inline PoolShape(int64_t N, int64_t C, int64_t D, int64_t H, int64_t W)
+        : N(N),
+          C(C),
+          D(D),
+          H(H),
+          W(W),
+          strideN(C * D * H * W),
+          strideC(D * H * W),
+          strideD(H * W),
+          strideH(W),
+          strideW(1)
+    {}
+};
+
+struct PoolParameter {
+    int64_t kernelD;
+    int64_t kernelH;
+    int64_t kernelW;
+    int64_t strideD;
+    int64_t strideH;
+    int64_t strideW;
+    int64_t padD;
+    int64_t padH;
+    int64_t padW;
+    int64_t divisorOverride;
+    int64_t countIncludePad;
+
+    __aicore__ inline PoolParameter() {}
+
+    __aicore__ inline PoolParameter(int64_t kernelD, int64_t kernelH, int64_t kernelW, int64_t strideD, int64_t strideH,
+                                    int64_t strideW, int64_t padD, int64_t padH, int64_t padW, int64_t divisorOverride,
+                                    int64_t countIncludePad)
+        : kernelD(kernelD),
+          kernelH(kernelH),
+          kernelW(kernelW),
+          strideD(strideD),
+          strideH(strideH),
+          strideW(strideW),
+          padD(padD),
+          padH(padH),
+          padW(padW),
+          divisorOverride(divisorOverride),
+          countIncludePad(countIncludePad)
+    {}
+};
+
+struct PoolWindow {
+    int64_t start;
+    int64_t end;
+    int64_t poolSize;
+
+    __aicore__ inline PoolWindow() {}
+
+    __aicore__ inline void Compute(int64_t idx, int64_t inputSize, int64_t kernelSize, int64_t stride, int64_t padding,
+                                   int64_t countIncludePad)
+    {
+        start = idx * stride - padding;
+        end = Min(start + kernelSize, inputSize + padding);
+
+        int64_t includePadPoolSize = end - start;
+
+        start = Max(start, 0);
+        end = Min(end, inputSize);
+
+        poolSize = countIncludePad ? includePadPoolSize : end - start;
+    }
+};
+
+struct KernelInfoBuffer {
+    TBuf<TPosition::VECCALC> startIndexBuf;
+    TBuf<TPosition::VECCALC> endIndexBuf;
+    TBuf<TPosition::VECCALC> poolSizeBuf;
+
+    LocalTensor<int64_t> startIndexLocal;
+    LocalTensor<int64_t> endIndexLocal;
+    LocalTensor<int64_t> poolSizeLocal;
+
+    int32_t maxBufferLen;
+    int32_t bufferLen{0};
+    int64_t startIndex{-1};
+
+    __aicore__ inline KernelInfoBuffer() {}
+
+    __aicore__ inline void Init(TPipe* pipe, int64_t bufLen)
+    {
+        maxBufferLen = bufLen;
+        pipe->InitBuffer(startIndexBuf, bufLen * sizeof(int64_t));
+        pipe->InitBuffer(endIndexBuf, bufLen * sizeof(int64_t));
+        pipe->InitBuffer(poolSizeBuf, bufLen * sizeof(int64_t));
+
+        startIndexLocal = startIndexBuf.Get<int64_t>();
+        endIndexLocal = endIndexBuf.Get<int64_t>();
+        poolSizeLocal = poolSizeBuf.Get<int64_t>();
+    }
+
+    __aicore__ inline void SetValue(int32_t bufIdx, const PoolWindow& window)
+    {
+        startIndexLocal.SetValue(bufIdx, window.start);
+        endIndexLocal.SetValue(bufIdx, window.end);
+        poolSizeLocal.SetValue(bufIdx, window.poolSize);
+    }
+
+    __aicore__ inline void GetValue(int32_t idx, PoolWindow& window)
+    {
+        int32_t bufIdx = idx - startIndex;
+        window.start = startIndexLocal.GetValue(bufIdx);
+        window.end = endIndexLocal.GetValue(bufIdx);
+        window.poolSize = poolSizeLocal.GetValue(bufIdx);
+    }
+};
+
+struct Index {
+    PoolWindow D;
+    PoolWindow H;
+    PoolWindow W;
+
+    __aicore__ inline Index() {}
+};
+
+struct IndexBuffer {
+    KernelInfoBuffer D;
+    KernelInfoBuffer H;
+    KernelInfoBuffer W;
+
+    PoolShape outputShape;
+    PoolShape inputShape;
+    PoolParameter pool;
+
+    __aicore__ inline IndexBuffer() {}
+
+    __aicore__ inline void Init(TPipe* pipe, int64_t bufLen)
+    {
+        D.Init(pipe, bufLen);
+        H.Init(pipe, bufLen);
+        W.Init(pipe, bufLen);
+    }
+
+    __aicore__ inline void SetComputeParameter(const PoolShape& outShape, const PoolShape& inShape,
+                                               const PoolParameter& poolParam)
+    {
+        outputShape = outShape;
+        inputShape = inShape;
+        pool = poolParam;
+    }
+
+    __aicore__ inline void ComputeIndex(int64_t idx, KernelInfoBuffer& kernelInfo, int64_t inputSize,
+                                        int64_t outputSize, int64_t kernelSize, int64_t stride, int64_t padding)
+    {
+        kernelInfo.startIndex = idx;
+        kernelInfo.bufferLen = outputSize - idx < kernelInfo.maxBufferLen ? outputSize - idx : kernelInfo.maxBufferLen;
+        for (int32_t i = 0; i < kernelInfo.bufferLen; ++i) {
+            PoolWindow window;
+            window.Compute(idx + i, inputSize, kernelSize, stride, padding, pool.countIncludePad);
+            kernelInfo.SetValue(i, window);
+        }
+    }
+
+    __aicore__ inline void GetIndex(int64_t idx, Index& index)
+    {
+        idx = idx % outputShape.strideC;
+        int64_t od = idx / outputShape.strideD;
+        int64_t oh = idx % outputShape.strideD / outputShape.strideH;
+        int64_t ow = idx % outputShape.strideH / outputShape.strideW;
+
+        if (od < D.startIndex || od >= D.startIndex + D.bufferLen) [[unlikely]] {
+            ComputeIndex(od, D, inputShape.D, outputShape.D, pool.kernelD, pool.strideD, pool.padD);
+        }
+
+        if (oh < H.startIndex || oh >= H.startIndex + H.bufferLen) [[unlikely]] {
+            ComputeIndex(oh, H, inputShape.H, outputShape.H, pool.kernelH, pool.strideH, pool.padH);
+        }
+
+        if (ow < W.startIndex || ow >= W.startIndex + W.bufferLen) [[unlikely]] {
+            ComputeIndex(ow, W, inputShape.W, outputShape.W, pool.kernelW, pool.strideW, pool.padW);
+        }
+
+        D.GetValue(od, index.D);
+        H.GetValue(oh, index.H);
+        W.GetValue(ow, index.W);
+    }
+
+    __aicore__ inline void GetIndexWithoutCheck(int64_t idx, Index& index)
+    {
+        idx = idx % outputShape.strideC;
+        int64_t od = idx / outputShape.strideD;
+        int64_t oh = idx % outputShape.strideD / outputShape.strideH;
+        int64_t ow = idx % outputShape.strideH / outputShape.strideW;
+
+        D.GetValue(od, index.D);
+        H.GetValue(oh, index.H);
+        W.GetValue(ow, index.W);
+    }
+
+    __aicore__ inline void GetWIndex(int64_t idx, Index& index)
+    {
+        int64_t ow = idx % outputShape.strideH / outputShape.strideW;
+        W.GetValue(ow, index.W);
+    }
+};
+
+template <typename T, int32_t QUEUE_DEPTH>
+struct PoolMem {
+    TPipe* pipe;
+    TQue<QuePosition::VECIN, QUEUE_DEPTH> inputQueue;
+    TQue<QuePosition::VECOUT, QUEUE_DEPTH> outputQueue;
+
+    TBuf<QuePosition::VECCALC> tmpPattern;
+    TBuf<TPosition::VECCALC> sumBuf;
+    LocalTensor<float> sumBufLocal;
+
+    GlobalTensor<T> inputGlobal;
+    GlobalTensor<T> outputGlobal;
+
+    TQue<QuePosition::VECIN, QUEUE_DEPTH> syncWorkQueue;
+    GlobalTensor<int32_t> syncTensorsGM;
+    TBuf<TPosition::VECCALC> clearTensorBuff;
+
+    int64_t inC;
+    int64_t alignC;
+    int64_t outputPointNum;
+    int64_t outputPointOffset;
+    int64_t lastPointOffset;
+    int64_t atomicAddNum;
+    int64_t nextCoreAddrOffset;
+    uint32_t inputBufLen;
+
+    PoolShape inputShape;
+    PoolShape outputShape;
+    int64_t indexBufLen;
+    IndexBuffer indexBuf;
+    PoolParameter poolParam;
+    uint32_t numPerBlock;
+    int32_t validTailLen;
+    uint32_t usedCoreNum;
+};
+
+__aicore__ inline void SToMTE2Sync()
+{
+    event_t eventIDSToMTE2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_MTE2));
+    SetFlag<HardEvent::S_MTE2>(eventIDSToMTE2);
+    WaitFlag<HardEvent::S_MTE2>(eventIDSToMTE2);
+}
+
+__aicore__ inline void MTE2ToSSync()
+{
+    event_t eventIDMTE2ToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE2_S));
+    SetFlag<HardEvent::MTE2_S>(eventIDMTE2ToS);
+    WaitFlag<HardEvent::MTE2_S>(eventIDMTE2ToS);
+}
+
+__aicore__ inline void SToMTE3Sync()
+{
+    event_t eventIDSToMTE3 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_MTE3));
+    SetFlag<HardEvent::S_MTE3>(eventIDSToMTE3);
+    WaitFlag<HardEvent::S_MTE3>(eventIDSToMTE3);
+}
+
+__aicore__ inline void MTE3ToSSync()
+{
+    event_t eventIDMTE3ToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE3_S));
+    SetFlag<HardEvent::MTE3_S>(eventIDMTE3ToS);
+    WaitFlag<HardEvent::MTE3_S>(eventIDMTE3ToS);
+}
+
+__aicore__ inline void SToVSync()
+{
+    event_t eventIDSToV = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
+    SetFlag<HardEvent::S_V>(eventIDSToV);
+    WaitFlag<HardEvent::S_V>(eventIDSToV);
+}
+
+__aicore__ inline void MTE3ToVSync()
+{
+    event_t eventIDMTE3ToV = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE3_V));
+    SetFlag<HardEvent::MTE3_V>(eventIDMTE3ToV);
+    WaitFlag<HardEvent::MTE3_V>(eventIDMTE3ToV);
+}
+
+__aicore__ inline void VToMTE3Sync()
+{
+    event_t eventIDVToMTE3 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_MTE3));
+    SetFlag<HardEvent::V_MTE3>(eventIDVToMTE3);
+    WaitFlag<HardEvent::V_MTE3>(eventIDVToMTE3);
+}
+
+__aicore__ inline void MTE3ToMTE2Sync()
+{
+    event_t eventIDMTE3ToMTE2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE3_MTE2));
+    SetFlag<HardEvent::MTE3_MTE2>(eventIDMTE3ToMTE2);
+    WaitFlag<HardEvent::MTE3_MTE2>(eventIDMTE3ToMTE2);
+}
+
+template <typename T, int32_t QUEUE_DEPTH>
+__aicore__ inline void HandleTailMask(LocalTensor<T>& outputLocal, int64_t gatherOffset,
+                                      PoolMem<T, QUEUE_DEPTH>& poolMem, uint32_t mask)
+{
+    MTE3ToVSync();
+    int32_t lastLeftShift = poolMem.validTailLen;
+    uint64_t rsvdCnt = 0;
+    if constexpr (std::is_same_v<T, float>) {
+        LocalTensor<uint32_t> bufPattern = poolMem.tmpPattern.template Get<uint32_t>();
+        int32_t preLeftShift = poolMem.numPerBlock + lastLeftShift;
+
+        bufPattern.SetValue(0, (1u << preLeftShift) - (1u << lastLeftShift));
+        SToVSync();
+        GatherMask(outputLocal[gatherOffset], outputLocal[gatherOffset], bufPattern, true, mask, {1, 1, 8, 8}, rsvdCnt);
+    } else {
+        LocalTensor<uint16_t> bufPattern = poolMem.tmpPattern.template Get<uint16_t>();
+        int32_t preLeftShift = poolMem.numPerBlock - lastLeftShift;
+
+        bufPattern.SetValue(0, ((1u << preLeftShift) - 1u) << lastLeftShift);
+        bufPattern.SetValue(1, (1u << lastLeftShift) - 1u);
+        SToVSync();
+        GatherMask(outputLocal[gatherOffset], outputLocal[gatherOffset], bufPattern, true, mask, {1, 1, 8, 8}, rsvdCnt);
+    }
+    VToMTE3Sync();
+}
+
+template <typename T, int32_t QUEUE_DEPTH>
+__aicore__ inline void CastAndEnqueueOutput(PoolMem<T, QUEUE_DEPTH>& poolMem, int64_t count, float factor)
+{
+    Muls(poolMem.sumBufLocal, poolMem.sumBufLocal, factor, count);
+
+    LocalTensor<T> outputLocal = poolMem.outputQueue.template AllocTensor<T>();
+    if constexpr (std::is_same_v<T, float>) {
+#if __CCE_AICORE__ < 220
+        Adds(outputLocal, poolMem.sumBufLocal, 0.0f, AlignUp(count, poolMem.numPerBlock));
+#else
+        DataCopy(outputLocal, poolMem.sumBufLocal, AlignUp(count, poolMem.numPerBlock));
+#endif
+    } else if constexpr (std::is_same_v<T, half>) {
+        Cast(outputLocal, poolMem.sumBufLocal, RoundMode::CAST_NONE, count);
+    } else {
+        Cast(outputLocal, poolMem.sumBufLocal, RoundMode::CAST_RINT, count);
+    }
+    poolMem.outputQueue.EnQue(outputLocal);
+}
+
+template <typename T, int32_t QUEUE_DEPTH>
+__aicore__ inline void InitCommonBuffers(PoolMem<T, QUEUE_DEPTH>& poolMem, GM_ADDR workspace)
+{
+#if __CCE_AICORE__ < 220
+    if (poolMem.atomicAddNum) {
+        poolMem.pipe->InitBuffer(poolMem.tmpPattern, poolMem.numPerBlock * sizeof(T));
+
+        poolMem.pipe->InitBuffer(poolMem.syncWorkQueue, QUEUE_DEPTH, 8 * 32 * sizeof(int32_t));
+        poolMem.syncTensorsGM.SetGlobalBuffer((__gm__ int32_t*)workspace, poolMem.usedCoreNum * 8 * 32);
+        poolMem.pipe->InitBuffer(poolMem.clearTensorBuff, DEFAULT_CLEAR_UB_SIZE * sizeof(T));
+    } else if (poolMem.validTailLen != 0) {
+        poolMem.pipe->InitBuffer(poolMem.tmpPattern, poolMem.numPerBlock * sizeof(T));
+    }
+#endif
+}
+
+template <typename T, int32_t QUEUE_DEPTH>
+__aicore__ inline void CopyInTemplate(PoolMem<T, QUEUE_DEPTH>& poolMem, int64_t offset, uint16_t blockCount,
+                                      uint32_t blockLen, uint8_t rightPadding)
+{
+    LocalTensor<T> inputLocal = poolMem.inputQueue.template AllocTensor<T>();
+#if __CCE_AICORE__ < 220
+    if constexpr (std::is_same_v<T, float>) {
+        if (blockLen == poolMem.alignC) {
+            DataCopyParams copyParams{blockCount, static_cast<uint16_t>(blockLen / poolMem.numPerBlock), 0, 0};
+            DataCopy(inputLocal, poolMem.inputGlobal[offset], copyParams);
+        } else {
+            for (int i = 0; i < blockCount; i++) {
+                DataCopy(inputLocal[i * poolMem.alignC], poolMem.inputGlobal[offset + i * blockLen], poolMem.alignC);
+            }
+        }
+    } else {
+        if (blockLen == poolMem.alignC) {
+            DataCopyParams copyParams{blockCount, static_cast<uint16_t>(blockLen / poolMem.numPerBlock), 0, 0};
+            DataCopy(inputLocal[poolMem.inputBufLen], poolMem.inputGlobal[offset], copyParams);
+        } else {
+            for (int i = 0; i < blockCount; i++) {
+                DataCopy(inputLocal[poolMem.inputBufLen + i * poolMem.alignC],
+                         poolMem.inputGlobal[offset + i * blockLen], poolMem.alignC);
+            }
+        }
+    }
+#else
+    DataCopyExtParams copyParams{blockCount, static_cast<uint32_t>(blockLen * sizeof(T)), 0, 0, 0};
+    DataCopyPadExtParams<T> padParams{true, 0, rightPadding, 0};
+    if constexpr (std::is_same_v<T, float>) {
+        DataCopyPad(inputLocal, poolMem.inputGlobal[offset], copyParams, padParams);
+    } else {
+        DataCopyPad(inputLocal[poolMem.inputBufLen], poolMem.inputGlobal[offset], copyParams, padParams);
+    }
+#endif
+    poolMem.inputQueue.EnQue(inputLocal);
+}
+
+template <typename T, int32_t QUEUE_DEPTH>
+__aicore__ inline void HandleAtomicAdd(PoolMem<T, QUEUE_DEPTH>& poolMem)
+{
+#if __CCE_AICORE__ < 220
+    if (poolMem.atomicAddNum) {
+        LocalTensor<T> clearUb = poolMem.clearTensorBuff.template Get<T>();
+        Duplicate(clearUb, (T)0, DEFAULT_CLEAR_UB_SIZE);
+
+        VToMTE3Sync();
+        int64_t curOutputPointIdx = poolMem.lastPointOffset;
+        for (int i = 0; i < poolMem.atomicAddNum; i++, curOutputPointIdx--) {
+            DataCopy<T>(poolMem.outputGlobal[curOutputPointIdx * poolMem.inC], clearUb, poolMem.numPerBlock);
+        }
+
+        DataCopy(poolMem.syncTensorsGM[0], clearUb.template ReinterpretCast<int32_t>(), poolMem.usedCoreNum * 8 * 32);
+        LocalTensor<int32_t> syncLocalTensor = poolMem.syncWorkQueue.template AllocTensor<int32_t>();
+        AscendC::SyncAll(poolMem.syncTensorsGM, syncLocalTensor, int32_t(poolMem.usedCoreNum));
+        poolMem.syncWorkQueue.FreeTensor(syncLocalTensor);
+    }
+#endif
+}
+
+template <typename T, int32_t QUEUE_DEPTH>
+__aicore__ inline void HandleAtomicAddWithTail(PoolMem<T, QUEUE_DEPTH>& poolMem, int64_t curOutputPointIdx,
+                                               int64_t tailLength)
+{
+#if __CCE_AICORE__ < 220
+    if (poolMem.atomicAddNum) {
+        LocalTensor<T> clearUb = poolMem.clearTensorBuff.template Get<T>();
+        Duplicate(clearUb, (T)0, DEFAULT_CLEAR_UB_SIZE);
+
+        VToMTE3Sync();
+        for (int i = 0; i < poolMem.atomicAddNum; i++, curOutputPointIdx--) {
+            DataCopy<T>(poolMem.outputGlobal[curOutputPointIdx * tailLength], clearUb, poolMem.numPerBlock);
+        }
+
+        DataCopy(poolMem.syncTensorsGM[0], clearUb.template ReinterpretCast<int32_t>(), poolMem.usedCoreNum * 8 * 32);
+        LocalTensor<int32_t> syncLocalTensor = poolMem.syncWorkQueue.template AllocTensor<int32_t>();
+        AscendC::SyncAll(poolMem.syncTensorsGM, syncLocalTensor, int32_t(poolMem.usedCoreNum));
+        poolMem.syncWorkQueue.FreeTensor(syncLocalTensor);
+    }
+#endif
+}
+
+} // namespace AvgPool3d
+
+#endif // AVG_POOL3D_COMMON_H_

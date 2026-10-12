@@ -1,0 +1,6 @@
+testcase_name,op_name,input_dtypes,input_ori_shapes,output_ori_shapes,input_ori_formats,output_ori_formats,attributes,input_shapes,output_dtypes,output_shapes,input_formats,output_formats,input_data_ranges,precision_tolerances,absolute_precision,soc_series
+mish_fuzz_245,mish,"('bfloat16',)","((10, 15, 14),)","((10, 15, 14),)","('ND',)","('ND',)",{},"((10, 15, 14),)","('bfloat16',)","((10, 15, 14),)","('ND',)","('ND',)","((inf, inf),)",,1e-08,
+mish_fuzz_130,mish,"('bfloat16',)","((2, 45, 8),)","((2, 45, 8),)","('ND',)","('ND',)",{},"((2, 45, 8),)","('bfloat16',)","((2, 45, 8),)","('ND',)","('ND',)","((-1, 1, nan, -0.0, inf),)",,1e-08,
+mish_fuzz_46,mish,"('float32',)","((11, 40, 7, 42, 10),)","((11, 40, 7, 42, 10),)","('ND',)","('ND',)",{},"((11, 40, 7, 42, 10),)","('float32',)","((11, 40, 7, 42, 10),)","('ND',)","('ND',)","((3.4028235e+38, 3.4028235e+38),)",,1e-08,
+mish_fuzz_55,mish,"('float32',)","((33, 41, 24),)","((33, 41, 24),)","('ND',)","('ND',)",{},"((33, 41, 24),)","('float32',)","((33, 41, 24),)","('ND',)","('ND',)","((nan, nan),)",,1e-08,
+mish_fuzz_80,mish,"('float32',)","((21, 23, 48),)","((21, 23, 48),)","('NCHW',)","('NCHW',)",{},"((21, 23, 48),)","('float32',)","((21, 23, 48),)","('NCHW',)","('NCHW',)","((nan, nan),)",,1e-08,

@@ -1,0 +1,6 @@
+testcase_name,api_name,tensor_view_shapes,tensor_formats,tensor_dtypes,scalar_dtypes,attributes,output_tensor_indexes,precision_tolerances,absolute_precision,is_enabled
+aclnn_bernoulli_test_0000,aclnnBernoulli,"((6,),(6,))","(('ND', 'ND'))","('uint8', 'uint8')","('float32',)","{'prob': 0.5, 'seed': 67, 'offset': 256}","(-1,)","((0.0001, 0.0001),)",0,TRUE
+aclnn_bernoulli_test_0001,aclnnBernoulli,"((1, 1, 1, 1, 1, 1),(1, 1, 1, 1, 1, 1))","(('ND', 'ND'))","('float16', 'float16')","('float32',)","{'prob': 0.12345, 'seed': 1, 'offset': 400}","(-1,)","((0.001, 0.001),)",0,TRUE
+aclnn_bernoulli_test_0002,aclnnBernoulli,"((100, 101, 102),(100, 101, 102))","(('ND', 'ND'))","('float32', 'float32')","('float16',)","{'prob': 0.12345, 'seed': 1, 'offset': 128}","(-1,)","((0.0001, 0.0001),)",0,TRUE
+aclnn_bernoulli_test_0003,aclnnBernoulli,"((1024, 16, 8),(1024, 16, 8))","(('ND', 'ND'))","('int8', 'int8')","('float16',)","{'prob': 0.1111, 'seed': 100, 'offset': 64}","(-1,)","((0.001, 0.001),)",0,TRUE
+aclnn_bernoulli_test_0004,aclnnBernoulli,"((0, 16, 8, 1024),(0, 16, 8, 1024))","(('ND', 'ND'))","('int8', 'int8')","('float32',)","{'prob': 0.1, 'seed': 100, 'offset': 512}","(-1,)","((0.0001, 0.0001),)",0,TRUE

@@ -1,0 +1,129 @@
+diff --git a/mlir/include/mlir/Conversion/LLVMCommon/LoweringOptions.h b/mlir/include/mlir/Conversion/LLVMCommon/LoweringOptions.h
+index c94892fd4f81..09bc688ec4bc 100644
+--- a/mlir/include/mlir/Conversion/LLVMCommon/LoweringOptions.h
++++ b/mlir/include/mlir/Conversion/LLVMCommon/LoweringOptions.h
+@@ -14,6 +14,7 @@
+ #ifndef MLIR_CONVERSION_LLVMCOMMON_LOWERINGOPTIONS_H
+ #define MLIR_CONVERSION_LLVMCOMMON_LOWERINGOPTIONS_H
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "llvm/IR/DataLayout.h"
+ 
+ namespace mlir {
+@@ -34,6 +35,14 @@ public:
+ 
+   bool useBarePtrCallConv = false;
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  /// If true, only function arguments/results with `llvm.bareptr` attribute
++  /// will be converted according to the bare ptr calling convention.
++  ///
++  /// This option can only be used if `useBarePtrCallConv` is false.
++  bool onDemandBarePtrCallConv = false;
++#endif
++
+   enum class AllocLowering {
+     /// Use malloc for heap allocations.
+     Malloc,
+diff --git a/mlir/include/mlir/Conversion/LLVMCommon/TypeConverter.h b/mlir/include/mlir/Conversion/LLVMCommon/TypeConverter.h
+index e228229302cf..684288853ee7 100644
+--- a/mlir/include/mlir/Conversion/LLVMCommon/TypeConverter.h
++++ b/mlir/include/mlir/Conversion/LLVMCommon/TypeConverter.h
+@@ -14,6 +14,7 @@
+ #ifndef MLIR_CONVERSION_LLVMCOMMON_TYPECONVERTER_H
+ #define MLIR_CONVERSION_LLVMCOMMON_TYPECONVERTER_H
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
+ #include "mlir/IR/BuiltinTypes.h"
+ #include "mlir/Transforms/DialectConversion.h"
+@@ -57,6 +58,23 @@ public:
+                                 bool useBarePtrCallConv,
+                                 SignatureConversion &result) const;
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  /// Convert a function type. The arguments and results are converted one by
++  /// one and results are packed into a wrapped LLVM IR structure type. `result`
++  /// is populated with argument mapping.
++  ///
++  /// \param useBarePtrCallConvForArguments To control whether each argument is
++  ///   converted with the bare ptr calling convention.
++  /// \param useBarePtrCallConvForAllResults To control whether all results are
++  ///   converted with the bare ptr calling convention.
++  virtual Type convertFunctionSignature(
++      FunctionType funcTy, bool isVariadic,
++      const SmallVector<bool> &useBarePtrCallConvForArguments,
++      bool useBarePtrCallConvForAllResults, SignatureConversion &result) const {
++    llvm_unreachable("not implemented.");
++  }
++#endif
++
+   /// Convert a non-empty list of types to be returned from a function into an
+   /// LLVM-compatible type. In particular, if more than one value is returned,
+   /// create an LLVM dialect structure type with elements that correspond to
+diff --git a/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp b/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp
+index 059acb217709..9cb9353e81d2 100644
+--- a/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp
++++ b/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp
+@@ -14,6 +14,7 @@
+ #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
+ 
+ #include "mlir/Analysis/DataLayoutAnalysis.h"
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
+ #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
+ #include "mlir/Conversion/ConvertToLLVM/ToLLVMInterface.h"
+@@ -70,6 +71,28 @@ static bool shouldUseBarePtrCallConv(Operation *op,
+          typeConverter->getOptions().useBarePtrCallConv;
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++/// Return `true` if the `op`'s argument at `argIdx` should use bare pointer
++/// calling convention.
++static bool
++inputArgumentShouldUseBarePtrCallConv(FunctionOpInterface op, unsigned argIdx,
++                                      const LLVMTypeConverter *typeConverter) {
++  assert(typeConverter->getOptions().onDemandBarePtrCallConv);
++  return op && op.getArgAttr(argIdx, barePtrAttrName);
++}
++
++static SmallVector<bool>
++inputArgumentsShouldUseBarePtrCallConv(FunctionOpInterface op,
++                                       const LLVMTypeConverter *typeConverter) {
++  auto funcTy = cast<FunctionType>(op.getFunctionType());
++  return llvm::map_to_vector(llvm::seq<unsigned>(0, funcTy.getNumInputs()),
++                             [&](unsigned argIdx) -> bool {
++                               return inputArgumentShouldUseBarePtrCallConv(
++                                   op, argIdx, typeConverter);
++                             });
++}
++#endif
++
+ /// Only retain those attributes that are not constructed by
+ /// `LLVMFuncOp::build`.
+ static void filterFuncAttributes(FunctionOpInterface func,
+@@ -281,9 +304,24 @@ mlir::convertFuncOpToLLVMFuncOp(FunctionOpInterface funcOp,
+   // LLVMTypeConverter provided to this legalization pattern.
+   auto varargsAttr = funcOp->getAttrOfType<BoolAttr>(varargsAttrName);
+   TypeConverter::SignatureConversion result(funcOp.getNumArguments());
++#if BSPUB_DAVINCI_BISHENGIR
++  Type llvmType;
++  if (!converter.getOptions().onDemandBarePtrCallConv)
++    llvmType = converter.convertFunctionSignature(
++        funcTy, varargsAttr && varargsAttr.getValue(),
++        shouldUseBarePtrCallConv(funcOp, &converter), result);
++  else
++    llvmType = converter.convertFunctionSignature(
++        funcTy, varargsAttr && varargsAttr.getValue(),
++        /*useBarePtrCallConvForArguments=*/
++        inputArgumentsShouldUseBarePtrCallConv(funcOp, &converter),
++        /*useBarePtrCallConvForAllResults=*/
++        shouldUseBarePtrCallConv(funcOp, &converter), result);
++#else
+   auto llvmType = converter.convertFunctionSignature(
+       funcTy, varargsAttr && varargsAttr.getValue(),
+       shouldUseBarePtrCallConv(funcOp, &converter), result);
++#endif
+   if (!llvmType)
+     return rewriter.notifyMatchFailure(funcOp, "signature conversion failed");
+ 

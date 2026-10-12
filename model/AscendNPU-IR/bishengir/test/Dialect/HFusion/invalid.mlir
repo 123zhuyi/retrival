@@ -1,0 +1,53 @@
+// RUN: bishengir-opt --hfusion-decompose="hfusion-decompose-phase=after-hfusion-flatten" %s -split-input-file -verify-diagnostics
+
+// -----
+// CHECK-LABEL histogram_same_num_bins
+func.func @histogram_same_num_bins(%arg0: tensor<8xi32>, %mask: tensor<8xi1>)
+    -> tensor<4xi32> {
+  // expected-error@+1 {{'hfusion.histogram' op output length (4) must equal num_bins (6)}}
+  %res = hfusion.histogram %arg0, 6, %mask
+         : tensor<8xi32>, tensor<8xi1> -> tensor<4xi32>
+  return %res : tensor<4xi32>
+}
+// RUN: bishengir-opt --hfusion-decompose="hfusion-decompose-phase=after-hfusion-flatten" %s -split-input-file -verify-diagnostics
+
+// -----
+// CHECK-LABEL histogram_1d_output
+func.func @histogram_1d_output(%arg0: tensor<8xi32>, %mask: tensor<8xi1>)
+    -> tensor<2x2xi32> {
+  // expected-error@+1 {{'hfusion.histogram' op output must be rank-1}}
+  %res = hfusion.histogram %arg0, 6, %mask
+         : tensor<8xi32>, tensor<8xi1> -> tensor<2x2xi32>
+  return %res : tensor<2x2xi32>
+}
+
+// -----
+// CHECK-LABEL: func.func @histogram_mask_i32
+func.func @histogram_mask_i32(%arg0: tensor<8xi32>, %mask: tensor<8xi32>)
+    -> tensor<4xi32> {
+  // expected-error@+1 {{'hfusion.histogram' op operand #1 must be ranked tensor of 1-bit signless integer or 8-bit signless integer or 16-bit signless integer values, but got 'tensor<8xi32>'}}
+  %res = hfusion.histogram %arg0, 4, %mask
+         : tensor<8xi32>, tensor<8xi32> -> tensor<4xi32>
+  return %res : tensor<4xi32>
+}
+
+// -----
+// CHECK-LABEL: func.func @deinterleave_rank0
+func.func @deinterleave_rank0(%arg0: tensor<f32>) -> tensor<f32> {
+  // expected-error@+1 {{'hfusion.deinterleave' op requires input rank to be at least 1}}
+  %res = hfusion.deinterleave %arg0 channel<0> : tensor<f32> -> tensor<f32>
+  return %res : tensor<f32>
+}
+
+// -----
+
+func.func @conv3d_non_unit_depth_stride(
+    %input: tensor<32x5x64x64xf16>, %weight: tensor<16x32x2x3x3xf16>,
+    %init: tensor<16x2x62x62xf16>) -> tensor<16x2x62x62xf16> {
+  // expected-error@+1 {{'hfusion.conv3d' op currently requires strideD to be 1}}
+  %0 = hfusion.conv3d {dilation = [1, 1, 1], groups = 1 : i32,
+                       padding = [0, 0, 0], stride = [2, 1, 1]}
+      ins(%input, %weight : tensor<32x5x64x64xf16>, tensor<16x32x2x3x3xf16>)
+      outs(%init : tensor<16x2x62x62xf16>) -> tensor<16x2x62x62xf16>
+  return %0 : tensor<16x2x62x62xf16>
+}

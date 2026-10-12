@@ -1,0 +1,26 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+index ceaaedfb9a24..63e43a70d568 100644
+--- a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
++++ b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+@@ -121,8 +121,10 @@ struct InlineDenseSplatToGenericRegion : public OpRewritePattern<OpType> {
+     IRMapping mapping;
+     auto inputs = op.getDpsInputs();
+     auto results = op.getDpsInits();
++#ifndef NDEBUG
+     auto arguments = block.getArguments();
+     assert(arguments.size() == inputs.size() + results.size());
++#endif
+     int cnt = 0;
+     for (Value in : inputs) {
+       mapping.map(block.getArgument(cnt++), in);
+@@ -194,8 +196,10 @@ public:
+     IRMapping newOperandsMap;
+     auto inputs = reduceOp.getDpsInputs();
+     auto results = reduceOp.getDpsInits();
++#ifndef NDEBUG
+     auto arguments = block.getArguments();
+     assert(arguments.size() == inputs.size() + results.size());
++#endif
+     int cnt = 0;
+     for (Value in : inputs) {
+       newOperandsMap.map(block.getArgument(cnt++), in);

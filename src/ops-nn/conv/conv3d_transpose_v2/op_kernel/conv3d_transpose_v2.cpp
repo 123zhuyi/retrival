@@ -1,0 +1,92 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv3d_transpose_v2.cpp
+ * \brief
+ */
+#if __CCE_AICORE__ == 310
+#include "conv3d_transpose_v2_arch35_tiling_key.h"
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510)
+#include "arch35/conv3d_transpose_v2_arch35.h"
+#endif
+#else
+#ifdef __CCE_KT_TEST__
+#include "../op_kernel/arch22/conv3d_dx_v2_basic_block.h"
+#include "../op_kernel/arch22/conv3d_backprop_input_v2.h"
+#include "../op_kernel/arch22/conv3d_backprop_input_v2_init_output.h"
+#include "../op_kernel/arch22/conv3d_backprop_input_v2_tiling_data.h"
+#else
+#include "../conv3d_backprop_input_v2/arch22/conv3d_dx_v2_basic_block.h"
+#include "../conv3d_backprop_input_v2/arch22/conv3d_backprop_input_v2.h"
+#include "../conv3d_backprop_input_v2/arch22/conv3d_backprop_input_v2_init_output.h"
+#include "../conv3d_backprop_input_v2/arch22/conv3d_backprop_input_v2_tiling_data.h"
+#endif
+#include "conv3d_transpose_v2_tiling_key.h"
+#endif
+
+using namespace AscendC;
+
+#if __CCE_AICORE__ == 310
+template <uint8_t loadB2Condition, uint8_t kernelSplitMode, uint8_t groupConvMode, bool isBasicBlockTiling,
+          uint8_t loadB1Condition>
+__global__ __aicore__ void conv3d_transpose_v2(GM_ADDR input_size, GM_ADDR x, GM_ADDR filter, GM_ADDR bias,
+                                               GM_ADDR offset_w, GM_ADDR y, GM_ADDR workSpace, GM_ADDR tiling)
+{
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510)
+    conv3d_transpose_v2_arch35<loadB2Condition, kernelSplitMode, groupConvMode, isBasicBlockTiling, loadB1Condition>(
+        input_size, x, filter, bias, offset_w, y, workSpace, tiling);
+    return;
+#endif
+}
+#else
+template <uint8_t loadB2Condition, bool enableKernelSplit, bool useBasicBlock>
+__global__ __aicore__ void conv3d_transpose_v2(GM_ADDR input_size, GM_ADDR x, GM_ADDR filter, GM_ADDR bias,
+                                               GM_ADDR offset_w, GM_ADDR y, GM_ADDR workSpace, GM_ADDR tiling)
+{
+    if (workSpace == nullptr) {
+        return;
+    }
+
+    GM_ADDR usrWsp = GetUserWorkspace(workSpace);
+    if (usrWsp == nullptr) {
+        return;
+    }
+    REGISTER_TILING_DEFAULT(Conv3DBackpropInputV2TilingData);
+    GET_TILING_DATA_WITH_STRUCT(Conv3DBackpropInputV2TilingData, tilingData, tiling);
+
+#if __CCE_AICORE__ == 220
+    if constexpr (FORMAT_Y == FORMAT_NCDHW) {
+        KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_1);
+    } else if (tilingData.conv3DDxTiling.initOutputFlag == static_cast<int32_t>(InitOutputFlag::L0_INIT)) {
+        KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_1);
+    }
+#endif
+    if (tilingData.conv3DDxTiling.initOutputFlag == static_cast<int32_t>(InitOutputFlag::L0_INIT)) {
+        // init output with L0C now
+        Conv3dDxInitOutput<DTYPE_Y, FORMAT_Y, InitOutputFlag::L0_INIT> opInitOutput;
+        opInitOutput.Init(y, &tilingData);
+        opInitOutput.Process();
+        opInitOutput.Destroy();
+    }
+    if (useBasicBlock == false) {
+        Conv3dDx<DTYPE_FILTER, FORMAT_FILTER, DTYPE_X, FORMAT_X, DTYPE_Y, FORMAT_Y, loadB2Condition, enableKernelSplit>
+            op;
+        op.Init(filter, x, y, usrWsp, &tilingData);
+        op.Process();
+    } else {
+        Conv3dDxBasicBlockSplitMN<DTYPE_FILTER, FORMAT_FILTER, DTYPE_X, FORMAT_X, DTYPE_Y, FORMAT_Y, loadB2Condition,
+                                  enableKernelSplit>
+            op;
+        op.Init(filter, x, y, usrWsp, &tilingData);
+        op.Process();
+    }
+}
+#endif

@@ -1,0 +1,37 @@
+SKETCH — chunk_gated_delta_fwd_h (GDN forward-H), MCTS round 3
+direction: fused chunk-recurrence kernel (proven recipe, independent reconstruction)
+
+## Reference semantics (golden sha 6402eb, all 8 cases: bf16 K=V=128, no init-state, no final-state)
+per sequence/chunk:
+  v_new  = clamp(u_c - w_c @ S_prev)                     # S_prev = pre-update
+  decay  = exp(g_last - g_c)                             # g_last = g at chunk last valid row
+  update = clamp(v_new * decay)
+  S      = clamp(S_prev * exp(g_last) + k_c^T @ update)  # S stored POST-update at each chunk idx
+  v_new  stored pre-decay for all rows of the chunk
+Varlen: data batch dim = 0 for every seq; state packed by global chunk counter across seqs.
+
+## Kernel (one program = (seq, v-head, V-tile); grid = (num_seq*HV, num_vt))
+Registers: S[BLOCK_K=128, BLOCK_V=64] fp32, starts at zeros.
+for c in range(nt):                       # serial chunk loop (nt = ceil(seq_len/chunk_size))
+  load w_c,k_c [BLOCK_L(=cs),128] bf16->fp32, u_c [BLOCK_L,BV], g_c [BLOCK_L]
+  g_last = g[chunk_last_valid];  e_last = exp(g_last)            # scalar
+  v_new  = u_c - tl.dot(w_c, S, ieee)                            # [L,BV]
+  clamp(v_new, +/-1e20)
+  upd    = v_new * exp(g_last - g_c)[:,None]                     # broadcast decay
+  clamp(upd)
+  S = S*e_last + tl.dot(trans(k_c), upd, ieee)                   # [K,BV]
+  clamp(S)
+  store S (post-update, bf16) -> state[bh, boh+c, :, :]
+  store v_new (bf16)          -> v_new[bh, rows_c, :]
+
+## Key decisions
+- BLOCK_V = 64 universal (BV=128 never beats 64 for K=V=128 on 910b1; R2 experience).
+- fp32-ieee dot both GEMMs; S fp32 register-resident; out dtype bf16.
+- GQA head_ratio: k head = hv // head_ratio (matches golden index_select k_map).
+- Varlen: prefix-sum chunk offsets computed in-kernel by serial loop over cu_seqlens[0..i_s)
+  (no host loops; AST Type-3 compliant). NT_total host-side = sum of ceil per seq.
+- Host flattens nothing; grid dim0 = num_seq*HV, dim1 = num_vt (=2 for V=128/BV=64).
+- Launch: num_warps=4, multibuffer=True, unit_flag=True.
+
+## Compile flags
+BLOCK_L = chunk_size (64 or 128); BLOCK_K=128; BLOCK_V=64; VARLEN bool; HEAD_RATIO.

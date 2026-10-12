@@ -1,0 +1,1450 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file layer_norm_v3_norm_not_equal_params.h
+ * \brief
+ */
+
+#ifndef LAYER_NORM_V3_NORM_NOT_EQUAL_PARAMS_H
+#define LAYER_NORM_V3_NORM_NOT_EQUAL_PARAMS_H
+
+#include "layer_norm_v3_common.h"
+#include "../../norm_common/reduce_common_regbase.h"
+
+namespace LayerNormV3 {
+using namespace AscendC;
+using AscendC::Reg::CreateMask;
+using AscendC::Reg::LoadAlign;
+using AscendC::Reg::LoadDist;
+using AscendC::Reg::LocalMemBar;
+using AscendC::Reg::MaskPattern;
+using AscendC::Reg::MaskReg;
+using AscendC::Reg::MemType;
+using AscendC::Reg::Reduce;
+using AscendC::Reg::RegTensor;
+using AscendC::Reg::StoreAlign;
+using AscendC::Reg::StoreDist;
+using AscendC::Reg::UpdateMask;
+using NormCommon::NormCommonRegbase::LoadRegForDtype;
+using NormCommon::NormCommonRegbase::StoreRegForDtype;
+
+template <typename T, typename U, typename M, bool IsOutRstd>
+class LayerNormV3RegbaseNormNotEqualParams {
+public:
+    __aicore__ inline LayerNormV3RegbaseNormNotEqualParams(
+        const LayerNormV3TilingDataRegBaseNormNotEqualParams* tilingData, TPipe* pipe)
+    {
+        pipe_ = pipe;
+        tl_ = tilingData;
+        hasGamma_ = (tilingData->nullptrGamma == 0);
+        hasBeta_ = (tilingData->nullptrBeta == 0);
+    }
+
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR gamma, GM_ADDR beta, GM_ADDR y, GM_ADDR mean, GM_ADDR rstd)
+    {
+        int64_t meanBlockOffset = GetBlockIdx() * tl_->blockFactor;
+        int64_t xBlockOffset = meanBlockOffset * tl_->r;
+        xGm_.SetGlobalBuffer((__gm__ T*)x + xBlockOffset);
+        yGm_.SetGlobalBuffer((__gm__ T*)y + xBlockOffset);
+        meanGm_.SetGlobalBuffer((__gm__ M*)mean + meanBlockOffset);
+        rstdGm_.SetGlobalBuffer((__gm__ M*)rstd + meanBlockOffset);
+
+        if (hasGamma_) {
+            gammaGm_.SetGlobalBuffer((__gm__ U*)gamma);
+        }
+        if (hasBeta_) {
+            betaGm_.SetGlobalBuffer((__gm__ U*)beta);
+        }
+
+        if (tl_->r1 != 1) {
+            // r1 != 1: broadcast gamma[R2] to [R=R1*R2], single buffer
+            pipe_->InitBuffer(gammaBetaQueue_, 1, tl_->rAlign * NUM_TWO * sizeof(U));
+        } else if (tl_->isFullB) {
+            // isFullB: load gamma[B, R] all at once, single buffer
+            pipe_->InitBuffer(gammaBetaQueue_, 1, tl_->b * tl_->rAlign * NUM_TWO * sizeof(U));
+        } else {
+            // !isFullB: load gamma per UB loop, double buffer
+            pipe_->InitBuffer(gammaBetaQueue_, DOUBLE_BUFFER, tl_->rAxisCount * tl_->rAlign * NUM_TWO * sizeof(U));
+        }
+
+        elemNum_ = tl_->ubFactor * tl_->rAlign;
+        pipe_->InitBuffer(meanQueue_, DOUBLE_BUFFER, tl_->ubFactorAlignB32 * sizeof(float));
+        pipe_->InitBuffer(rstdQueue_, DOUBLE_BUFFER, tl_->ubFactorAlignB32 * sizeof(float));
+        pipe_->InitBuffer(xQueue_, DOUBLE_BUFFER, elemNum_ * sizeof(T));
+        pipe_->InitBuffer(yQueue_, DOUBLE_BUFFER, elemNum_ * sizeof(T));
+        pipe_->InitBuffer(tmpBuf, elemNum_ * sizeof(float) + NUM_TWO * GetVecLen() * NUM_TWO);
+        pipe_->InitBuffer(rstdTmpBuf_, tl_->ubFactorAlignB32 * sizeof(float));
+    }
+
+    __aicore__ inline void Process()
+    {
+        int64_t ubLoopNum = GetBlockIdx() == GetBlockNum() - 1 ? tl_->tailBlockUbLoops : tl_->formerBlockUbLoops;
+        int64_t tailA = GetBlockIdx() == GetBlockNum() - 1 ?
+                            tl_->a - tl_->blockFactor * (GetBlockNum() - 1) -
+                                (tl_->tailBlockUbLoops - 1) * tl_->ubFactor :
+                            tl_->blockFactor - (tl_->formerBlockUbLoops - 1) * tl_->ubFactor;
+
+        if (tl_->r1 != 1) {
+            ProcessR1NotOne(ubLoopNum, tailA);
+        } else if (tl_->isFullB) {
+            ProcessFullB(ubLoopNum, tailA);
+        } else {
+            ProcessNotFullB(ubLoopNum, tailA);
+        }
+    }
+
+private:
+    __aicore__ inline void ProcessR1NotOne(int64_t ubLoopNum, int64_t tailA)
+    {
+        CopyInGammaBetaNddma();
+        gammaBetaInUb_ = gammaBetaQueue_.template DeQue<U>();
+
+        for (int64_t ubLoopIdx = 0; ubLoopIdx < ubLoopNum; ubLoopIdx++) {
+            int64_t currentA = ubLoopIdx == ubLoopNum - 1 ? tailA : tl_->ubFactor;
+            int64_t aOffset = ubLoopIdx * tl_->ubFactor;
+            int64_t offset = aOffset * tl_->r;
+            CopyInX(offset, currentA);
+            Caculate(aOffset, currentA);
+            CopyOutY(offset, currentA);
+            CopyOutMeanRstd(aOffset, currentA);
+        }
+
+        gammaBetaQueue_.FreeTensor(gammaBetaInUb_);
+    }
+
+    __aicore__ inline void ProcessFullB(int64_t ubLoopNum, int64_t tailA)
+    {
+        CopyInGammaBetaFull();
+        gammaBetaInUb_ = gammaBetaQueue_.template DeQue<U>();
+
+        for (int64_t ubLoopIdx = 0; ubLoopIdx < ubLoopNum; ubLoopIdx++) {
+            int64_t currentA = ubLoopIdx == ubLoopNum - 1 ? tailA : tl_->ubFactor;
+            int64_t aOffset = ubLoopIdx * tl_->ubFactor;
+            int64_t offset = aOffset * tl_->r;
+            CopyInX(offset, currentA);
+            CaculateWithBOffset(currentA, aOffset);
+            CopyOutY(offset, currentA);
+            CopyOutMeanRstd(aOffset, currentA);
+        }
+
+        gammaBetaQueue_.FreeTensor(gammaBetaInUb_);
+    }
+
+    __aicore__ inline void ProcessNotFullB(int64_t ubLoopNum, int64_t tailA)
+    {
+        for (int64_t ubLoopIdx = 0; ubLoopIdx < ubLoopNum; ubLoopIdx++) {
+            int64_t currentA = ubLoopIdx == ubLoopNum - 1 ? tailA : tl_->ubFactor;
+            int64_t aOffset = ubLoopIdx * tl_->ubFactor;
+            int64_t offset = aOffset * tl_->r;
+            int64_t globalRowStart = GetBlockIdx() * tl_->blockFactor + aOffset;
+
+            CopyInGammaBetaPartial(currentA, globalRowStart);
+            gammaBetaInUb_ = gammaBetaQueue_.template DeQue<U>();
+
+            CopyInX(offset, currentA);
+            CaculateWithBOffsetPartial(currentA, aOffset);
+            CopyOutY(offset, currentA);
+            CopyOutMeanRstd(aOffset, currentA);
+
+            gammaBetaQueue_.FreeTensor(gammaBetaInUb_);
+        }
+    }
+
+    __aicore__ inline void CopyInGammaBetaNddma()
+    {
+        gammaBetaInUb_ = gammaBetaQueue_.template AllocTensor<U>();
+        int64_t r2 = tl_->r / tl_->r1;
+        int64_t r1 = tl_->r1;
+
+        static constexpr AscendC::NdDmaConfig copyConfig = {false, 0, 0, false};
+        constexpr int64_t MULTI_COPY_DIM = 2;
+        NdDmaLoopInfo<MULTI_COPY_DIM> multiCopyParams;
+        multiCopyParams.loopSrcStride[0] = 1;
+        multiCopyParams.loopSrcStride[1] = 0;
+
+        multiCopyParams.loopDstStride[0] = 1;
+        multiCopyParams.loopDstStride[1] = r2;
+
+        multiCopyParams.loopSize[0] = r2;
+        multiCopyParams.loopSize[1] = r1;
+
+        U constValue = 0;
+        AscendC::NdDmaParams<U, MULTI_COPY_DIM> copyParams = {multiCopyParams, constValue};
+
+        if (hasGamma_) {
+            AscendC::DataCopy<U, MULTI_COPY_DIM, copyConfig>(gammaBetaInUb_, gammaGm_, copyParams);
+        }
+        if (hasBeta_) {
+            AscendC::DataCopy<U, MULTI_COPY_DIM, copyConfig>(gammaBetaInUb_[tl_->rAlign], betaGm_, copyParams);
+        }
+        gammaBetaQueue_.EnQue(gammaBetaInUb_);
+    }
+
+    __aicore__ inline void CopyInGammaBetaFull()
+    {
+        gammaBetaInUb_ = gammaBetaQueue_.template AllocTensor<U>();
+        DataCopyExtParams copyParams;
+        DataCopyPadExtParams<U> padParams;
+        padParams.isPad = false;
+
+        if (hasGamma_) {
+            copyParams.blockCount = tl_->b;
+            copyParams.blockLen = tl_->r * sizeof(U);
+            copyParams.srcStride = 0;
+            copyParams.dstStride = 0;
+            DataCopyPad(gammaBetaInUb_, gammaGm_, copyParams, padParams);
+        }
+        if (hasBeta_) {
+            copyParams.blockCount = tl_->b;
+            copyParams.blockLen = tl_->r * sizeof(U);
+            copyParams.srcStride = 0;
+            copyParams.dstStride = 0;
+            DataCopyPad(gammaBetaInUb_[tl_->b * tl_->rAlign], betaGm_, copyParams, padParams);
+        }
+        gammaBetaQueue_.EnQue(gammaBetaInUb_);
+    }
+    __aicore__ inline void CopyInGammaBetaPartial(int64_t currentA, int64_t globalRowStart)
+    {
+        gammaBetaInUb_ = gammaBetaQueue_.template AllocTensor<U>();
+        DataCopyExtParams copyParams;
+        DataCopyPadExtParams<U> padParams;
+        padParams.isPad = false;
+
+        int64_t startB = globalRowStart % tl_->b;
+        int64_t copyRows = currentA < tl_->rAxisCount ? currentA : tl_->rAxisCount;
+        int64_t firstPart = tl_->b - startB;
+        if (firstPart >= copyRows) {
+            firstPart = copyRows;
+        }
+        int64_t secondPart = copyRows - firstPart;
+
+        if (hasGamma_) {
+            copyParams.blockCount = firstPart;
+            copyParams.blockLen = tl_->r * sizeof(U);
+            copyParams.srcStride = 0;
+            copyParams.dstStride = 0;
+            DataCopyPad(gammaBetaInUb_, gammaGm_[startB * tl_->r], copyParams, padParams);
+            if (secondPart > 0) {
+                copyParams.blockCount = secondPart;
+                DataCopyPad(gammaBetaInUb_[firstPart * tl_->gammaBetaRAlign], gammaGm_, copyParams, padParams);
+            }
+        }
+        if (hasBeta_) {
+            int64_t betaBase = tl_->rAxisCount * tl_->rAlign;
+            copyParams.blockCount = firstPart;
+            copyParams.blockLen = tl_->r * sizeof(U);
+            copyParams.srcStride = 0;
+            copyParams.dstStride = 0;
+            DataCopyPad(gammaBetaInUb_[betaBase], betaGm_[startB * tl_->r], copyParams, padParams);
+            if (secondPart > 0) {
+                copyParams.blockCount = secondPart;
+                DataCopyPad(gammaBetaInUb_[betaBase + firstPart * tl_->gammaBetaRAlign], betaGm_, copyParams,
+                            padParams);
+            }
+        }
+        gammaBetaQueue_.EnQue(gammaBetaInUb_);
+    }
+
+    __aicore__ inline void CopyInX(int64_t offset, int64_t currentANum)
+    {
+        LocalTensor<T> xInUb = xQueue_.AllocTensor<T>();
+        DataCopyPadExtParams<T> dataCopyPadExtParams;
+        dataCopyPadExtParams.isPad = (tl_->r != tl_->rAlign);
+        dataCopyPadExtParams.leftPadding = 0;
+        dataCopyPadExtParams.rightPadding = 0;
+        dataCopyPadExtParams.paddingValue = 0;
+        DataCopyExtParams copyInParams;
+        copyInParams.blockCount = currentANum;
+        copyInParams.blockLen = tl_->r * sizeof(T);
+        copyInParams.srcStride = 0;
+        copyInParams.dstStride = 0;
+        DataCopyPad(xInUb, xGm_[offset], copyInParams, dataCopyPadExtParams);
+        xQueue_.EnQue(xInUb);
+    }
+
+    __aicore__ inline void CopyOutY(int64_t offset, int64_t currentANum)
+    {
+        LocalTensor<T> yOutUb = yQueue_.template DeQue<T>();
+        DataCopyExtParams copyInParams;
+        copyInParams.blockCount = currentANum;
+        copyInParams.blockLen = tl_->r * sizeof(T);
+        copyInParams.srcStride = 0;
+        copyInParams.dstStride = 0;
+        DataCopyPad(yGm_[offset], yOutUb, copyInParams);
+        yQueue_.FreeTensor(yOutUb);
+    }
+
+    __aicore__ inline void CopyOutMeanRstd(int64_t offset, int64_t currentANum)
+    {
+        if constexpr (!IsSameType<M, float>::value) {
+            CastMeanRstd(currentANum);
+            meanQueue_.EnQue(meanOutUb_);
+            rstdQueue_.EnQue(rstdOutUb_);
+            LocalTensor<M> meanInUb = meanQueue_.template DeQue<M>();
+            LocalTensor<M> rstdInUb = rstdQueue_.template DeQue<M>();
+
+            uint32_t castDmaCount = static_cast<uint32_t>(currentANum);
+            uint32_t castDmaLoops = static_cast<uint32_t>(castDmaCount / VL_B32);
+            if (castDmaLoops > 0) {
+                DataCopyExtParams copyInParams;
+                copyInParams.blockCount = castDmaLoops;
+                copyInParams.blockLen = VL_B32 * sizeof(M);
+                copyInParams.srcStride = (VECTOR_REG_WIDTH - VL_B32 * sizeof(M)) / BLOCK_SIZE;
+                copyInParams.dstStride = 0;
+                DataCopyPad(meanGm_[offset], meanInUb, copyInParams);
+                DataCopyPad(rstdGm_[offset], rstdInUb, copyInParams);
+            }
+            uint32_t tailSize = static_cast<uint32_t>(castDmaCount % VL_B32);
+            if (tailSize > 0) {
+                DataCopyExtParams copyInParamsTail;
+                copyInParamsTail.blockCount = 1;
+                copyInParamsTail.blockLen = tailSize * sizeof(M);
+                copyInParamsTail.srcStride = 0;
+                copyInParamsTail.dstStride = 0;
+                DataCopyPad(meanGm_[offset + castDmaLoops * VL_B32], meanInUb[castDmaLoops * VL_B16], copyInParamsTail);
+                DataCopyPad(rstdGm_[offset + castDmaLoops * VL_B32], rstdInUb[castDmaLoops * VL_B16], copyInParamsTail);
+            }
+            meanQueue_.FreeTensor(meanInUb);
+            rstdQueue_.FreeTensor(rstdInUb);
+        } else {
+            meanQueue_.EnQue(meanOutUb_);
+            rstdQueue_.EnQue(rstdOutUb_);
+            LocalTensor<float> meanInUb = meanQueue_.template DeQue<float>();
+            LocalTensor<float> rstdInUb = rstdQueue_.template DeQue<float>();
+            DataCopyExtParams copyInParams;
+            copyInParams.blockCount = 1;
+            copyInParams.blockLen = currentANum * sizeof(float);
+            copyInParams.srcStride = 0;
+            copyInParams.dstStride = 0;
+            DataCopyPad(meanGm_[offset], meanInUb, copyInParams);
+            DataCopyPad(rstdGm_[offset], rstdInUb, copyInParams);
+            meanQueue_.FreeTensor(meanInUb);
+            rstdQueue_.FreeTensor(rstdInUb);
+        }
+    }
+
+    // for r1 != 1, gamma is broadcast to full R, shared across all rows
+    __aicore__ inline void Caculate(int64_t offset, int64_t currentANum)
+    {
+        LocalTensor<T> xInUb = xQueue_.template DeQue<T>();
+        meanOutUb_ = meanQueue_.AllocTensor<float>();
+        rstdOutUb_ = rstdQueue_.AllocTensor<float>();
+        LocalTensor<float> tmpTensor = tmpBuf.Get<float>();
+
+        __ubuf__ T* xInUbAddr = (__ubuf__ T*)xInUb.GetPhyAddr();
+        __ubuf__ float* meanOutUbAddr = (__ubuf__ float*)meanOutUb_.GetPhyAddr();
+        __ubuf__ float* rstdOutUbAddr = (__ubuf__ float*)rstdOutUb_.GetPhyAddr();
+        __ubuf__ float* xSubMeanUbAddr = (__ubuf__ float*)tmpTensor.GetPhyAddr();
+        __ubuf__ float* tmpUbAddr = (__ubuf__ float*)tmpTensor.GetPhyAddr() + elemNum_;
+
+        if (tl_->rAlign <= VL_B32) {
+            CalculateMeanVarRLessThanVL(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, currentANum);
+        } else if (tl_->rAlign <= VL_B32 + VL_B32) {
+            CalculateMeanVarRLessThanTwoVL(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, currentANum);
+        } else if (tl_->rAlign <= VL_B32 * VL_B32 * NUM_TWO) {
+            CalculateMeanVarRCommon<1>(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, tmpUbAddr, currentANum);
+        } else {
+            CalculateMeanVarRCommon<NUM_TWO>(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, tmpUbAddr,
+                                             currentANum);
+        }
+
+        LocalTensor<float> rstdTmpTensor = rstdTmpBuf_.Get<float>();
+        __ubuf__ float* rstdTmpUbAddr = (__ubuf__ float*)rstdTmpTensor.GetPhyAddr();
+        CalculateRstdVF(rstdOutUbAddr, rstdTmpUbAddr, currentANum);
+        __ubuf__ float* rstdForNorm;
+        if constexpr (IsOutRstd) {
+            rstdForNorm = rstdOutUbAddr;
+        } else {
+            rstdForNorm = rstdTmpUbAddr;
+        }
+
+        LocalTensor<T> yOutUb = yQueue_.AllocTensor<T>();
+        __ubuf__ U* gammaInUbAddr = (__ubuf__ U*)gammaBetaInUb_.GetPhyAddr();
+        __ubuf__ U* betaInUbAddr = (__ubuf__ U*)gammaBetaInUb_.GetPhyAddr() + tl_->rAlign;
+        __ubuf__ T* yOutUbAddr = (__ubuf__ T*)yOutUb.GetPhyAddr();
+        if (hasGamma_ && hasBeta_) {
+            CalculateNormalizeVF<true, true>(xSubMeanUbAddr, betaInUbAddr, gammaInUbAddr, yOutUbAddr, rstdForNorm,
+                                             currentANum);
+        } else if (!hasGamma_ && hasBeta_) {
+            CalculateNormalizeVF<false, true>(xSubMeanUbAddr, betaInUbAddr, gammaInUbAddr, yOutUbAddr, rstdForNorm,
+                                              currentANum);
+        } else if (hasGamma_ && !hasBeta_) {
+            CalculateNormalizeVF<true, false>(xSubMeanUbAddr, betaInUbAddr, gammaInUbAddr, yOutUbAddr, rstdForNorm,
+                                              currentANum);
+        } else {
+            CalculateNormalizeVF<false, false>(xSubMeanUbAddr, betaInUbAddr, gammaInUbAddr, yOutUbAddr, rstdForNorm,
+                                               currentANum);
+        }
+        xQueue_.FreeTensor(xInUb);
+        yQueue_.EnQue(yOutUb);
+    }
+
+    // for isFullB, gamma[B, R] fully loaded
+    __aicore__ inline void CaculateWithBOffset(int64_t currentANum, int64_t aOffset)
+    {
+        LocalTensor<T> xInUb = xQueue_.template DeQue<T>();
+        meanOutUb_ = meanQueue_.AllocTensor<float>();
+        rstdOutUb_ = rstdQueue_.AllocTensor<float>();
+        LocalTensor<float> tmpTensor = tmpBuf.Get<float>();
+
+        __ubuf__ T* xInUbAddr = (__ubuf__ T*)xInUb.GetPhyAddr();
+        __ubuf__ float* meanOutUbAddr = (__ubuf__ float*)meanOutUb_.GetPhyAddr();
+        __ubuf__ float* rstdOutUbAddr = (__ubuf__ float*)rstdOutUb_.GetPhyAddr();
+        __ubuf__ float* xSubMeanUbAddr = (__ubuf__ float*)tmpTensor.GetPhyAddr();
+        __ubuf__ float* tmpUbAddr = (__ubuf__ float*)tmpTensor.GetPhyAddr() + elemNum_;
+
+        if (tl_->rAlign <= VL_B32) {
+            CalculateMeanVarRLessThanVL(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, currentANum);
+        } else if (tl_->rAlign <= VL_B32 + VL_B32) {
+            CalculateMeanVarRLessThanTwoVL(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, currentANum);
+        } else if (tl_->rAlign <= VL_B32 * VL_B32 * NUM_TWO) {
+            CalculateMeanVarRCommon<1>(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, tmpUbAddr, currentANum);
+        } else {
+            CalculateMeanVarRCommon<NUM_TWO>(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, tmpUbAddr,
+                                             currentANum);
+        }
+
+        LocalTensor<float> rstdTmpTensor = rstdTmpBuf_.Get<float>();
+        __ubuf__ float* rstdTmpUbAddr = (__ubuf__ float*)rstdTmpTensor.GetPhyAddr();
+        CalculateRstdVF(rstdOutUbAddr, rstdTmpUbAddr, currentANum);
+        __ubuf__ float* rstdForNorm;
+        if constexpr (IsOutRstd) {
+            rstdForNorm = rstdOutUbAddr;
+        } else {
+            rstdForNorm = rstdTmpUbAddr;
+        }
+
+        LocalTensor<T> yOutUb = yQueue_.AllocTensor<T>();
+        __ubuf__ T* yOutUbAddr = (__ubuf__ T*)yOutUb.GetPhyAddr();
+        __ubuf__ U* gammaBaseAddr = (__ubuf__ U*)gammaBetaInUb_.GetPhyAddr();
+        __ubuf__ U* betaBaseAddr = (__ubuf__ U*)gammaBetaInUb_.GetPhyAddr() + tl_->b * tl_->rAlign;
+        if (hasGamma_ && hasBeta_) {
+            CalculateNormalizeVFFullB<true, true>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr, rstdForNorm,
+                                                  currentANum, aOffset);
+        } else if (!hasGamma_ && hasBeta_) {
+            CalculateNormalizeVFFullB<false, true>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr, rstdForNorm,
+                                                   currentANum, aOffset);
+        } else if (hasGamma_ && !hasBeta_) {
+            CalculateNormalizeVFFullB<true, false>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr, rstdForNorm,
+                                                   currentANum, aOffset);
+        } else {
+            CalculateNormalizeVFFullB<false, false>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr,
+                                                    rstdForNorm, currentANum, aOffset);
+        }
+        xQueue_.FreeTensor(xInUb);
+        yQueue_.EnQue(yOutUb);
+    }
+
+    // for !isFullB, gamma loaded per UB loop
+    __aicore__ inline void CaculateWithBOffsetPartial(int64_t currentANum, int64_t aOffset)
+    {
+        LocalTensor<T> xInUb = xQueue_.template DeQue<T>();
+        meanOutUb_ = meanQueue_.AllocTensor<float>();
+        rstdOutUb_ = rstdQueue_.AllocTensor<float>();
+        LocalTensor<float> tmpTensor = tmpBuf.Get<float>();
+
+        __ubuf__ T* xInUbAddr = (__ubuf__ T*)xInUb.GetPhyAddr();
+        __ubuf__ float* meanOutUbAddr = (__ubuf__ float*)meanOutUb_.GetPhyAddr();
+        __ubuf__ float* rstdOutUbAddr = (__ubuf__ float*)rstdOutUb_.GetPhyAddr();
+        __ubuf__ float* xSubMeanUbAddr = (__ubuf__ float*)tmpTensor.GetPhyAddr();
+        __ubuf__ float* tmpUbAddr = (__ubuf__ float*)tmpTensor.GetPhyAddr() + elemNum_;
+
+        if (tl_->rAlign <= VL_B32) {
+            CalculateMeanVarRLessThanVL(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, currentANum);
+        } else if (tl_->rAlign <= VL_B32 + VL_B32) {
+            CalculateMeanVarRLessThanTwoVL(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, currentANum);
+        } else if (tl_->rAlign <= VL_B32 * VL_B32 * NUM_TWO) {
+            CalculateMeanVarRCommon<1>(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, tmpUbAddr, currentANum);
+        } else {
+            CalculateMeanVarRCommon<NUM_TWO>(xInUbAddr, meanOutUbAddr, rstdOutUbAddr, xSubMeanUbAddr, tmpUbAddr,
+                                             currentANum);
+        }
+
+        LocalTensor<float> rstdTmpTensor = rstdTmpBuf_.Get<float>();
+        __ubuf__ float* rstdTmpUbAddr = (__ubuf__ float*)rstdTmpTensor.GetPhyAddr();
+        CalculateRstdVF(rstdOutUbAddr, rstdTmpUbAddr, currentANum);
+        __ubuf__ float* rstdForNorm;
+        if constexpr (IsOutRstd) {
+            rstdForNorm = rstdOutUbAddr;
+        } else {
+            rstdForNorm = rstdTmpUbAddr;
+        }
+
+        LocalTensor<T> yOutUb = yQueue_.AllocTensor<T>();
+        __ubuf__ T* yOutUbAddr = (__ubuf__ T*)yOutUb.GetPhyAddr();
+        __ubuf__ U* gammaBaseAddr = (__ubuf__ U*)gammaBetaInUb_.GetPhyAddr();
+        __ubuf__ U* betaBaseAddr = (__ubuf__ U*)gammaBetaInUb_.GetPhyAddr() + tl_->rAxisCount * tl_->rAlign;
+        if (hasGamma_ && hasBeta_) {
+            CalculateNormalizeVFNotFullB<true, true>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr,
+                                                     rstdForNorm, currentANum);
+        } else if (!hasGamma_ && hasBeta_) {
+            CalculateNormalizeVFNotFullB<false, true>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr,
+                                                      rstdForNorm, currentANum);
+        } else if (hasGamma_ && !hasBeta_) {
+            CalculateNormalizeVFNotFullB<true, false>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr,
+                                                      rstdForNorm, currentANum);
+        } else {
+            CalculateNormalizeVFNotFullB<false, false>(xSubMeanUbAddr, betaBaseAddr, gammaBaseAddr, yOutUbAddr,
+                                                       rstdForNorm, currentANum);
+        }
+        xQueue_.FreeTensor(xInUb);
+        yQueue_.EnQue(yOutUb);
+    }
+
+    __aicore__ inline void CalculateMeanVarRLessThanVL(__ubuf__ T* xInUb, __ubuf__ float* meanInUb,
+                                                       __ubuf__ float* rstdInUb, __ubuf__ float* xSubMeanUb,
+                                                       uint16_t currentANum)
+    {
+        uint32_t reduceNum = static_cast<uint32_t>(tl_->r);
+        float n = static_cast<float>(1.0) / static_cast<float>(tl_->powerOfTwoForR);
+        float nCorrectionFactor = static_cast<float>(tl_->powerOfTwoForR) / static_cast<float>(reduceNum);
+        uint32_t aStride = tl_->rAlign;
+        __VEC_SCOPE__
+        {
+            RegTensor<float> x;
+            RegTensor<float> meanSum;
+            RegTensor<float> mean;
+            RegTensor<float> meanDup;
+            RegTensor<float> xMeanSub;
+            RegTensor<float> square;
+            RegTensor<float> varSum;
+            RegTensor<float> var;
+
+            MaskReg pregFull = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregOne = CreateMask<float, MaskPattern::VL1>();
+            uint32_t sreg0 = reduceNum;
+            MaskReg pregLoop = UpdateMask<float>(sreg0);
+            for (uint16_t a = 0; a < currentANum; a++) {
+                LoadRegForDtype(xInUb, x, pregLoop, (a * aStride));
+                Muls(meanSum, x, n, pregLoop);
+                Reduce<AscendC::Reg::ReduceType::SUM>(mean, meanSum, pregLoop);
+                Muls(mean, mean, nCorrectionFactor, pregOne);
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(meanInUb + a, mean, pregOne);
+
+                Duplicate(meanDup, mean, pregFull);
+                Sub(xMeanSub, x, meanDup, pregLoop);
+                StoreRegForDtype(xSubMeanUb, xMeanSub, pregLoop, (a * aStride));
+                Mul(square, xMeanSub, xMeanSub, pregLoop);
+                Muls(varSum, square, n, pregLoop);
+                Reduce<AscendC::Reg::ReduceType::SUM>(var, varSum, pregLoop);
+                Muls(var, var, nCorrectionFactor, pregOne);
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(rstdInUb + a, var, pregOne);
+            }
+        }
+    }
+    __aicore__ inline void CalculateMeanVarRLessThanTwoVL(__ubuf__ T* xInUb, __ubuf__ float* meanInUb,
+                                                          __ubuf__ float* rstdInUb, __ubuf__ float* xSubMeanUb,
+                                                          uint16_t currentANum)
+    {
+        uint32_t reduceNum = static_cast<uint32_t>(tl_->r);
+        float n = static_cast<float>(1.0) / static_cast<float>(tl_->powerOfTwoForR);
+        float nCorrectionFactor = static_cast<float>(tl_->powerOfTwoForR) / static_cast<float>(reduceNum);
+        uint32_t aStride = tl_->rAlign;
+        uint32_t aTail = reduceNum - VL_B32;
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> x1;
+            RegTensor<float> x2;
+            RegTensor<float> meanSum1;
+            RegTensor<float> meanSum2;
+            RegTensor<float> meanSum;
+            RegTensor<float> mean;
+            RegTensor<float> meanDup;
+            RegTensor<float> xMeanSub1;
+            RegTensor<float> xMeanSub2;
+            RegTensor<float> square1;
+            RegTensor<float> square2;
+            RegTensor<float> varSum1;
+            RegTensor<float> varSum2;
+            RegTensor<float> varSum;
+            RegTensor<float> var;
+
+            MaskReg pregTail = UpdateMask<float>(aTail);
+            MaskReg pregFull = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregOne = CreateMask<float, MaskPattern::VL1>();
+
+            for (uint16_t a = 0; a < currentANum; a++) {
+                LoadRegForDtype(xInUb, x1, pregFull, (a * aStride));
+                LoadRegForDtype(xInUb + VL_B32, x2, pregTail, (a * aStride));
+                Muls(meanSum1, x1, n, pregFull);
+                Muls(meanSum2, x2, n, pregTail);
+                Add(meanSum, meanSum1, meanSum2, pregFull);
+                Reduce<AscendC::Reg::ReduceType::SUM>(mean, meanSum, pregFull);
+                Muls(mean, mean, nCorrectionFactor, pregOne);
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(meanInUb + a, mean, pregOne);
+
+                Duplicate(meanDup, mean, pregFull);
+                Sub(xMeanSub1, x1, meanDup, pregFull);
+                Sub(xMeanSub2, x2, meanDup, pregTail);
+                StoreRegForDtype(xSubMeanUb, xMeanSub1, pregFull, (a * aStride));
+                StoreRegForDtype(xSubMeanUb, xMeanSub2, pregTail, (a * aStride + VL_B32));
+                Mul(square1, xMeanSub1, xMeanSub1, pregFull);
+                Mul(square2, xMeanSub2, xMeanSub2, pregTail);
+                Muls(varSum1, square1, n, pregFull);
+                Muls(varSum2, square2, n, pregTail);
+                Add(varSum, varSum1, varSum2, pregFull);
+                Reduce<AscendC::Reg::ReduceType::SUM>(var, varSum, pregFull);
+                Muls(var, var, nCorrectionFactor, pregOne);
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(rstdInUb + a, var, pregOne);
+            }
+        }
+    }
+    template <int32_t LAST_LOOP_NUMS>
+    __aicore__ inline void CalculateMeanVarRCommon(__ubuf__ T* xInUb, __ubuf__ float* meanInUb,
+                                                   __ubuf__ float* rstdInUb, __ubuf__ float* xSubMeanUb,
+                                                   __ubuf__ float* tmpUb, uint16_t currentANum)
+    {
+        uint32_t reduceNum = static_cast<uint32_t>(tl_->r);
+        float n = static_cast<float>(1.0) / static_cast<float>(tl_->powerOfTwoForR);
+        float nCorrectionFactor = static_cast<float>(tl_->powerOfTwoForR) / static_cast<float>(reduceNum);
+        uint32_t aStride = tl_->rAlign;
+
+        uint32_t binaryAddQuotient = tl_->powerOfTwoForR >= tl_->r ? tl_->powerOfTwoForR / NUM_TWO :
+                                                                     tl_->powerOfTwoForR;
+        uint16_t binaryAddQuotientLoop = (binaryAddQuotient + VL_B32 - 1) / VL_B32;
+
+        uint32_t lastBinaryAddNum = binaryAddQuotient / VL_B32;
+        uint32_t lastBinaryAddNumTmp = lastBinaryAddNum;
+        uint32_t lastBinaryAddNumAlign = (binaryAddQuotient / VL_B32 + BLK_B32 - 1) / BLK_B32 * BLK_B32;
+
+        uint32_t binaryAddRemainder = reduceNum - binaryAddQuotient;
+        uint16_t binaryAddRemainderCeilLoop = (binaryAddRemainder + VL_B32 - 1) / VL_B32;
+        uint16_t binaryAddRemainderFloorLoop = binaryAddRemainder / VL_B32;
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> x1;
+            RegTensor<float> x2;
+            RegTensor<float> meanSum;
+            RegTensor<float> mean;
+
+            MaskReg pregFull = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregOne = CreateMask<float, MaskPattern::VL1>();
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < currentANum; a++) {
+                uint32_t sregRemainder = binaryAddRemainder;
+                for (uint16_t r = 0; r < binaryAddRemainderFloorLoop; r++) {
+                    pregLoop = UpdateMask<float>(sregRemainder);
+                    LoadRegForDtype(xInUb, x1, pregFull, (r * VL_B32 + a * aStride));
+                    LoadRegForDtype(xInUb + binaryAddQuotient, x2, pregFull, (r * VL_B32 + a * aStride));
+                    Muls(x1, x1, n, pregFull);
+                    Muls(x2, x2, n, pregFull);
+                    Add(meanSum, x1, x2, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(mean, meanSum, pregFull);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + r), mean, pregOne);
+                }
+                for (uint16_t r = 0;
+                     r < static_cast<uint16_t>(binaryAddRemainderCeilLoop - binaryAddRemainderFloorLoop); r++) {
+                    pregLoop = UpdateMask<float>(sregRemainder);
+                    LoadRegForDtype(xInUb + binaryAddRemainderFloorLoop * VL_B32, x1, pregFull,
+                                    (r * VL_B32 + a * aStride));
+                    LoadRegForDtype(xInUb + binaryAddRemainderFloorLoop * VL_B32 + binaryAddQuotient, x2, pregLoop,
+                                    (r * VL_B32 + a * aStride));
+                    Muls(x1, x1, n, pregFull);
+                    Muls(x2, x2, n, pregLoop);
+                    Add(meanSum, x1, x2, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(mean, meanSum, pregFull);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + binaryAddRemainderFloorLoop), mean,
+                        pregOne);
+                }
+                for (uint16_t r = 0; r < static_cast<uint16_t>(binaryAddQuotientLoop - binaryAddRemainderCeilLoop);
+                     r++) {
+                    LoadRegForDtype(xInUb + binaryAddRemainderCeilLoop * VL_B32, x1, pregFull,
+                                    (r * VL_B32 + a * aStride));
+                    Muls(x1, x1, n, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(mean, x1, pregFull);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + binaryAddRemainderCeilLoop + r), mean,
+                        pregOne);
+                }
+            }
+            LocalMemBar<MemType::VEC_STORE, MemType::VEC_LOAD>();
+            if constexpr (LAST_LOOP_NUMS == 1) {
+                MaskReg pregLast = UpdateMask<float>(lastBinaryAddNum);
+                for (uint16_t a = 0; a < currentANum; a++) {
+                    LoadAlign(x1, tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign));
+                    Reduce<AscendC::Reg::ReduceType::SUM>(mean, x1, pregLast);
+                    Muls(mean, mean, nCorrectionFactor, pregOne);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(meanInUb + a, mean, pregOne);
+                }
+            } else if constexpr (LAST_LOOP_NUMS == 2) {
+                uint32_t lastTailNum = lastBinaryAddNum - VL_B32;
+                MaskReg pregLast = UpdateMask<float>(lastTailNum);
+                RegTensor<float> shlReg;
+                for (uint16_t a = 0; a < currentANum; a++) {
+                    LoadAlign(x1, tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign));
+                    LoadAlign(x2, tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + VL_B32));
+                    ShiftLefts((RegTensor<uint32_t>&)shlReg, (RegTensor<uint32_t>&)x2, static_cast<int16_t>(0),
+                               pregLast);
+                    Add(x1, x1, shlReg, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(mean, x1, pregFull);
+                    Muls(mean, mean, nCorrectionFactor, pregOne);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(meanInUb + a, mean, pregOne);
+                }
+            }
+        }
+        __VEC_SCOPE__
+        {
+            RegTensor<float> x1;
+            RegTensor<float> x2;
+            RegTensor<float> mean;
+            RegTensor<float> xMeanSub1;
+            RegTensor<float> xMeanSub2;
+            RegTensor<float> square1;
+            RegTensor<float> square2;
+            RegTensor<float> varSum;
+            RegTensor<float> var;
+            MaskReg pregFull = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregOne = CreateMask<float, MaskPattern::VL1>();
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < currentANum; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(mean, meanInUb + a);
+                uint32_t sregRemainder = binaryAddRemainder;
+                for (uint16_t r = 0; r < binaryAddRemainderFloorLoop; r++) {
+                    pregLoop = UpdateMask<float>(sregRemainder);
+                    LoadRegForDtype(xInUb, x1, pregFull, (r * VL_B32 + a * aStride));
+                    LoadRegForDtype(xInUb + binaryAddQuotient, x2, pregFull, (r * VL_B32 + a * aStride));
+                    Sub(xMeanSub1, x1, mean, pregFull);
+                    Sub(xMeanSub2, x2, mean, pregFull);
+                    StoreRegForDtype(xSubMeanUb, xMeanSub1, pregFull, (r * VL_B32 + a * aStride));
+                    StoreRegForDtype(xSubMeanUb + binaryAddQuotient, xMeanSub2, pregFull, (r * VL_B32 + a * aStride));
+                    Mul(square1, xMeanSub1, xMeanSub1, pregFull);
+                    Mul(square2, xMeanSub2, xMeanSub2, pregFull);
+                    Muls(square1, square1, n, pregFull);
+                    Muls(square2, square2, n, pregFull);
+                    Add(varSum, square1, square2, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(var, varSum, pregFull);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + r), var, pregOne);
+                }
+                for (uint16_t r = 0;
+                     r < static_cast<uint16_t>(binaryAddRemainderCeilLoop - binaryAddRemainderFloorLoop); r++) {
+                    pregLoop = UpdateMask<float>(sregRemainder);
+                    LoadRegForDtype(xInUb + binaryAddRemainderFloorLoop * VL_B32, x1, pregFull,
+                                    (r * VL_B32 + a * aStride));
+                    LoadRegForDtype(xInUb + binaryAddRemainderFloorLoop * VL_B32 + binaryAddQuotient, x2, pregLoop,
+                                    (r * VL_B32 + a * aStride));
+                    Sub(xMeanSub1, x1, mean, pregFull);
+                    Sub(xMeanSub2, x2, mean, pregLoop);
+                    StoreRegForDtype(xSubMeanUb + binaryAddRemainderFloorLoop * VL_B32, xMeanSub1, pregFull,
+                                     (r * VL_B32 + a * aStride));
+                    StoreRegForDtype(xSubMeanUb + binaryAddRemainderFloorLoop * VL_B32 + binaryAddQuotient, xMeanSub2,
+                                     pregLoop, (r * VL_B32 + a * aStride));
+                    Mul(square1, xMeanSub1, xMeanSub1, pregFull);
+                    Mul(square2, xMeanSub2, xMeanSub2, pregLoop);
+                    Muls(square1, square1, n, pregFull);
+                    Muls(square2, square2, n, pregLoop);
+                    Add(varSum, square1, square2, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(var, varSum, pregFull);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + binaryAddRemainderFloorLoop), var,
+                        pregOne);
+                }
+                for (uint16_t r = 0; r < static_cast<uint16_t>(binaryAddQuotientLoop - binaryAddRemainderCeilLoop);
+                     r++) {
+                    LoadRegForDtype(xInUb + binaryAddRemainderCeilLoop * VL_B32, x1, pregFull,
+                                    (r * VL_B32 + a * aStride));
+                    Sub(xMeanSub1, x1, mean, pregFull);
+                    StoreRegForDtype(xSubMeanUb + binaryAddRemainderCeilLoop * VL_B32, xMeanSub1, pregFull,
+                                     (r * VL_B32 + a * aStride));
+                    Mul(square1, xMeanSub1, xMeanSub1, pregFull);
+                    Muls(square1, square1, n, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(var, square1, pregFull);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + binaryAddRemainderCeilLoop + r), var,
+                        pregOne);
+                }
+            }
+            LocalMemBar<MemType::VEC_STORE, MemType::VEC_LOAD>();
+            if constexpr (LAST_LOOP_NUMS == 1) {
+                MaskReg pregLast = UpdateMask<float>(lastBinaryAddNumTmp);
+                for (uint16_t a = 0; a < currentANum; a++) {
+                    LoadAlign(x1, tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign));
+                    Reduce<AscendC::Reg::ReduceType::SUM>(var, x1, pregLast);
+                    Muls(var, var, nCorrectionFactor, pregOne);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(rstdInUb + a, var, pregOne);
+                }
+            } else if constexpr (LAST_LOOP_NUMS == 2) {
+                uint32_t lastTailNum = lastBinaryAddNum - VL_B32;
+                MaskReg pregLast = UpdateMask<float>(lastTailNum);
+                RegTensor<float> shlReg;
+                for (uint16_t a = 0; a < currentANum; a++) {
+                    LoadAlign(x1, tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign));
+                    LoadAlign(x2, tmpUb + static_cast<uint32_t>(a * lastBinaryAddNumAlign + VL_B32));
+                    ShiftLefts((RegTensor<uint32_t>&)shlReg, (RegTensor<uint32_t>&)x2, static_cast<int16_t>(0),
+                               pregLast);
+                    Add(x1, x1, shlReg, pregFull);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(var, x1, pregFull);
+                    Muls(var, var, nCorrectionFactor, pregOne);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(rstdInUb + a, var, pregOne);
+                }
+            }
+        }
+    }
+
+    __aicore__ inline void CalculateRstdVF(__ubuf__ float* rstdOutUb, __ubuf__ float* tmpUb, uint16_t currentANum)
+    {
+        float epsilonLocal = tl_->epsilon;
+        uint16_t aLoop = static_cast<uint16_t>((currentANum + VL_B32 - 1) / VL_B32);
+        uint32_t sreg = static_cast<uint32_t>(currentANum);
+        __VEC_SCOPE__
+        {
+            RegTensor<float> varReg;
+            RegTensor<float> rstdReg;
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < aLoop; a++) {
+                LoadAlign<float, LoadDist::DIST_NORM>(varReg, rstdOutUb + a * VL_B32);
+                pregLoop = UpdateMask<float>(sreg);
+                NormCommon::ComputeRstdNewtonRaphsonReg<false>(varReg, rstdReg, pregLoop, epsilonLocal);
+                if constexpr (!IsOutRstd) {
+                    // variance stays in rstdOutUb for output, compute rstd to tmpUb
+                    StoreAlign<float, StoreDist::DIST_NORM>(tmpUb + a * VL_B32, rstdReg, pregLoop);
+                } else {
+                    // compute rstd in-place to rstdOutUb for output
+                    StoreAlign<float, StoreDist::DIST_NORM>(rstdOutUb + a * VL_B32, rstdReg, pregLoop);
+                }
+            }
+        }
+    }
+
+    template <bool hasGammaFlag, bool hasBetaFlag>
+    __aicore__ inline void CalculateNormalizeVF(__ubuf__ float* xSubMeanUb, __ubuf__ U* betaInUb, __ubuf__ U* gammaInUb,
+                                                __ubuf__ T* yOutUb, __ubuf__ float* rstdOutUb, uint16_t currentANum)
+    {
+        uint32_t reduceNum = tl_->r;
+        uint32_t aStride = tl_->rAlign;
+        uint16_t loopCount = (reduceNum + VL_B32 - 1) / VL_B32;
+        uint32_t remainderA = currentANum / NUM_TWO * NUM_TWO;
+        uint16_t remainderLoop = currentANum - remainderA;
+        __ubuf__ float* rstdOutUbPair = rstdOutUb + 1;
+        __ubuf__ float* rstdOutUbRemainder = rstdOutUb + remainderA;
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> beta;
+            RegTensor<float> gamma;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> rsqrt1;
+            RegTensor<float> x2;
+            RegTensor<float> y2;
+            RegTensor<float> rsqrt2;
+            RegTensor<float> xRemainder;
+            RegTensor<float> yRemainder;
+            RegTensor<float> rsqrtRemainder;
+
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < static_cast<uint16_t>(currentANum / static_cast<uint16_t>(NUM_TWO)); a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt1, rstdOutUb + a * NUM_TWO);
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt2, rstdOutUbPair + a * NUM_TWO);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    LoadRegForDtype(xSubMeanUb, x1, pregLoop, (r * VL_B32 + a * NUM_TWO * aStride));
+                    LoadRegForDtype(xSubMeanUb + aStride, x2, pregLoop, (r * VL_B32 + a * NUM_TWO * aStride));
+                    Mul(y1, x1, rsqrt1, pregLoop);
+                    Mul(y2, x2, rsqrt2, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadRegForDtype(gammaInUb, gamma, pregLoop, (r * VL_B32));
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadRegForDtype(betaInUb, beta, pregLoop, (r * VL_B32));
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(y1, gamma, beta, pregLoop);
+                        MulDstAdd(y2, gamma, beta, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(y1, y1, gamma, pregLoop);
+                            Mul(y2, y2, gamma, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(y1, y1, beta, pregLoop);
+                            Add(y2, y2, beta, pregLoop);
+                        }
+                    }
+                    StoreRegForDtype(yOutUb, y1, pregLoop, (r * VL_B32 + a * NUM_TWO * aStride));
+                    StoreRegForDtype(yOutUb + aStride, y2, pregLoop, (r * VL_B32 + a * NUM_TWO * aStride));
+                }
+            }
+            for (uint16_t a = 0; a < remainderLoop; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrtRemainder, rstdOutUbRemainder);
+                uint32_t sreg1 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg1);
+                    LoadRegForDtype(xSubMeanUb + aStride * remainderA, xRemainder, pregLoop, (r * VL_B32));
+                    Mul(yRemainder, xRemainder, rsqrtRemainder, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadRegForDtype(gammaInUb, gamma, pregLoop, (r * VL_B32));
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadRegForDtype(betaInUb, beta, pregLoop, (r * VL_B32));
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(yRemainder, gamma, beta, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(yRemainder, yRemainder, gamma, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(yRemainder, yRemainder, beta, pregLoop);
+                        }
+                    }
+                    StoreRegForDtype(yOutUb + aStride * remainderA, yRemainder, pregLoop, (r * VL_B32));
+                }
+            }
+        }
+    }
+
+    template <bool hasGammaFlag, bool hasBetaFlag>
+    __aicore__ inline void CalculateNormalizeVFFullB(__ubuf__ float* xSubMeanUb, __ubuf__ U* betaInUb,
+                                                     __ubuf__ U* gammaInUb, __ubuf__ T* yOutUb,
+                                                     __ubuf__ float* rstdOutUb, uint16_t currentANum, int64_t aOffset)
+    {
+        uint32_t reduceNum = tl_->r;
+        uint32_t aStride = tl_->rAlign;
+        uint32_t gammaBetaStride = tl_->gammaBetaRAlign;
+        uint32_t b = tl_->b;
+        uint16_t loopCount = (reduceNum + VL_B32 - 1) / VL_B32;
+
+        uint32_t baseOffset = GetBlockIdx() * tl_->blockFactor + aOffset;
+        uint32_t firstStart = baseOffset % b;
+        uint32_t firstEnd = b - firstStart < currentANum ? b - firstStart : currentANum;
+        uint32_t firstRemainderA = firstEnd / NUM_TWO * NUM_TWO;
+        uint16_t firstRemainderLoop = firstEnd - firstRemainderA;
+        uint16_t secondLoopNum = (currentANum - firstEnd) / b;
+        uint32_t secondRemainderA = b / NUM_TWO * NUM_TWO;
+        uint16_t secondRemainderLoop = b - secondRemainderA;
+        uint32_t thirdEnd = (currentANum - firstEnd) % b;
+        uint32_t thirdRemainderA = thirdEnd / NUM_TWO * NUM_TWO;
+        uint16_t thirdRemainderLoop = thirdEnd - thirdRemainderA;
+
+        uint32_t numColAlignTwo = NUM_TWO * aStride;
+        uint32_t numColAlignTwoGamma = NUM_TWO * gammaBetaStride;
+        uint32_t numColAlignTwoSecond = b * aStride;
+
+        __ubuf__ float* rstdOutUbPair = rstdOutUb + 1;
+        __ubuf__ float* rstdOutUbRemainder = rstdOutUb + firstRemainderA;
+        __ubuf__ float* rstdOutUbSecondRemainder = rstdOutUb + firstEnd;
+        __ubuf__ float* rstdOutUbThirdRemainder = rstdOutUb + firstEnd + b * secondLoopNum + thirdRemainderA;
+
+        __ubuf__ U* gammaInUbOne = gammaInUb + firstStart * gammaBetaStride;
+        __ubuf__ U* gammaInUbTwo = gammaInUb + (firstStart + 1) * gammaBetaStride;
+        __ubuf__ U* betaInUbOne = betaInUb + firstStart * gammaBetaStride;
+        __ubuf__ U* betaInUbTwo = betaInUb + (firstStart + 1) * gammaBetaStride;
+
+        uint16_t firstPairLoopNum = firstEnd / NUM_TWO;
+        uint16_t bPairLoopNum = b / NUM_TWO;
+        uint16_t thirdPairLoopNum = thirdEnd / NUM_TWO;
+
+        __ubuf__ float* xSubMeanUbNext = xSubMeanUb + aStride;
+        __ubuf__ T* yOutUbNext = yOutUb + aStride;
+        __ubuf__ float* xSubMeanUbFirstRem = xSubMeanUb + firstRemainderA * aStride;
+        __ubuf__ T* yOutUbFirstRem = yOutUb + aStride * firstRemainderA;
+        __ubuf__ U* gammaInUbFirstRem = gammaInUb + (firstStart + firstRemainderA) * gammaBetaStride;
+        __ubuf__ U* betaInUbFirstRem = betaInUb + (firstStart + firstRemainderA) * gammaBetaStride;
+
+        __ubuf__ float* xSubMeanUbFirstEnd = xSubMeanUb + firstEnd * aStride;
+        __ubuf__ float* xSubMeanUbFirstEndNext = xSubMeanUb + aStride + firstEnd * aStride;
+        __ubuf__ T* yOutUbFirstEnd = yOutUb + firstEnd * aStride;
+        __ubuf__ T* yOutUbFirstEndNext = yOutUb + aStride + firstEnd * aStride;
+        __ubuf__ float* xSubMeanUbSecondRem = xSubMeanUb + (firstEnd + secondRemainderA) * aStride;
+        __ubuf__ T* yOutUbSecondRem = yOutUb + (firstEnd + secondRemainderA) * aStride;
+        __ubuf__ U* gammaInUbNext = gammaInUb + gammaBetaStride;
+        __ubuf__ U* betaInUbNext = betaInUb + gammaBetaStride;
+        __ubuf__ U* gammaInUbSecondRem = gammaInUb + secondRemainderA * gammaBetaStride;
+        __ubuf__ U* betaInUbSecondRem = betaInUb + secondRemainderA * gammaBetaStride;
+
+        __ubuf__ float* xSubMeanUbThird = xSubMeanUb + (firstEnd + b * secondLoopNum) * aStride;
+        __ubuf__ float* xSubMeanUbThirdNext = xSubMeanUb + (firstEnd + b * secondLoopNum + 1) * aStride;
+        __ubuf__ T* yOutUbThird = yOutUb + (firstEnd + b * secondLoopNum) * aStride;
+        __ubuf__ T* yOutUbThirdNext = yOutUb + (firstEnd + b * secondLoopNum + 1) * aStride;
+        __ubuf__ float* xSubMeanUbThirdRem = xSubMeanUb + (firstEnd + b * secondLoopNum + thirdRemainderA) * aStride;
+        __ubuf__ T* yOutUbThirdRem = yOutUb + (firstEnd + b * secondLoopNum + thirdRemainderA) * aStride;
+        __ubuf__ U* gammaInUbThirdRem = gammaInUb + thirdRemainderA * gammaBetaStride;
+        __ubuf__ U* betaInUbThirdRem = betaInUb + thirdRemainderA * gammaBetaStride;
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> beta1;
+            RegTensor<float> gamma1;
+            RegTensor<float> beta2;
+            RegTensor<float> gamma2;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> rsqrt1;
+            RegTensor<float> x2;
+            RegTensor<float> y2;
+            RegTensor<float> rsqrt2;
+            RegTensor<float> xRemainder;
+            RegTensor<float> yRemainder;
+            RegTensor<float> gammaRemainder;
+            RegTensor<float> betaRemainder;
+            RegTensor<float> rsqrtRemainder;
+
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < firstPairLoopNum; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt1, rstdOutUb + a * NUM_TWO);
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt2, rstdOutUbPair + a * NUM_TWO);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(a, numColAlignTwo, r, VL_B32);
+                    AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(a, numColAlignTwoGamma, r,
+                                                                                        VL_B32);
+                    AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(a, numColAlignTwo, r, VL_B32);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUb, x1, pregLoop, xRegAddr);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbNext, x2, pregLoop, xRegAddr);
+                    Mul(y1, x1, rsqrt1, pregLoop);
+                    Mul(y2, x2, rsqrt2, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadTensorForDtypeTIn<U>(gammaInUbOne, gamma1, pregLoop, gammaRegAddr);
+                        LoadTensorForDtypeTIn<U>(gammaInUbTwo, gamma2, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadTensorForDtypeTIn<U>(betaInUbOne, beta1, pregLoop, gammaRegAddr);
+                        LoadTensorForDtypeTIn<U>(betaInUbTwo, beta2, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(y1, gamma1, beta1, pregLoop);
+                        MulDstAdd(y2, gamma2, beta2, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(y1, y1, gamma1, pregLoop);
+                            Mul(y2, y2, gamma2, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(y1, y1, beta1, pregLoop);
+                            Add(y2, y2, beta2, pregLoop);
+                        }
+                    }
+                    StoreTensorForDtypeTOut<T>(yOutUb, y1, pregLoop, yRegAddr);
+                    StoreTensorForDtypeTOut<T>(yOutUbNext, y2, pregLoop, yRegAddr);
+                }
+            }
+            for (uint16_t a = 0; a < firstRemainderLoop; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrtRemainder, rstdOutUbRemainder);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(r, VL_B32);
+                    AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(r, VL_B32);
+                    AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(r, VL_B32);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbFirstRem, xRemainder, pregLoop, xRegAddr);
+                    Mul(yRemainder, xRemainder, rsqrtRemainder, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadTensorForDtypeTIn<U>(gammaInUbFirstRem, gammaRemainder, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadTensorForDtypeTIn<U>(betaInUbFirstRem, betaRemainder, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(yRemainder, gammaRemainder, betaRemainder, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(yRemainder, yRemainder, gammaRemainder, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(yRemainder, yRemainder, betaRemainder, pregLoop);
+                        }
+                    }
+                    StoreTensorForDtypeTOut<T>(yOutUbFirstRem, yRemainder, pregLoop, yRegAddr);
+                }
+            }
+        }
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> beta1;
+            RegTensor<float> gamma1;
+            RegTensor<float> beta2;
+            RegTensor<float> gamma2;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> rsqrt1;
+            RegTensor<float> x2;
+            RegTensor<float> y2;
+            RegTensor<float> rsqrt2;
+            RegTensor<float> xRemainder;
+            RegTensor<float> yRemainder;
+            RegTensor<float> gammaRemainder;
+            RegTensor<float> betaRemainder;
+            RegTensor<float> rsqrtRemainder;
+
+            MaskReg pregLoop;
+
+            for (uint16_t loop = 0; loop < secondLoopNum; loop++) {
+                for (uint16_t a = 0; a < bPairLoopNum; a++) {
+                    LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt1, rstdOutUb + firstEnd + b * loop + a * NUM_TWO);
+                    LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt2, rstdOutUbPair + firstEnd + b * loop + a * NUM_TWO);
+                    uint32_t sreg0 = reduceNum;
+                    for (uint16_t r = 0; r < loopCount; r++) {
+                        pregLoop = UpdateMask<float>(sreg0);
+                        AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(
+                            loop, numColAlignTwoSecond, a, numColAlignTwo, r, VL_B32);
+                        AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(a, numColAlignTwoGamma, r,
+                                                                                            VL_B32);
+                        AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(loop, numColAlignTwoSecond, a,
+                                                                                        numColAlignTwo, r, VL_B32);
+                        LoadTensorForDtypeTIn<float>(xSubMeanUbFirstEnd, x1, pregLoop, xRegAddr);
+                        LoadTensorForDtypeTIn<float>(xSubMeanUbFirstEndNext, x2, pregLoop, xRegAddr);
+                        Mul(y1, x1, rsqrt1, pregLoop);
+                        Mul(y2, x2, rsqrt2, pregLoop);
+                        if constexpr (hasGammaFlag) {
+                            LoadTensorForDtypeTIn<U>(gammaInUb, gamma1, pregLoop, gammaRegAddr);
+                            LoadTensorForDtypeTIn<U>(gammaInUbNext, gamma2, pregLoop, gammaRegAddr);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            LoadTensorForDtypeTIn<U>(betaInUb, beta1, pregLoop, gammaRegAddr);
+                            LoadTensorForDtypeTIn<U>(betaInUbNext, beta2, pregLoop, gammaRegAddr);
+                        }
+                        if constexpr (hasGammaFlag && hasBetaFlag) {
+                            MulDstAdd(y1, gamma1, beta1, pregLoop);
+                            MulDstAdd(y2, gamma2, beta2, pregLoop);
+                        } else {
+                            if constexpr (hasGammaFlag) {
+                                Mul(y1, y1, gamma1, pregLoop);
+                                Mul(y2, y2, gamma2, pregLoop);
+                            }
+                            if constexpr (hasBetaFlag) {
+                                Add(y1, y1, beta1, pregLoop);
+                                Add(y2, y2, beta2, pregLoop);
+                            }
+                        }
+                        StoreTensorForDtypeTOut<T>(yOutUbFirstEnd, y1, pregLoop, yRegAddr);
+                        StoreTensorForDtypeTOut<T>(yOutUbFirstEndNext, y2, pregLoop, yRegAddr);
+                    }
+                }
+                for (uint16_t a = 0; a < secondRemainderLoop; a++) {
+                    LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrtRemainder,
+                                                             rstdOutUbSecondRemainder + b * loop + secondRemainderA);
+                    uint32_t sreg0 = reduceNum;
+                    for (uint16_t r = 0; r < loopCount; r++) {
+                        pregLoop = UpdateMask<float>(sreg0);
+                        AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(loop, numColAlignTwoSecond,
+                                                                                            0, 0, r, VL_B32);
+                        AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(r, VL_B32);
+                        AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(loop, numColAlignTwoSecond, 0,
+                                                                                        0, r, VL_B32);
+                        LoadTensorForDtypeTIn<float>(xSubMeanUbSecondRem, xRemainder, pregLoop, xRegAddr);
+                        Mul(yRemainder, xRemainder, rsqrtRemainder, pregLoop);
+                        if constexpr (hasGammaFlag) {
+                            LoadTensorForDtypeTIn<U>(gammaInUbSecondRem, gammaRemainder, pregLoop, gammaRegAddr);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            LoadTensorForDtypeTIn<U>(betaInUbSecondRem, betaRemainder, pregLoop, gammaRegAddr);
+                        }
+                        if constexpr (hasGammaFlag && hasBetaFlag) {
+                            MulDstAdd(yRemainder, gammaRemainder, betaRemainder, pregLoop);
+                        } else {
+                            if constexpr (hasGammaFlag) {
+                                Mul(yRemainder, yRemainder, gammaRemainder, pregLoop);
+                            }
+                            if constexpr (hasBetaFlag) {
+                                Add(yRemainder, yRemainder, betaRemainder, pregLoop);
+                            }
+                        }
+                        StoreTensorForDtypeTOut<T>(yOutUbSecondRem, yRemainder, pregLoop, yRegAddr);
+                    }
+                }
+            }
+        }
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> beta1;
+            RegTensor<float> gamma1;
+            RegTensor<float> beta2;
+            RegTensor<float> gamma2;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> rsqrt1;
+            RegTensor<float> x2;
+            RegTensor<float> y2;
+            RegTensor<float> rsqrt2;
+            RegTensor<float> xRemainder;
+            RegTensor<float> yRemainder;
+            RegTensor<float> gammaRemainder;
+            RegTensor<float> betaRemainder;
+            RegTensor<float> rsqrtRemainder;
+
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < thirdPairLoopNum; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt1,
+                                                         rstdOutUb + firstEnd + b * secondLoopNum + a * NUM_TWO);
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt2,
+                                                         rstdOutUbPair + firstEnd + b * secondLoopNum + a * NUM_TWO);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(a, numColAlignTwo, r, VL_B32);
+                    AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(a, numColAlignTwoGamma, r,
+                                                                                        VL_B32);
+                    AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(a, numColAlignTwo, r, VL_B32);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbThird, x1, pregLoop, xRegAddr);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbThirdNext, x2, pregLoop, xRegAddr);
+                    Mul(y1, x1, rsqrt1, pregLoop);
+                    Mul(y2, x2, rsqrt2, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadTensorForDtypeTIn<U>(gammaInUb, gamma1, pregLoop, gammaRegAddr);
+                        LoadTensorForDtypeTIn<U>(gammaInUbNext, gamma2, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadTensorForDtypeTIn<U>(betaInUb, beta1, pregLoop, gammaRegAddr);
+                        LoadTensorForDtypeTIn<U>(betaInUbNext, beta2, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(y1, gamma1, beta1, pregLoop);
+                        MulDstAdd(y2, gamma2, beta2, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(y1, y1, gamma1, pregLoop);
+                            Mul(y2, y2, gamma2, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(y1, y1, beta1, pregLoop);
+                            Add(y2, y2, beta2, pregLoop);
+                        }
+                    }
+                    StoreTensorForDtypeTOut<T>(yOutUbThird, y1, pregLoop, yRegAddr);
+                    StoreTensorForDtypeTOut<T>(yOutUbThirdNext, y2, pregLoop, yRegAddr);
+                }
+            }
+            for (uint16_t a = 0; a < thirdRemainderLoop; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrtRemainder, rstdOutUbThirdRemainder);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(r, VL_B32);
+                    AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(r, VL_B32);
+                    AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(r, VL_B32);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbThirdRem, xRemainder, pregLoop, xRegAddr);
+                    Mul(yRemainder, xRemainder, rsqrtRemainder, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadTensorForDtypeTIn<U>(gammaInUbThirdRem, gammaRemainder, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadTensorForDtypeTIn<U>(betaInUbThirdRem, betaRemainder, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(yRemainder, gammaRemainder, betaRemainder, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(yRemainder, yRemainder, gammaRemainder, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(yRemainder, yRemainder, betaRemainder, pregLoop);
+                        }
+                    }
+                    StoreTensorForDtypeTOut<T>(yOutUbThirdRem, yRemainder, pregLoop, yRegAddr);
+                }
+            }
+        }
+    }
+
+    template <bool hasGammaFlag, bool hasBetaFlag>
+    __aicore__ inline void CalculateNormalizeVFNotFullB(__ubuf__ float* xSubMeanUb, __ubuf__ U* betaInUb,
+                                                        __ubuf__ U* gammaInUb, __ubuf__ T* yOutUb,
+                                                        __ubuf__ float* rstdOutUb, uint16_t currentANum)
+    {
+        uint32_t reduceNum = tl_->r;
+        uint32_t aStride = tl_->rAlign;
+        uint32_t gammaBetaStride = tl_->gammaBetaRAlign;
+        uint32_t b = tl_->b;
+        uint16_t loopCount = (reduceNum + VL_B32 - 1) / VL_B32;
+        uint32_t remainderA = currentANum / NUM_TWO * NUM_TWO;
+        uint16_t remainderLoop = currentANum - remainderA;
+        __ubuf__ float* rstdOutUbPair = rstdOutUb + 1;
+        __ubuf__ float* rstdOutUbRemainder = rstdOutUb + remainderA;
+
+        uint32_t numColAlignTwo = NUM_TWO * aStride;
+        uint32_t numColAlignTwoGamma = NUM_TWO * gammaBetaStride;
+
+        uint16_t pairLoopNum = currentANum / static_cast<uint16_t>(NUM_TWO);
+
+        __ubuf__ float* xSubMeanUbNext = xSubMeanUb + aStride;
+        __ubuf__ T* yOutUbNext = yOutUb + aStride;
+        __ubuf__ U* gammaInUbNext = gammaInUb + gammaBetaStride;
+        __ubuf__ U* betaInUbNext = betaInUb + gammaBetaStride;
+
+        __ubuf__ float* xSubMeanUbRem = xSubMeanUb + remainderA * aStride;
+        __ubuf__ T* yOutUbRem = yOutUb + aStride * remainderA;
+        __ubuf__ U* gammaInUbRem = gammaInUb + remainderA * gammaBetaStride;
+        __ubuf__ U* betaInUbRem = betaInUb + remainderA * gammaBetaStride;
+
+        __VEC_SCOPE__
+        {
+            RegTensor<float> beta1;
+            RegTensor<float> gamma1;
+            RegTensor<float> beta2;
+            RegTensor<float> gamma2;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> rsqrt1;
+            RegTensor<float> x2;
+            RegTensor<float> y2;
+            RegTensor<float> rsqrt2;
+            RegTensor<float> xRemainder;
+            RegTensor<float> yRemainder;
+            RegTensor<float> gammaRemainder;
+            RegTensor<float> betaRemainder;
+            RegTensor<float> rsqrtRemainder;
+
+            MaskReg pregLoop;
+
+            for (uint16_t a = 0; a < pairLoopNum; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt1, rstdOutUb + a * NUM_TWO);
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrt2, rstdOutUbPair + a * NUM_TWO);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(a, numColAlignTwo, r, VL_B32);
+                    AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(a, numColAlignTwoGamma, r,
+                                                                                        VL_B32);
+                    AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(a, numColAlignTwo, r, VL_B32);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUb, x1, pregLoop, xRegAddr);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbNext, x2, pregLoop, xRegAddr);
+                    Mul(y1, x1, rsqrt1, pregLoop);
+                    Mul(y2, x2, rsqrt2, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadTensorForDtypeTIn<U>(gammaInUb, gamma1, pregLoop, gammaRegAddr);
+                        LoadTensorForDtypeTIn<U>(gammaInUbNext, gamma2, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadTensorForDtypeTIn<U>(betaInUb, beta1, pregLoop, gammaRegAddr);
+                        LoadTensorForDtypeTIn<U>(betaInUbNext, beta2, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(y1, gamma1, beta1, pregLoop);
+                        MulDstAdd(y2, gamma2, beta2, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(y1, y1, gamma1, pregLoop);
+                            Mul(y2, y2, gamma2, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(y1, y1, beta1, pregLoop);
+                            Add(y2, y2, beta2, pregLoop);
+                        }
+                    }
+                    StoreTensorForDtypeTOut<T>(yOutUb, y1, pregLoop, yRegAddr);
+                    StoreTensorForDtypeTOut<T>(yOutUbNext, y2, pregLoop, yRegAddr);
+                }
+            }
+            for (uint16_t a = 0; a < remainderLoop; a++) {
+                LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrtRemainder, rstdOutUbRemainder);
+                uint32_t sreg0 = reduceNum;
+                for (uint16_t r = 0; r < loopCount; r++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    AscendC::Reg::AddrReg xRegAddr = AscendC::Reg::CreateAddrReg<float>(r, VL_B32);
+                    AscendC::Reg::AddrReg gammaRegAddr = AscendC::Reg::CreateAddrReg<U>(r, VL_B32);
+                    AscendC::Reg::AddrReg yRegAddr = AscendC::Reg::CreateAddrReg<T>(r, VL_B32);
+                    LoadTensorForDtypeTIn<float>(xSubMeanUbRem, xRemainder, pregLoop, xRegAddr);
+                    Mul(yRemainder, xRemainder, rsqrtRemainder, pregLoop);
+                    if constexpr (hasGammaFlag) {
+                        LoadTensorForDtypeTIn<U>(gammaInUbRem, gammaRemainder, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasBetaFlag) {
+                        LoadTensorForDtypeTIn<U>(betaInUbRem, betaRemainder, pregLoop, gammaRegAddr);
+                    }
+                    if constexpr (hasGammaFlag && hasBetaFlag) {
+                        MulDstAdd(yRemainder, gammaRemainder, betaRemainder, pregLoop);
+                    } else {
+                        if constexpr (hasGammaFlag) {
+                            Mul(yRemainder, yRemainder, gammaRemainder, pregLoop);
+                        }
+                        if constexpr (hasBetaFlag) {
+                            Add(yRemainder, yRemainder, betaRemainder, pregLoop);
+                        }
+                    }
+                    StoreTensorForDtypeTOut<T>(yOutUbRem, yRemainder, pregLoop, yRegAddr);
+                }
+            }
+        }
+    }
+
+    __aicore__ inline void CastMeanRstd(int64_t currentANum)
+    {
+        __ubuf__ float* meanInAddr = (__ubuf__ float*)meanOutUb_.GetPhyAddr();
+        __ubuf__ float* rstdInAddr = (__ubuf__ float*)rstdOutUb_.GetPhyAddr();
+        __ubuf__ M* meanOutAddr = (__ubuf__ M*)meanOutUb_.GetPhyAddr();
+        __ubuf__ M* rstdOutAddr = (__ubuf__ M*)rstdOutUb_.GetPhyAddr();
+
+        uint32_t castCount = static_cast<uint32_t>(currentANum);
+        uint16_t castLoops = static_cast<uint32_t>((castCount + VL_B32 - 1) / VL_B32);
+        __VEC_SCOPE__
+        {
+            RegTensor<float> input_mean;
+            RegTensor<float> input_rstd;
+            RegTensor<M> output_mean;
+            RegTensor<M> output_rstd;
+            Reg::MaskReg pregLoop;
+            for (uint16_t i = 0; i < castLoops; i++) {
+                pregLoop = Reg::UpdateMask<float>(castCount);
+                Reg::LoadAlign<float, Reg::LoadDist::DIST_NORM>(input_mean, meanInAddr + VL_B32 * i);
+                Reg::LoadAlign<float, Reg::LoadDist::DIST_NORM>(input_rstd, rstdInAddr + VL_B32 * i);
+                Cast<M, float, castTraitB322B16>(output_mean, input_mean, pregLoop);
+                Cast<M, float, castTraitB322B16>(output_rstd, input_rstd, pregLoop);
+                StoreAlign<M, StoreDist::DIST_PACK_B32>(((__ubuf__ M*)meanOutAddr + i * VL_B16), output_mean, pregLoop);
+                StoreAlign<M, StoreDist::DIST_PACK_B32>(((__ubuf__ M*)rstdOutAddr + i * VL_B16), output_rstd, pregLoop);
+            }
+        }
+    }
+
+    /* global memory address */
+    GlobalTensor<T> xGm_;
+    GlobalTensor<U> betaGm_;
+    GlobalTensor<U> gammaGm_;
+
+    GlobalTensor<T> yGm_;
+    GlobalTensor<M> meanGm_;
+    GlobalTensor<M> rstdGm_;
+
+    /* variable */
+    bool hasGamma_ = true;
+    bool hasBeta_ = true;
+    int64_t elemNum_ = -1;
+
+    /* ascendc variable */
+    TPipe* pipe_ = nullptr;
+    const LayerNormV3TilingDataRegBaseNormNotEqualParams* tl_ = nullptr;
+
+    TQue<QuePosition::VECIN, 1> xQueue_;
+    TQue<QuePosition::VECIN, 1> gammaBetaQueue_;
+
+    TQue<QuePosition::VECOUT, 1> yQueue_;
+    TQue<QuePosition::VECOUT, 1> meanQueue_;
+    TQue<QuePosition::VECOUT, 1> rstdQueue_;
+
+    TBuf<TPosition::VECCALC> tmpBuf;
+    TBuf<TPosition::VECCALC> rstdTmpBuf_;
+
+    LocalTensor<U> gammaBetaInUb_;
+    LocalTensor<float> meanOutUb_;
+    LocalTensor<float> rstdOutUb_;
+};
+} // namespace LayerNormV3
+
+#endif // LAYER_NORM_V3_NORM_NOT_EQUAL_PARAMS_H

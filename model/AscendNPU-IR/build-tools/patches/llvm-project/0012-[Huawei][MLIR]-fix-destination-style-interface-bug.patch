@@ -1,0 +1,41 @@
+diff --git a/mlir/include/mlir/Interfaces/DestinationStyleOpInterface.td b/mlir/include/mlir/Interfaces/DestinationStyleOpInterface.td
+index bc77e688ba46..6455d641b192 100644
+--- a/mlir/include/mlir/Interfaces/DestinationStyleOpInterface.td
++++ b/mlir/include/mlir/Interfaces/DestinationStyleOpInterface.td
+@@ -113,7 +113,24 @@ def DestinationStyleOpInterface : OpInterface<"DestinationStyleOpInterface"> {
+       return ::llvm::to_vector(::llvm::map_range(
+           $_op.getDpsInputOperands(), [](OpOperand *o) { return o->get(); }));
+     }
+-
++  }] #
++#ifdef BSPUB_DAVINCI_BISHENGIR
++  [{
++    /// Return the `i`-th DPS input operand.
++    ::mlir::OpOperand *getDpsInputOperand(int64_t i) {
++      ::mlir::OperandRange range = $_op.getDpsInits();
++      if (range.empty())
++        return &$_op->getOpOperand(i);
++      int64_t firstInitPos = range.getBeginOperandIndex();
++      int64_t numInits = range.size();
++      assert(i >= 0 && i < $_op->getNumOperands() - numInits
++             && "invalid index");
++      return &$_op->getOpOperand(
++          i < firstInitPos ? i : i + numInits);
++    }
++  }]
++#else
++  [{
+     /// Return the `i`-th DPS input operand.
+     ::mlir::OpOperand *getDpsInputOperand(int64_t i) {
+       ::mlir::OperandRange range = $_op.getDpsInits();
+@@ -126,7 +143,9 @@ def DestinationStyleOpInterface : OpInterface<"DestinationStyleOpInterface"> {
+       return &$_op->getOpOperand(
+           i < firstInitPos ? i : i + firstInitPos + numInits);
+     }
+-
++  }]
++#endif
++  # [{
+     /// Return "true" if `opOperand` is an "input".
+     bool isDpsInput(::mlir::OpOperand *opOperand) {
+       assert(opOperand->getOwner() == $_op && "invalid operand");

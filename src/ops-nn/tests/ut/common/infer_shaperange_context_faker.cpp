@@ -1,0 +1,154 @@
+/**
+ * This program is free software, you can redistribute it and/or modify.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE. See LICENSE in the root of
+ * the software repository for the full text of the License.
+ */
+
+#include "infer_shaperange_context_faker.h"
+
+namespace gert {
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::operator=(InferShapeRangeContextFaker&& faker)
+{
+    KernelRunContextHolder::operator=(std::move(faker));
+    return *this;
+}
+
+InferShapeRangeContextFaker::InferShapeRangeContextFaker(InferShapeRangeContextFaker&& faker)
+    : KernelRunContextHolder(std::move(faker))
+{}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::SetOpType(const std::string opType)
+{
+    opType_ = opType;
+    OpInferShapeRangeContextBuilder::OpType(opType.c_str()).OpName(opType.c_str());
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::IrInputNum(size_t inputNum) { return *this; }
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::IrInstanceNum(const std::vector<uint32_t>& instanceNum)
+{
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::NodeIoNum(size_t inputNum, size_t outputNum)
+{
+    OpInferShapeRangeContextBuilder::IONum(inputNum, outputNum);
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::NodeInputTd(int32_t index, ge::DataType dtype,
+                                                                      ge::Format originFormat, ge::Format storageFormat)
+{
+    while (inputMinTensors_.size() <= index) {
+        inputMinTensors_.emplace_back(Tensor());
+    }
+
+    while (inputMaxTensors_.size() <= index) {
+        inputMaxTensors_.emplace_back(Tensor());
+    }
+
+    inputMinTensors_[index].SetDataType(dtype);
+    inputMinTensors_[index].SetOriginFormat(originFormat);
+    inputMinTensors_[index].SetStorageFormat(storageFormat);
+
+    inputMaxTensors_[index].SetDataType(dtype);
+    inputMaxTensors_[index].SetOriginFormat(originFormat);
+    inputMaxTensors_[index].SetStorageFormat(storageFormat);
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::NodeOutputTd(int32_t index, ge::DataType dtype,
+                                                                       ge::Format originFormat,
+                                                                       ge::Format storageFormat)
+{
+    OpInferShapeRangeContextBuilder::OutputTensorDesc(index, dtype, originFormat, storageFormat);
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::InputTensorsRange(
+    const std::vector<Range<Tensor>*>& inputTensors)
+{
+    OpInferShapeRangeContextBuilder::InputTensorsRange(inputTensors);
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::InputShapeRanges(
+    const std::vector<Range<Shape>*>& inputShapeRanges)
+{
+    while (inputMinTensors_.size() < inputShapeRanges.size()) {
+        inputMinTensors_.emplace_back(Tensor());
+        inputMinTensors_.back().SetDataType(ge::DT_FLOAT);
+        inputMinTensors_.back().SetOriginFormat(ge::FORMAT_ND);
+        inputMinTensors_.back().SetStorageFormat(ge::FORMAT_ND);
+    }
+
+    while (inputMaxTensors_.size() < inputShapeRanges.size()) {
+        inputMaxTensors_.emplace_back(Tensor());
+        inputMaxTensors_.back().SetDataType(ge::DT_FLOAT);
+        inputMaxTensors_.back().SetOriginFormat(ge::FORMAT_ND);
+        inputMaxTensors_.back().SetStorageFormat(ge::FORMAT_ND);
+    }
+
+    std::vector<Range<Tensor>*> inputTensorRangePtrs;
+    for (size_t idx = 0; idx < inputShapeRanges.size(); ++idx) {
+        if (inputShapeRanges[idx] != nullptr) {
+            auto minShape = inputShapeRanges[idx]->GetMin();
+            auto maxShape = inputShapeRanges[idx]->GetMax();
+            if (minShape != nullptr && maxShape != nullptr) {
+                inputMinTensors_[idx].MutableStorageShape() = *minShape;
+                inputMinTensors_[idx].MutableOriginShape() = *minShape;
+                inputMaxTensors_[idx].MutableStorageShape() = *maxShape;
+                inputMaxTensors_[idx].MutableOriginShape() = *maxShape;
+            }
+        }
+    }
+
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::OutputShapeRanges(
+    const std::vector<Range<Shape>*>& outputShapeRanges)
+{
+    for (size_t idx = 0; idx < outputShapeRanges.size(); ++idx) {
+        NodeOutputTd(idx, ge::DT_UNDEFINED, ge::FORMAT_ND, ge::FORMAT_ND);
+    }
+    return *this;
+}
+
+InferShapeRangeContextFaker& InferShapeRangeContextFaker::NodeAttrs(
+    const std::vector<std::pair<std::string, Ops::NN::AnyValue>>& attrs)
+{
+    for (auto& attrPair : attrs) {
+        attrPair.second.SetAttr(attrPair.first, *this);
+    }
+
+    return *this;
+}
+
+KernelRunContextHolder InferShapeRangeContextFaker::Build()
+{
+    if (opType_.empty()) {
+        SetOpType("fakeOp");
+    }
+
+    inputTensorRanges_.clear();
+    inputTensorRanges_.reserve(inputMaxTensors_.size());
+    std::vector<Range<Tensor>*> inputTensorRangePtrs;
+    for (size_t idx = 0; idx < inputMaxTensors_.size(); ++idx) {
+        inputTensorRanges_.emplace_back(std::move(Range(&inputMinTensors_[idx], &inputMaxTensors_[idx])));
+        inputTensorRangePtrs.push_back(&(inputTensorRanges_[idx]));
+    }
+
+    InputTensorsRange(inputTensorRangePtrs);
+
+    inferShapeRangeContextHolder_ = std::move(OpInferShapeRangeContextBuilder::Build());
+    SetContext(inferShapeRangeContextHolder_.GetContext());
+    return std::move(*this);
+}
+} // namespace gert

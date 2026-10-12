@@ -1,0 +1,89 @@
+# BatchMatMulV3
+
+## 产品支持情况
+
+| 产品 | 是否支持 |
+| ---- | :----:|
+|Ascend 950PR/Ascend 950DT|√|
+|Atlas A3 训练系列产品/Atlas A3 推理系列产品|√|
+|Atlas A2 训练系列产品/Atlas A2 推理系列产品|√|
+|Atlas 200I/500 A2 推理产品|×|
+|Atlas 推理系列产品|√|
+|Atlas 训练系列产品|√|
+|Kirin X90 处理器系列产品|√|
+|Kirin 9030 处理器系列产品|√|
+
+## 功能说明
+
+- 算子功能：完成带batch的矩阵乘计算。
+- 计算公式：
+
+  $$
+  out = self@mat2 + bias
+  $$
+
+  其中，$self$，$mat2$ 输入维度支持2~6维，最后两维做矩阵乘计算。例如，$self$，$mat2$ 输入维度分别为$(B, M, K)$，$(B, K, N)$ 时，$out$ 维度为 $(B, M, N)$。$bias$ 是维度为$(B, 1, N)$的向量。其中，B为矩阵乘法的batch数，M为第一个张量$self$的行数和输出张量$out$的行数，N为第二个张量$mat2$的列数和输出张量$out$的列数，K为第一个张量$self$的列数和第二个张量$mat2$的行数。
+
+## 参数说明
+
+<table class="tg" style="undefined;table-layout: fixed; width: 885px"><colgroup>
+<col style="width: 83px">
+<col style="width: 126px">
+<col style="width: 302px">
+<col style="width: 226px">
+<col style="width: 148px">
+</colgroup>
+<thead>
+  <tr>
+    <th class="tg-85j1"><span style="font-weight:700;color:var(--theme-text);background-color:var(--theme-table-header-bg)">参数名</span></th>
+    <th class="tg-85j1"><span style="font-weight:700;color:var(--theme-text);background-color:var(--theme-table-header-bg)">输入/输出/属性</span></th>
+    <th class="tg-85j1"><span style="font-weight:700;color:var(--theme-text);background-color:var(--theme-table-header-bg)">描述</span></th>
+    <th class="tg-85j1"><span style="font-weight:700;color:var(--theme-text);background-color:var(--theme-table-header-bg)">数据类型</span></th>
+    <th class="tg-85j1"><span style="font-weight:700;color:var(--theme-text);background-color:var(--theme-table-header-bg)">数据格式</span></th>
+  </tr></thead>
+<tbody>
+  <tr>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">self</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">输入</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">矩阵乘运算中的左矩阵。</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">FLOAT16、BFLOAT16、FLOAT32</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">ND、FRACTAL_NZ</span></td>
+  </tr>
+  <tr>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">mat2</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">输入</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">矩阵乘运算中的右矩阵。</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">FLOAT16、BFLOAT16、FLOAT32</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">ND、FRACTAL_NZ</span></td>
+  </tr>
+  <tr>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">bias</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">输入</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">矩阵乘运算后累加的偏置，对应公式中的bias。</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">FLOAT16、BFLOAT16、FLOAT32</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--theme-table-header-bg)">ND</span></td>
+  </tr>
+  <tr>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">out</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">输出</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">通用矩阵乘运算的计算结果。</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">FLOAT16、BFLOAT16、FLOAT32</span></td>
+    <td class="tg-22a9"><span style="color:var(--theme-aide-text);background-color:var(--devui-base-bg, #ffffff)">ND、FRACTAL_NZ</span></td>
+  </tr>
+</tbody></table>
+
+- Atlas A2 训练系列产品/Atlas A2 推理系列产品、Atlas A3 训练系列产品/Atlas A3 推理系列产品：bias不支持BFLOAT16数据格式。
+- Atlas 推理系列产品：只支持FLOAT16数据格式，输入mat2只支持FRACTAL_NZ格式。
+- Ascend 950PR/Ascend 950DT：只有输入mat2支持FRACTAL_NZ格式。
+- Kirin X90/Kirin 9030 处理器系列产品：不支持BFLOAT16、FLOAT32。
+
+## 约束说明
+
+- 支持空tensor，空tensor场景下不支持bias。
+- 支持连续tensor，[非连续tensor](../../docs/zh/context/non_contiguous_tensor.md)只支持转置场景。
+
+## 调用说明
+
+| 调用方式   | 样例代码           | 说明                                         |
+| ---------------- | --------------------------- | --------------------------------------------------- |
+| aclnn接口  | [test_aclnn_batchmatmul](examples/test_aclnn_batchmatmul.cpp) | 通过<br>[aclnnAddbmm&aclnnInplaceAddbmm](./docs/aclnnAddbmm&aclnnInplaceAddbmm.md)<br>[aclnnBaddbmm&aclnnInplaceBaddbmm](./docs/aclnnBaddbmm&aclnnInplaceBaddbmm.md)<br>[aclnnBatchMatMul](docs/aclnnBatchMatMul.md)<br>[aclnnBatchMatMulWeightNz](docs/aclnnBatchMatMulWeightNz.md)<br>等方式调用BatchMatMulV3算子。 |

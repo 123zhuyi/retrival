@@ -1,0 +1,42 @@
+add_bishengir_dialect_library(MLIRHIVMAVETransforms
+  AVENormalizeOps.cpp
+  ComplexReductionIntermediateLowering.cpp
+  I1opSoftImpl.cpp
+  LegalizeOptHIVMAVE.cpp
+  PLTToPGE.cpp
+  PLTToPLTM.cpp
+  ProcessVsstb.cpp
+  ProcessMembar.cpp
+  OptimizeReductionLoop.cpp
+  ReplaceWithVectorScalar.cpp
+  ScalarBroadcastToVLoad.cpp
+  CombineAVEOPs.cpp
+  HoistVstas.cpp
+  AveLoopOptimize.cpp
+  DuplicateUnitMaskBroadcast.cpp
+
+  ADDITIONAL_HEADER_DIRS
+  ${MLIR_MAIN_INCLUDE_DIR}/bishengir/Dialect/HIVMAVE/Transforms
+
+  DEPENDS
+  MLIRAVETransformsIncGen
+  MLIRAVEIncGen
+  MLIRAVEEnumsIncGen
+  MLIRAVEAttributesIncGen
+  MLIRAVEOpsIncGen
+  MLIRAVETypesIncGen
+  MLIRAVETransformsIncGen
+
+  LINK_LIBS PUBLIC
+  MLIRAVEDialect
+  MLIRArithDialect
+  MLIRArithUtils
+  MLIRDialectUtils
+  BiShengIRHIVMDialect
+  BiShengIRHIVMDialect
+  MLIRIR
+  MLIRTransformDialect
+  MLIRAVECostModelInfo
+  MLIRAVEUtils
+  BiShengIRDialectUtils
+  )

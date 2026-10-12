@@ -1,0 +1,27 @@
+diff --git a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+index 45fddfe52d1d..19c265ce612a 100644
+--- a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
++++ b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+@@ -2633,6 +2633,13 @@ computeCollapsedLayoutMap(MemRefType srcType,
+     }
+     startIdx++;
+   }
++  int64_t endIdx = srcShape.size() - 1;
++  for (auto i : llvm::reverse(srcShape)) {
++    if (i != 1) {
++      break;
++    }
++    endIdx--;
++  }
+ #endif
+ 
+   unsigned resultStrideIndex = resultStrides.size() - 1;
+@@ -2641,7 +2648,7 @@ computeCollapsedLayoutMap(MemRefType srcType,
+     auto stride = SaturatedInteger::wrap(resultStrides[resultStrideIndex--]);
+     for (int64_t idx : llvm::reverse(trailingReassocs)) {
+ #ifdef BSPUB_DAVINCI_BISHENGIR
+-      if (idx - 1 < startIdx) {
++      if (idx < startIdx || idx > endIdx) {
+         // skip the leading one dim
+         continue;
+       }

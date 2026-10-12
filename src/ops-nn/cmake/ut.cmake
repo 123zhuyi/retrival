@@ -1,0 +1,928 @@
+# ----------------------------------------------------------------------------
+# Copyright (c) 2025-2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------
+add_library(gtest ALIAS GTest::gtest)
+function(add_opbase_ut_common)
+    if(TARGET opbase_ut_common)
+        return()
+    endif()
+    add_library(opbase_ut_common STATIC
+        ${PROJECT_SOURCE_DIR}/tests/ut/empty.cpp
+        $<$<TARGET_EXISTS:opbase_util_objs>:$<TARGET_OBJECTS:opbase_util_objs>>
+        $<$<TARGET_EXISTS:opbase_infer_objs>:$<TARGET_OBJECTS:opbase_infer_objs>>
+        $<$<TARGET_EXISTS:opbase_tiling_objs>:$<TARGET_OBJECTS:opbase_tiling_objs>>
+    )
+    target_link_libraries(opbase_ut_common PRIVATE
+        ascendalog
+        unified_dlog
+        tiling_api
+    )
+    target_link_directories(opbase_ut_common PRIVATE ${ASCEND_DIR}/${SYSTEM_PREFIX}/lib64)
+endfunction()
+
+
+function(add_optiling_ut_modules OP_TILING_MODULE_NAME)
+
+    # set variables
+    set(UT_COMMON_INC ${PROJECT_SOURCE_DIR}/tests/ut/common)
+    set(UT_CONV3DV2_TILING_INC ${PROJECT_SOURCE_DIR}/common/inc/op_host
+                               ${PROJECT_SOURCE_DIR}
+                               ${PROJECT_SOURCE_DIR}/common/include)
+    add_opbase_ut_common()
+    # add op tiling ut test cases obj
+    add_library(${OP_TILING_MODULE_NAME}_cases_obj OBJECT)
+    add_dependencies(${OP_TILING_MODULE_NAME}_cases_obj json)
+    target_include_directories(${OP_TILING_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_COMMON_INC}
+        ${UT_CONV3DV2_TILING_INC}
+        ${JSON_INCLUDE}
+        ${GTEST_INCLUDE}
+        ${OPBASE_INC_DIRS}
+        ${PROJECT_SOURCE_DIR}/common/inc
+        ${ASCEND_DIR}/include
+        ${ASCEND_DIR}/pkg_inc
+        ${ASCEND_DIR}/include/external
+        ${ASCEND_DIR}/include/exe_graph
+        ${OP_TILING_INCLUDE}
+        ${ASCEND_DIR}/include/base/context_builder
+        ${OPS_TEST_DIR}/ut/common/utils
+    )
+    target_link_libraries(${OP_TILING_MODULE_NAME}_cases_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        $<BUILD_INTERFACE:dlog_headers>
+        gtest
+    )
+
+    target_compile_options(${OP_TILING_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_DEBUG_FLAG}
+        -fno-access-control
+    )
+
+    target_compile_definitions(${OP_TILING_MODULE_NAME}_cases_obj PRIVATE
+        _GLIBCXX_USE_CXX11_ABI=0
+        LOG_CPP
+    )
+
+    # add op tiling ut static lib
+    add_library(${OP_TILING_MODULE_NAME}_static_lib STATIC
+        $<$<TARGET_EXISTS:${OPHOST_NAME}_tiling_obj>:$<TARGET_OBJECTS:${OPHOST_NAME}_tiling_obj>>
+        $<$<TARGET_EXISTS:${OP_TILING_MODULE_NAME}_common_obj>:$<TARGET_OBJECTS:${OP_TILING_MODULE_NAME}_common_obj>>
+    )
+    target_link_libraries(${OP_TILING_MODULE_NAME}_static_lib PRIVATE
+        ${OP_TILING_MODULE_NAME}_common_obj
+        ${OP_TILING_MODULE_NAME}_cases_obj
+        opbase_ut_common
+    )
+endfunction()
+
+function(add_infershape_ut_modules OP_INFERSHAPE_MODULE_NAME)
+    # set variables
+    set(UT_COMMON_INC ${PROJECT_SOURCE_DIR}/tests/ut/common)
+    add_opbase_ut_common()
+    # add op tiling ut test cases obj
+    add_library(${OP_INFERSHAPE_MODULE_NAME}_cases_obj OBJECT)
+    add_dependencies(${OP_INFERSHAPE_MODULE_NAME}_cases_obj json)
+    target_include_directories(${OP_INFERSHAPE_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_COMMON_INC}
+        ${JSON_INCLUDE}
+        ${GTEST_INCLUDE}
+        ${OPBASE_INC_DIRS}
+        ${PROJECT_SOURCE_DIR}/common/inc
+        ${ASCEND_DIR}/include
+        ${ASCEND_DIR}/pkg_inc
+        ${ASCEND_DIR}/include/external
+        ${ASCEND_DIR}/include/exe_graph
+        ${ASCEND_DIR}/include/base/context_builder
+    )
+    target_link_libraries(${OP_INFERSHAPE_MODULE_NAME}_cases_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        $<BUILD_INTERFACE:dlog_headers>
+        metadef
+        graph
+        gtest
+    )
+
+    target_compile_options(${OP_INFERSHAPE_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_DEBUG_FLAG}
+        -fno-access-control
+    )
+
+    target_compile_definitions(${OP_INFERSHAPE_MODULE_NAME}_cases_obj PRIVATE
+        _GLIBCXX_USE_CXX11_ABI=0
+        LOG_CPP
+    )
+
+    # add infershape ut static lib
+    add_library(${OP_INFERSHAPE_MODULE_NAME}_static_lib STATIC
+        $<$<TARGET_EXISTS:${OPHOST_NAME}_infer_obj>:$<TARGET_OBJECTS:${OPHOST_NAME}_infer_obj>>
+        $<$<TARGET_EXISTS:${OP_INFERSHAPE_MODULE_NAME}_common_obj>:$<TARGET_OBJECTS:${OP_INFERSHAPE_MODULE_NAME}_common_obj>>
+    )
+    target_link_libraries(${OP_INFERSHAPE_MODULE_NAME}_static_lib PRIVATE
+        ${OP_INFERSHAPE_MODULE_NAME}_common_obj
+        ${OP_INFERSHAPE_MODULE_NAME}_cases_obj
+        opbase_ut_common
+    )
+endfunction()
+
+function(add_framework_ut_modules OP_FRAMEWORK_MODULE_NAME)
+    # 与 tiling/infershape UT 模块逻辑类似：ONNX 插件（framework）解析逻辑属 host 侧，
+    # 用例按算子拆分存放于各算子 tests/ut/framework 目录下，统一汇入 op_host UT 可执行文件。
+    set(UT_COMMON_INC ${PROJECT_SOURCE_DIR}/tests/ut/common)
+    add_opbase_ut_common()
+    # add framework (onnx plugin) ut test cases obj
+    # 零源兜底由 add_modules_ut_sources 的 framework 分支 if(OPFRAMEWORK_FILTERED_SRC) 守卫保证（对齐 tiling/infershape）
+    add_library(${OP_FRAMEWORK_MODULE_NAME}_cases_obj OBJECT)
+    add_dependencies(${OP_FRAMEWORK_MODULE_NAME}_cases_obj json)
+    target_include_directories(${OP_FRAMEWORK_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_COMMON_INC}
+        ${ONNX_PLUGIN_INCLUDE}
+        ${JSON_INCLUDE}
+        ${GTEST_INCLUDE}
+        ${OPBASE_INC_DIRS}
+        ${PROJECT_SOURCE_DIR}/common/inc
+        ${ASCEND_DIR}/include
+        ${ASCEND_DIR}/pkg_inc
+        ${ASCEND_DIR}/include/external
+        ${ASCEND_DIR}/include/exe_graph
+        ${ASCEND_DIR}/include/base/context_builder
+    )
+    target_link_libraries(${OP_FRAMEWORK_MODULE_NAME}_cases_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        $<BUILD_INTERFACE:dlog_headers>
+        metadef
+        graph
+        gtest
+    )
+
+    target_compile_options(${OP_FRAMEWORK_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_DEBUG_FLAG}
+        -fno-access-control
+        -Dgoogle=ascend_private
+    )
+
+    target_compile_definitions(${OP_FRAMEWORK_MODULE_NAME}_cases_obj PRIVATE
+        _GLIBCXX_USE_CXX11_ABI=0
+        LOG_CPP
+    )
+
+    # add framework ut static lib
+    add_library(${OP_FRAMEWORK_MODULE_NAME}_static_lib STATIC
+        $<TARGET_OBJECTS:${OP_FRAMEWORK_MODULE_NAME}_cases_obj>
+    )
+    target_link_libraries(${OP_FRAMEWORK_MODULE_NAME}_static_lib PRIVATE
+        ${OP_FRAMEWORK_MODULE_NAME}_cases_obj
+        opbase_ut_common
+    )
+endfunction()
+
+function(add_opapi_ut_modules OP_API_MODULE_NAME)
+    ## add opapi ut L2 obj
+    add_library(${OP_API_MODULE_NAME}_cases_obj OBJECT)
+    add_dependencies(${OP_API_MODULE_NAME}_cases_obj json)
+    target_sources(${OP_API_MODULE_NAME}_cases_obj PRIVATE
+                    ${UT_PATH}/op_api/stub/opdev/platform.cpp
+                    ${UT_PATH}/op_api/stub/opdev/op_executor.cpp
+                    )
+    target_include_directories(${OP_API_MODULE_NAME}_cases_obj PRIVATE
+            ${JSON_INCLUDE}
+            ${OPS_NN_COMMON_INC}
+            ${OP_API_UT_COMMON_INC}
+            ${UT_PATH}/op_api/stub
+            ${ASCEND_DIR}/include
+            ${ASCEND_DIR}/pkg_inc
+            ${ASCEND_DIR}/include/aclnn
+            ${ASCEND_DIR}/include/aclnnop
+            ${OPAPI_INCLUDE}
+            )
+    target_link_libraries(${OP_API_MODULE_NAME}_cases_obj PRIVATE
+            $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+            $<BUILD_INTERFACE:dlog_headers>
+            gtest
+            )
+    target_compile_options(${OP_API_MODULE_NAME}_cases_obj PRIVATE
+            ${UT_DEBUG_FLAG}
+            -fno-access-control
+            )
+endfunction()
+
+function(add_opkernel_ut_modules OP_KERNEL_MODULE_NAME)
+    # set variables
+    set(UT_COMMON_INC ${CMAKE_CURRENT_SOURCE_DIR}/../common CACHE STRING "ut common include path" FORCE)
+    set(UT_KERNEL_INC ${PROJECT_SOURCE_DIR}/tests/ut/op_kernel CACHE STRING "ut kernel include path" FORCE)
+
+    ## add opkernel ut common object: nn_op_kernel_ut_common_obj
+    add_library(${OP_KERNEL_MODULE_NAME}_common_obj OBJECT)
+    add_dependencies(${OP_KERNEL_MODULE_NAME}_common_obj json)
+    file(GLOB OP_KERNEL_UT_COMMON_SRC
+        ${UT_COMMON_INC}/test_cube_util.cpp
+        ${UT_KERNEL_INC}/data_utils.cpp
+        ${UT_KERNEL_INC}/kernel_ut_data_helper.cpp
+        ${UT_KERNEL_INC}/kernel_ut_data_executor.cpp
+    )
+    target_sources(${OP_KERNEL_MODULE_NAME}_common_obj PRIVATE
+        ${OP_KERNEL_UT_COMMON_SRC}
+    )
+    target_include_directories(${OP_KERNEL_MODULE_NAME}_common_obj PRIVATE
+        ${JSON_INCLUDE}
+        ${GTEST_INCLUDE}
+        ${ASCEND_DIR}/include/base/context_builder
+        ${UT_KERNEL_INC}
+    )
+    target_link_libraries(${OP_KERNEL_MODULE_NAME}_common_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        gtest
+        c_sec
+    )
+
+    foreach(socVersion ${fastOpTestSocVersions})
+        ## add op kernel ut cases dynamic lib: libnn_op_kernel_ut_${socVersion}_cases.so
+        add_library(${OP_KERNEL_MODULE_NAME}_${socVersion}_cases SHARED
+            $<TARGET_OBJECTS:${OP_KERNEL_MODULE_NAME}_common_obj>
+            )
+        target_link_libraries(${OP_KERNEL_MODULE_NAME}_${socVersion}_cases PRIVATE
+            $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+            ${OP_KERNEL_MODULE_NAME}_common_obj
+            $<$<BOOL:${ENABLE_COVERAGE}>:gcov>
+        )
+    endforeach()
+endfunction()
+
+function(add_op_graph_ut_modules OP_GRAPH_MODULE_NAME)
+    # set variables
+    set(UT_COMMON_INC ${PROJECT_SOURCE_DIR}/tests/ut/common)
+
+    if(TARGET ${GRAPH_PLUGIN_NAME}_obj)
+        add_dependencies(${GRAPH_PLUGIN_NAME}_obj build_es_math build_es_nn)
+        target_link_libraries(${GRAPH_PLUGIN_NAME}_obj PRIVATE es_math es_nn)
+    endif()
+
+    # add op graph ut test cases obj
+    add_library(${OP_GRAPH_MODULE_NAME}_cases_obj OBJECT)
+
+    target_include_directories(${OP_GRAPH_MODULE_NAME}_cases_obj PRIVATE
+        ${UT_COMMON_INC}
+        ${JSON_INCLUDE}
+        ${GTEST_INCLUDE}
+        ${OPBASE_INC_DIRS}
+        ${PROJECT_SOURCE_DIR}/common/inc/op_graph
+        ${PROJECT_SOURCE_DIR}/common/inc
+        ${ASCEND_DIR}/include
+        ${ASCEND_DIR}/include/external
+        ${ASCEND_DIR}/include/exe_graph
+        ${ASCEND_DIR}/include/base/context_builder
+        ${ASCEND_DIR}/include/ge/
+        ${CMAKE_BINARY_DIR}/es_packages/include/es_math/
+        ${CMAKE_BINARY_DIR}/es_packages/include/es_nn/
+    )
+    target_link_libraries(${OP_GRAPH_MODULE_NAME}_cases_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        $<BUILD_INTERFACE:dlog_headers>
+        -Wl,--no-as-needed
+        metadef
+        graph
+        gtest
+        register
+        ge_compiler
+        ascendalog
+ 	    unified_dlog
+    )
+
+    target_compile_options(${OP_GRAPH_MODULE_NAME}_cases_obj PRIVATE
+            ${UT_DEBUG_FLAG}
+            -fno-access-control
+    )
+
+    # add infershape ut static lib
+    add_library(${OP_GRAPH_MODULE_NAME}_static_lib STATIC)
+    target_link_libraries(${OP_GRAPH_MODULE_NAME}_static_lib PRIVATE
+            ${OP_GRAPH_MODULE_NAME}_cases_obj
+            ${GRAPH_PLUGIN_NAME}_obj
+            ${CUBE_UTILS_PLUGIN_NAME}_obj
+            es_math
+            es_nn
+    )
+    add_dependencies(${OP_GRAPH_MODULE_NAME}_static_lib build_es_math build_es_nn)
+    target_link_libraries(${OP_GRAPH_MODULE_NAME}_static_lib PRIVATE es_math es_nn)
+endfunction()
+
+if(UT_TEST_ALL OR OP_KERNEL_AICPU_UT)
+  set(AICPU_OP_KERNEL_MODULE_NAME ${PKG_NAME}_aicpu_op_kernel_ut CACHE STRING "aicpu_op_kernel ut module name" FORCE)
+  message("******************* AICPU_OP_KERNEL_MODULE_NAME is ${AICPU_OP_KERNEL_MODULE_NAME}" )
+  function(add_aicpu_opkernel_ut_modules AICPU_OP_KERNEL_MODULE_NAME)
+    ## add opkernel ut common object: nn_aicpu_op_kernel_ut_common_obj
+    add_library(${AICPU_OP_KERNEL_MODULE_NAME}_common_obj OBJECT)
+    file(GLOB OP_KERNEL_UT_COMMON_SRC
+        ./stub/*.cpp
+    )
+    file(GLOB OP_KERNEL_AICPU_UT_UTILS_SRC
+        utils/*.cpp
+    )
+    target_sources(${AICPU_OP_KERNEL_MODULE_NAME}_common_obj PRIVATE ${OP_KERNEL_UT_COMMON_SRC})
+    target_include_directories(${AICPU_OP_KERNEL_MODULE_NAME}_common_obj PRIVATE
+        ${GTEST_INCLUDE}
+    )
+    target_compile_definitions(${AICPU_OP_KERNEL_MODULE_NAME}_common_obj PRIVATE _GLIBCXX_USE_CXX11_ABI=1)
+    target_link_libraries(${AICPU_OP_KERNEL_MODULE_NAME}_common_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        gtest
+        c_sec
+        Eigen3::Eigen
+    )
+
+    ## add opkernel ut cases object: nn_aicpu_op_kernel_ut_cases_obj
+    if(NOT TARGET ${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj)
+        add_library(${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj OBJECT ${UT_PATH}/empty.cpp)
+    endif()
+    target_link_libraries(${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj PRIVATE $<$<BOOL:${ENABLE_COVERAGE}>:gcov> -ldl)
+    target_sources(${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj PRIVATE ${OP_KERNEL_AICPU_UT_UTILS_SRC})
+
+    ## add opkernel ut cases shared lib: libnn_aicpu_op_kernel_ut_cases.so
+    add_library(${AICPU_OP_KERNEL_MODULE_NAME}_cases SHARED
+        $<TARGET_OBJECTS:${AICPU_OP_KERNEL_MODULE_NAME}_common_obj>
+        $<TARGET_OBJECTS:${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj>
+    )
+    message(STATUS ">>>> ut.cmake Defined targets: ${AICPU_OP_KERNEL_MODULE_NAME}_cases, ${ASCEND_DIR}")
+
+    # 链接静态库时使用 whole-archive，保证 RegistCpuKernel 被拉入
+    target_link_libraries(${AICPU_OP_KERNEL_MODULE_NAME}_cases PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+        gtest
+        c_sec
+        -ldl
+        -Wl,--whole-archive
+            ${ASCEND_DIR}/lib64/libaicpu_context_host.a
+            ${ASCEND_DIR}/lib64/libaicpu_nodedef_host.a
+            ${ASCEND_DIR}/lib64/libhost_ascend_protobuf.a
+        -Wl,--no-whole-archive
+        -Wl,-Bsymbolic
+        -Wl,--exclude-libs=libhost_ascend_protobuf.a
+        Eigen3::Eigen
+        ${AICPU_OP_KERNEL_MODULE_NAME}_common_obj
+        ${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj
+    )
+  endfunction()
+endif()
+
+function(add_modules_llt_sources)
+    add_modules_ut_sources(${ARGN})
+endfunction()
+
+function(add_modules_ut_sources)
+    set(options OPTION_RESERVED)
+    set(oneValueArgs HOSTNAME MODE DIR)
+    set(multiValueArgs MULIT_RESERVED)
+
+    cmake_parse_arguments(MODULE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    message(STATUS "=== Debug<add_modules_ut_sources>: ${MODULE_HOSTNAME} ${MODULE_MODE} ${MODULE_DIR}")
+
+    string(FIND "${MODULE_HOSTNAME}_cases_obj" "tiling" TILING_FOUND_INDEX)
+    if (DEFINED ASCEND_COMPUTE_UNIT)
+ 	    map_compute_unit(${ASCEND_COMPUTE_UNIT} compute_unit_long)
+ 	    get_target_dir(${compute_unit_long} target_dir)
+ 	else()
+ 	    set(target_dir "")
+ 	endif()
+    if("${target_dir}" STREQUAL "")
+        file(GLOB OPHOST_TILING_SRCS ${MODULE_DIR}/test_*_tiling.cpp)
+    else()
+        file(GLOB OPHOST_TILING_SRCS ${MODULE_DIR}/test_*_tiling.cpp ${MODULE_DIR}/${target_dir}/test_*_tiling.cpp)
+    endif()
+    if(${TILING_FOUND_INDEX} GREATER_EQUAL 0 AND OPHOST_TILING_SRCS)
+        if (NOT TARGET ${MODULE_HOSTNAME}_cases_obj)
+            add_optiling_ut_modules(${OP_TILING_MODULE_NAME})
+        endif()
+        target_sources(${MODULE_HOSTNAME}_cases_obj ${MODULE_MODE} ${OPHOST_TILING_SRCS})
+        message(STATUS "=== Debug<add_modules_ut_sources>: ${MODULE_HOSTNAME}_cases_obj ${OPHOST_TILING_SRCS}")
+    endif()
+
+    string(FIND "${MODULE_HOSTNAME}_cases_obj" "infershape" INFERSHAPE_FOUND_INDEX)
+    if("${target_dir}" STREQUAL "")
+        file(GLOB OPHOST_INFERSHAPE_SRCS ${MODULE_DIR}/test_*_infershape.cpp)
+    else()
+        file(GLOB OPHOST_INFERSHAPE_SRCS ${MODULE_DIR}/test_*_infershape.cpp ${MODULE_DIR}/${target_dir}/test_*_infershape.cpp)
+    endif()
+    if(${INFERSHAPE_FOUND_INDEX} GREATER_EQUAL 0 AND OPHOST_INFERSHAPE_SRCS)
+        if (NOT TARGET ${MODULE_HOSTNAME}_cases_obj)
+            add_infershape_ut_modules(${OP_INFERSHAPE_MODULE_NAME})
+        endif()
+        target_sources(${MODULE_HOSTNAME}_cases_obj ${MODULE_MODE} ${OPHOST_INFERSHAPE_SRCS})
+        message(STATUS "=== Debug<add_modules_ut_sources>: ${MODULE_HOSTNAME}_cases_obj ${OPHOST_INFERSHAPE_SRCS}")
+    endif()
+
+    string(FIND "${MODULE_HOSTNAME}_cases_obj" "op_api" OPAPI_FOUND_INDEX)
+    if(${OPAPI_FOUND_INDEX} GREATER_EQUAL 0)
+        if("${target_dir}" STREQUAL "")
+            file(GLOB OPHOST_OPAPI_SRCS ${MODULE_DIR}/test_aclnn_*.cpp)
+        else()
+            file(GLOB OPHOST_OPAPI_SRCS ${MODULE_DIR}/test_aclnn_*.cpp ${MODULE_DIR}/${target_dir}/test_aclnn_*.cpp)
+        endif()
+        if (NOT TARGET ${MODULE_HOSTNAME}_cases_obj)
+            add_opapi_ut_modules(${OP_API_MODULE_NAME})
+        endif()
+        target_sources(${MODULE_HOSTNAME}_cases_obj ${MODULE_MODE} ${OPHOST_OPAPI_SRCS})
+        message(STATUS "=== Debug<add_modules_ut_sources>: ${MODULE_HOSTNAME}_cases_obj ${OPHOST_OPAPI_SRCS}")
+    endif()
+
+    string(FIND "${MODULE_HOSTNAME}_cases_obj" "op_graph" OPGRAPH_FOUND_INDEX)
+    if(${OPGRAPH_FOUND_INDEX} GREATER_EQUAL 0)
+        file(GLOB OPHOST_OPGRAPH_SRCS ${MODULE_DIR}/test_*_pass.cpp)
+        if (NOT TARGET ${MODULE_HOSTNAME}_cases_obj)
+            add_op_graph_ut_modules(${OP_GRAPH_MODULE_NAME})
+        endif()
+        target_sources(${MODULE_HOSTNAME}_cases_obj ${MODULE_MODE} ${OPHOST_OPGRAPH_SRCS})
+        message(STATUS "=== Debug<add_modules_ut_sources>: ${MODULE_HOSTNAME}_cases_obj ${OPHOST_OPGRAPH_SRCS}")
+    endif()
+
+    string(FIND "${MODULE_HOSTNAME}_cases_obj" "framework" FRAMEWORK_FOUND_INDEX)
+    if(${FRAMEWORK_FOUND_INDEX} GREATER_EQUAL 0)
+        file(GLOB OPHOST_FRAMEWORK_SRCS ${MODULE_DIR}/test_*_onnx_plugin.cpp)
+        # common 集中目录多算子共目录：--ops 模式按文件名逐文件过滤，仅留命中算子的用例；全量模式全收
+        set(OPFRAMEWORK_FILTERED_SRC "")
+        foreach(_src ${OPHOST_FRAMEWORK_SRCS})
+            get_filename_component(_src_name ${_src} NAME_WE)
+            string(REGEX REPLACE "^test_(.*)_onnx_plugin$" "\\1" _op_name "${_src_name}")
+            if(NOT "${ASCEND_OP_NAME}" STREQUAL "" AND (NOT _op_name IN_LIST ASCEND_OP_NAME))
+                continue()
+            endif()
+            list(APPEND OPFRAMEWORK_FILTERED_SRC ${_src})
+        endforeach()
+        # 对齐 tiling/infershape 的 `AND <SRCS>` 守卫：过滤后为空则不创建 module，避免 cases_obj 零源报错
+        if(OPFRAMEWORK_FILTERED_SRC)
+            if (NOT TARGET ${MODULE_HOSTNAME}_cases_obj)
+                add_framework_ut_modules(${OP_FRAMEWORK_MODULE_NAME})
+            endif()
+            target_sources(${MODULE_HOSTNAME}_cases_obj ${MODULE_MODE} ${OPFRAMEWORK_FILTERED_SRC})
+            message(STATUS "=== Debug<add_modules_ut_sources>: ${MODULE_HOSTNAME}_cases_obj ${OPFRAMEWORK_FILTERED_SRC}")
+        endif()
+    endif()
+endfunction()
+
+if (UT_TEST_ALL OR OP_KERNEL_UT)
+    set(fastOpTestSocVersions "" CACHE STRING "fastOp Test SocVersions")
+endif()
+
+# supportedSocVersion: ascend310p ascend910B1 ascend950pr_9599 ascend350_355e
+# usage: AddOpTestCase([opName] supportedSocVersion otherCompileOptions [DEPENDENCY_OPS...] [UT_SRC_DIR dir] [MULTI_KERNEL_TARGET])
+#   [opName]            - 算子名称，可缺省；不传时自动从目录推导（优先 OP_DIR 全局变量，其次当前目录三级推导）
+#   supportedSocVersion - 支持的芯片版本，如 "ascend910B1" 或 "ascend950pr_9599"，多个用空格分隔
+#   otherCompileOptions - 编译选项，如 "-DDTYPE_X1=half -DDTYPE_X2=half"
+#   [DEPENDENCY_OPS...] - 可变位置参数：依赖的算子名列表（如 mat_mul_v3 batch_mat_mul_v3），缺省无依赖
+#   [UT_SRC_DIR dir]    - 指定 UT 源码目录，缺省时自适应：tests/ut/op_kernel 内调用取当前目录，否则取 ${CMAKE_CURRENT_SOURCE_DIR}/tests/ut/op_kernel
+#   [MULTI_KERNEL_TARGET] - 标记多 kernel target，使能后 GLOB 仅搜索 target_dir 目录下的用例文件
+function(AddOpTestCase)
+    # opName 可缺省：当 ARGV0 以 "ascend" 开头时认为是 socVersion，opName 自动推导
+    if("${ARGV0}" MATCHES "^ascend")
+        set(opName "")
+        set(_socVersion "${ARGV0}")
+        set(_otherCompileOptions "${ARGV1}")
+        set(_remainingArgs "")
+        math(EXPR _lastIdx "${ARGC} - 1")
+        foreach(_i RANGE 2 ${_lastIdx})
+            list(APPEND _remainingArgs "${ARGV${_i}}")
+        endforeach()
+        if(DEFINED OP_DIR AND NOT "${OP_DIR}" STREQUAL "")
+            get_filename_component(opName "${OP_DIR}" NAME)
+        else()
+            get_filename_component(UT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
+            get_filename_component(TESTS_DIR ${UT_DIR} DIRECTORY)
+            get_filename_component(OP_NAME_DIR ${TESTS_DIR} DIRECTORY)
+            get_filename_component(opName ${OP_NAME_DIR} NAME)
+        endif()
+        set(supportedSocVersion "${_socVersion}")
+        set(otherCompileOptions "${_otherCompileOptions}")
+        set(ARGN "${_remainingArgs}")
+    else()
+        set(opName "${ARGV0}")
+        set(supportedSocVersion "${ARGV1}")
+        set(otherCompileOptions "${ARGV2}")
+        math(EXPR _lastIdx "${ARGC} - 1")
+        set(_remainingArgs "")
+        foreach(_i RANGE 3 ${_lastIdx})
+            list(APPEND _remainingArgs "${ARGV${_i}}")
+        endforeach()
+        set(ARGN "${_remainingArgs}")
+    endif()
+    set(DEPENDENCY_OPS "")
+    set(temp_ops "")
+    set(_ut_src_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+    if(NOT CMAKE_CURRENT_SOURCE_DIR MATCHES "/tests/ut/op_kernel$")
+        set(_ut_src_dir "${CMAKE_CURRENT_SOURCE_DIR}/tests/ut/op_kernel")
+    endif()
+    set(_expect_ut_src_dir FALSE)
+    foreach(arg ${ARGN})
+        if("${arg}" STREQUAL "UT_SRC_DIR")
+            set(_expect_ut_src_dir TRUE)
+        elseif(_expect_ut_src_dir)
+            set(_ut_src_dir "${arg}")
+            set(_expect_ut_src_dir FALSE)
+        elseif("${arg}" STREQUAL "MULTI_KERNEL_TARGET")
+            set(multi_kernel_target "TRUE")
+        else()
+            list(APPEND temp_ops ${arg})
+        endif()
+    endforeach()
+    set(DEPENDENCY_OPS ${temp_ops})
+
+    string(REPLACE "${OPS_NN_DIR}/" "" opCategoryDir ${CMAKE_CURRENT_SOURCE_DIR})
+    string(FIND "${opCategoryDir}" "/" firstSlashPos)
+    string(SUBSTRING "${opCategoryDir}" 0 ${firstSlashPos} opCategory)
+
+    # 优先使用 add_op_subdirectory 设置的全局 OP_DIR/OP_NAME（算子顶层调用），
+    # 缺失时回退原3级目录推导（tests/ut/op_kernel 内调用）
+    if(DEFINED OP_DIR AND NOT "${OP_DIR}" STREQUAL "")
+        set(OP_NAME_DIR ${OP_DIR})
+    else()
+        get_filename_component(UT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
+        get_filename_component(TESTS_DIR ${UT_DIR} DIRECTORY)
+        get_filename_component(OP_NAME_DIR ${TESTS_DIR} DIRECTORY)
+    endif()
+    get_filename_component(OP_NAME ${OP_NAME_DIR} NAME)
+    list(FIND ASCEND_OP_NAME ${OP_NAME} INDEX)
+    ## if "--ops" is not NULL, opName not include, jump over. if "--ops" is NULL, include all.
+    if(NOT "${ASCEND_OP_NAME}" STREQUAL "" AND INDEX EQUAL -1)
+        return()
+    endif()
+
+    set(COMPILED_OPS_UT "${opName}")
+    set(COMPILED_OP_DIRS_UT ${OP_NAME_DIR})
+    if(DEPENDENCY_OPS)
+        foreach(depOp ${DEPENDENCY_OPS})
+            list(APPEND COMPILED_OPS_UT ${depOp})
+            get_filename_component(DEP_OP_NAME_DIR ${OP_NAME_DIR}/../${depOp} ABSOLUTE)
+            list(APPEND COMPILED_OP_DIRS_UT ${DEP_OP_NAME_DIR})
+        endforeach()
+    endif()
+    set(COMPILED_OPS_UT "${COMPILED_OPS_UT}" CACHE STRING "Compiled Ops" FORCE)
+
+    set(KERNEL_COPY_TARGET "ascendc_kernel_ut_src_copy_${opName}")
+    set(KERNEL_COMMON_COPY_TARGET "ascendc_kernel_ut_common_src_copy")
+    # 公共源码拷贝目标全局唯一，避免并行构建时多算子重复拷贝同一目录产生竞争
+    if(NOT TARGET ${KERNEL_COMMON_COPY_TARGET})
+        add_custom_target(${KERNEL_COMMON_COPY_TARGET}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tbe/ascendc/common/cmct
+            COMMAND cp -r ${PROJECT_SOURCE_DIR}/matmul/common/cmct/* ${CMAKE_BINARY_DIR}/tbe/ascendc/common/cmct
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tbe/ascendc/common/blaze
+            COMMAND cp -r ${BLAZE}/* ${CMAKE_BINARY_DIR}/tbe/ascendc/common/blaze
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${TENSOR_API}/impl/tensor_api ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api/impl/tensor_api
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${TENSOR_API}/include/tensor_api ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api/include/tensor_api
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${TENSOR_API}/impl/c_api ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api/impl/c_api
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${TENSOR_API}/include/c_api ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api/include/c_api
+            COMMAND cp -r ${PROJECT_SOURCE_DIR}/conv/common/op_kernel/* ${CMAKE_BINARY_DIR}/tbe/ascendc/common
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/pooling/pool_utils/op_kernel ${CMAKE_BINARY_DIR}/tbe/ascendc/common/pool_utils
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tbe/ascendc/inc
+            COMMAND cp -r ${PROJECT_SOURCE_DIR}/common/inc/op_kernel/* ${CMAKE_BINARY_DIR}/tbe/ascendc/inc
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tbe/ascendc/pool_3d_common
+            COMMAND cp -r ${PROJECT_SOURCE_DIR}/pooling/pool_3d_common/op_kernel/* ${CMAKE_BINARY_DIR}/tbe/ascendc/pool_3d_common
+        )
+    endif()
+    if(NOT TARGET ${KERNEL_COPY_TARGET})
+        kernel_src_copy(
+            TARGET ${KERNEL_COPY_TARGET}
+            OP_LIST ${COMPILED_OPS_UT}
+            IMPL_DIR ${COMPILED_OP_DIRS_UT}
+            DST_DIR ${ASCEND_KERNEL_SRC_DST}
+        )
+        add_dependencies(${KERNEL_COPY_TARGET} ${KERNEL_COMMON_COPY_TARGET})
+    endif()
+
+    ## get/standardize opType
+    set(opType "")
+    file(GLOB jsonFiles "${PROJECT_SOURCE_DIR}/*/${opName}/op_host/config/*/${opName}_binary.json")
+    list(LENGTH jsonFiles numFiles)
+    if(numFiles EQUAL 0)
+        string(REPLACE "_" ";" opTypeTemp "${opName}")
+        foreach(word IN LISTS opTypeTemp)
+            string(SUBSTRING "${word}" 0 1 firstLetter)
+            string(SUBSTRING "${word}" 1 -1 restOfWord)
+            string(TOUPPER "${firstLetter}" firstLetter)
+            string(TOLOWER "${restOfWord}" restOfWord)
+            set(opType "${opType}${firstLetter}${restOfWord}")
+        endforeach()
+    endif()
+    if(NOT numFiles EQUAL 0)
+        foreach(jsonFile ${jsonFiles})
+            get_op_type_from_binary_json(${jsonFile} resultVar)
+            set(opType ${resultVar})
+            message(STATUS "Current file opType: ${opType}")
+        endforeach()
+    endif()
+
+    set(kernel_dependency_files ${ASCEND_KERNEL_SRC_DST}/${opName})
+
+    if (NOT TARGET pre_op_kernel_ut)
+        add_custom_target(pre_op_kernel_ut)
+    endif()
+
+    foreach(oriSocVersion ${supportedSocVersion})
+        ## standardize socVersion
+        string(REPLACE "ascend" "Ascend" socVersion "${oriSocVersion}")
+        string(TOLOWER ${oriSocVersion} lowerSocVersion)
+        set(socMatch OFF)
+        foreach(compute_unit ${ASCEND_COMPUTE_UNIT})
+            map_compute_unit(${compute_unit} compute_unit_long)
+            if (${compute_unit_long} STREQUAL ${lowerSocVersion} OR ${compute_unit} STREQUAL ${lowerSocVersion})
+                set(socMatch ON)
+
+                set(opsInfo ${CMAKE_BINARY_DIR}/tbe/op_info_cfg/ai_core/${compute_unit}/aic-${compute_unit}-info.json)
+                if (EXISTS ${opsInfo})
+                    execute_process(
+                        COMMAND
+                        ${ASCEND_PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/util/get_opfile_from_opsinfo.py
+                        ${opsInfo} ${opType}
+                        RESULT_VARIABLE EXEC_RESULT
+                        OUTPUT_VARIABLE TEMP
+                        ERROR_VARIABLE EXEC_ERROR
+                    )
+
+                    string(REGEX REPLACE "\n" "" kernel_cpp_name "${TEMP}")
+                    message(STATUS "get_opfile_from_opsinfo kernel_cpp_name is ${kernel_cpp_name}")
+                else()
+                    gen_aclnn_with_opdef()
+
+                    merge_ini_files(TARGET merge_ini_${compute_unit}_${opName}
+                        OPS_INFO_DIR ${ASCEND_AUTOGEN_PATH}
+                        COMPUTE_UNIT ${compute_unit}
+                    )
+
+                    add_ops_info_target_v1(
+                        TARGET ops_info_gen_${lowerSocVersion}_${opName}
+                        OUTPUT ${opsInfo}
+                        OPS_INFO_DIR ${ASCEND_AUTOGEN_PATH}
+                        COMPUTE_UNIT ${compute_unit}
+                        INSTALL_DIR ${OPS_INFO_INSTALL_DIR}/${compute_unit}
+                    )
+                    add_dependencies(ops_info_gen_${lowerSocVersion}_${opName} merge_ini_${compute_unit}_${opName})
+
+                    add_dependencies(pre_op_kernel_ut ops_info_gen_${lowerSocVersion}_${opName})
+                endif()
+                break()
+            endif()
+        endforeach()
+        if (NOT ${socMatch})
+            continue()
+        endif()
+
+        ## add tiling tmp so: ${opName}_${socVersion}_tiling_tmp.so
+        add_library(${opName}_${socVersion}_tiling_tmp SHARED)
+        add_dependencies(${opName}_${socVersion}_tiling_tmp json)
+        target_include_directories(${opName}_${socVersion}_tiling_tmp PRIVATE
+                ${OPBASE_INC_DIRS}
+                ${OP_TILING_INCLUDE}
+                ${PROJECT_SOURCE_DIR}/common/inc
+                ${ASCEND_DIR}/${SYSTEM_PREFIX}/include
+                ${JSON_INCLUDE}
+                )
+        target_sources(${opName}_${socVersion}_tiling_tmp PUBLIC
+            $<TARGET_OBJECTS:${OPHOST_NAME}_tiling_obj>
+            $<$<TARGET_EXISTS:opbase_util_objs>:$<TARGET_OBJECTS:opbase_util_objs>>
+            $<$<TARGET_EXISTS:opbase_tiling_objs>:$<TARGET_OBJECTS:opbase_tiling_objs>>
+            # 只要尝试跑ophost ut，legacy_common_manager.cpp就不会编译到tiling obj里，此时需要把打桩代码编译进去
+            $<$<OR:$<BOOL:${UT_TEST_ALL}>,$<BOOL:${OP_HOST_UT}>>:${OPS_NN_DIR}/tests/ut/common/legacy_common_manager_stub.cpp>
+        )
+
+        target_compile_definitions(${opName}_${socVersion}_tiling_tmp PRIVATE
+                LOG_CPP
+                _GLIBCXX_USE_CXX11_ABI=0
+                ASCEND_COMPUTE_UNIT="${ASCEND_COMPUTE_UNIT}"
+                )
+        target_link_libraries(${opName}_${socVersion}_tiling_tmp PRIVATE
+                $<BUILD_INTERFACE:dlog_headers>
+                -Wl,--whole-archive
+                    tiling_api
+                -Wl,--no-whole-archive
+                $<$<BOOL:${ENABLE_COVERAGE}>:gcov>
+                metadef
+                register
+                opp_registry
+                -Wl,--no-as-needed
+                acl_rt
+                -Wl,--as-needed
+                )
+        target_link_directories(${opName}_${socVersion}_tiling_tmp PRIVATE ${ASCEND_DIR}/${SYSTEM_PREFIX}/lib64)
+
+        ## gen ascendc tiling head files
+        set(tilingFile ${CMAKE_CURRENT_BINARY_DIR}/${opName}_tiling_data.h)
+        set(foreachTilingFile ${OPS_NN_DIR}/foreach/foreach_abs/tests/ut/op_kernel/foreach_abs_tiling_def.h)
+        if(EXISTS "${_ut_src_dir}/${opName}_tiling_def.h")
+            set(compileOptions -include "${_ut_src_dir}/${opName}_tiling_def.h")
+        else()
+            if(${opCategory} STREQUAL "foreach")
+                set(compileOptions -include ${foreachTilingFile})
+            else()
+                set(compileOptions -include ${tilingFile})
+                if(NOT EXISTS ${tilingFile})
+                    set(gen_tiling_head_file ${OPS_NN_DIR}/tests/ut/op_kernel/scripts/gen_tiling_head_file.sh)
+                    set(gen_tiling_so_path ${CMAKE_CURRENT_BINARY_DIR}/lib${opName}_${socVersion}_tiling_tmp.so)
+                    set(gen_tiling_head_tag ${opName}_${socVersion}_gen_head)
+                    set(gen_cmd "bash ${gen_tiling_head_file} ${opType} ${opName} ${gen_tiling_so_path} ${CUSTOM_TILING_DATA_KEYS}")
+                    message("gen tiling head file to ${tilingFile}, command:")
+                    message("${gen_cmd}")
+                    add_custom_command(OUTPUT ${tilingFile}
+                        COMMAND rm -f ${tilingFile}
+                        COMMAND bash -c ${gen_cmd}
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                        DEPENDS ${opName}_${socVersion}_tiling_tmp
+                    )
+                    add_custom_target(${gen_tiling_head_tag} ALL
+                        DEPENDS ${tilingFile}
+                    )
+                endif()
+
+            endif()
+        endif()
+        set(CUSTOM_TILING_DATA_KEYS "")
+        string(REGEX MATCH "-DUT_CUSTOM_TILING_DATA_KEYS=([^ ]+)" matchedPart "${otherCompileOptions}")
+        if(CMAKE_MATCH_1)
+            set(CUSTOM_TILING_DATA_KEYS ${CMAKE_MATCH_1})
+            string(REGEX REPLACE "-DUT_CUSTOM_TILING_DATA_KEYS=[^ ]+" "" modifiedString ${otherCompileOptions})
+            set(otherCompileOptions ${modifiedString})
+        endif()
+        string(REPLACE " " ";" options "${otherCompileOptions}")
+        foreach(option IN LISTS options)
+            set(compileOptions ${compileOptions} ${option})
+        endforeach()
+        message("compileOptions: ${compileOptions}")
+
+        if("${kernel_cpp_name}" STREQUAL "")
+            set(kernel_cpp_name ${opName})
+        endif()
+
+        # 从 CMakeCache.txt 中获取 kernel_src_list，查找对应算子和 socVersion 的 KERNEL_SRC
+        set(kernel_src_from_cmake "")
+        set(cmake_cache_file "${CMAKE_BINARY_DIR}/CMakeCache.txt")
+        if(EXISTS ${cmake_cache_file})
+            file(STRINGS ${cmake_cache_file} kernel_src_line REGEX "^kernel_src_list:INTERNAL=")
+            if(kernel_src_line)
+                # 格式：OpType socVersion kernel_src;...
+                string(REGEX REPLACE "^kernel_src_list:INTERNAL=" "" kernel_src_values "${kernel_src_line}")
+                string(REPLACE "\\;" ";" kernel_src_values "${kernel_src_values}")
+                foreach(item IN LISTS kernel_src_values)
+                    string(REGEX MATCH "^${opType} ${ASCEND_COMPUTE_UNIT} (.+)" matched "${item}")
+                    if(matched AND CMAKE_MATCH_1)
+                        set(kernel_src_from_cmake "${CMAKE_MATCH_1}")
+                        message(STATUS "Found kernel_src from CMakeCache for ${opType} ${ASCEND_COMPUTE_UNIT}: ${kernel_src_from_cmake}")
+                        break()
+                    endif()
+                endforeach()
+            endif()
+        endif()
+
+        # 设置 kernel 文件路径
+        if(kernel_src_from_cmake AND NOT kernel_src_from_cmake STREQUAL "")
+            string(REGEX REPLACE "\\.cpp$" "" kernel_src_base "${kernel_src_from_cmake}")
+            set(kernelFile ${ASCEND_KERNEL_SRC_DST}/${opName}/${kernel_src_base}.cpp)
+        else()
+            set(kernelFile ${ASCEND_KERNEL_SRC_DST}/${opName}/${kernel_cpp_name}.cpp)
+        endif()
+        set_source_files_properties(${kernelFile} PROPERTIES GENERATED TRUE)
+
+        set(testCaseFileName "test_${kernel_cpp_name}")
+
+        ## add object: ${opName}_${socVersion}_cases_obj
+        get_target_dir(${lowerSocVersion} target_dir)
+        if(target_dir STREQUAL "")
+            file(GLOB OPKERNEL_CASES_SRC ${_ut_src_dir}/${testCaseFileName}*.cpp)
+        else()
+            if(NOT DEFINED multi_kernel_target)
+                file(GLOB OPKERNEL_CASES_SRC ${_ut_src_dir}/${testCaseFileName}*.cpp ${_ut_src_dir}/${target_dir}/${testCaseFileName}*.cpp)
+            else()
+                file(GLOB OPKERNEL_CASES_SRC ${_ut_src_dir}/${target_dir}/${testCaseFileName}*.cpp)
+            endif()
+        endif()
+
+        get_property(LIBSEXIST GLOBAL PROPERTY OPKERNEL_OBJECT_LIBS)
+        if(NOT LIBSEXIST)
+            set_property(GLOBAL PROPERTY OPKERNEL_OBJECT_LIBS "")
+        endif()
+        if(NOT DEFINED multi_kernel_target)
+            add_library(opkernel_${opName} OBJECT ${OPKERNEL_CASES_SRC} ${kernelFile})
+            add_dependencies(opkernel_${opName} ${gen_tiling_head_tag} ${KERNEL_COPY_TARGET})
+            target_compile_options(opkernel_${opName} PRIVATE
+                ${UT_DEBUG_FLAG} ${compileOptions} -DUT_SOC_VERSION="${socVersion}" -DKERNELUT=1
+            )
+            target_link_libraries(opkernel_${opName} PRIVATE
+                $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+                tikicpulib::${oriSocVersion}
+                gtest
+            )
+            target_include_directories(opkernel_${opName} PRIVATE
+                ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api/include
+                ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api
+                ${ASCEND_DIR}/${SYSTEM_PREFIX}/asc/include
+                ${ASCEND_DIR}/include/base/context_builder
+                ${PROJECT_SOURCE_DIR}/tests/ut/op_kernel
+                ${PROJECT_SOURCE_DIR}/tests/ut/common
+                ${PROJECT_SOURCE_DIR}/conv/conv3d_backprop_input_v2/op_kernel
+                ${kernel_dependency_files}
+                ${CMAKE_BINARY_DIR}/tbe/ascendc/
+                ${CMAKE_BINARY_DIR}/tbe/ascendc/common
+                ${OPBASE_INC_DIRS}
+            )
+            set_property(GLOBAL APPEND PROPERTY OPKERNEL_OBJECT_LIBS opkernel_${opName})
+        else()
+            foreach(src_file ${OPKERNEL_CASES_SRC})
+                get_filename_component(src_name ${src_file} NAME_WE)
+                add_library(opkernel_${src_name} OBJECT ${src_file})
+                add_dependencies(opkernel_${src_name} ${gen_tiling_head_tag} ${KERNEL_COPY_TARGET})
+                target_compile_options(opkernel_${src_name} PRIVATE
+                    ${UT_DEBUG_FLAG} ${compileOptions} -DUT_SOC_VERSION="${socVersion}"
+                )
+                target_link_libraries(opkernel_${src_name} PRIVATE
+                    $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+                    tikicpulib::${oriSocVersion}
+                    gtest
+                )
+                target_include_directories(opkernel_${src_name} PRIVATE
+                    ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api/include
+                    ${CMAKE_BINARY_DIR}/tbe/ascendc/common/tensor_api
+                    ${ASCEND_DIR}/${SYSTEM_PREFIX}/asc/include
+                    ${ASCEND_DIR}/include/base/context_builder
+                    ${PROJECT_SOURCE_DIR}/tests/ut/op_kernel
+                    ${PROJECT_SOURCE_DIR}/tests/ut/common
+                    ${PROJECT_SOURCE_DIR}/conv/conv3d_backprop_input_v2/op_kernel
+                    ${kernel_dependency_files}
+                    ${CMAKE_BINARY_DIR}/tbe/ascendc/
+                    ${CMAKE_BINARY_DIR}/tbe/ascendc/common
+                    ${OPBASE_INC_DIRS}
+                )
+                set_property(GLOBAL APPEND PROPERTY OPKERNEL_OBJECT_LIBS opkernel_${src_name})
+            endforeach()
+        endif()
+        list(FIND fastOpTestSocVersions "${oriSocVersion}" index)
+        if(index EQUAL -1)
+            set(fastOpTestSocVersions ${fastOpTestSocVersions} ${oriSocVersion} CACHE STRING "fastOp Test SocVersions" FORCE)
+        endif()
+    endforeach()
+endfunction()
+
+
+if(UT_TEST_ALL OR OP_KERNEL_AICPU_UT)
+  function(AddAicpuOpTestCase opName)
+    get_filename_component(UT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
+    get_filename_component(OP_NAME ${UT_DIR} NAME)
+    list(FIND ASCEND_OP_NAME ${OP_NAME} INDEX)
+    # if "--ops" is not NULL, opName not include, jump over. if "--ops" is NULL, include all.
+    if(NOT "${ASCEND_OP_NAME}" STREQUAL "" AND INDEX EQUAL -1)
+      return()
+    endif()
+
+    ## find kernel file
+    file(GLOB KernelFile "${PROJECT_SOURCE_DIR}/*/${opName}/op_kernel_aicpu/${opName}_aicpu.cpp")
+
+    ## add object: ${opName}_cases_obj
+    file(GLOB OPKERNEL_CASES_SRC ${UT_DIR}/tests/ut/op_kernel_aicpu/test_${opName}*.cpp)
+
+    message(STATUS "aicpu kernel info: ${opName}, ${KernelFile}, ${OPKERNEL_CASES_SRC}")
+
+    add_library(${opName}_cases_obj OBJECT
+            ${KernelFile}
+            ${OPKERNEL_CASES_SRC}
+            )
+    target_compile_options(${opName}_cases_obj PRIVATE
+            ${UT_DEBUG_FLAG}
+            )
+    message(STATUS "111******************** ${AICPU_INCLUDE}")
+    ## add op_kernel_aicpu test header file search path, so that header files can be referenced based on relative path
+    target_include_directories(${opName}_cases_obj PRIVATE
+            ${AICPU_INCLUDE}
+            ${OPBASE_INC_DIRS}
+            ${AICPU_INC_DIRS}
+            ${PROJECT_SOURCE_DIR}/tests/ut/op_kernel_aicpu
+            ${ASCEND_DIR}/pkg_inc/base
+            )
+    target_link_libraries(${opName}_cases_obj PRIVATE
+            $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+            -ldl
+            gtest
+            c_sec
+            Eigen3::Eigen
+            )
+
+    ## add object: nn_op_kernel_ut_cases_obj
+    if(NOT TARGET ${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj)
+      add_library(
+        ${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj OBJECT
+        $<TARGET_OBJECTS:${opName}_cases_obj>
+        )
+    else()
+      target_sources(${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj PRIVATE $<TARGET_OBJECTS:${opName}_cases_obj>)
+    endif()
+
+    target_link_libraries(${AICPU_OP_KERNEL_MODULE_NAME}_cases_obj PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub_asan>
+            $<BUILD_INTERFACE:intf_llt_pub_asan_cxx17>
+            -ldl
+            $<TARGET_OBJECTS:${opName}_cases_obj>
+            gtest
+            c_sec
+            Eigen3::Eigen
+            )
+  endfunction()
+endif()

@@ -1,0 +1,499 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+#include "aclnn_index_add.h"
+#include "index/common/op_api/inplace_index_add.h"
+#include "level0/sort.h"
+#include "level0/mul.h"
+#include "index/common/op_api/index_put_with_sort_v2.h"
+#include "index/common/op_api/index_put.h"
+#include "index/linear_index_v2/op_api/linear_index_v2.h"
+#include "inplace_scatter_add.h"
+#include "aclnn_kernels/cast.h"
+#include "aclnn_kernels/contiguous.h"
+#include "level0/unsqueeze.h"
+#include "aclnn_kernels/common/op_error_check.h"
+#include "opdev/common_types.h"
+#include "opdev/data_type_utils.h"
+#include "opdev/format_utils.h"
+#include "opdev/op_dfx.h"
+#include "opdev/op_executor.h"
+#include "opdev/op_log.h"
+#include "opdev/tensor_view_utils.h"
+#include "opdev/shape_utils.h"
+#include "opdev/platform.h"
+#include "op_api/aclnn_util.h"
+#include "runtime/context.h"
+#include "acl/acl_rt.h"
+
+#include <vector>
+
+using namespace op;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+static constexpr size_t MAX_DIM_LEN = 8;
+// FLOAT类型在2139095040时为inf，不能sort
+static constexpr int64_t MAX_SORT_SHAPE_DIM = 2139095040;
+// 索引数量超过该值时 tiling 会失败，需走 AICPU 兜底（对齐 index_put 的 IsAiCPUSupportCheckIndicesArch3510）
+static constexpr int64_t MAX_SUPPORTTYPE_INDICES_NUM = 60000000;
+static constexpr int64_t INT32_MAX_LIMIT = 2147483647;
+
+// 根据API定义，需要列出所能支持的所有dtype
+static const std::initializer_list<op::DataType> ASCEND910_DTYPE_SUPPORT_LIST = {
+    op::DataType::DT_FLOAT,  op::DataType::DT_INT32, op::DataType::DT_FLOAT16,
+    op::DataType::DT_DOUBLE, op::DataType::DT_INT16, op::DataType::DT_INT8,
+    op::DataType::DT_UINT8,  op::DataType::DT_INT64, op::DataType::DT_BOOL};
+
+static const std::initializer_list<op::DataType> ASCEND910B_DTYPE_SUPPORT_LIST = {
+    op::DataType::DT_FLOAT, op::DataType::DT_INT32, op::DataType::DT_FLOAT16, op::DataType::DT_DOUBLE,
+    op::DataType::DT_INT16, op::DataType::DT_INT8,  op::DataType::DT_UINT8,   op::DataType::DT_INT64,
+    op::DataType::DT_BOOL,  op::DataType::DT_BF16};
+
+static const std::initializer_list<op::DataType> INDEX_DTYPE_SUPPORT_LIST = {op::DataType::DT_INT64,
+                                                                             op::DataType::DT_INT32};
+
+static const std::initializer_list<op::DataType> ASCEND910_AICORE_DTYPE_SUPPORT_LIST = {op::DataType::DT_FLOAT,
+                                                                                        op::DataType::DT_FLOAT16};
+
+static const std::initializer_list<op::DataType> ASCEND910B_AICORE_DTYPE_SUPPORT_LIST = {
+    op::DataType::DT_FLOAT, op::DataType::DT_FLOAT16, op::DataType::DT_INT32, op::DataType::DT_INT16,
+    op::DataType::DT_BF16};
+
+static const std::initializer_list<op::DataType> ASCEND950_AICORE_DTYPE_SUPPORT_LIST = {
+    op::DataType::DT_FLOAT, op::DataType::DT_FLOAT16, op::DataType::DT_INT32,
+    op::DataType::DT_INT16, op::DataType::DT_BF16,    op::DataType::DT_INT8,
+    op::DataType::DT_UINT8, op::DataType::DT_INT64,   op::DataType::DT_BOOL};
+
+static bool IsAICoreSupport(const aclTensor* self)
+{
+    // 根据芯片类型和输入self类型判断是否走aicore
+    if (Ops::NN::AclnnUtil::IsRegbase()) {
+        return CheckType(self->GetDataType(), ASCEND950_AICORE_DTYPE_SUPPORT_LIST);
+    } else if (GetCurrentPlatformInfo().GetSocVersion() >= SocVersion::ASCEND910B &&
+               GetCurrentPlatformInfo().GetSocVersion() <= SocVersion::ASCEND910E) {
+        if (CheckType(self->GetDataType(), ASCEND910B_AICORE_DTYPE_SUPPORT_LIST)) {
+            return true;
+        }
+    } else {
+        if (CheckType(self->GetDataType(), ASCEND910_AICORE_DTYPE_SUPPORT_LIST)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool CheckNotNull(const aclTensor* self, const aclTensor* index, const aclTensor* source, const aclScalar* alpha,
+                         const aclTensor* out)
+{
+    OP_CHECK_NULL(self, return false);
+    OP_CHECK_NULL(index, return false);
+    OP_CHECK_NULL(source, return false);
+    OP_CHECK_NULL(alpha, return false);
+    OP_CHECK_NULL(out, return false);
+    return true;
+}
+
+static bool CheckDtypeValid(const op::DataType selfDtype, const op::DataType indexDtype, const op::DataType sourceDtype,
+                            const op::DataType outDtype)
+{
+    // 获取芯片支持的数据类型
+    bool isAscend910BSocVersion = (GetCurrentPlatformInfo().GetSocVersion() >= SocVersion::ASCEND910B &&
+                                   GetCurrentPlatformInfo().GetSocVersion() <= SocVersion::ASCEND910E);
+    const std::initializer_list<op::DataType> dtypeSupportList = isAscend910BSocVersion ?
+                                                                     ASCEND910B_DTYPE_SUPPORT_LIST :
+                                                                     ASCEND910_DTYPE_SUPPORT_LIST;
+
+    if (!CheckType(selfDtype, dtypeSupportList)) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "Self dtype %s should be in dtype support list [%s].",
+                op::ToString(selfDtype).GetString(), op::ToString(dtypeSupportList).GetString());
+        return false;
+    }
+    if (!CheckType(indexDtype, INDEX_DTYPE_SUPPORT_LIST)) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "index dtype %s should be in dtype support list [%s].",
+                op::ToString(indexDtype).GetString(), op::ToString(INDEX_DTYPE_SUPPORT_LIST).GetString());
+        return false;
+    }
+    if (!CheckType(sourceDtype, dtypeSupportList)) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "source dtype %s should be in dtype support list [%s].",
+                op::ToString(sourceDtype).GetString(), op::ToString(dtypeSupportList).GetString());
+        return false;
+    }
+    if (!CheckType(outDtype, dtypeSupportList)) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "outDtype dtype %s should be in dtype support list [%s].",
+                op::ToString(sourceDtype).GetString(), op::ToString(dtypeSupportList).GetString());
+        return false;
+    }
+    if (selfDtype != sourceDtype) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "self dtype %s and source dtype %s must same.",
+                op::ToString(selfDtype).GetString(), op::ToString(sourceDtype).GetString());
+        return false;
+    }
+    if (selfDtype != outDtype) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "self dtype %s and source dtype %s must same.",
+                op::ToString(selfDtype).GetString(), op::ToString(outDtype).GetString());
+        return false;
+    }
+    return true;
+}
+
+static bool CheckShape(const aclTensor* self, const aclTensor* index, const aclTensor* source, const aclTensor* out,
+                       int64_t dim)
+{
+    OP_CHECK_MAX_DIM(self, MAX_DIM_LEN, return false);
+    OP_CHECK_MAX_DIM(source, MAX_DIM_LEN, return false);
+    int64_t selfDimNum = static_cast<int64_t>(self->GetViewShape().GetDimNum());
+
+    if (selfDimNum == 0) {
+        if (dim != -1 && dim != 0) {
+            OP_LOGE(ACLNN_ERR_PARAM_INVALID, "when self.dims() == 0, dim should be 0 or -1, but dim is %ld.", dim);
+            return false;
+        }
+    } else {
+        if ((dim < -selfDimNum || dim >= selfDimNum) && (!(dim == 0 && selfDimNum == 0))) {
+            OP_LOGE(ACLNN_ERR_PARAM_INVALID, "dim should be in [-self.dims(), self.dims), but dim is %ld.", dim);
+            return false;
+        }
+    }
+
+    if (self->GetViewShape().GetDimNum() != 0 &&
+        self->GetViewShape().GetDimNum() != source->GetViewShape().GetDimNum()) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "DimNum of self must be equal to dimNum of source.");
+        return false;
+    }
+    int64_t dimStd = dim >= 0 ? dim : self->GetViewShape().GetDimNum() + dim;
+    for (size_t idx = 0; idx < self->GetViewShape().GetDimNum(); idx++) {
+        if (dimStd != static_cast<int64_t>(idx)) {
+            if (self->GetViewShape().GetDim(idx) != source->GetViewShape().GetDim(idx)) {
+                OP_LOGE(ACLNN_ERR_PARAM_INVALID, "The size of self must match the size of source at dimension %ld.",
+                        dim);
+                return false;
+            }
+        }
+    }
+    if (index->GetViewShape().GetDimNum() > 1) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "Index dimension %zu is supposed to be 1.", index->GetViewShape().GetDimNum());
+        return false;
+    }
+    if (index->GetViewShape().GetDim(0) != source->GetViewShape().GetDim(dimStd)) {
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "Number of index should be equal to number of source in dim  %ld.", dim);
+        return false;
+    }
+
+    OP_CHECK_SHAPE_NOT_EQUAL(self, out, return false);
+    return true;
+}
+
+static aclnnStatus CheckParams(const aclTensor* self, const int64_t dim, const aclTensor* index,
+                               const aclTensor* source, const aclScalar* alpha, const aclTensor* out)
+{
+    // 错误码等DFX方案细化后刷新，错误日志在check接口内打印
+    // 1. 检查参数是否为空指针
+    CHECK_RET(CheckNotNull(self, index, source, alpha, out), ACLNN_ERR_PARAM_NULLPTR);
+
+    // 2. 检查输入的数据类型是否在API支持的数据类型范围之内，需要根据api定义校验
+    CHECK_RET(CheckDtypeValid(self->GetDataType(), index->GetDataType(), source->GetDataType(), out->GetDataType()),
+              ACLNN_ERR_PARAM_INVALID);
+
+    CHECK_RET(CheckShape(self, index, source, out, dim), ACLNN_ERR_PARAM_INVALID);
+
+    return ACLNN_SUCCESS;
+}
+
+static void ViewDataType(const aclTensor* input, const op::DataType dtype)
+{
+    auto tmpTensor = const_cast<aclTensor*>(input);
+    tmpTensor->SetDataType(dtype);
+    input = tmpTensor;
+}
+
+static const aclTensor* DoIndexAddWithSorted(const aclTensor* self, const int64_t dim, const aclTensor* index,
+                                             const aclTensor* source, const aclTensor* alpha, aclOpExecutor* executor)
+{
+    auto indexSize = index->GetViewShape().GetDim(0);
+    // sort index
+    const aclTensor* indexInt32 = nullptr;
+    const aclTensor* indexAddRes = nullptr;
+    indexInt32 = l0op::Cast(index, op::DataType::DT_INT32, executor);
+    CHECK_RET(indexInt32 != nullptr, nullptr);
+    // 将INT32的索引看作float数据类型以便传给sort算子进行排序
+    // 注：由于sort在元素个数为1时会走到aicpu算子，耗时为几百us，性能大幅劣化，在sort修复前先用此逻辑规避
+    if (indexSize > 1) {
+        const aclTensor* indicesViewFloat = executor->CreateView(indexInt32, {indexSize}, indexInt32->GetViewOffset());
+        ViewDataType(indicesViewFloat, op::DataType::DT_FLOAT);
+        auto sortResult = l0op::Sort(indicesViewFloat, -1, false, true, op::DataType::DT_INT32, executor);
+        auto sortIdxOut = std::get<0>(sortResult);
+        auto posIdx = std::get<1>(sortResult);
+        CHECK_RET(sortIdxOut != nullptr && posIdx != nullptr, nullptr);
+        // 将sort的结果已INT32的数据类型来进行读取
+        auto sortIndices = executor->CreateView(sortIdxOut, {indexSize}, sortIdxOut->GetViewOffset());
+        sortIndices->SetDataType(op::DataType::DT_INT32);
+        // inplace index add
+        indexAddRes = l0op::InplaceIndexAddWithSorted(self, dim, sortIndices, posIdx, source, alpha, executor);
+    } else {
+        const aclTensor* posTensor = executor->ConvertToTensor(executor->AllocScalar(0), op::DataType::DT_INT32);
+        CHECK_RET(posTensor != nullptr, nullptr);
+        indexAddRes = l0op::InplaceIndexAddWithSorted(self, dim, indexInt32, posTensor, source, alpha, executor);
+    }
+    return indexAddRes;
+}
+
+// A5 确定性走 index_put 路径，对应 op-plugin 中：
+// result.index_put_([None, ..., index.to(kLong), ..., None], source * alpha, accumulate=true)
+// 底层实现等价于 SortedIndexPutProcess：LinearIndexV2 + Sort + IndexPutWithSortV2。
+static const aclTensor* DoIndexAddWithIndexPut(const aclTensor* self, const int64_t dim, const aclTensor* index,
+                                               const aclTensor* source, const aclTensor* alpha, aclOpExecutor* executor)
+{
+    int64_t selfDimNum = static_cast<int64_t>(self->GetViewShape().GetDimNum());
+    int64_t wrappedDim = dim >= 0 ? dim : dim + selfDimNum;
+    OP_LOGD("[IndexAddIndexPut] enter, dim=%ld, wrappedDim=%ld, selfDimNum=%ld, selfDtype=%s, indexShape=[%ld], "
+            "sourceDimNum=%ld.",
+            dim, wrappedDim, selfDimNum, op::ToString(self->GetDataType()).GetString(), index->GetViewShape().GetDim(0),
+            static_cast<int64_t>(source->GetViewShape().GetDimNum()));
+
+    // values = source * alpha
+    auto values = l0op::Mul(source, alpha, executor);
+    CHECK_RET(values != nullptr, nullptr);
+    OP_LOGD("[IndexAddIndexPut] after Mul, valuesDtype=%s, valuesDimNum=%ld.",
+            op::ToString(values->GetDataType()).GetString(), static_cast<int64_t>(values->GetViewShape().GetDimNum()));
+
+    // index dtype 直接透传（int32/int64 由下游 LinearIndexV2/IndexPutWithSortV2 模板自行处理）
+
+    // 计算 row-major stride 与 valueSize
+    std::vector<int64_t> stride(selfDimNum, 1);
+    std::vector<int64_t> valueSize(selfDimNum, 0);
+    valueSize[selfDimNum - 1] = self->GetViewShape().GetDim(selfDimNum - 1);
+    for (int64_t i = selfDimNum - 2; i >= 0; --i) {
+        valueSize[i] = self->GetViewShape().GetDim(i);
+        stride[i] = stride[i + 1] * valueSize[i + 1];
+    }
+
+    // 仅 wrappedDim 处为真实索引，其余维度为空
+    std::vector<const aclTensor*> definedIndices = {index};
+    std::vector<int64_t> definedStride = {stride[wrappedDim]};
+    std::vector<int64_t> definedValueSize = {valueSize[wrappedDim]};
+    std::vector<int64_t> masks(selfDimNum, 0);
+    masks[wrappedDim] = 1;
+    OP_LOGD("[IndexAddIndexPut] definedStride=%ld, definedValueSize=%ld.", definedStride[0], definedValueSize[0]);
+
+    if (self->GetDataType() == op::DataType::DT_DOUBLE || self->GetDataType() == op::DataType::DT_INT16 ||
+        index->GetViewShape().GetShapeSize() > MAX_SUPPORTTYPE_INDICES_NUM || definedValueSize[0] > INT32_MAX_LIMIT) {
+        OP_LOGD("[IndexAddIndexPut] self dtype %s or index num %ld or indexed dim size %ld not supported by "
+                "IndexPutWithSortV2, fallback to IndexPut(AICPU).",
+                op::ToString(self->GetDataType()).GetString(),
+                static_cast<int64_t>(index->GetViewShape().GetShapeSize()), definedValueSize[0]);
+        auto indicesList = executor->AllocTensorList(definedIndices.data(), definedIndices.size());
+        CHECK_RET(indicesList != nullptr, nullptr);
+        auto maskArray = executor->AllocIntArray(masks.data(), masks.size());
+        CHECK_RET(maskArray != nullptr, nullptr);
+        auto maskTensor = executor->ConvertToTensor(maskArray, op::DataType::DT_INT64);
+        CHECK_RET(maskTensor != nullptr, nullptr);
+        aclTensor* out = const_cast<aclTensor*>(self);
+        return l0op::IndexPut(self, indicesList, values, maskTensor, true, out, executor);
+    }
+
+    auto strideTensor = executor->ConvertToTensor(definedStride.data(), definedStride.size(), op::DataType::DT_INT32);
+    CHECK_RET(strideTensor != nullptr, nullptr);
+    auto valueSizeTensor = executor->ConvertToTensor(definedValueSize.data(), definedValueSize.size(),
+                                                     op::DataType::DT_INT32);
+    CHECK_RET(valueSizeTensor != nullptr, nullptr);
+    auto indicesList = executor->AllocTensorList(definedIndices.data(), definedIndices.size());
+    CHECK_RET(indicesList != nullptr, nullptr);
+
+    auto linearIndex = l0op::LinearIndexV2(indicesList, strideTensor, valueSizeTensor, executor);
+    CHECK_RET(linearIndex != nullptr, nullptr);
+    OP_LOGD("[IndexAddIndexPut] after LinearIndexV2, linearIndexShape=[%ld], linearIndexDtype=%s.",
+            linearIndex->GetViewShape().GetDim(0), op::ToString(linearIndex->GetDataType()).GetString());
+
+    // sort：元素个数为 1 时避免走 sort 算子
+    const aclTensor* sortIdxInt = nullptr;
+    const aclTensor* posIdx = nullptr;
+    int64_t row = linearIndex->GetViewShape().GetDim(0);
+    if (row == 1) {
+        std::vector<int32_t> posIdxVec = {0};
+        posIdx = executor->ConvertToTensor(posIdxVec.data(), posIdxVec.size(), op::DataType::DT_INT32);
+        sortIdxInt = linearIndex;
+        OP_LOGD("[IndexAddIndexPut] row == 1, skip sort.");
+    } else {
+        auto sortResult = l0op::Sort(linearIndex, -1, false, true, op::DataType::DT_INT32, executor);
+        sortIdxInt = std::get<0>(sortResult);
+        posIdx = std::get<1>(sortResult);
+        OP_LOGD("[IndexAddIndexPut] after Sort, row=%ld.", row);
+    }
+    CHECK_RET(sortIdxInt != nullptr && posIdx != nullptr, nullptr);
+    posIdx = l0op::Cast(posIdx, op::DataType::DT_INT32, executor);
+    CHECK_RET(posIdx != nullptr, nullptr);
+
+    auto maskArray = executor->AllocIntArray(masks.data(), masks.size());
+    CHECK_RET(maskArray != nullptr, nullptr);
+
+    OP_LOGD("[IndexAddIndexPut] call IndexPutWithSortV2, accumulate=true, masksNum=%ld.",
+            static_cast<int64_t>(masks.size()));
+    aclTensor* out = const_cast<aclTensor*>(self);
+    return l0op::IndexPutWithSortV2(self, sortIdxInt, posIdx, values, maskArray, true, out, executor);
+}
+
+static bool inplaceScatterAddSupport(const aclTensor* self, int64_t dim, const aclScalar* alpha)
+{
+    int64_t deterministicValue = 0;
+    rtError_t retRts = aclrtGetSysParamOpt(ACL_OPT_DETERMINISTIC, &deterministicValue);
+    if (retRts != RT_ERROR_NONE) {
+        deterministicValue = 0;
+    }
+    if (deterministicValue == 1) {
+        OP_LOGD("InplaceScatterAdd Op not support deterministic compute!");
+        return false;
+    }
+
+    auto curArch = GetCurrentPlatformInfo().GetCurNpuArch();
+    if (curArch != NpuArch::DAV_2201) {
+        OP_LOGD("InplaceScatterAdd Op not support this Soc Version!");
+        return false;
+    }
+
+    if (self->GetViewShape().GetDimNum() == 0) {
+        OP_LOGD("InplaceScatterAdd Op not support self dimNums=0");
+        return false;
+    }
+    int64_t realDim = dim >= 0 ? dim : self->GetViewShape().GetDimNum() + dim;
+    if (realDim != 0 || alpha->ToDouble() != 1.0) {
+        OP_LOGD("InplaceScatterAdd Op only support realDim=0 and alpha=1");
+        return false;
+    }
+    if (self->GetDataType() != op::DataType::DT_FLOAT && self->GetDataType() != op::DataType::DT_INT32) {
+        OP_LOGD("InplaceScatterAdd Op only support self dtype is int32 or float32");
+        return false;
+    }
+    OP_LOGD("Will use InplaceScatterAdd Op");
+    return true;
+}
+
+static void CheckFormat(const aclTensor* self, const aclTensor* index, const aclTensor* source)
+{
+    ge::Format selfStorageFormat = self->GetStorageFormat();
+    ge::Format indexStorageFormat = index->GetStorageFormat();
+    ge::Format sourceStorageFormat = source->GetStorageFormat();
+    if (IsPrivateFormat(selfStorageFormat) || IsPrivateFormat(indexStorageFormat) ||
+        IsPrivateFormat(sourceStorageFormat)) {
+        OP_LOGW("aclnnIndexAdd doesn't support private format.");
+    }
+}
+
+aclnnStatus aclnnIndexAddGetWorkspaceSize(const aclTensor* self, const int64_t dim, const aclTensor* index,
+                                          const aclTensor* source, const aclScalar* alpha, aclTensor* out,
+                                          uint64_t* workspaceSize, aclOpExecutor** executor)
+{
+    OP_CHECK_COMM_INPUT(workspaceSize, executor);
+
+    // 是否确定性
+    int64_t deterministicValue = 0;
+    rtError_t retRts = aclrtGetSysParamOpt(ACL_OPT_DETERMINISTIC, &deterministicValue);
+    if (retRts != RT_ERROR_NONE) {
+        OP_LOGD("aclrtGetSysParamOpt failed, fallback deterministicValue=0");
+        deterministicValue = 0;
+    }
+    OP_LOGD("deterministicValue=%ld", deterministicValue);
+
+    // 固定写法，参数检查
+    L2_DFX_PHASE_1(aclnnIndexAdd, DFX_IN(self, dim, index, source, alpha), DFX_OUT(out));
+    // 固定写法，创建OpExecutor
+    auto uniqueExecutor = CREATE_EXECUTOR();
+    CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
+    if (index != nullptr && index->GetViewShape().GetDimNum() == 0) {
+        int64_t zero = 0;
+        index = l0op::UnsqueezeNd(index, zero, uniqueExecutor.get());
+        CHECK_RET(index != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    }
+    if (source != nullptr && source->GetViewShape().GetDimNum() == 0) {
+        int64_t zero = 0;
+        source = l0op::UnsqueezeNd(source, zero, uniqueExecutor.get());
+        CHECK_RET(source != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    }
+    auto ret = CheckParams(self, dim, index, source, alpha, out);
+    CHECK_RET(ret == ACLNN_SUCCESS, ret);
+    CheckFormat(self, index, source);
+    if (self->IsEmpty() || source->IsEmpty()) {
+        // 根据实际支持情况补充
+        *workspaceSize = 0;
+        uniqueExecutor.ReleaseTo(executor);
+        return ACLNN_SUCCESS;
+    }
+    auto selfContiguous = l0op::Contiguous(self, uniqueExecutor.get());
+    CHECK_RET(selfContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    auto sourceContiguous = l0op::Contiguous(source, uniqueExecutor.get());
+    CHECK_RET(sourceContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    const aclTensor* alphaTensor = nullptr;
+    bool is91095 = Ops::NN::AclnnUtil::IsRegbase();
+    bool useNewOp = (GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND910B ||
+                     GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND910_93 ||
+                     (GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND950 &&
+                      (deterministicValue != 0))) &&
+                    dim == 0 && self->GetViewShape().GetDim(0) < MAX_SORT_SHAPE_DIM &&
+                    (self->GetDataType() == op::DataType::DT_BF16 || self->GetDataType() == op::DataType::DT_FLOAT16) &&
+                    (!(self->GetViewShape().GetDimNum() == 0 && index->GetViewShape().GetShapeSize() == 1));
+    if (self->GetDataType() == op::DataType::DT_BF16 && !useNewOp && !is91095) {
+        selfContiguous = l0op::Cast(selfContiguous, op::DataType::DT_FLOAT, uniqueExecutor.get());
+        CHECK_RET(selfContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        sourceContiguous = l0op::Cast(sourceContiguous, op::DataType::DT_FLOAT, uniqueExecutor.get());
+        CHECK_RET(sourceContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        alphaTensor = uniqueExecutor.get()->ConvertToTensor(alpha, op::DataType::DT_FLOAT);
+    } else if ((self->GetDataType() == op::DataType::DT_BF16 || self->GetDataType() == op::DataType::DT_FLOAT16) &&
+               useNewOp) {
+        // 由于算子内部升精度计算，因此不能将高精度传入的aclScalar先降低精度，再算子内部升精度，会造成精度损失，因此在aclnn处将alpha作为float的tensor
+        alphaTensor = uniqueExecutor.get()->ConvertToTensor(alpha, op::DataType::DT_FLOAT);
+    } else {
+        alphaTensor = uniqueExecutor.get()->ConvertToTensor(alpha, self->GetDataType());
+    }
+    CHECK_RET(alphaTensor != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    auto indexContiguous = l0op::Contiguous(index, uniqueExecutor.get());
+    CHECK_RET(indexContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    const aclTensor* indexAddOut = nullptr;
+
+    if (inplaceScatterAddSupport(selfContiguous, dim, alpha)) {
+        indexAddOut = l0op::InplaceScatterAddAiCore(selfContiguous, indexContiguous, sourceContiguous,
+                                                    uniqueExecutor.get());
+    } else if (useNewOp) {
+        indexAddOut = DoIndexAddWithSorted(selfContiguous, dim, indexContiguous, sourceContiguous, alphaTensor,
+                                           uniqueExecutor.get());
+    } else if (is91095 && deterministicValue != 0 && self->GetViewShape().GetDimNum() > 0) {
+        OP_LOGD("[IndexAddIndexPut] dispatch to index_put branch, is91095=%d, deterministicValue=%ld.", is91095,
+                deterministicValue);
+        indexAddOut = DoIndexAddWithIndexPut(selfContiguous, dim, indexContiguous, sourceContiguous, alphaTensor,
+                                             uniqueExecutor.get());
+    } else if (IsAICoreSupport(self)) {
+        indexAddOut = l0op::InplaceIndexAddAiCore(selfContiguous, dim, indexContiguous, sourceContiguous, alphaTensor,
+                                                  uniqueExecutor.get());
+    } else {
+        indexAddOut = l0op::InplaceIndexAddAiCpu(selfContiguous, dim, indexContiguous, sourceContiguous, alphaTensor,
+                                                 uniqueExecutor.get());
+    }
+    CHECK_RET(indexAddOut != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    if (self->GetDataType() == op::DataType::DT_BF16 && !is91095) {
+        indexAddOut = l0op::Cast(indexAddOut, op::DataType::DT_BF16, uniqueExecutor.get());
+    }
+    CHECK_RET(indexAddOut != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    auto viewCopyResult = l0op::ViewCopy(indexAddOut, out, uniqueExecutor.get());
+    CHECK_RET(viewCopyResult != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    // 固定写法，获取计算过程中需要使用的workspace大小
+    *workspaceSize = uniqueExecutor->GetWorkspaceSize();
+    uniqueExecutor.ReleaseTo(executor);
+    return ACLNN_SUCCESS;
+}
+
+aclnnStatus aclnnIndexAdd(void* workspace, uint64_t workspaceSize, aclOpExecutor* executor, aclrtStream stream)
+{
+    // 固定写法，调用框架能力，完成计算
+    L2_DFX_PHASE_2(aclnnIndexAdd);
+    return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
+}
+
+#ifdef __cplusplus
+}
+#endif

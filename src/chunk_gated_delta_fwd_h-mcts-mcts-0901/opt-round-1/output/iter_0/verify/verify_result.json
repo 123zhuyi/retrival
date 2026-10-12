@@ -1,0 +1,262 @@
+{
+  "op_name": "chunk_gated_delta_fwd_h",
+  "total_cases": 8,
+  "passed_cases": 4,
+  "failed_cases": 4,
+  "failures": [
+    {
+      "case_idx": 3,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "error_type": "AssertionError",
+      "error_msg": "Traceback (most recent call last):\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 994, in run_single_case\n    compare(\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 673, in compare\n    _check_nan_inf(fw_flat, impl_flat, size)\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 468, in _check_nan_inf\n    raise AssertionError(\nAssertionError: 验证失败，NaN 位置不匹配: Framework=86799666/100663296, Implementation=86799668/100663296\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 1043, in _try_run_case\n    run_single_case(\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 1002, in run_single_case\n    raise AssertionError(f\"[用例 {case_idx}/{total_cases}] {str(e)}\") from e\nAssertionError: [用例 3/8] 验证失败，NaN 位置不匹配: Framework=86799666/100663296, Implementation=86799668/100663296\n"
+    },
+    {
+      "case_idx": 5,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            8,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "error_type": "AssertionError",
+      "error_msg": "Traceback (most recent call last):\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 994, in run_single_case\n    compare(\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 673, in compare\n    _check_nan_inf(fw_flat, impl_flat, size)\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 468, in _check_nan_inf\n    raise AssertionError(\nAssertionError: 验证失败，NaN 位置不匹配: Framework=18179061/25165824, Implementation=18179039/25165824\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 1043, in _try_run_case\n    run_single_case(\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 1002, in run_single_case\n    raise AssertionError(f\"[用例 {case_idx}/{total_cases}] {str(e)}\") from e\nAssertionError: [用例 5/8] 验证失败，NaN 位置不匹配: Framework=18179061/25165824, Implementation=18179039/25165824\n"
+    },
+    {
+      "case_idx": 7,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            5
+          ],
+          "dtype": "torch.int64"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "error_type": "ValueError",
+      "error_msg": "Traceback (most recent call last):\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 1043, in _try_run_case\n    run_single_case(\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 964, in run_single_case\n    framework_output = models.framework(*inputs_for_framework)\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/l30083907/miniconda3/envs/triton_ascend_320/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1775, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/l30083907/miniconda3/envs/triton_ascend_320/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1786, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/output/iter_0/verify/chunk_gated_delta_fwd_h_torch.py\", line 51, in forward\n    NT = int((lens + BT - 1) // BT).sum().item()\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: only one element tensors can be converted to Python scalars\n"
+    },
+    {
+      "case_idx": 8,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            5
+          ],
+          "dtype": "torch.int64"
+        },
+        {
+          "type": "scalar",
+          "value": 128
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "error_type": "RuntimeError",
+      "error_msg": "Traceback (most recent call last):\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 1043, in _try_run_case\n    run_single_case(\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 951, in run_single_case\n    inputs_for_impl = [_move_to_device(x, device) for x in inputs]\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/verify.py\", line 951, in <listcomp>\n    inputs_for_impl = [_move_to_device(x, device) for x in inputs]\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/.claude/skills/triton-op-verifier/scripts/_common_utils.py\", line 28, in move_to_device\n    return x.to(device)\n           ^^^^^^^^^^^^\nRuntimeError: ACL stream synchronize failed, error code:507015\n"
+    }
+  ]
+}

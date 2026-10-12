@@ -1,0 +1,20 @@
+diff --git a/mlir/include/mlir/Dialect/Bufferization/IR/BufferizationOps.td b/mlir/include/mlir/Dialect/Bufferization/IR/BufferizationOps.td
+index 1c70a4b8df92..0c39c74b88eb 100644
+--- a/mlir/include/mlir/Dialect/Bufferization/IR/BufferizationOps.td
++++ b/mlir/include/mlir/Dialect/Bufferization/IR/BufferizationOps.td
+@@ -557,6 +557,15 @@ def Bufferization_ToMemrefOp : Bufferization_Op<"to_memref", [
+   let hasCanonicalizer = 1;
+ }
+ 
++//===----------------------------------------------------------------------===//
++// ToBufferOp
++//===----------------------------------------------------------------------===//
++
++def Bufferization_ToBufferOp : Bufferization_Op<"to_buffer"> {
++  let arguments = (ins AnyTensor:$tensor, UnitAttr:$read_only);
++  let results = (outs AnyRankedOrUnrankedMemRef:$buffer);
++}
++
+ def Bufferization_DeallocOp : Bufferization_Op<"dealloc", [
+     AttrSizedOperandSegments, DeclareOpInterfaceMethods<InferTypeOpInterface>
+   ]> {

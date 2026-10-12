@@ -1,0 +1,170 @@
+/**
+ * Copyright (c) 2025-2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file dynamic_mx_quant_tiling.h
+ * \brief
+ */
+
+#ifndef AIR_CXX_RUNTIME_V2_OP_IMPL_DYNAMIC_MX_QUANT_H
+#define AIR_CXX_RUNTIME_V2_OP_IMPL_DYNAMIC_MX_QUANT_H
+#include <cstdint>
+#include <string>
+#include "register/op_def_registry.h"
+#include "register/tilingdata_base.h"
+#include "op_host/tiling_base.h"
+#include "tiling/tiling_api.h"
+#include "util/math_util.h"
+#include "atvoss/broadcast/broadcast_tiling.h"
+#include "../../op_kernel/arch35/dynamic_mx_quant_tilingdata.h"
+#include "../../op_kernel/arch35/dynamic_mx_quant_struct.h"
+
+namespace optiling {
+using namespace Ops::NN::Optiling;
+
+struct DynamicMxQuantCompileInfo {
+    int64_t coreNum = 0;
+    int64_t ubSize = 0;
+};
+
+struct DynamicMxQuantTilingParam {
+    int64_t totalCoreNum{0};
+    int64_t ubSize{0};
+    uint32_t vfLen{0};
+    uint32_t workspaceSize{0};
+    int64_t axis{0};
+    int64_t roundMode{0};
+    int64_t dstType{0};
+    int64_t blockSize{0};
+    int64_t scaleAlg{0};
+    bool isTailAxis{false};
+    bool isPad{false};
+    int64_t tailBlockSize{0};
+    int64_t blockSizeNumInAxis{0};
+    int64_t preAxisSize{1};
+    int64_t axisSize{1};
+    int64_t quantAxisSize{1};
+    int64_t postAxisSize{1};
+    int64_t mxScaleSize{0};
+    int64_t ubDim{0};
+    int64_t ubFactor{0};
+    int64_t uo{1};
+    int64_t usedCoreNum{0};
+    int64_t tailUbFactor{0};
+    int64_t blockFactor{0};
+    int64_t tailBlockFactor{0};
+    uint64_t tilingKey{0};
+    // not tail axis tiling data
+    int64_t mAlignSize{1};
+    int64_t nAlignSize{1};
+    int64_t nAlignNum{1};
+    int64_t mAlignBlockCount{1};
+    int64_t nAlignBlockCount{1};
+    int64_t mAlignGroupCount{1};
+    int64_t quantAxisIsOdd{0};
+    int64_t totalGroupNum{0};
+    int64_t groupPerCore{0};
+    int64_t groupPerTail{0};
+    int64_t groupPerUb{0};
+    int64_t totalBlockNum{0};
+    int64_t blockNumPerTask{0};
+    int64_t totalTaskNum{0};
+    int64_t loopNumPerHeadCore{0};
+    int64_t loopNumPerTailCore{0};
+    int64_t calcMode{0};
+    int64_t ubRowLen{0};
+    int64_t ubRowLenTail{0};
+    int64_t ubRowCount{0};
+    int64_t ubRowCountTail{0};
+    uint32_t subNumForScale{0};
+    uint32_t subNumForFP16Scale{0};
+    int64_t blockCountPerBatch{0};
+    int64_t scaleRowCountPerBatch{0};
+    bool needPadPostAxis{false};
+    bool isOptimize{false};
+    // tail axis tiling data
+    bool isBlockSize32{false};
+    int64_t colTileNum{0};
+    int64_t rowTileNum{0};
+    int64_t rowNum{1};
+    int64_t colNum{1};
+    int64_t colNormalBlockNum{0};
+    int64_t colTailLen{0};
+    int64_t rowNormalBlockNum{0};
+    int64_t rowTailLen{0};
+    int64_t maxUbBlockNum{0};
+    int64_t rowBlockLoopNum{0};
+    int64_t colBlockLoopNum{0};
+
+    float dstTypeMax{0.0};
+    float invDstTypeMax{0.0};
+    float maxLowBound{0.0};
+    // 输入 dtype 字节数：bf16/fp16=2, fp32=4。
+    int64_t inputDtypeSize{2};
+    bool isFp32Input{false};
+};
+
+enum class RoundModeList {
+    MODE_ROUND = 0,
+    MODE_FLOOR = 1,
+    MODE_CEIL = 2,
+    MODE_TRUNC = 3,
+    MODE_RINT = 4,
+    MODE_HYBRID = 5,
+    MODE_UNDEFINED = -1,
+};
+
+class DynamicMxQuantOptimzieTiling {
+public:
+    explicit DynamicMxQuantOptimzieTiling(gert::TilingContext* context, const DynamicMxQuantTilingParam& tilingParam)
+        : context_(context), tilingParam_(tilingParam)
+    {}
+    ~DynamicMxQuantOptimzieTiling() {}
+    ge::graphStatus DoTiling();
+
+private:
+    ge::graphStatus SetTilingParam();
+    ge::graphStatus SetCalcMode();
+    ge::graphStatus SetTilingData() const;
+    void SetTilingKey();
+    void PrintTilingData() const;
+    void SplitCore();
+
+private:
+    gert::TilingContext* context_ = nullptr;
+    DynamicMxQuantTilingParam tilingParam_;
+    DynamicMxQuant4OptimizeTilingData* tilingData_ = nullptr;
+};
+
+class DynamicMxQuantTailAxisTiling {
+public:
+    explicit DynamicMxQuantTailAxisTiling(gert::TilingContext* context, const DynamicMxQuantTilingParam& tilingParam)
+        : context_(context), tilingParam_(tilingParam)
+    {}
+    ~DynamicMxQuantTailAxisTiling() {}
+    ge::graphStatus DoTiling();
+
+private:
+    ge::graphStatus SetTilingParams();
+    void CalcTilingKeyForTail();
+    void CalcAxisSize(const gert::Shape& xShape);
+    ge::graphStatus AutoTiling();
+    std::set<int64_t> FindSplitCombo(int64_t usedCoreNum) const;
+    ge::graphStatus SetTilingDataForTailAxis() const;
+    void PrintTilingDataForTailAxis() const;
+
+private:
+    gert::TilingContext* context_ = nullptr;
+    DynamicMxQuantTilingParam tilingParam_;
+    DynamicMxQuantTailAxisTilingData* tilingData_ = nullptr;
+};
+
+} // namespace optiling
+#endif // AIR_CXX_RUNTIME_V2_OP_IMPL_DYNAMIC_MX_QUANT_H

@@ -1,0 +1,52 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file transpose_batch_mat_mul_tiling_key_public.h
+ * \brief
+ */
+
+#include <cstdint>
+
+#pragma once
+
+#define TRANSPOSE_BATCH_MAT_MUL_HIGH_LEVEL 0
+#define TRANSPOSE_BATCH_MAT_MUL_BASIC_LEVEL 1
+#define TRANSPOSE_BATCH_MAT_MUL_TENSOR_LEVEL 2
+
+#define TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_FALSE 0
+#define TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_TRUE 1
+
+#define TRANSPOSE_BATCH_MAT_MUL_PERM_X1_0_1_2 0
+#define TRANSPOSE_BATCH_MAT_MUL_PERM_X1_1_0_2 1
+
+#define TRANSPOSE_BATCH_MAT_MUL_PERM_X2_0_1_2 0
+#define TRANSPOSE_BATCH_MAT_MUL_PERM_X2_0_2_1 1
+
+enum class TBMMApiLevel : std::uint8_t {
+    TBMM_HIGH_LEVEL = TRANSPOSE_BATCH_MAT_MUL_HIGH_LEVEL,
+    TBMM_BASIC_LEVEL = TRANSPOSE_BATCH_MAT_MUL_BASIC_LEVEL,
+    TBMM_TENSOR_LEVEL = TRANSPOSE_BATCH_MAT_MUL_TENSOR_LEVEL,
+};
+
+enum class TBMMPermX1 : std::uint8_t {
+    PERM_X1_0_1_2 = TRANSPOSE_BATCH_MAT_MUL_PERM_X1_0_1_2,
+    PERM_X1_1_0_2 = TRANSPOSE_BATCH_MAT_MUL_PERM_X1_1_0_2,
+};
+
+enum class TBMMPermX2 : std::uint8_t {
+    PERM_X2_0_1_2 = TRANSPOSE_BATCH_MAT_MUL_PERM_X2_0_1_2,
+    PERM_X2_0_2_1 = TRANSPOSE_BATCH_MAT_MUL_PERM_X2_0_2_1,
+};
+
+enum class TBMMBatchSplit : std::uint8_t {
+    BATCH_SPLIT_FALSE = TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_FALSE,
+    BATCH_SPLIT_TRUE = TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_TRUE
+};

@@ -1,0 +1,21 @@
+diff --git a/mlir/lib/Transforms/Utils/DialectConversion.cpp b/mlir/lib/Transforms/Utils/DialectConversion.cpp
+index a045868b6603..ba8f3893c76f 100644
+--- a/mlir/lib/Transforms/Utils/DialectConversion.cpp
++++ b/mlir/lib/Transforms/Utils/DialectConversion.cpp
+@@ -3064,8 +3064,16 @@ Value TypeConverter::materializeConversion(
+     ArrayRef<MaterializationCallbackFn> materializations, OpBuilder &builder,
+     Location loc, Type resultType, ValueRange inputs) const {
+   for (const MaterializationCallbackFn &fn : llvm::reverse(materializations))
++#if BSPUB_DAVINCI_BISHENGIR
++    if (std::optional<Value> result = fn(builder, resultType, inputs, loc)) {
++      if (result.value()) {
++        return *result;
++      }
++    }
++#else
+     if (std::optional<Value> result = fn(builder, resultType, inputs, loc))
+       return *result;
++#endif
+   return nullptr;
+ }
+ 

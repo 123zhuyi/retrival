@@ -1,0 +1,144 @@
+{
+  "version": "1.1.0",
+  "task_id": "chunk_gated_delta_fwd_h",
+  "task_goal": "Optimize chunk_gated_delta_fwd_h via MCTS",
+  "output_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state",
+  "root_id": "root",
+  "nodes": {
+    "root": {
+      "node_id": "root",
+      "parent_id": null,
+      "children": [
+        "opt-round-1",
+        "opt-round-3",
+        "opt-round-5"
+      ],
+      "depth": 0,
+      "visit_count": 5,
+      "total_reward": 9.611979467754853,
+      "mean_reward": 1.9223958935509706,
+      "total_failures": 0,
+      "status": "active",
+      "error_type": "none",
+      "code_path": "",
+      "verify_result_path": "",
+      "perf_result_path": "",
+      "description": "virtual root",
+      "created_at": "2026-09-02T07:53:12.726767+00:00"
+    },
+    "opt-round-1": {
+      "node_id": "opt-round-1",
+      "parent_id": "root",
+      "children": [
+        "opt-round-2"
+      ],
+      "depth": 1,
+      "visit_count": 2,
+      "total_reward": 3.7324474809140153,
+      "mean_reward": 1.8662237404570077,
+      "total_failures": 0,
+      "status": "active",
+      "error_type": "none",
+      "code_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/chunk_gated_delta_fwd_h_generated.py",
+      "verify_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-1_verify.json",
+      "perf_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-1_perf.json",
+      "description": "pattern: custom (fused chunk-recurrence: per-(b,h) flat serial chunk loop, S[K,V] fp32 register-resident, V-tile grid split, seq-in-grid varlen)",
+      "created_at": "2026-09-02T07:53:12.727143+00:00"
+    },
+    "opt-round-2": {
+      "node_id": "opt-round-2",
+      "parent_id": "opt-round-1",
+      "children": [],
+      "depth": 2,
+      "visit_count": 1,
+      "total_reward": 1.9921392132770392,
+      "mean_reward": 1.9921392132770392,
+      "total_failures": 0,
+      "status": "active",
+      "error_type": "none",
+      "code_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-2/chunk_gated_delta_fwd_h_generated.py",
+      "verify_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-2_verify.json",
+      "perf_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-2_perf.json",
+      "description": "V-tile (BV) size correction for chunk-recurrence kernel: uniform BV=min(64,V) replacing parent cs-dependent heuristic (BV=64 if BT<=64 else 32)",
+      "created_at": "2026-09-02T09:46:49.632222+00:00"
+    },
+    "opt-round-3": {
+      "node_id": "opt-round-3",
+      "parent_id": "root",
+      "children": [
+        "opt-round-4"
+      ],
+      "depth": 1,
+      "visit_count": 2,
+      "total_reward": 3.900808973753331,
+      "mean_reward": 1.9504044868766655,
+      "total_failures": 0,
+      "status": "active",
+      "error_type": "none",
+      "code_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-3/chunk_gated_delta_fwd_h_generated.py",
+      "verify_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-3_verify.json",
+      "perf_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-3_perf.json",
+      "description": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset)",
+      "created_at": "2026-09-03T02:27:12.906412+00:00"
+    },
+    "opt-round-4": {
+      "node_id": "opt-round-4",
+      "parent_id": "opt-round-3",
+      "children": [],
+      "depth": 2,
+      "visit_count": 1,
+      "total_reward": 1.9619522128873685,
+      "mean_reward": 1.9619522128873685,
+      "total_failures": 0,
+      "status": "active",
+      "error_type": "none",
+      "code_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/chunk_gated_delta_fwd_h_generated.py",
+      "verify_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-4_verify.json",
+      "perf_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-4_perf.json",
+      "description": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset) — R4 MCTS continuation: re-anchor/optimize the R3 champion; probe num_warps=8 and confirm the serial-recurrence per-step bound.",
+      "created_at": "2026-09-03T03:18:08.469951+00:00"
+    },
+    "opt-round-5": {
+      "node_id": "opt-round-5",
+      "parent_id": "root",
+      "children": [],
+      "depth": 1,
+      "visit_count": 1,
+      "total_reward": 1.978723013087508,
+      "mean_reward": 1.978723013087508,
+      "total_failures": 0,
+      "status": "active",
+      "error_type": "none",
+      "code_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-5/chunk_gated_delta_fwd_h_generated.py",
+      "verify_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-5_verify.json",
+      "perf_result_path": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/.strategy_state/opt-round-5_perf.json",
+      "description": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, in-kernel GQA key-head map, in-kernel varlen seq-prefix chunk offset) — R5 root-expansion re-anchor vs 6402eb golden; Phase-4 probe multibuffer=False",
+      "created_at": "2026-09-03T04:02:17.576191+00:00"
+    }
+  },
+  "search_memory": {
+    "failures": [],
+    "explored_directions": [
+      "pattern: custom (fused chunk-recurrence: per-(b,h) flat serial chunk loop, S[K,V] fp32 register-resident, V-tile grid split, seq-in-grid varlen)",
+      "V-tile (BV) size correction for chunk-recurrence kernel: uniform BV=min(64,V) replacing parent cs-dependent heuristic (BV=64 if BT<=64 else 32)",
+      "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset)",
+      "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset) — R4 MCTS continuation: re-anchor/optimize the R3 champion; probe num_warps=8 and confirm the serial-recurrence per-step bound.",
+      "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, in-kernel GQA key-head map, in-kernel varlen seq-prefix chunk offset) — R5 root-expansion re-anchor vs 6402eb golden; Phase-4 probe multibuffer=False"
+    ]
+  },
+  "next_node_id": 1,
+  "c_uct": 1.414,
+  "c_pw": 2.0,
+  "alpha": 0.5,
+  "failure_threshold": 3,
+  "reward_output_error": -2.0,
+  "reward_compile_error": -3.0,
+  "pending_expansion": null,
+  "round_dir_map": {
+    "opt-round-1": "opt-round-1",
+    "opt-round-2": "opt-round-2",
+    "opt-round-3": "opt-round-3",
+    "opt-round-4": "opt-round-4",
+    "opt-round-5": "opt-round-5"
+  }
+}

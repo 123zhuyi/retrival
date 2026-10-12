@@ -1,0 +1,139 @@
+{
+    "op_type": "ProdVirialSeA",
+    "op_list": [
+      {
+        "bin_filename": "ProdVirialSeA_float32",
+        "inputs": [
+          {
+            "name": "net_deriv",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "in_deriv",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "rij",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "nlist",
+            "index": 3,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "natoms",
+            "index": 4,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "virial",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "atom_virial",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          }
+        ],
+        "attrs": [
+          {"name": "n_a_sel", "dtype": "int", "value": 0},
+          {"name": "n_r_sel", "dtype": "int", "value": 0}
+        ]
+      },
+      {
+        "bin_filename": "ProdVirialSeA_float16",
+        "inputs": [
+          {
+            "name": "net_deriv",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "in_deriv",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "rij",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "nlist",
+            "index": 3,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "natoms",
+            "index": 4,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "virial",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          },
+          {
+            "name": "atom_virial",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [-2]
+          }
+        ],
+        "attrs": [
+          {"name": "n_a_sel", "dtype": "int", "value": 0},
+          {"name": "n_r_sel", "dtype": "int", "value": 0}
+        ]
+      }
+    ]
+}

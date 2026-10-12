@@ -1,0 +1,143 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+new file mode 100644
+index 000000000000..1d1323bf4dbc
+--- /dev/null
++++ b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+@@ -0,0 +1,38 @@
++//===- LinalgExtensions.h - Linalg operations extensions ------------------===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++//
++// This file implements the operation extensions for Linalg operations.
++//
++//===----------------------------------------------------------------------===//
++
++#ifndef MLIR_DIALECT_LINALG_IR_LINALGEXTENSIONS_H_
++#define MLIR_DIALECT_LINALG_IR_LINALGEXTENSIONS_H_
++
++#include "mlir/Dialect/Linalg/IR/Linalg.h"
++#include "mlir/Dialect/Tensor/IR/Tensor.h"
++#include "mlir/IR/BuiltinTypeInterfaces.h"
++#include "mlir/IR/BuiltinTypes.h"
++#include "mlir/IR/IRMapping.h"
++#include "mlir/IR/OpDefinition.h"
++#include "mlir/IR/PatternMatch.h"
++#include "mlir/IR/TypeUtilities.h"
++
++namespace mlir {
++namespace linalg {
++
++/// Returns true if value is splat dense, i.e. only has one single element.
++bool isSplatDense(Value value);
++
++/// Create new constant op from splat dense value content.
++std::optional<Value> createConstantFromDenseSplat(Value value,
++                                                  PatternRewriter &rewriter);
++
++} // namespace linalg
++} // namespace mlir
++
++#endif // MLIR_DIALECT_LINALG_IR_LINALGEXTENSIONS_H_
+diff --git a/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt b/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
+index c187563b8f0c..ba8bb5a2cb0b 100644
+--- a/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
+@@ -1,12 +1,23 @@
++set(BS_FEAT_FILES)
++set(BS_FEAT_OPTIONS)
++if(BSPUB_DAVINCI_BISHENGIR)
++  list(APPEND BS_FEAT_FILES LinalgExtensions.cpp)
++else()
++  list(APPEND BS_FEAT_OPTIONS PARTIAL_SOURCES_INTENDED)
++endif()
++
+ add_mlir_dialect_library(MLIRLinalgDialect
+   LinalgInterfaces.cpp
+   LinalgOps.cpp
+   LinalgDialect.cpp
+   ValueBoundsOpInterfaceImpl.cpp
++  ${BS_FEAT_FILES}
+ 
+   ADDITIONAL_HEADER_DIRS
+   ${MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/Linalg
+ 
++  ${BS_FEAT_OPTIONS}
++
+   DEPENDS
+   MLIRLinalgInterfacesIncGen
+   MLIRLinalgOpsAttributesIncGen
+diff --git a/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp b/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp
+new file mode 100644
+index 000000000000..de0ffb00be11
+--- /dev/null
++++ b/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp
+@@ -0,0 +1,65 @@
++//===- LinalgExtensions.cpp - Linalg operations extensions ----------------===//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++//
++// This file implements the operation extensions for Linalg operations.
++//
++//===----------------------------------------------------------------------===//
++
++#include "mlir/Dialect/Linalg/IR/LinalgExtensions.h"
++#include "mlir/Dialect/Arith/IR/Arith.h"
++#include "llvm/ADT/STLExtras.h"
++
++using namespace mlir;
++using namespace mlir::linalg;
++
++//===----------------------------------------------------------------------===//
++// Linalg Operations Extensions
++//===----------------------------------------------------------------------===//
++
++bool mlir::linalg::isSplatDense(Value value) {
++  Operation *defOp = value.getDefiningOp();
++  if (!defOp) {
++    return false;
++  }
++  auto constantOp = dyn_cast_or_null<arith::ConstantOp>(defOp);
++  if (!constantOp) {
++    return false;
++  }
++  auto constValue = constantOp.getValue();
++  auto denseAttr = dyn_cast_or_null<DenseIntOrFPElementsAttr>(constValue);
++  if (!denseAttr || !denseAttr.isSplat()) {
++    return false;
++  }
++  auto elemType = denseAttr.getElementType();
++  return elemType.isIntOrIndexOrFloat();
++}
++
++std::optional<Value>
++mlir::linalg::createConstantFromDenseSplat(Value value,
++                                           PatternRewriter &rewriter) {
++  if (!isSplatDense(value)) {
++    return std::nullopt;
++  }
++  auto op = cast<arith::ConstantOp>(value.getDefiningOp());
++  auto denseAttr = dyn_cast<DenseIntOrFPElementsAttr>(op.getValue());
++  if (!denseAttr || !denseAttr.isSplat()) {
++    return std::nullopt;
++  }
++  Type elemType = denseAttr.getElementType();
++  Location loc = op.getLoc();
++  TypedAttr attr;
++  if (elemType.isInteger()) {
++    APInt value = denseAttr.getSplatValue<APInt>();
++    attr = rewriter.getIntegerAttr(elemType, value);
++  } else if (isa<FloatType>(elemType)) {
++    APFloat value = denseAttr.getSplatValue<APFloat>();
++    attr = rewriter.getFloatAttr(elemType, value);
++  } else {
++    return std::nullopt;
++  }
++  return rewriter.create<arith::ConstantOp>(loc, elemType, attr);
++}

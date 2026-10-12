@@ -1,0 +1,809 @@
+//===- InferHIVMMemScope.cpp - Infer Memory Scope for HIVM Ops ------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/HIVM/Transforms/InferHIVMMemScope.h"
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/IR/HIVMImpl.h"
+#include "bishengir/Dialect/HIVM/Interfaces/LocalMatmulLikeOpInterface.h"
+#include "bishengir/Dialect/HIVM/Transforms/DistributedTransformUtils.h"
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h"
+#include "bishengir/Dialect/HIVM/Transforms/TightlyCoupledBufferUtils.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+#include "bishengir/Dialect/MemRefExt/IR/MemRefExt.h"
+#include "bishengir/Dialect/Scope/IR/Scope.h"
+#include "bishengir/Dialect/Utils/Util.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/Value.h"
+#include "mlir/Interfaces/DestinationStyleOpInterface.h"
+#include "mlir/Pass/Pass.h"
+
+#include "llvm/ADT/TypeSwitch.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/LogicalResult.h"
+
+#include <cassert>
+
+#define DEBUG_TYPE "hivm-infer-mem-scope"
+#define LDBG(X) LLVM_DEBUG(llvm::dbgs() << X << "\n")
+
+namespace mlir {
+#define GEN_PASS_DEF_INFERHIVMMEMSCOPE
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h.inc"
+} // namespace mlir
+
+using namespace mlir;
+using namespace hivm;
+
+namespace {
+bool isSingleResultPropagatableMemrefOp(Operation *op) {
+  if (!op)
+    return false;
+  if (isa<ViewLikeOpInterface>(op))
+    return true;
+  if (isa<memref::TransposeOp, hivm::BitcastOp, arith::SelectOp,
+          hivm::CreateSyncBlockLockOp>(op))
+    return true;
+  if (isa<bishengir::memref_ext::AllocWorkspaceOp>(op))
+    return true;
+  if (isa<UnrealizedConversionCastOp>(op))
+    return true;
+  return false;
+}
+
+LogicalResult setMemSpaceForAllocs(Operation *sourceOp,
+                                   MemScopeInferAndPropagateHelper &helper,
+                                   const SmallVector<Value> &allocs,
+                                   hivm::AddressSpaceAttr addressSpace) {
+  if (allocs.empty()) {
+    sourceOp->emitOpError("Cannot find root memref.alloc for this op.");
+    return failure();
+  }
+
+  for (Value alloc : allocs) {
+    if (failed(helper.Run(alloc, addressSpace))) {
+      return sourceOp->emitOpError("Failed to infer/propagate memory scope.");
+    }
+  }
+
+  return success();
+}
+
+} // namespace
+
+LogicalResult
+MemScopeInferAndPropagateHelper::propagateMemScopeToUsers(Value val) {
+  // Get new memory scope from result.
+  auto memrefScope = getHIVMAddressSpaceAttr(val.getType());
+  // This function propagates the type change of an SSA result to the operation
+  // that uses it. The result type of the updated operation might be affected,
+  // so we need to cascade the change.
+  // Default handler for operations that need memory scope propagation.
+  auto defaultPropagateFn = [&](Operation *op) -> LogicalResult {
+    // Don't need to update Ops that don't have results.
+    if (op->getNumResults() == 0) {
+      return success();
+    }
+    // Or results that are not memrefs.
+    if (llvm::none_of(op->getResults(), [&](OpResult result) {
+          return isa<MemRefType>(result.getType());
+        })) {
+      return success();
+    }
+    if (op->getNumResults() == 1 && isSingleResultPropagatableMemrefOp(op)) {
+      auto result = op->getResult(0);
+      setBaseMemRefTypeScope(result, memrefScope);
+      return propagateMemScopeToUsers(result);
+    }
+    op->emitOpError("Unsupported user for root alloc op.");
+    return failure();
+  };
+
+  // Only infer values without a memory space; a scope pinned by the other
+  // while chain (before vs cond) is authoritative, else the while round trip
+  // recurses forever / trips setBaseMemRefTypeScope (ub/gm conflict).
+  auto propagateMemScopeIfMemRef = [this, &memrefScope](Value v) {
+    if (!isa<BaseMemRefType>(v.getType()))
+      return true;
+    if (cast<BaseMemRefType>(v.getType()).getMemorySpace())
+      return true;
+    setBaseMemRefTypeScope(v, memrefScope);
+    return propagateMemScopeToUsers(v).succeeded();
+  };
+
+  auto propagateFn = [&](OpOperand &user) -> LogicalResult {
+    Operation *userDefiningOp = user.getOwner();
+    return TypeSwitch<Operation *, LogicalResult>(userDefiningOp)
+        .Case<scf::YieldOp, scope::ReturnOp>([&](Operation *op) {
+          Operation *parentOp = op->getParentOp();
+          auto yieldResult = op->getOperand(user.getOperandNumber());
+
+          Type yieldType = yieldResult.getType();
+          Type valType = val.getType();
+          if (!isa<BaseMemRefType>(yieldType))
+            return success();
+          if (!isa<BaseMemRefType>(valType))
+            return success();
+          auto yieldMemRefType = cast<BaseMemRefType>(yieldType);
+          auto valMemRefType = cast<BaseMemRefType>(valType);
+          if (yieldMemRefType.getElementType() !=
+              valMemRefType.getElementType())
+            return success();
+
+          // yield[i] maps result[i]; while's after-yield handled elsewhere.
+          if (isa<scf::WhileOp>(parentOp))
+            return success();
+          if (user.getOperandNumber() >= parentOp->getNumResults())
+            return success();
+          auto parentResult = parentOp->getResult(user.getOperandNumber());
+          setBaseMemRefTypeScope(parentResult, memrefScope);
+          if (failed(propagateMemScopeToUsers(parentResult))) {
+            return failure();
+          }
+          return success();
+        })
+        .Case<scf::ForOp>([&](scf::ForOp op) {
+          auto result = op.getTiedLoopResult(&user);
+          setBaseMemRefTypeScope(result, memrefScope);
+          auto bbArg = op.getTiedLoopRegionIterArg(&user);
+          setBaseMemRefTypeScope(bbArg, memrefScope);
+          return success(propagateMemScopeToUsers(bbArg).succeeded() &&
+                         propagateMemScopeToUsers(result).succeeded());
+        })
+        .Case<scf::WhileOp>([&](scf::WhileOp op) {
+          auto bbArg = op.getTiedLoopRegionIterArg(&user);
+          if (!bbArg)
+            return failure();
+          auto yield = op.getTiedLoopYieldedValue(bbArg);
+          if (!yield)
+            return failure();
+
+          // Propagate along the init -> before-arg -> after-yield round trip.
+          return success(propagateMemScopeIfMemRef(bbArg) &&
+                         propagateMemScopeIfMemRef(yield->get()));
+        })
+        .Case<scf::ConditionOp>([&](scf::ConditionOp op) {
+          // scf.condition's parent is always scf.while (HasParent trait).
+          auto whileOp = cast<scf::WhileOp>(op->getParentOp());
+          // cond-args map positionally to after-args/results.
+          auto condTerminator =
+              cast<RegionBranchTerminatorOpInterface>(op.getOperation());
+          OperandRange condArgs =
+              condTerminator.getSuccessorOperands(whileOp.getAfter());
+          if (user.getOperandNumber() < condArgs.getBeginOperandIndex())
+            return success(); // condition predicate
+          unsigned slot =
+              user.getOperandNumber() - condArgs.getBeginOperandIndex();
+          if (slot >= condArgs.size())
+            return success();
+
+          bool ok = true;
+          if (slot < whileOp.getAfterArguments().size())
+            ok &= propagateMemScopeIfMemRef(whileOp.getAfterArguments()[slot]);
+          if (slot < whileOp->getNumResults())
+            ok &= propagateMemScopeIfMemRef(whileOp->getResult(slot));
+          return success(ok);
+        })
+        .Case<memref::ExtractStridedMetadataOp>([&](auto op) {
+          auto baseBuffer = op.getBaseBuffer();
+          setBaseMemRefTypeScope(baseBuffer, memrefScope);
+          return propagateMemScopeToUsers(baseBuffer);
+        })
+        .Case<func::CallOp>([&](auto op) {
+          // For function calls, we cannot propagate the memory scope because
+          // we don't know the relationship between the inputs and results.
+          // But we don't need to report failure because we can run propagation
+          // for the results.
+          func::FuncOp funcOp = llvm::dyn_cast<func::FuncOp>(
+              SymbolTable::lookupNearestSymbolFrom(op, op.getCalleeAttr()));
+          if (!funcOp || !util::isSIMTVF(funcOp))
+            return success();
+
+          auto argTypes = funcOp.getArgumentTypes().vec();
+          for (size_t idx = 0; idx < op->getOperands().size(); idx++) {
+            if (op->getOperand(idx) == val) {
+              auto newType = getBaseMemRefTypeWithNewScope(
+                  llvm::dyn_cast<BaseMemRefType>(argTypes[idx]), memrefScope);
+              argTypes[idx] = newType;
+              if (!funcOp->getRegion(0).empty()) {
+                funcOp.front().getArgument(idx).setType(newType);
+              }
+            }
+          }
+          auto newFt = funcOp.getFunctionType().clone(argTypes,
+                                                      funcOp->getResultTypes());
+          funcOp.setFunctionType(newFt);
+
+          return success();
+        })
+        .Case<hivm::CustomOp>([&](hivm::CustomOp op) {
+          // Only handle distributed custom ops, otherwise fall through to
+          // default.
+          if (!isDistributedTypeCustomOp(op)) {
+            return defaultPropagateFn(op);
+          }
+          // Distributed CustomOp is just a func Call
+          return success();
+        })
+        .Case<hivm::FixpipeOp>([&](hivm::FixpipeOp op) {
+          // Fixpipe moves data from L0C to an independently inferred
+          // destination memory hierarchy. Do not propagate the source scope
+          // through the operation.
+          return success();
+        })
+        .Default(defaultPropagateFn);
+  };
+  // Iterate over the users of the val.
+  for (OpOperand &user : val.getUses()) {
+    // Update the type of the result that corresponds to the operand.
+    if (failed(propagateFn(user))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult
+MemScopeInferAndPropagateHelper::Run(Value operand,
+                                     const AddressSpaceAttr &targetMemScope) {
+  auto memRefType = dyn_cast<BaseMemRefType>(operand.getType());
+  if (!memRefType) {
+    return failure();
+  }
+
+  auto memSpace = memRefType.getMemorySpace();
+  if (memSpace) {
+    return propagateMemScopeToUsers(operand);
+  }
+
+  // Update its scope.
+  setBaseMemRefTypeScope(operand, targetMemScope);
+
+  // Propagate the new memref type to its users.
+  return propagateMemScopeToUsers(operand);
+}
+
+namespace {
+struct InferHIVMMemScopePass
+    : public impl::InferHIVMMemScopeBase<InferHIVMMemScopePass> {
+  void runOnOperation() override;
+
+private:
+  LogicalResult fixDeviceCallSite(func::FuncOp op);
+  LogicalResult fixHostFuncSignature(func::FuncOp op);
+};
+} // namespace
+
+LogicalResult hivm::inferAndPropagateMemScopeForLocalMatmulLike(
+    LocalMatmulLikeOpInterface op) {
+  Operation *mmadOp = op.getOperation();
+  assert(!isa<BatchMmadL1Op>(mmadOp) &&
+         "BatchMmadL1Op should be decomposed before inferring memory scope");
+
+  auto dpsOp = cast<DestinationStyleOpInterface>(mmadOp);
+  if (!dpsOp.hasPureBufferSemantics()) {
+    return mmadOp->emitOpError("Run infer memory scope after bufferization.");
+  }
+
+  MemScopeInferAndPropagateHelper helper;
+  auto l1SpaceAttr =
+      AddressSpaceAttr::get(mmadOp->getContext(), hivm::AddressSpace::L1);
+  auto l0cSpaceAttr =
+      AddressSpaceAttr::get(mmadOp->getContext(), hivm::AddressSpace::L0C);
+
+  // mA, mB and mC must originate from an AllocOP
+  auto allocsA = utils::tracebackMemRefVec(op.getMatmulA());
+  auto allocsB = utils::tracebackMemRefVec(op.getMatmulB());
+  auto allocsC = utils::tracebackMemRefVec(op.getMatmulC());
+
+  // For local matmul-like ops, operand mA should be in L1.
+  if (failed(setMemSpaceForAllocs(mmadOp, helper, allocsA, l1SpaceAttr)))
+    return mmadOp->emitOpError("Failed to infer/propagate memory scope for mA");
+
+  // For local matmul-like ops, operand mB should be in L1.
+  if (failed(setMemSpaceForAllocs(mmadOp, helper, allocsB, l1SpaceAttr)))
+    return mmadOp->emitOpError("Failed to infer/propagate memory scope for mB");
+
+  // For local matmul-like ops, operand mC should be in L0C.
+  if (failed(setMemSpaceForAllocs(mmadOp, helper, allocsC, l0cSpaceAttr)))
+    return mmadOp->emitOpError("Failed to infer/propagate memory scope for mC");
+
+  if (op.supportsScaleOperands()) {
+    auto mmadMx = cast<MmadMxL1Op>(mmadOp);
+    auto allocsScaleA = utils::tracebackMemRefVec(mmadMx.getScaleA());
+    auto allocsScaleB = utils::tracebackMemRefVec(mmadMx.getScaleB());
+
+    // For MmadMxL1Op, operand scaleA should be in L1.
+    if (failed(
+            setMemSpaceForAllocs(mmadOp, helper, allocsScaleA, l1SpaceAttr))) {
+      return mmadOp->emitOpError(
+          "Failed to infer/propagate memory scope for scaleA");
+    }
+    LDBG("IR after setting mem scope for scaleA:\n"
+         << *(mmadOp->getParentOfType<ModuleOp>()));
+
+    // For MmadMxL1Op, operand scaleB should be in L1.
+    if (failed(
+            setMemSpaceForAllocs(mmadOp, helper, allocsScaleB, l1SpaceAttr))) {
+      return mmadOp->emitOpError(
+          "Failed to infer/propagate memory scope for scaleB");
+    }
+    LDBG("IR after setting mem scope for scaleB:\n"
+         << *(mmadOp->getParentOfType<ModuleOp>()));
+  }
+
+  if (Value bias = op.getMatmulPerChannelBias()) {
+    auto allocBias = utils::tracebackMemRefToAlloc(bias);
+    if (!allocBias.has_value()) {
+      emitError(op.getLoc())
+          << "Cannot find root memref.alloc for bias of this op.";
+      return failure();
+    }
+
+    if (failed(helper.Run(allocBias.value(), l1SpaceAttr))) {
+      return mmadOp->emitOpError(
+          "Failed to infer/propagate memory scope for bias");
+    }
+    LDBG("IR after setting mem scope for bias:\n"
+         << *(mmadOp->getParentOfType<ModuleOp>()));
+  }
+
+  return success();
+}
+
+template <typename ConvOp>
+LogicalResult hivm::inferAndPropagateMemScopeForConvOp(ConvOp op) {
+  if (!op.hasPureBufferSemantics()) {
+    return op->emitOpError("Run infer memory scope after bufferization.");
+  }
+
+  auto *input = op.getDpsInputOperand(0);
+  auto *weight = op.getDpsInputOperand(1);
+  auto *output = op.getDpsInitOperand(0);
+
+  // Trace back to all alloc-like roots. After memory planning, an allocation
+  // may already have been replaced by a pointer_cast; tracebackMemRefVec keeps
+  // that value as a root so repeated mem-scope inference remains valid.
+  auto allocsInput = utils::tracebackMemRefVec(input->get());
+  auto allocsWeight = utils::tracebackMemRefVec(weight->get());
+  auto allocsOutput = utils::tracebackMemRefVec(output->get());
+
+  auto l1SpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::L1);
+  auto l0cSpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::L0C);
+
+  MemScopeInferAndPropagateHelper helper;
+
+  // For ConvOp, operand input should be in L1.
+  if (failed(setMemSpaceForAllocs(op, helper, allocsInput, l1SpaceAttr))) {
+    return op->emitOpError("Failed to infer/propagate memory scope for input");
+  }
+  LDBG("IR after setting mem scope for input:\n"
+       << *(op->template getParentOfType<ModuleOp>()));
+
+  // For ConvOp, operand weight should be in L1.
+  if (failed(setMemSpaceForAllocs(op, helper, allocsWeight, l1SpaceAttr))) {
+    return op->emitOpError("Failed to infer/propagate memory scope for weight");
+  }
+  LDBG("IR after setting mem scope for weight:\n"
+       << *(op->template getParentOfType<ModuleOp>()));
+
+  // For ConvOp, operand output should be in L0C.
+  if (failed(setMemSpaceForAllocs(op, helper, allocsOutput, l0cSpaceAttr))) {
+    return op->emitOpError("Failed to infer/propagate memory scope for output");
+  }
+  LDBG("IR after setting mem scope for output:\n"
+       << *(op->template getParentOfType<ModuleOp>()));
+
+  return success();
+}
+
+LogicalResult InferHIVMMemScopePass::fixDeviceCallSite(func::FuncOp op) {
+  LDBG("Begin fixing call site for " << op.getSymName());
+
+  MemScopeInferAndPropagateHelper helper;
+  auto maybeSymbolUses = op.getSymbolUses(getOperation());
+  if (!maybeSymbolUses.has_value())
+    llvm::report_fatal_error("maybeSymbolUses is null");
+  SymbolTable::UseRange uses = maybeSymbolUses.value();
+  for (SymbolTable::SymbolUse use : uses) {
+    func::CallOp call = cast<func::CallOp>(use.getUser());
+    // propagate call operand's memory scope
+    for (auto [idx, callOperand] : llvm::enumerate(call.getArgOperands())) {
+      if (!isa<BaseMemRefType>(callOperand.getType()))
+        continue;
+
+      auto funcOperandType = op.getFunctionType().getInput(idx);
+      if (!isa<BaseMemRefType>(funcOperandType))
+        continue;
+
+      LDBG("call operand: " << callOperand);
+      if (failed(helper.Run(utils::tracebackMemRef(callOperand),
+                            getHIVMAddressSpaceAttr(funcOperandType)))) {
+        return op->emitOpError()
+               << "Failed to propagate memory scope for operand "
+               << callOperand;
+      }
+      LDBG("call operand after: " << callOperand);
+    }
+    // propagate call return value memory scope
+    for (auto [idx, returnValue] : llvm::enumerate(call->getResults())) {
+      if (!isa<BaseMemRefType>(returnValue.getType()))
+        continue;
+
+      auto funcReturnType = op.getFunctionType().getResult(idx);
+      if (!isa<BaseMemRefType>(funcReturnType))
+        continue;
+
+      if (failed(helper.Run(returnValue,
+                            getHIVMAddressSpaceAttr(funcReturnType)))) {
+        return op->emitOpError()
+               << "Failed to propagate memory scope for result " << returnValue;
+      }
+    }
+  }
+  return success();
+}
+
+/// Update the function type for the host function.
+///
+/// Because we propagate information from the call site to the caller, we only
+/// updated the memref type of the BlockArgument of or the return operation
+/// within the function (if they are updated at all). So we need to use those
+/// information to update the function's type.
+LogicalResult InferHIVMMemScopePass::fixHostFuncSignature(func::FuncOp op) {
+  // Skip external host functions because we know nothing about it.
+  if (op.isExternal())
+    return success();
+
+  func::ReturnOp returnOp = utils::getAssumedUniqueReturnOp(op);
+  if (!returnOp)
+    return failure();
+
+  SmallVector<Type> newArgsType(llvm::map_to_vector(
+      op.getArguments(), [](const BlockArgument &ba) { return ba.getType(); }));
+  SmallVector<Type> newReturnType(llvm::map_to_vector(
+      returnOp.getOperandTypes(), [](const Type &type) { return type; }));
+  auto newFt = op.getFunctionType().clone(newArgsType, newReturnType);
+  op.setFunctionType(newFt);
+  return success();
+}
+
+LogicalResult inferAndPropagateMemScopeForExternFunc(func::FuncOp op) {
+  if (!op.isExternal())
+    return failure();
+
+  auto gmSpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::GM);
+  LDBG("Begin infer and propagate memory scope for extern func"
+       << op.getSymName());
+  auto newArgTypes = SmallVector<Type>(op.getArgumentTypes());
+  for (auto &argType : newArgTypes) {
+    // If not base memref and already has memspace then skip
+    if (auto memrefType = dyn_cast<BaseMemRefType>(argType)) {
+      if (memrefType.getMemorySpace())
+        continue;
+      argType = getBaseMemRefTypeWithNewScope(memrefType, gmSpaceAttr);
+    }
+  }
+  // For extern functions that have results, we assume that the memory scope
+  // is Global Memory.
+  auto newReturnTypes = SmallVector<Type>(op.getResultTypes());
+  for (auto &resultType : newReturnTypes) {
+    // If not base memref and already has memspace then skip
+    if (auto memrefType = dyn_cast<BaseMemRefType>(resultType)) {
+      if (memrefType.getMemorySpace())
+        continue;
+      resultType = getBaseMemRefTypeWithNewScope(memrefType, gmSpaceAttr);
+    }
+  }
+  auto newFt = op.getFunctionType().clone(newArgTypes, newReturnTypes);
+  op.setFunctionType(newFt);
+  return success();
+}
+
+LogicalResult hivm::inferAndPropagateMemScopeForFunc(func::FuncOp op) {
+  if (op.isExternal())
+    return inferAndPropagateMemScopeForExternFunc(op);
+
+  LDBG("Begin infer and propagate memory scope for func" << op.getSymName());
+  MemScopeInferAndPropagateHelper helper;
+  auto gmSpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::GM);
+  auto ubSpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::UB);
+  auto args = op.getArguments();
+  for (auto arg : args) {
+    if (!isa<BaseMemRefType>(arg.getType())) {
+      continue;
+    }
+
+    if (op->hasAttr(hivm::VectorFunctionAttr::name)) {
+      if (failed(helper.Run(arg, ubSpaceAttr)))
+        return op->emitOpError()
+               << "Failed to propagate UB memory scope for argument # in VF"
+               << arg.getArgNumber();
+    } else if (failed(helper.Run(arg, gmSpaceAttr))) {
+      return op->emitOpError()
+             << "Failed to propagate memory scope for argument #"
+             << arg.getArgNumber();
+    }
+  }
+  if (!args.empty()) {
+    auto newFt = op.getFunctionType().clone(
+        op.getBody().front().getArgumentTypes(), op.getResultTypes());
+    op.setFunctionType(newFt);
+  }
+  if (op->getNumResults() > 0)
+    op.emitWarning()
+        << "non-externl function has return value after bufferization!";
+
+  return success();
+}
+
+LogicalResult hivm::inferAndPropagateMemScopeForDistributed(hivm::CustomOp op) {
+  auto gmSpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::GM);
+  LDBG("Begin infer and propagate memory scope for distributed func"
+       << op.getSymbol());
+  // For operands (actual SSA values) propagate GM scope to their root.
+  MemScopeInferAndPropagateHelper helper;
+  for (Value in : op.getInputs()) {
+    if (!isa<BaseMemRefType>(in.getType()))
+      continue;
+    if (auto memrefType = dyn_cast<BaseMemRefType>(in.getType())) {
+      if (memrefType.getMemorySpace())
+        continue;
+    }
+    // Trace back and set its scope to GM.
+    if (failed(helper.Run(utils::tracebackMemRef(in), gmSpaceAttr))) {
+      return op->emitOpError()
+             << "Failed to propagate memory scope for operand " << in;
+    }
+  }
+  // Also propagate GM scope to output init operands (the buffers provided
+  // as outputs) so their root allocs get marked.
+  for (Value out : op.getOutputs()) {
+    if (!isa<BaseMemRefType>(out.getType()))
+      continue;
+    if (auto memrefType = dyn_cast<BaseMemRefType>(out.getType())) {
+      if (memrefType.getMemorySpace())
+        continue;
+    }
+    if (failed(helper.Run(utils::tracebackMemRef(out), gmSpaceAttr))) {
+      return op->emitOpError()
+             << "Failed to propagate memory scope for output operand " << out;
+    }
+  }
+  // For extern functions that have results, we assume that the memory scope
+  // is Global Memory.
+  auto newReturnTypes = SmallVector<Type>(op->getResultTypes());
+  for (auto &resultType : newReturnTypes) {
+    // If not base memref and already has memspace then skip
+    if (auto memrefType = dyn_cast<BaseMemRefType>(resultType)) {
+      if (memrefType.getMemorySpace())
+        continue;
+      resultType = getBaseMemRefTypeWithNewScope(memrefType, gmSpaceAttr);
+    }
+  }
+  // Update the operation's result types by asking the helper to set the
+  // memory scope on each result (helper.Run will set the scope and propagate
+  // to users).
+  for (auto [i, ty] : llvm::enumerate(newReturnTypes)) {
+    // Only run propagation for memref results.
+    if (!isa<BaseMemRefType>(ty))
+      continue;
+    if (failed(helper.Run(op->getResult(i), gmSpaceAttr))) {
+      return op->emitOpError() << "Failed to propagate memory scope for result "
+                               << op->getResult(i);
+    }
+  }
+  return success();
+}
+
+LogicalResult
+hivm::inferAndPropagateMemScopeForPointerCast(hivm::PointerCastOp op) {
+  LDBG("Begin infer and propagate memory scope for:" << op);
+
+  auto gmSpaceAttr =
+      AddressSpaceAttr::get(op->getContext(), hivm::AddressSpace::GM);
+  MemScopeInferAndPropagateHelper helper;
+  auto res = op.getResult();
+
+  if (util::isGMPointerCastOp(op)) {
+    if (failed(helper.Run(res, gmSpaceAttr))) {
+      return op->emitOpError(
+          "Failed to propagate memory scope for PointerCastOp");
+    }
+  }
+  return success();
+}
+
+static LogicalResult inferAndPropagateIfResultsToBranches(scf::IfOp ifOp) {
+  MemScopeInferAndPropagateHelper helper;
+  for (auto result : ifOp->getOpResults()) {
+    auto memrefType = llvm::dyn_cast<BaseMemRefType>(result.getType());
+    if (!memrefType)
+      continue;
+    auto addressSpaceAttr = memrefType.getMemorySpace();
+    if (!addressSpaceAttr)
+      continue;
+
+    auto memScope = getHIVMAddressSpaceAttr(memrefType);
+    auto propagateThroughYield = [&helper, memScope](scf::YieldOp yieldOp,
+                                                     unsigned int valIdx) {
+      auto val = yieldOp->getOperand(valIdx);
+
+      // we are safe to assume the values are memref types here - otherwise
+      // the input is incorrect
+      auto yieldMemrefType = llvm::cast<BaseMemRefType>(val.getType());
+      if (yieldMemrefType.getMemorySpace())
+        return success();
+      for (auto sourceVal : utils::tracebackMemRefVec(val)) {
+        if (llvm::failed(helper.Run(sourceVal, memScope))) {
+          return llvm::failure();
+        }
+      }
+
+      return llvm::success();
+    };
+
+    // An ifOp with result must have both then and else block, and each must has
+    // a terminator (yieldOp)
+    auto valIdx = result.getResultNumber();
+    if (llvm::failed(propagateThroughYield(ifOp.thenYield(), valIdx)))
+      return llvm::failure();
+    if (llvm::failed(propagateThroughYield(ifOp.elseYield(), valIdx)))
+      return llvm::failure();
+  }
+  return llvm::success();
+}
+
+LogicalResult
+hivm::inferAndPropagateMemScopeForAlloc(memref::AllocOp op,
+                                        hivm::AddressSpace space) {
+  LDBG("Begin infer and propagate memory scope for: " << *op);
+  auto memorySpace = op.getType().getMemorySpace();
+  MemScopeInferAndPropagateHelper helper;
+  if (memorySpace) {
+    auto addressSpace = cast<hivm::AddressSpaceAttr>(memorySpace);
+    if (addressSpace.getAddressSpace() != hivm::AddressSpace::UB &&
+        addressSpace.getAddressSpace() != hivm::AddressSpace::L1)
+      return success();
+    return helper.Run(op, addressSpace);
+  }
+
+  auto spaceAttr = AddressSpaceAttr::get(op->getContext(), space);
+  if (failed(helper.Run(op, spaceAttr))) {
+    return op->emitOpError("Failed to propagate memory scope for allocOp");
+  }
+  return success();
+}
+
+void InferHIVMMemScopePass::runOnOperation() {
+  SmallVector<func::FuncOp> deviceFuncList;
+  SetVector<StringRef> deviceFuncNames;
+  SmallVector<func::FuncOp> hostFuncList;
+  getOperation()->walk([&](func::FuncOp func) {
+    if (!hacc::utils::isHost(func)) {
+      deviceFuncList.push_back(func);
+      deviceFuncNames.insert(func.getSymName());
+      return;
+    }
+    hostFuncList.push_back(func);
+  });
+
+  // Infer and propagate memory scope for device functions.
+  for (auto func : deviceFuncList) {
+    // Set the memory scope of local matmul-like ops to L1 or L0C.
+    // BatchMmadL1Op should have been decomposed before this pass.
+    func->walk([&](LocalMatmulLikeOpInterface op) {
+      if (isa<BatchMmadL1Op>(op.getOperation()))
+        return;
+      if (failed(hivm::inferAndPropagateMemScopeForLocalMatmulLike(op))) {
+        if (isa<MmadMxL1Op>(op.getOperation()))
+          signalPassFailure();
+        else
+          op.getOperation()->emitWarning(
+              "Failed to infer/propagate memory scope for local matmul op");
+      }
+    });
+
+    // Set the memory scope of values related to `hivm::Conv1DL1Op` to L1 or
+    // L0C.
+    func->walk([&](mlir::hivm::Conv1DL1Op op) {
+      if (failed(inferAndPropagateMemScopeForConvOp(op)))
+        signalPassFailure();
+    });
+
+    // Set the memory scope of values related to `hivm::Conv2DL1Op` to L1 or
+    // L0C.
+    func->walk([&](mlir::hivm::Conv2DL1Op op) {
+      if (failed(inferAndPropagateMemScopeForConvOp(op)))
+        signalPassFailure();
+    });
+
+    // Set the memory scope of values related to `hivm::Conv3DL1Op` to L1 or
+    // L0C.
+    func->walk([&](mlir::hivm::Conv3DL1Op op) {
+      if (failed(inferAndPropagateMemScopeForConvOp(op)))
+        signalPassFailure();
+    });
+
+    // Set device function arguments' memory scope to GM.
+    if (failed(hivm::inferAndPropagateMemScopeForFunc(func)))
+      signalPassFailure();
+
+    // TODO: Consider annotate value's memory space when create hivm.custom op,
+    // so that no need to infer custom op's value memory space.
+    func->walk([&](hivm::CustomOp op) {
+      if (isDistributedTypeCustomOp(op)) {
+        if (failed(hivm::inferAndPropagateMemScopeForDistributed(op))) {
+          signalPassFailure();
+        }
+      }
+    });
+
+    // Propagate the memory scope by the pointer cast's annotation mark
+    func->walk([&](hivm::PointerCastOp op) {
+      if (failed(hivm::inferAndPropagateMemScopeForPointerCast(op)))
+        signalPassFailure();
+    });
+
+    // Propagate the memory scope across then/else blocks - if any is
+    // determined, the result is as well
+    // TODO: properly support this by propagating up and down
+    func->walk([&](scf::IfOp ifOp) {
+      if (failed(inferAndPropagateIfResultsToBranches(ifOp))) {
+        signalPassFailure();
+      }
+    });
+
+    // Finally, set the remaining memory scope in the device kernel.
+    auto funcCoreType = queryFuncCoreType(func);
+    if (funcCoreType.has_value()) {
+      hivm::AddressSpace space = hivm::AddressSpace::UB;
+      if (funcCoreType.value() == TFuncCoreType::AIC) {
+        space = hivm::AddressSpace::L1;
+      }
+      func->walk([&](memref::AllocOp op) {
+        if (failed(hivm::inferAndPropagateMemScopeForAlloc(op, space))) {
+          signalPassFailure();
+        }
+      });
+    }
+  }
+
+  for (auto func : deviceFuncList) {
+    if (failed(fixDeviceCallSite(func)))
+      signalPassFailure();
+  }
+
+  for (auto func : hostFuncList) {
+    if (failed(fixHostFuncSignature(func)))
+      signalPassFailure();
+  }
+}
+
+std::unique_ptr<Pass> mlir::hivm::createInferHIVMMemScopePass() {
+  return std::make_unique<InferHIVMMemScopePass>();
+}

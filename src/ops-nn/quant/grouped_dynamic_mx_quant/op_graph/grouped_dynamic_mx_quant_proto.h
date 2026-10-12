@@ -1,0 +1,74 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file grouped_dynamic_mx_quant_proto.h
+ * \brief
+ */
+#ifndef QUANTIZE_GROUPED_DYNAMIC_MX_QUANT_PROTO_H
+#define QUANTIZE_GROUPED_DYNAMIC_MX_QUANT_PROTO_H
+#include "graph/operator_reg.h"
+
+namespace ge {
+
+/**
+* @brief Quantizes the input to mxfp8 group-wisely, according to group_index. \n
+
+* @par Inputs:
+* @li x: A tensor of type float16 or bfloat16, specifying the input.
+* The shape only supports 2 dimensions.
+* @li group_index: A tensor of type int32 or int64, specifying the index of groups.
+* The shape only supports 1 dimension.
+
+* @par Attributes:
+* @li round_mode: An optional string, specifying the quantization rounding mode.
+* Support "rint"/"round"/"floor". For FLOAT8, only support "rint". For Float4, support "rint"/"round"/"floor".
+* Defaults to "rint".
+* @li dst_type: An optional int, specifying the dtype of output y. Target data type enum value:
+* - 35: DT_FLOAT8_E5M2
+* - 36: DT_FLOAT8_E4M3FN
+* - 40: DT_FLOAT4_E2M1
+* - 41: DT_FLOAT4_E1M2
+* Defaults to DT_FLOAT8_E5M2.
+* @li blocksize: An optional int, specifying the block size of quantization.
+* Defaults and only supports 32.
+* @li scale_alg: An Optional Int. The algorithm for the scale in quantization.
+* Support MxFP4/MxFP8(OCP Microscaling Formats(Mx) Specification, count 0) or MxFP8(Ceil rounding algorithm, count 1) or
+MxFP4(Dynamic Dtype Range, count 2).
+* Defaults to 0.
+* @li dst_type_max: An Optional Float. Max_dtype takes the maximum value of the quant_data_type, or the provided value.
+* Only support in FLOAT4 mode, with a valid range of 0.0/6.0 to 12.0(FLOAT4_E2M1) or 0.0/1.75 to 3.5(FLOAT4_E1M2).
+* Defaults to 0.0.
+
+* @par Outputs:
+* @li y: An output tensor of type FLOAT4_E2M1/FLOAT4_E1M2 or FLOAT8_E4M3FN/FLOAT8_E5M2. It has the same shape and rank
+as input x.
+* @li mxscale: An output tensor of type FLOAT8_E8M0, the shape only supports 3 dimensions. \n
+* - mxscale.shape[0] = x.shape[0] / (blocksize * 2) + group_index.shape[0].
+* - mxscale.shape[1] = x.shape[1].
+* - mxscale.shape[2] = 2.
+
+* @par Third-party framework compatibility
+* It is a custom operator. It has no corresponding operator in Caffe, Onnx, Tensorflow or Pytorch.
+*/
+REG_OP(GroupedDynamicMxQuant)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
+    .INPUT(group_index, TensorType({DT_Int32, DT_Int64}))
+    .OUTPUT(y, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
+    .OUTPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))
+    .ATTR(round_mode, String, "rint")
+    .ATTR(dst_type, Int, DT_FLOAT8_E5M2)
+    .ATTR(blocksize, Int, 32)
+    .ATTR(scale_alg, Int, 0)
+    .ATTR(dst_type_max, Float, 0.0)
+    .OP_END_FACTORY_REG(GroupedDynamicMxQuant)
+} // namespace ge
+
+#endif // QUANTIZE_GROUPED_DYNAMIC_MX_QUANT_PROTO_H

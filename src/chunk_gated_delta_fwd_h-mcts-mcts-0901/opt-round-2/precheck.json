@@ -1,0 +1,23 @@
+{
+  "category": "gated-delta-net",
+  "template_path": ".claude/template/gated-delta-net.md",
+  "template_exists": true,
+  "layer1_constraints_loaded": [
+    "D1: state S[K,V] per-program full-K, V-dim tile split across programs; grid=(B*HV*num_v_tiles); forbid K-split across programs",
+    "D2: time dim serial in-kernel (chunk loop); forbid flattening chunk dim into grid",
+    "D3: recursion state fp32 end-to-end; cast to out dtype only at store; forbid fp16/bf16 accumulation",
+    "D4: gate numerics: exp(g_last-g) and exp(g_last) computed separately; g is chunk-local cumsum (monotone log-decay)",
+    "D5: S tile area BLOCK_K*BLOCK_V bounded for UB; K=128. Parent used BV=64 (cs<=64) / BV=32 (cs>64).",
+    "D6: tile = min(tile, dim) protection; mask fallback inside kernel",
+    "D7: launch with multibuffer=True, unit_flag=True (measured 15.5x on GDN recurrences)",
+    "Triton-Ascend autotune limitation (references/autotune.md): num_warps/num_stages NOT supported; advanced auto-gen autotune only for Vector ops, NOT Cube/dot kernels. Manual triton.Config list works on dot kernels (validated offline)."
+  ],
+  "loaded_via": "explicit_path",
+  "matched_patterns": [
+    "chunked-delta-recurrence (ssm/gated-delta-net): per-(b,h) serial chunk loop, in-chunk GEMM (w@S, k^T@upd), state S[K,V] register-resident fp32",
+    "V-tile grid split for parallelism; BV tile-size re-tuning per shape",
+    "varlen: seq folded into grid (pid decodes seq), in-kernel chunk-offset accumulation",
+    "host pre-flatten inputs to [B*HV, T, D] contiguous, k hv->hk via index_select"
+  ],
+  "analysis_reasoning": "MCTS Round 2 expands node opt-round-1 (mean reward 1.7403, visit 1). Parent hit 5.6991x geomean with a fused chunk-recurrence kernel but used a hand-tuned BV heuristic: BV=64 when chunk_size<=64 else BV=32. Hypothesis: on cs=128 shapes this leaves headroom. Offline empirical BV sweep over ALL 8 shapes (dense + varlen, cs 64/128) on the actual parent kernel disproves the parent heuristic: BV=64 is the fastest config on EVERY shape, including the four cs=128 cases where parent ran BV=32. Measured (ms/kernel): case2 cs128 0.280(BV64) vs 0.463(BV32) = 1.65x; case4 cs128 3.19 vs 5.12 = 1.61x; case6 cs128 0.913 vs 1.33 = 1.46x; case8 varlen cs128 7.86 vs 13.5 = 1.72x. BV=128 is never better than BV=64. The cs=128 shapes are exactly the weakest per-shape speedups (2.9-3.5x). Fix = set BV=min(64,V) uniformly, preserving min() guard and V%BV==0 (all shapes V=128). num_warps autotune is infeasible on Ascend (validated: fixed at 4); manual-config triton.autotune over BV would select BV=64 for every shape but adds ~7s/shape autotune overhead and D7 forbids toggling multibuffer off, so a hand-tuned BV=64 reproduces the autotune optimum with zero runtime cost."
+}

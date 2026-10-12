@@ -1,0 +1,30 @@
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index 4f2f9df187ab..c1f294750241 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -98,11 +98,10 @@ public:
+ 
+     // Create the extract_slice of the input.
+     Location loc = broadcastOp.getLoc();
+-    rewriter.setInsertionPointAfterValue(broadcastOp.getInput());
++    rewriter.setInsertionPoint(broadcastOp);
+     Value tiledInput = rewriter.create<tensor::ExtractSliceOp>(
+         loc, broadcastOp.getInput(), inputOffsets, inputSizes, inputStrides);
+     LLVM_DEBUG(llvm::dbgs() << tiledInput << "\n";);
+-    rewriter.setInsertionPointAfterValue(broadcastOp.getInit());
+ 
+     Value tiledInit = rewriter.create<tensor::ExtractSliceOp>(
+         loc, broadcastOp.getInit(), sliceOp.getMixedOffsets(),
+@@ -170,11 +169,10 @@ public:
+           ++outIdx;
+         }
+       }
+-      rewriter.setInsertionPointAfterValue(inputReduce);
++      rewriter.setInsertionPoint(reduceOp);
+       Value tiledInput = rewriter.create<tensor::ExtractSliceOp>(
+           inputReduce.getLoc(), inputReduce, inputOffsets, inputSizes,
+           inputStrides);
+-      rewriter.setInsertionPointAfterValue(initReduce);
+       Value tiledInit = rewriter.create<tensor::ExtractSliceOp>(
+           initReduce.getLoc(), initReduce, outputOffsets, outputSizes,
+           sliceOp.getMixedStrides());

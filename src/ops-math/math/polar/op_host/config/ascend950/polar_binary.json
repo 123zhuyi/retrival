@@ -1,0 +1,45 @@
+{
+    "op_type": "Polar",
+    "op_list": [
+      {
+        "bin_filename": "Polar_5a8c1e2d3f4b5678abcdef0123456789",
+        "inputs": [
+          {
+            "name": "abs",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "angle",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "complex64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      }
+    ]
+}

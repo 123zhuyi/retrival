@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+# ----------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------
+
+import numpy as np
+import torch
+
+
+__golden__ = {
+    "aclnn": {
+        "aclnnCos": "aclnn_cos_golden",
+    },
+    "kernel": {"cos": "cos_golden"},
+}
+
+
+def cos_golden(x, **kwargs):
+    """
+    Kernel golden for cos.
+    All the parameters follow @cos_def.cpp without outputs.
+    All the input Tensors are numpy.ndarray.
+    kwargs may contain: short_soc_version, input_ori_shapes, output_ori_shapes,
+        input_formats, output_formats, input_ori_formats, output_ori_formats,
+        input_dtypes, output_dtypes.
+    """
+    ori_dtype = x.dtype
+    if ori_dtype.name in ("float16", "bfloat16"):
+        x_cast = x.astype(np.float32)
+        res = np.cos(x_cast)
+        return res.astype(ori_dtype, copy=False)
+    return np.cos(x)
+
+
+def aclnn_cos_golden(input, out=None, **kwargs):
+    """
+    Aclnn golden for aclnnCos.
+    Parameters follow @aclnnCosGetWorkspaceSize without workspaceSize & executor.
+    All the input Tensors are torch.Tensor.
+    """
+    return [torch.cos(input)]

@@ -1,0 +1,287 @@
+{
+    "op_type": "AttentionToFFN",
+    "op_list": [
+      {
+        "bin_filename": "AttentionToFFN_ND_FP16_FP16",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "session_id",
+            "index": 1,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "micro_batch_id",
+            "index": 2,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "layer_id",
+            "index": 3,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "expert_ids",
+            "index": 4,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "expert_rank_table",
+            "index": 5,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "scales",
+            "index": 6,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "active_mask",
+            "index": 7,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "world_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "ffn_token_info_table_shape",
+            "dtype": "list_int",
+            "value": []
+          },
+          {
+            "name": "ffn_token_data_shape",
+            "dtype": "list_int",
+            "value": []
+          },
+          {
+            "name": "attn_token_info_table_shape",
+            "dtype": "list_int",
+            "value": []
+          },
+          {
+            "name": "moe_expert_num",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "quant_mode",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "sync_flag",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "ffn_start_rank_id",
+            "dtype": "int",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "bin_filename": "AttentionToFFN_ND_BF16_BF16",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "session_id",
+            "index": 1,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "micro_batch_id",
+            "index": 2,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "layer_id",
+            "index": 3,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "expert_ids",
+            "index": 4,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "expert_rank_table",
+            "index": 5,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "scales",
+            "index": 6,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "active_mask",
+            "index": 7,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "world_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "ffn_token_info_table_shape",
+            "dtype": "list_int",
+            "value": []
+          },
+          {
+            "name": "ffn_token_data_shape",
+            "dtype": "list_int",
+            "value": []
+          },
+          {
+            "name": "attn_token_info_table_shape",
+            "dtype": "list_int",
+            "value": []
+          },
+          {
+            "name": "moe_expert_num",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "quant_mode",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "sync_flag",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "ffn_start_rank_id",
+            "dtype": "int",
+            "value": 0
+          }
+        ]
+      }
+    ]
+}

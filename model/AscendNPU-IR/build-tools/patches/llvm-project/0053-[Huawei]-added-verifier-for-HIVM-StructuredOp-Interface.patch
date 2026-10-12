@@ -1,0 +1,20 @@
+diff --git a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+index 70d35a080d32..3ddf3a530133 100644
+--- a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
++++ b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+@@ -2613,7 +2613,15 @@ computeCollapsedLayoutMap(MemRefType srcType,
+     ArrayRef<int64_t> ref = llvm::ArrayRef(reassoc);
+     while (srcShape[ref.back()] == 1 && ref.size() > 1)
+       ref = ref.drop_back();
++#if BSPUB_DAVINCI_BISHENGIR
++    auto precedingRef = ref.drop_back();
++    bool allUnitPreceding = llvm::all_of(
++        precedingRef, [&srcShape](int idx) { return srcShape[idx] == 1; });
++    if (!ShapedType::isDynamic(srcShape[ref.back()]) || ref.size() == 1 ||
++        allUnitPreceding) {
++#else
+     if (!ShapedType::isDynamic(srcShape[ref.back()]) || ref.size() == 1) {
++#endif
+       resultStrides.push_back(srcStrides[ref.back()]);
+     } else {
+       // Dynamically-sized dims may turn out to be dims of size 1 at runtime, so

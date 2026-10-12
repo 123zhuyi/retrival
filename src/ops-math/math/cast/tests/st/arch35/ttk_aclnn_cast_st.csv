@@ -1,0 +1,6 @@
+testcase_name,api_name,tensor_dtypes,tensor_formats,tensor_view_shapes,input_data_ranges,output_tensor_indexes,attributes,absolute_precision
+cast_fuzz_069,aclnnCast,"('uint8','float16')","('ND',)","((24, 16),(24, 16))","((0, 255),)","(-1,)",{'dtype': 1},0.0001
+cast_fuzz_049,aclnnCast,"('int64','int32')","('ND',)","((3, 45),(3, 45))","((-9223372036854775808, 9223372036854775807),)","(-1,)",{'dtype': 3},0.0001
+cast_fuzz_059,aclnnCast,"('int16','int8')","('ND',)","((1,), (1,))","((-32768, 32767),)","(-1,)",{'dtype': 2},0.001
+cast_fuzz_050,aclnnCast,"('int64','int16')","('ND',)","((25, 1, 32),(25, 1, 32))","((-9223372036854775808, 9223372036854775807),)","(-1,)",{'dtype': 6},0.001
+cast_fuzz_003,aclnnCast,"('bfloat16','float32')","('ND',)","((14, 17),(14, 17))","((-3.389531389251505e+38, 3.389531389251505e+38),)","(-1,)",{'dtype': 0},0.0001

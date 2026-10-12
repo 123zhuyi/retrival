@@ -1,0 +1,6 @@
+set(LLVM_TARGET_DEFINITIONS Passes.td)
+mlir_tablegen(Passes.h.inc -gen-pass-decls -name BiShengIRSCF)
+mlir_tablegen(Passes.capi.h.inc -gen-pass-capi-header --prefix BiShengIRSCF)
+mlir_tablegen(Passes.capi.cpp.inc -gen-pass-capi-impl --prefix BiShengIRSCF)
+add_public_tablegen_target(BiShengIRSCFTransformsIncGen)
+add_dependencies(mlir-headers BiShengIRSCFTransformsIncGen)

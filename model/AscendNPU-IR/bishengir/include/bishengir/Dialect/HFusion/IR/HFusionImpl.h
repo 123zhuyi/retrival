@@ -1,0 +1,105 @@
+//===- HFusionImpl.h - HFusion implementation -------------------*- C++ -*-===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef BISHENGIR_DIALECT_HFUSION_IR_HFUSIONIMPL_H
+#define BISHENGIR_DIALECT_HFUSION_IR_HFUSIONIMPL_H
+
+#include "bishengir/Dialect/HFusion/IR/HFusion.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Value.h"
+
+#include <optional>
+
+namespace mlir {
+namespace hfusion {
+
+template <typename BnaryOp, typename OpFun, typename OpFunAttr>
+Operation *createBinaryOp(OpBuilder &builder, Location loc, OpFun opFn,
+                          ValueRange inputs, ValueRange out) {
+  auto attr = builder.getAttr<OpFunAttr>(opFn);
+  auto fnAttr = builder.getNamedAttr("fun", attr);
+  return builder.create<BnaryOp>(loc, inputs, out, fnAttr);
+}
+
+template <typename UnaryOp, typename OpFun, typename OpFunAttr>
+Operation *createUnaryOp(OpBuilder &builder, Location loc, OpFun opFn,
+                         ValueRange inputs, ValueRange outs) {
+  auto attr = builder.getAttr<OpFunAttr>(opFn);
+  auto fnAttr = builder.getNamedAttr("fun", attr);
+  return builder.create<UnaryOp>(loc, inputs, outs, fnAttr);
+}
+
+/// Cast `src` value to the specified element type and rounding mode.
+///
+/// `src` can be either tensor or scalar.
+/// If it's a scalar, casting is done by arith dialect ops.
+/// If it's a tensor, casting is done by `hfusion.cast` op. If `dst` is not
+/// provided, the init value is a `tensor.empty` op. Otherwise, it's written
+/// to `dst`.
+Value castTo(OpBuilder &builder, Value src, Type targetElemType,
+             hfusion::RoundMode roundMode,
+             std::optional<Value> dst = std::nullopt,
+             bool enableOverflow = true,
+             hfusion::TypeFn castIntegerType = hfusion::TypeFn::cast_signed);
+
+/// Cast `src` value to the specified element type.
+/// Select rounding mode inside.
+Value castTo(OpBuilder &builder, Value src, Type targetElemType,
+             hfusion::TypeFn castIntegerType = hfusion::TypeFn::cast_signed);
+
+/// Cast `src` value to the specified element type.
+/// provided rounding_mode and cast sign
+Value castTo(OpBuilder &builder, Value src, Type targetElemType,
+             hfusion::RoundMode roundMode, hfusion::TypeFn castIntegerType);
+
+/// Cast `src` value to the specified element type.
+/// Select rounding mode inside and pass overflow flag .
+Value castTo(OpBuilder &builder, Value src, Type targetElemType,
+             bool enableOverflow,
+             hfusion::TypeFn castIntegerType = hfusion::TypeFn::cast_signed);
+
+/// Cast `src` value to the specified element type with full parameter control.
+///
+/// This overload exposes all CastOp attributes: rounding mode, overflow
+/// behavior, saturate mode, integer cast type, and unsigned conversion mode.
+Value castTo(OpBuilder &builder, Value src, Type targetElemType,
+             hfusion::RoundMode roundMode, std::optional<Value> dst,
+             bool enableOverflow, bool enableSaturate,
+             hfusion::TypeFn castIntegerType,
+             hfusion::UnsignedMode unsignedMode);
+
+/// Cast `src` value to the specified element type with unsigned mode control.
+///
+/// Select rounding mode inside. Provides explicit control over unsigned
+/// integer conversion semantics.
+Value castTo(OpBuilder &builder, Value src, Type targetElemType,
+             hfusion::TypeFn castIntegerType,
+             hfusion::UnsignedMode unsignedMode);
+
+template <typename TernaryOp, typename OpFun, typename OpFunAttr>
+Operation *createTernaryOp(OpBuilder &builder, Location loc, OpFun opFn,
+                           ValueRange inputs, ValueRange outs) {
+  auto attr = builder.getAttr<OpFunAttr>(opFn);
+  auto fnAttr = builder.getNamedAttr("fun", attr);
+  return builder.create<TernaryOp>(loc, inputs, outs, fnAttr);
+}
+} // namespace hfusion
+} // namespace mlir
+
+#endif // BISHENGIR_DIALECT_HFUSION_IR_HFUSIONIMPL_H

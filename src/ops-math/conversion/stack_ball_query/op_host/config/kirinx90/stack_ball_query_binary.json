@@ -1,0 +1,147 @@
+{
+    "op_type": "StackBallQuery",
+    "op_list": [
+        {
+            "bin_filename": "StackBallQuery_8dac16d0fd4cd4e7b20a7b4236e9c17d",
+            "inputs": [
+                {
+                    "name": "xyz",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "center_xyz",
+                    "index": 1,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "xyz_batch_cnt",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "center_xyz_batch_cnt",
+                    "index": 3,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "idx",
+                    "index": 0,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "max_radius",
+                    "dtype": "float",
+                    "paramType": "required",
+                    "value": 0.1
+                },
+                {
+                    "name": "sample_num",
+                    "dtype": "int",
+                    "paramType": "required",
+                    "value": 0
+                }
+            ]
+        },
+        {
+            "bin_filename": "StackBallQuery_3a3ec8506759d1b4dd35bc690207ddde",
+            "inputs": [
+                {
+                    "name": "xyz",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "center_xyz",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "xyz_batch_cnt",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "center_xyz_batch_cnt",
+                    "index": 3,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "idx",
+                    "index": 0,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "max_radius",
+                    "dtype": "float",
+                    "paramType": "required",
+                    "value": 0.1
+                },
+                {
+                    "name": "sample_num",
+                    "dtype": "int",
+                    "paramType": "required",
+                    "value": 0
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,960 @@
+diff --git a/mlir/include/mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h b/mlir/include/mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h
+index 1bf991dc1938..d2d4ff9960ea 100644
+--- a/mlir/include/mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h
++++ b/mlir/include/mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h
+@@ -101,9 +101,10 @@ class SparseConstantPropagation
+ public:
+   using SparseForwardDataFlowAnalysis::SparseForwardDataFlowAnalysis;
+ 
+-  void visitOperation(Operation *op,
+-                      ArrayRef<const Lattice<ConstantValue> *> operands,
+-                      ArrayRef<Lattice<ConstantValue> *> results) override;
++  LogicalResult
++  visitOperation(Operation *op,
++                 ArrayRef<const Lattice<ConstantValue> *> operands,
++                 ArrayRef<Lattice<ConstantValue> *> results) override;
+ 
+   void setToEntryState(Lattice<ConstantValue> *lattice) override;
+ };
+diff --git a/mlir/include/mlir/Analysis/DataFlow/DenseAnalysis.h b/mlir/include/mlir/Analysis/DataFlow/DenseAnalysis.h
+index 088b6cd7d698..4ad5f3fcd838 100644
+--- a/mlir/include/mlir/Analysis/DataFlow/DenseAnalysis.h
++++ b/mlir/include/mlir/Analysis/DataFlow/DenseAnalysis.h
+@@ -87,9 +87,9 @@ public:
+ protected:
+   /// Propagate the dense lattice before the execution of an operation to the
+   /// lattice after its execution.
+-  virtual void visitOperationImpl(Operation *op,
+-                                  const AbstractDenseLattice &before,
+-                                  AbstractDenseLattice *after) = 0;
++  virtual LogicalResult visitOperationImpl(Operation *op,
++                                           const AbstractDenseLattice &before,
++                                           AbstractDenseLattice *after) = 0;
+ 
+   /// Get the dense lattice after the execution of the given program point.
+   virtual AbstractDenseLattice *getLattice(ProgramPoint point) = 0;
+@@ -114,7 +114,7 @@ protected:
+   /// operation, then the state after the execution of the operation is set by
+   /// control-flow or the callgraph. Otherwise, this function invokes the
+   /// operation transfer function.
+-  virtual void processOperation(Operation *op);
++  virtual LogicalResult processOperation(Operation *op);
+ 
+   /// Propagate the dense lattice forward along the control flow edge from
+   /// `regionFrom` to `regionTo` regions of the `branch` operation. `nullopt`
+@@ -191,8 +191,8 @@ public:
+   /// Visit an operation with the dense lattice before its execution. This
+   /// function is expected to set the dense lattice after its execution and
+   /// trigger change propagation in case of change.
+-  virtual void visitOperation(Operation *op, const LatticeT &before,
+-                              LatticeT *after) = 0;
++  virtual LogicalResult visitOperation(Operation *op, const LatticeT &before,
++                                       LatticeT *after) = 0;
+ 
+   /// Hook for customizing the behavior of lattice propagation along the call
+   /// control flow edges. Two types of (forward) propagation are possible here:
+@@ -263,10 +263,11 @@ protected:
+ 
+   /// Type-erased wrappers that convert the abstract dense lattice to a derived
+   /// lattice and invoke the virtual hooks operating on the derived lattice.
+-  void visitOperationImpl(Operation *op, const AbstractDenseLattice &before,
+-                          AbstractDenseLattice *after) final {
+-    visitOperation(op, static_cast<const LatticeT &>(before),
+-                   static_cast<LatticeT *>(after));
++  LogicalResult visitOperationImpl(Operation *op,
++                                   const AbstractDenseLattice &before,
++                                   AbstractDenseLattice *after) final {
++    return visitOperation(op, static_cast<const LatticeT &>(before),
++                          static_cast<LatticeT *>(after));
+   }
+   void visitCallControlFlowTransfer(CallOpInterface call,
+                                     CallControlFlowAction action,
+@@ -326,9 +327,9 @@ public:
+ protected:
+   /// Propagate the dense lattice after the execution of an operation to the
+   /// lattice before its execution.
+-  virtual void visitOperationImpl(Operation *op,
+-                                  const AbstractDenseLattice &after,
+-                                  AbstractDenseLattice *before) = 0;
++  virtual LogicalResult visitOperationImpl(Operation *op,
++                                           const AbstractDenseLattice &after,
++                                           AbstractDenseLattice *before) = 0;
+ 
+   /// Get the dense lattice before the execution of the program point. That is,
+   /// before the execution of the given operation or after the execution of the
+@@ -353,7 +354,7 @@ protected:
+   /// Visit an operation. Dispatches to specialized methods for call or region
+   /// control-flow operations. Otherwise, this function invokes the operation
+   /// transfer function.
+-  virtual void processOperation(Operation *op);
++  virtual LogicalResult processOperation(Operation *op);
+ 
+   /// Propagate the dense lattice backwards along the control flow edge from
+   /// `regionFrom` to `regionTo` regions of the `branch` operation. `nullopt`
+@@ -442,8 +443,8 @@ public:
+   /// Transfer function. Visits an operation with the dense lattice after its
+   /// execution. This function is expected to set the dense lattice before its
+   /// execution and trigger propagation in case of change.
+-  virtual void visitOperation(Operation *op, const LatticeT &after,
+-                              LatticeT *before) = 0;
++  virtual LogicalResult visitOperation(Operation *op, const LatticeT &after,
++                                       LatticeT *before) = 0;
+ 
+   /// Hook for customizing the behavior of lattice propagation along the call
+   /// control flow edges. Two types of (back) propagation are possible here:
+@@ -513,10 +514,11 @@ protected:
+ 
+   /// Type-erased wrappers that convert the abstract dense lattice to a derived
+   /// lattice and invoke the virtual hooks operating on the derived lattice.
+-  void visitOperationImpl(Operation *op, const AbstractDenseLattice &after,
+-                          AbstractDenseLattice *before) final {
+-    visitOperation(op, static_cast<const LatticeT &>(after),
+-                   static_cast<LatticeT *>(before));
++  LogicalResult visitOperationImpl(Operation *op,
++                                   const AbstractDenseLattice &after,
++                                   AbstractDenseLattice *before) final {
++    return visitOperation(op, static_cast<const LatticeT &>(after),
++                          static_cast<LatticeT *>(before));
+   }
+   void visitCallControlFlowTransfer(CallOpInterface call,
+                                     CallControlFlowAction action,
+diff --git a/mlir/include/mlir/Analysis/DataFlow/IntegerRangeAnalysis.h b/mlir/include/mlir/Analysis/DataFlow/IntegerRangeAnalysis.h
+index 191c023fb642..d4a5472cfde8 100644
+--- a/mlir/include/mlir/Analysis/DataFlow/IntegerRangeAnalysis.h
++++ b/mlir/include/mlir/Analysis/DataFlow/IntegerRangeAnalysis.h
+@@ -55,9 +55,10 @@ public:
+ 
+   /// Visit an operation. Invoke the transfer function on each operation that
+   /// implements `InferIntRangeInterface`.
+-  void visitOperation(Operation *op,
+-                      ArrayRef<const IntegerValueRangeLattice *> operands,
+-                      ArrayRef<IntegerValueRangeLattice *> results) override;
++  LogicalResult
++  visitOperation(Operation *op,
++                 ArrayRef<const IntegerValueRangeLattice *> operands,
++                 ArrayRef<IntegerValueRangeLattice *> results) override;
+ 
+   /// Visit block arguments or operation results of an operation with region
+   /// control-flow for which values are not defined by region control-flow. This
+diff --git a/mlir/include/mlir/Analysis/DataFlow/LivenessAnalysis.h b/mlir/include/mlir/Analysis/DataFlow/LivenessAnalysis.h
+index caa03e26a3a4..cf1fd6e2d48c 100644
+--- a/mlir/include/mlir/Analysis/DataFlow/LivenessAnalysis.h
++++ b/mlir/include/mlir/Analysis/DataFlow/LivenessAnalysis.h
+@@ -79,8 +79,8 @@ class LivenessAnalysis : public SparseBackwardDataFlowAnalysis<Liveness> {
+ public:
+   using SparseBackwardDataFlowAnalysis::SparseBackwardDataFlowAnalysis;
+ 
+-  void visitOperation(Operation *op, ArrayRef<Liveness *> operands,
+-                      ArrayRef<const Liveness *> results) override;
++  LogicalResult visitOperation(Operation *op, ArrayRef<Liveness *> operands,
++                               ArrayRef<const Liveness *> results) override;
+ 
+   void visitBranchOperand(OpOperand &operand) override;
+ 
+diff --git a/mlir/include/mlir/Analysis/DataFlow/SparseAnalysis.h b/mlir/include/mlir/Analysis/DataFlow/SparseAnalysis.h
+index 7aadd5409cc6..89726ae3a855 100644
+--- a/mlir/include/mlir/Analysis/DataFlow/SparseAnalysis.h
++++ b/mlir/include/mlir/Analysis/DataFlow/SparseAnalysis.h
+@@ -197,7 +197,7 @@ protected:
+ 
+   /// The operation transfer function. Given the operand lattices, this
+   /// function is expected to set the result lattices.
+-  virtual void
++  virtual LogicalResult
+   visitOperationImpl(Operation *op,
+                      ArrayRef<const AbstractSparseLattice *> operandLattices,
+                      ArrayRef<AbstractSparseLattice *> resultLattices) = 0;
+@@ -238,7 +238,7 @@ private:
+   /// Visit an operation. If this is a call operation or an operation with
+   /// region control-flow, then its result lattices are set accordingly.
+   /// Otherwise, the operation transfer function is invoked.
+-  void visitOperation(Operation *op);
++  LogicalResult visitOperation(Operation *op);
+ 
+   /// Visit a block to compute the lattice values of its arguments. If this is
+   /// an entry block, then the argument values are determined from the block's
+@@ -277,8 +277,9 @@ public:
+ 
+   /// Visit an operation with the lattices of its operands. This function is
+   /// expected to set the lattices of the operation's results.
+-  virtual void visitOperation(Operation *op, ArrayRef<const StateT *> operands,
+-                              ArrayRef<StateT *> results) = 0;
++  virtual LogicalResult visitOperation(Operation *op,
++                                       ArrayRef<const StateT *> operands,
++                                       ArrayRef<StateT *> results) = 0;
+ 
+   /// Visit a call operation to an externally defined function given the
+   /// lattices of its arguments.
+@@ -328,10 +329,10 @@ protected:
+ private:
+   /// Type-erased wrappers that convert the abstract lattice operands to derived
+   /// lattices and invoke the virtual hooks operating on the derived lattices.
+-  void visitOperationImpl(
++  LogicalResult visitOperationImpl(
+       Operation *op, ArrayRef<const AbstractSparseLattice *> operandLattices,
+       ArrayRef<AbstractSparseLattice *> resultLattices) override {
+-    visitOperation(
++    return visitOperation(
+         op,
+         {reinterpret_cast<const StateT *const *>(operandLattices.begin()),
+          operandLattices.size()},
+@@ -387,7 +388,7 @@ protected:
+ 
+   /// The operation transfer function. Given the result lattices, this
+   /// function is expected to set the operand lattices.
+-  virtual void visitOperationImpl(
++  virtual LogicalResult visitOperationImpl(
+       Operation *op, ArrayRef<AbstractSparseLattice *> operandLattices,
+       ArrayRef<const AbstractSparseLattice *> resultLattices) = 0;
+ 
+@@ -424,7 +425,7 @@ private:
+   /// Visit an operation. If this is a call operation or an operation with
+   /// region control-flow, then its operand lattices are set accordingly.
+   /// Otherwise, the operation transfer function is invoked.
+-  void visitOperation(Operation *op);
++  LogicalResult visitOperation(Operation *op);
+ 
+   /// Visit a block.
+   void visitBlock(Block *block);
+@@ -474,8 +475,9 @@ public:
+ 
+   /// Visit an operation with the lattices of its results. This function is
+   /// expected to set the lattices of the operation's operands.
+-  virtual void visitOperation(Operation *op, ArrayRef<StateT *> operands,
+-                              ArrayRef<const StateT *> results) = 0;
++  virtual LogicalResult visitOperation(Operation *op,
++                                       ArrayRef<StateT *> operands,
++                                       ArrayRef<const StateT *> results) = 0;
+ 
+   /// Visit a call to an external function. This function is expected to set
+   /// lattice values of the call operands. By default, calls `visitCallOperand`
+@@ -510,10 +512,10 @@ protected:
+ private:
+   /// Type-erased wrappers that convert the abstract lattice operands to derived
+   /// lattices and invoke the virtual hooks operating on the derived lattices.
+-  void visitOperationImpl(
++  LogicalResult visitOperationImpl(
+       Operation *op, ArrayRef<AbstractSparseLattice *> operandLattices,
+       ArrayRef<const AbstractSparseLattice *> resultLattices) override {
+-    visitOperation(
++    return visitOperation(
+         op,
+         {reinterpret_cast<StateT *const *>(operandLattices.begin()),
+          operandLattices.size()},
+diff --git a/mlir/lib/Analysis/DataFlow/ConstantPropagationAnalysis.cpp b/mlir/lib/Analysis/DataFlow/ConstantPropagationAnalysis.cpp
+index 16799d3c8209..56529acd71bb 100644
+--- a/mlir/lib/Analysis/DataFlow/ConstantPropagationAnalysis.cpp
++++ b/mlir/lib/Analysis/DataFlow/ConstantPropagationAnalysis.cpp
+@@ -43,7 +43,7 @@ void ConstantValue::print(raw_ostream &os) const {
+ // SparseConstantPropagation
+ //===----------------------------------------------------------------------===//
+ 
+-void SparseConstantPropagation::visitOperation(
++LogicalResult SparseConstantPropagation::visitOperation(
+     Operation *op, ArrayRef<const Lattice<ConstantValue> *> operands,
+     ArrayRef<Lattice<ConstantValue> *> results) {
+   LLVM_DEBUG(llvm::dbgs() << "SCP: Visiting operation: " << *op << "\n");
+@@ -54,14 +54,14 @@ void SparseConstantPropagation::visitOperation(
+   // folding.
+   if (op->getNumRegions()) {
+     setAllToEntryStates(results);
+-    return;
++    return success();
+   }
+ 
+   SmallVector<Attribute, 8> constantOperands;
+   constantOperands.reserve(op->getNumOperands());
+   for (auto *operandLattice : operands) {
+     if (operandLattice->getValue().isUninitialized())
+-      return;
++      return success();
+     constantOperands.push_back(operandLattice->getValue().getConstantValue());
+   }
+ 
+@@ -77,7 +77,7 @@ void SparseConstantPropagation::visitOperation(
+   foldResults.reserve(op->getNumResults());
+   if (failed(op->fold(constantOperands, foldResults))) {
+     setAllToEntryStates(results);
+-    return;
++    return success();
+   }
+ 
+   // If the folding was in-place, mark the results as overdefined and reset
+@@ -87,7 +87,7 @@ void SparseConstantPropagation::visitOperation(
+     op->setOperands(originalOperands);
+     op->setAttrs(originalAttrs);
+     setAllToEntryStates(results);
+-    return;
++    return success();
+   }
+ 
+   // Merge the fold results into the lattice for this operation.
+@@ -108,6 +108,7 @@ void SparseConstantPropagation::visitOperation(
+           lattice, *getLatticeElement(foldResult.get<Value>()));
+     }
+   }
++  return success();
+ }
+ 
+ void SparseConstantPropagation::setToEntryState(
+diff --git a/mlir/lib/Analysis/DataFlow/DenseAnalysis.cpp b/mlir/lib/Analysis/DataFlow/DenseAnalysis.cpp
+index 9894810f0e04..33c877f78f4b 100644
+--- a/mlir/lib/Analysis/DataFlow/DenseAnalysis.cpp
++++ b/mlir/lib/Analysis/DataFlow/DenseAnalysis.cpp
+@@ -30,7 +30,9 @@ using namespace mlir::dataflow;
+ 
+ LogicalResult AbstractDenseForwardDataFlowAnalysis::initialize(Operation *top) {
+   // Visit every operation and block.
+-  processOperation(top);
++  if (failed(processOperation(top)))
++    return failure();
++
+   for (Region &region : top->getRegions()) {
+     for (Block &block : region) {
+       visitBlock(&block);
+@@ -44,7 +46,7 @@ LogicalResult AbstractDenseForwardDataFlowAnalysis::initialize(Operation *top) {
+ 
+ LogicalResult AbstractDenseForwardDataFlowAnalysis::visit(ProgramPoint point) {
+   if (auto *op = llvm::dyn_cast_if_present<Operation *>(point))
+-    processOperation(op);
++    return processOperation(op);
+   else if (auto *block = llvm::dyn_cast_if_present<Block *>(point))
+     visitBlock(block);
+   else
+@@ -94,10 +96,11 @@ void AbstractDenseForwardDataFlowAnalysis::visitCallOperation(
+   }
+ }
+ 
+-void AbstractDenseForwardDataFlowAnalysis::processOperation(Operation *op) {
++LogicalResult
++AbstractDenseForwardDataFlowAnalysis::processOperation(Operation *op) {
+   // If the containing block is not executable, bail out.
+   if (!getOrCreateFor<Executable>(op, op->getBlock())->isLive())
+-    return;
++    return success();
+ 
+   // Get the dense lattice to update.
+   AbstractDenseLattice *after = getLattice(op);
+@@ -111,16 +114,20 @@ void AbstractDenseForwardDataFlowAnalysis::processOperation(Operation *op) {
+ 
+   // If this op implements region control-flow, then control-flow dictates its
+   // transfer function.
+-  if (auto branch = dyn_cast<RegionBranchOpInterface>(op))
+-    return visitRegionBranchOperation(op, branch, after);
++  if (auto branch = dyn_cast<RegionBranchOpInterface>(op)) {
++    visitRegionBranchOperation(op, branch, after);
++    return success();
++  }
+ 
+   // If this is a call operation, then join its lattices across known return
+   // sites.
+-  if (auto call = dyn_cast<CallOpInterface>(op))
+-    return visitCallOperation(call, *before, after);
++  if (auto call = dyn_cast<CallOpInterface>(op)) {
++    visitCallOperation(call, *before, after);
++    return success();
++  }
+ 
+   // Invoke the operation transfer function.
+-  visitOperationImpl(op, *before, after);
++  return visitOperationImpl(op, *before, after);
+ }
+ 
+ void AbstractDenseForwardDataFlowAnalysis::visitBlock(Block *block) {
+@@ -254,7 +261,9 @@ AbstractDenseForwardDataFlowAnalysis::getLatticeFor(ProgramPoint dependent,
+ LogicalResult
+ AbstractDenseBackwardDataFlowAnalysis::initialize(Operation *top) {
+   // Visit every operation and block.
+-  processOperation(top);
++  if (failed(processOperation(top)))
++    return failure();
++
+   for (Region &region : top->getRegions()) {
+     for (Block &block : region) {
+       visitBlock(&block);
+@@ -269,7 +278,7 @@ AbstractDenseBackwardDataFlowAnalysis::initialize(Operation *top) {
+ 
+ LogicalResult AbstractDenseBackwardDataFlowAnalysis::visit(ProgramPoint point) {
+   if (auto *op = llvm::dyn_cast_if_present<Operation *>(point))
+-    processOperation(op);
++    return processOperation(op);
+   else if (auto *block = llvm::dyn_cast_if_present<Block *>(point))
+     visitBlock(block);
+   else
+@@ -323,10 +332,11 @@ void AbstractDenseBackwardDataFlowAnalysis::visitCallOperation(
+                                latticeAtCalleeEntry, latticeBeforeCall);
+ }
+ 
+-void AbstractDenseBackwardDataFlowAnalysis::processOperation(Operation *op) {
++LogicalResult
++AbstractDenseBackwardDataFlowAnalysis::processOperation(Operation *op) {
+   // If the containing block is not executable, bail out.
+   if (!getOrCreateFor<Executable>(op, op->getBlock())->isLive())
+-    return;
++    return success();
+ 
+   // Get the dense lattice to update.
+   AbstractDenseLattice *before = getLattice(op);
+@@ -339,14 +349,17 @@ void AbstractDenseBackwardDataFlowAnalysis::processOperation(Operation *op) {
+     after = getLatticeFor(op, op->getBlock());
+ 
+   // Special cases where control flow may dictate data flow.
+-  if (auto branch = dyn_cast<RegionBranchOpInterface>(op))
+-    return visitRegionBranchOperation(op, branch, RegionBranchPoint::parent(),
+-                                      before);
+-  if (auto call = dyn_cast<CallOpInterface>(op))
+-    return visitCallOperation(call, *after, before);
++  if (auto branch = dyn_cast<RegionBranchOpInterface>(op)) {
++    visitRegionBranchOperation(op, branch, RegionBranchPoint::parent(), before);
++    return success();
++  }
++  if (auto call = dyn_cast<CallOpInterface>(op)) {
++    visitCallOperation(call, *after, before);
++    return success();
++  }
+ 
+   // Invoke the operation transfer function.
+-  visitOperationImpl(op, *after, before);
++  return visitOperationImpl(op, *after, before);
+ }
+ 
+ void AbstractDenseBackwardDataFlowAnalysis::visitBlock(Block *block) {
+diff --git a/mlir/lib/Analysis/DataFlow/IntegerRangeAnalysis.cpp b/mlir/lib/Analysis/DataFlow/IntegerRangeAnalysis.cpp
+index 244ce8b9c2ac..35d38ea02d71 100644
+--- a/mlir/lib/Analysis/DataFlow/IntegerRangeAnalysis.cpp
++++ b/mlir/lib/Analysis/DataFlow/IntegerRangeAnalysis.cpp
+@@ -58,12 +58,14 @@ void IntegerValueRangeLattice::onUpdate(DataFlowSolver *solver) const {
+                                  dialect)));
+ }
+ 
+-void IntegerRangeAnalysis::visitOperation(
++LogicalResult IntegerRangeAnalysis::visitOperation(
+     Operation *op, ArrayRef<const IntegerValueRangeLattice *> operands,
+     ArrayRef<IntegerValueRangeLattice *> results) {
+   auto inferrable = dyn_cast<InferIntRangeInterface>(op);
+-  if (!inferrable)
+-    return setAllToEntryStates(results);
++  if (!inferrable) {
++    setAllToEntryStates(results);
++    return success();
++  }
+ 
+   LLVM_DEBUG(llvm::dbgs() << "Inferring ranges for " << *op << "\n");
+   auto argRanges = llvm::map_to_vector(
+@@ -99,6 +101,7 @@ void IntegerRangeAnalysis::visitOperation(
+   };
+ 
+   inferrable.inferResultRangesFromOptional(argRanges, joinCallback);
++  return success();
+ }
+ 
+ void IntegerRangeAnalysis::visitNonControlFlowArguments(
+diff --git a/mlir/lib/Analysis/DataFlow/LivenessAnalysis.cpp b/mlir/lib/Analysis/DataFlow/LivenessAnalysis.cpp
+index 7875fa9d43d9..57a4d4a6800b 100644
+--- a/mlir/lib/Analysis/DataFlow/LivenessAnalysis.cpp
++++ b/mlir/lib/Analysis/DataFlow/LivenessAnalysis.cpp
+@@ -68,9 +68,9 @@ ChangeResult Liveness::meet(const AbstractSparseLattice &other) {
+ ///   (3.b) `A` is used to compute some value `C` and `C` is used to compute
+ ///   `B`.
+ 
+-void LivenessAnalysis::visitOperation(Operation *op,
+-                                      ArrayRef<Liveness *> operands,
+-                                      ArrayRef<const Liveness *> results) {
++LogicalResult
++LivenessAnalysis::visitOperation(Operation *op, ArrayRef<Liveness *> operands,
++                                 ArrayRef<const Liveness *> results) {
+   // This marks values of type (1.a) liveness as "live".
+   if (!isMemoryEffectFree(op)) {
+     for (auto *operand : operands)
+@@ -89,6 +89,7 @@ void LivenessAnalysis::visitOperation(Operation *op,
+     }
+     addDependency(const_cast<Liveness *>(r), op);
+   }
++  return success();
+ }
+ 
+ void LivenessAnalysis::visitBranchOperand(OpOperand &operand) {
+@@ -158,7 +159,7 @@ void LivenessAnalysis::visitBranchOperand(OpOperand &operand) {
+   SmallVector<const Liveness *, 4> resultsLiveness;
+   for (const Value result : op->getResults())
+     resultsLiveness.push_back(getLatticeElement(result));
+-  visitOperation(op, operandLiveness, resultsLiveness);
++  (void)visitOperation(op, operandLiveness, resultsLiveness);
+ 
+   // We also visit the parent op with the parent's results and this operand if
+   // `op` is a `RegionBranchTerminatorOpInterface` because its non-forwarded
+@@ -170,7 +171,7 @@ void LivenessAnalysis::visitBranchOperand(OpOperand &operand) {
+   SmallVector<const Liveness *, 4> parentResultsLiveness;
+   for (const Value parentResult : parentOp->getResults())
+     parentResultsLiveness.push_back(getLatticeElement(parentResult));
+-  visitOperation(parentOp, operandLiveness, parentResultsLiveness);
++  (void)visitOperation(parentOp, operandLiveness, parentResultsLiveness);
+ }
+ 
+ void LivenessAnalysis::visitCallOperand(OpOperand &operand) {
+diff --git a/mlir/lib/Analysis/DataFlow/SparseAnalysis.cpp b/mlir/lib/Analysis/DataFlow/SparseAnalysis.cpp
+index ad956b73e4b1..d47d5fec8a9a 100644
+--- a/mlir/lib/Analysis/DataFlow/SparseAnalysis.cpp
++++ b/mlir/lib/Analysis/DataFlow/SparseAnalysis.cpp
+@@ -67,7 +67,9 @@ LogicalResult
+ AbstractSparseForwardDataFlowAnalysis::initializeRecursively(Operation *op) {
+   // Initialize the analysis by visiting every owner of an SSA value (all
+   // operations and blocks).
+-  visitOperation(op);
++  if (failed(visitOperation(op)))
++    return failure();
++
+   for (Region &region : op->getRegions()) {
+     for (Block &block : region) {
+       getOrCreate<Executable>(&block)->blockContentSubscribe(this);
+@@ -83,7 +85,7 @@ AbstractSparseForwardDataFlowAnalysis::initializeRecursively(Operation *op) {
+ 
+ LogicalResult AbstractSparseForwardDataFlowAnalysis::visit(ProgramPoint point) {
+   if (Operation *op = llvm::dyn_cast_if_present<Operation *>(point))
+-    visitOperation(op);
++    return visitOperation(op);
+   else if (Block *block = llvm::dyn_cast_if_present<Block *>(point))
+     visitBlock(block);
+   else
+@@ -91,14 +93,15 @@ LogicalResult AbstractSparseForwardDataFlowAnalysis::visit(ProgramPoint point) {
+   return success();
+ }
+ 
+-void AbstractSparseForwardDataFlowAnalysis::visitOperation(Operation *op) {
++LogicalResult
++AbstractSparseForwardDataFlowAnalysis::visitOperation(Operation *op) {
+   // Exit early on operations with no results.
+   if (op->getNumResults() == 0)
+-    return;
++    return success();
+ 
+   // If the containing block is not executable, bail out.
+   if (!getOrCreate<Executable>(op->getBlock())->isLive())
+-    return;
++    return success();
+ 
+   // Get the result lattices.
+   SmallVector<AbstractSparseLattice *> resultLattices;
+@@ -110,9 +113,10 @@ void AbstractSparseForwardDataFlowAnalysis::visitOperation(Operation *op) {
+ 
+   // The results of a region branch operation are determined by control-flow.
+   if (auto branch = dyn_cast<RegionBranchOpInterface>(op)) {
+-    return visitRegionSuccessors({branch}, branch,
+-                                 /*successor=*/RegionBranchPoint::parent(),
+-                                 resultLattices);
++    visitRegionSuccessors({branch}, branch,
++                          /*successor=*/RegionBranchPoint::parent(),
++                          resultLattices);
++    return success();
+   }
+ 
+   // Grab the lattice elements of the operands.
+@@ -131,7 +135,8 @@ void AbstractSparseForwardDataFlowAnalysis::visitOperation(Operation *op) {
+         dyn_cast_if_present<CallableOpInterface>(call.resolveCallable());
+     if (!getSolverConfig().isInterprocedural() ||
+         (callable && !callable.getCallableRegion())) {
+-      return visitExternalCallImpl(call, operandLattices, resultLattices);
++      visitExternalCallImpl(call, operandLattices, resultLattices);
++      return success();
+     }
+ 
+     // Otherwise, the results of a call operation are determined by the
+@@ -139,16 +144,19 @@ void AbstractSparseForwardDataFlowAnalysis::visitOperation(Operation *op) {
+     const auto *predecessors = getOrCreateFor<PredecessorState>(op, call);
+     // If not all return sites are known, then conservatively assume we can't
+     // reason about the data-flow.
+-    if (!predecessors->allPredecessorsKnown())
+-      return setAllToEntryStates(resultLattices);
++    if (!predecessors->allPredecessorsKnown()) {
++      setAllToEntryStates(resultLattices);
++      return success();
++    }
+     for (Operation *predecessor : predecessors->getKnownPredecessors())
+-      for (auto it : llvm::zip(predecessor->getOperands(), resultLattices))
+-        join(std::get<1>(it), *getLatticeElementFor(op, std::get<0>(it)));
+-    return;
++      for (auto &&[operand, resLattice] :
++           llvm::zip(predecessor->getOperands(), resultLattices))
++        join(resLattice, *getLatticeElementFor(op, operand));
++    return success();
+   }
+ 
+   // Invoke the operation transfer function.
+-  visitOperationImpl(op, operandLattices, resultLattices);
++  return visitOperationImpl(op, operandLattices, resultLattices);
+ }
+ 
+ void AbstractSparseForwardDataFlowAnalysis::visitBlock(Block *block) {
+@@ -326,7 +334,9 @@ AbstractSparseBackwardDataFlowAnalysis::initialize(Operation *top) {
+ 
+ LogicalResult
+ AbstractSparseBackwardDataFlowAnalysis::initializeRecursively(Operation *op) {
+-  visitOperation(op);
++  if (failed(visitOperation(op)))
++    return failure();
++
+   for (Region &region : op->getRegions()) {
+     for (Block &block : region) {
+       getOrCreate<Executable>(&block)->blockContentSubscribe(this);
+@@ -344,7 +354,7 @@ AbstractSparseBackwardDataFlowAnalysis::initializeRecursively(Operation *op) {
+ LogicalResult
+ AbstractSparseBackwardDataFlowAnalysis::visit(ProgramPoint point) {
+   if (Operation *op = llvm::dyn_cast_if_present<Operation *>(point))
+-    visitOperation(op);
++    return visitOperation(op);
+   else if (llvm::dyn_cast_if_present<Block *>(point))
+     // For backward dataflow, we don't have to do any work for the blocks
+     // themselves. CFG edges between blocks are processed by the BranchOp
+@@ -384,10 +394,11 @@ static MutableArrayRef<OpOperand> operandsToOpOperands(OperandRange &operands) {
+   return MutableArrayRef<OpOperand>(operands.getBase(), operands.size());
+ }
+ 
+-void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
++LogicalResult
++AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+   // If we're in a dead block, bail out.
+   if (!getOrCreate<Executable>(op->getBlock())->isLive())
+-    return;
++    return success();
+ 
+   SmallVector<AbstractSparseLattice *> operandLattices =
+       getLatticeElements(op->getOperands());
+@@ -398,7 +409,7 @@ void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+   // of the parent op
+   if (auto branch = dyn_cast<RegionBranchOpInterface>(op)) {
+     visitRegionSuccessors(branch, operandLattices);
+-    return;
++    return success();
+   }
+ 
+   if (auto branch = dyn_cast<BranchOpInterface>(op)) {
+@@ -432,7 +443,7 @@ void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+       OpOperand &operand = op->getOpOperand(index);
+       visitBranchOperand(operand);
+     }
+-    return;
++    return success();
+   }
+ 
+   // For function calls, connect the arguments of the entry blocks to the
+@@ -451,8 +462,11 @@ void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+       MutableArrayRef<OpOperand> argOpOperands =
+           operandsToOpOperands(argOperands);
+       Region *region = callable.getCallableRegion();
+-      if (!region || region->empty() || !getSolverConfig().isInterprocedural())
+-        return visitExternalCallImpl(call, operandLattices, resultLattices);
++      if (!region || region->empty() ||
++          !getSolverConfig().isInterprocedural()) {
++        visitExternalCallImpl(call, operandLattices, resultLattices);
++        return success();
++      }
+ 
+       // Otherwise, propagate information from the entry point of the function
+       // back to operands whenever possible.
+@@ -470,7 +484,7 @@ void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+         OpOperand &opOperand = op->getOpOperand(index);
+         visitCallOperand(opOperand);
+       }
+-      return;
++      return success();
+     }
+   }
+ 
+@@ -487,7 +501,7 @@ void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+   if (auto terminator = dyn_cast<RegionBranchTerminatorOpInterface>(op)) {
+     if (auto branch = dyn_cast<RegionBranchOpInterface>(op->getParentOp())) {
+       visitRegionSuccessorsFromTerminator(terminator, branch);
+-      return;
++      return success();
+     }
+   }
+ 
+@@ -511,11 +525,11 @@ void AbstractSparseBackwardDataFlowAnalysis::visitOperation(Operation *op) {
+         // for the return ops of any public functions.
+         setAllToExitStates(operandLattices);
+       }
+-      return;
++      return success();
+     }
+   }
+ 
+-  visitOperationImpl(op, operandLattices, resultLattices);
++  return visitOperationImpl(op, operandLattices, resultLattices);
+ }
+ 
+ void AbstractSparseBackwardDataFlowAnalysis::visitRegionSuccessors(
+diff --git a/mlir/test/Analysis/DataFlow/test-last-modified-error.mlir b/mlir/test/Analysis/DataFlow/test-last-modified-error.mlir
+new file mode 100644
+index 000000000000..57476e60d3c2
+--- /dev/null
++++ b/mlir/test/Analysis/DataFlow/test-last-modified-error.mlir
+@@ -0,0 +1,8 @@
++// RUN: not mlir-opt -test-last-modified %s 2>&1 | FileCheck %s
++
++// test error propagation from UnderlyingValueAnalysis::visitOperation
++// CHECK: this op is always fails
++func.func @test() {
++  %c0 = arith.constant { always_fail } 0 : i32
++  return
++}
+diff --git a/mlir/test/lib/Analysis/DataFlow/TestDenseBackwardDataFlowAnalysis.cpp b/mlir/test/lib/Analysis/DataFlow/TestDenseBackwardDataFlowAnalysis.cpp
+index 65592a5c5d69..6794cbbbd899 100644
+--- a/mlir/test/lib/Analysis/DataFlow/TestDenseBackwardDataFlowAnalysis.cpp
++++ b/mlir/test/lib/Analysis/DataFlow/TestDenseBackwardDataFlowAnalysis.cpp
+@@ -55,8 +55,8 @@ public:
+       : DenseBackwardDataFlowAnalysis(solver, symbolTable),
+         assumeFuncReads(assumeFuncReads) {}
+ 
+-  void visitOperation(Operation *op, const NextAccess &after,
+-                      NextAccess *before) override;
++  LogicalResult visitOperation(Operation *op, const NextAccess &after,
++                               NextAccess *before) override;
+ 
+   void visitCallControlFlowTransfer(CallOpInterface call,
+                                     CallControlFlowAction action,
+@@ -80,13 +80,16 @@ public:
+ };
+ } // namespace
+ 
+-void NextAccessAnalysis::visitOperation(Operation *op, const NextAccess &after,
+-                                        NextAccess *before) {
++LogicalResult NextAccessAnalysis::visitOperation(Operation *op,
++                                                 const NextAccess &after,
++                                                 NextAccess *before) {
+   auto memory = dyn_cast<MemoryEffectOpInterface>(op);
+   // If we can't reason about the memory effects, conservatively assume we can't
+   // say anything about the next access.
+-  if (!memory)
+-    return setToExitState(before);
++  if (!memory) {
++    setToExitState(before);
++    return success();
++  }
+ 
+   SmallVector<MemoryEffects::EffectInstance> effects;
+   memory.getEffects(effects);
+@@ -102,8 +105,10 @@ void NextAccessAnalysis::visitOperation(Operation *op, const NextAccess &after,
+ 
+     // Effects with unspecified value are treated conservatively and we cannot
+     // assume anything about the next access.
+-    if (!value)
+-      return setToExitState(before);
++    if (!value) {
++      setToExitState(before);
++      return success();
++    }
+ 
+     // If cannot find the most underlying value, we cannot assume anything about
+     // the next accesses.
+@@ -115,7 +120,7 @@ void NextAccessAnalysis::visitOperation(Operation *op, const NextAccess &after,
+ 
+     // If the underlying value is not known yet, don't propagate.
+     if (!underlyingValue)
+-      return;
++      return success();
+ 
+     underlyingValues.push_back(*underlyingValue);
+   }
+@@ -124,12 +129,15 @@ void NextAccessAnalysis::visitOperation(Operation *op, const NextAccess &after,
+   ChangeResult result = before->meet(after);
+   for (const auto &[effect, value] : llvm::zip(effects, underlyingValues)) {
+     // If the underlying value is known to be unknown, set to fixpoint.
+-    if (!value)
+-      return setToExitState(before);
++    if (!value) {
++      setToExitState(before);
++      return success();
++    }
+ 
+     result |= before->set(value, op);
+   }
+   propagateIfChanged(before, result);
++  return success();
+ }
+ 
+ void NextAccessAnalysis::visitCallControlFlowTransfer(
+@@ -162,7 +170,7 @@ void NextAccessAnalysis::visitCallControlFlowTransfer(
+                             testCallAndStore.getStoreBeforeCall()) ||
+                            (action == CallControlFlowAction::ExitCallee &&
+                             !testCallAndStore.getStoreBeforeCall()))) {
+-    visitOperation(call, after, before);
++    (void)visitOperation(call, after, before);
+   } else {
+     AbstractDenseBackwardDataFlowAnalysis::visitCallControlFlowTransfer(
+         call, action, after, before);
+@@ -179,8 +187,8 @@ void NextAccessAnalysis::visitRegionBranchControlFlowTransfer(
+       ((regionTo.isParent() && !testStoreWithARegion.getStoreBeforeRegion()) ||
+        (regionFrom.isParent() &&
+         testStoreWithARegion.getStoreBeforeRegion()))) {
+-    visitOperation(branch, static_cast<const NextAccess &>(after),
+-                   static_cast<NextAccess *>(before));
++    (void)visitOperation(branch, static_cast<const NextAccess &>(after),
++                         static_cast<NextAccess *>(before));
+   } else {
+     propagateIfChanged(before, before->meet(after));
+   }
+diff --git a/mlir/test/lib/Analysis/DataFlow/TestDenseDataFlowAnalysis.h b/mlir/test/lib/Analysis/DataFlow/TestDenseDataFlowAnalysis.h
+index 61ddc13f8a3d..57fe0ca458de 100644
+--- a/mlir/test/lib/Analysis/DataFlow/TestDenseDataFlowAnalysis.h
++++ b/mlir/test/lib/Analysis/DataFlow/TestDenseDataFlowAnalysis.h
+@@ -191,10 +191,16 @@ public:
+   using SparseForwardDataFlowAnalysis::SparseForwardDataFlowAnalysis;
+ 
+   /// The underlying value of the results of an operation are not known.
+-  void visitOperation(Operation *op,
+-                      ArrayRef<const UnderlyingValueLattice *> operands,
+-                      ArrayRef<UnderlyingValueLattice *> results) override {
++  LogicalResult
++  visitOperation(Operation *op,
++                 ArrayRef<const UnderlyingValueLattice *> operands,
++                 ArrayRef<UnderlyingValueLattice *> results) override {
++    // Hook to test error propagation from visitOperation.
++    if (op->hasAttr("always_fail"))
++      return op->emitError("this op is always fails");
++
+     setAllToEntryStates(results);
++    return success();
+   }
+ 
+   /// At an entry point, the underlying value of a value is itself.
+diff --git a/mlir/test/lib/Analysis/DataFlow/TestDenseForwardDataFlowAnalysis.cpp b/mlir/test/lib/Analysis/DataFlow/TestDenseForwardDataFlowAnalysis.cpp
+index 3f9ce2dc0bc5..301d2a20978c 100644
+--- a/mlir/test/lib/Analysis/DataFlow/TestDenseForwardDataFlowAnalysis.cpp
++++ b/mlir/test/lib/Analysis/DataFlow/TestDenseForwardDataFlowAnalysis.cpp
+@@ -58,8 +58,8 @@ public:
+   /// is propagated with no change. If the operation allocates a resource, then
+   /// its reaching definitions is set to empty. If the operation writes to a
+   /// resource, then its reaching definition is set to the written value.
+-  void visitOperation(Operation *op, const LastModification &before,
+-                      LastModification *after) override;
++  LogicalResult visitOperation(Operation *op, const LastModification &before,
++                               LastModification *after) override;
+ 
+   void visitCallControlFlowTransfer(CallOpInterface call,
+                                     CallControlFlowAction action,
+@@ -83,14 +83,15 @@ private:
+ };
+ } // end anonymous namespace
+ 
+-void LastModifiedAnalysis::visitOperation(Operation *op,
+-                                          const LastModification &before,
+-                                          LastModification *after) {
++LogicalResult LastModifiedAnalysis::visitOperation(
++    Operation *op, const LastModification &before, LastModification *after) {
+   auto memory = dyn_cast<MemoryEffectOpInterface>(op);
+   // If we can't reason about the memory effects, then conservatively assume we
+   // can't deduce anything about the last modifications.
+-  if (!memory)
+-    return setToEntryState(after);
++  if (!memory) {
++    setToEntryState(after);
++    return success();
++  }
+ 
+   SmallVector<MemoryEffects::EffectInstance> effects;
+   memory.getEffects(effects);
+@@ -106,8 +107,10 @@ void LastModifiedAnalysis::visitOperation(Operation *op,
+ 
+     // If we see an effect on anything other than a value, assume we can't
+     // deduce anything about the last modifications.
+-    if (!value)
+-      return setToEntryState(after);
++    if (!value) {
++      setToEntryState(after);
++      return success();
++    }
+ 
+     // If we cannot find the underlying value, we shouldn't just propagate the
+     // effects through, return the pessimistic state.
+@@ -119,7 +122,7 @@ void LastModifiedAnalysis::visitOperation(Operation *op,
+ 
+     // If the underlying value is not yet known, don't propagate yet.
+     if (!underlyingValue)
+-      return;
++      return success();
+ 
+     underlyingValues.push_back(*underlyingValue);
+   }
+@@ -128,8 +131,10 @@ void LastModifiedAnalysis::visitOperation(Operation *op,
+   ChangeResult result = after->join(before);
+   for (const auto &[effect, value] : llvm::zip(effects, underlyingValues)) {
+     // If the underlying value is known to be unknown, set to fixpoint state.
+-    if (!value)
+-      return setToEntryState(after);
++    if (!value) {
++      setToEntryState(after);
++      return success();
++    }
+ 
+     // Nothing to do for reads.
+     if (isa<MemoryEffects::Read>(effect.getEffect()))
+@@ -138,6 +143,7 @@ void LastModifiedAnalysis::visitOperation(Operation *op,
+     result |= after->set(value, op);
+   }
+   propagateIfChanged(after, result);
++  return success();
+ }
+ 
+ void LastModifiedAnalysis::visitCallControlFlowTransfer(
+@@ -169,7 +175,8 @@ void LastModifiedAnalysis::visitCallControlFlowTransfer(
+                             testCallAndStore.getStoreBeforeCall()) ||
+                            (action == CallControlFlowAction::ExitCallee &&
+                             !testCallAndStore.getStoreBeforeCall()))) {
+-    return visitOperation(call, before, after);
++    (void)visitOperation(call, before, after);
++    return;
+   }
+   AbstractDenseForwardDataFlowAnalysis::visitCallControlFlowTransfer(
+       call, action, before, after);
+@@ -188,7 +195,7 @@ void LastModifiedAnalysis::visitRegionBranchControlFlowTransfer(
+           [=](auto storeWithRegion) {
+             if ((!regionTo && !storeWithRegion.getStoreBeforeRegion()) ||
+                 (!regionFrom && storeWithRegion.getStoreBeforeRegion()))
+-              visitOperation(branch, before, after);
++              (void)visitOperation(branch, before, after);
+             defaultHandling();
+           })
+       .Default([=](auto) { defaultHandling(); });
+diff --git a/mlir/test/lib/Analysis/DataFlow/TestSparseBackwardDataFlowAnalysis.cpp b/mlir/test/lib/Analysis/DataFlow/TestSparseBackwardDataFlowAnalysis.cpp
+index 302973804664..2445b58452bd 100644
+--- a/mlir/test/lib/Analysis/DataFlow/TestSparseBackwardDataFlowAnalysis.cpp
++++ b/mlir/test/lib/Analysis/DataFlow/TestSparseBackwardDataFlowAnalysis.cpp
+@@ -76,8 +76,8 @@ public:
+       : SparseBackwardDataFlowAnalysis(solver, symbolTable),
+         assumeFuncWrites(assumeFuncWrites) {}
+ 
+-  void visitOperation(Operation *op, ArrayRef<WrittenTo *> operands,
+-                      ArrayRef<const WrittenTo *> results) override;
++  LogicalResult visitOperation(Operation *op, ArrayRef<WrittenTo *> operands,
++                               ArrayRef<const WrittenTo *> results) override;
+ 
+   void visitBranchOperand(OpOperand &operand) override;
+ 
+@@ -94,15 +94,15 @@ private:
+   bool assumeFuncWrites;
+ };
+ 
+-void WrittenToAnalysis::visitOperation(Operation *op,
+-                                       ArrayRef<WrittenTo *> operands,
+-                                       ArrayRef<const WrittenTo *> results) {
++LogicalResult
++WrittenToAnalysis::visitOperation(Operation *op, ArrayRef<WrittenTo *> operands,
++                                  ArrayRef<const WrittenTo *> results) {
+   if (auto store = dyn_cast<memref::StoreOp>(op)) {
+     SetVector<StringAttr> newWrites;
+     newWrites.insert(op->getAttrOfType<StringAttr>("tag_name"));
+     propagateIfChanged(operands[0],
+                        operands[0]->getValue().addWrites(newWrites));
+-    return;
++    return success();
+   } // By default, every result of an op depends on every operand.
+   for (const WrittenTo *r : results) {
+     for (WrittenTo *operand : operands) {
+@@ -110,6 +110,7 @@ void WrittenToAnalysis::visitOperation(Operation *op,
+     }
+     addDependency(const_cast<WrittenTo *>(r), op);
+   }
++  return success();
+ }
+ 
+ void WrittenToAnalysis::visitBranchOperand(OpOperand &operand) {

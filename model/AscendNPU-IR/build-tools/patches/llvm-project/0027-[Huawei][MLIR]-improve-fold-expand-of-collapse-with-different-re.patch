@@ -1,0 +1,57 @@
+diff --git a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+index 5332ab4ba341..3cfa734bf91f 100644
+--- a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+@@ -269,7 +269,6 @@ struct ComposeCollapseOfExpandOp : public OpRewritePattern<CollapseOpTy> {
+     // expand `memref<?xf32, strided<[1]>>` with output_shape `[1, %x]` will get
+     // `memref<1x?xf32, strided<[?, 1]>>`, although not identity layout, it can
+     // still be safely combined with collapse op with same reassociations.
+-#endif
+     bool hasNonIdentityLayoutResult =
+         hasNonIdentityLayout(collapseOp.getSrc().getType()) ||
+         hasNonIdentityLayout(expandOp.getSrc().getType()) ||
+@@ -428,6 +427,25 @@ private:
+       auto resultSubShape =
+           resultShape.slice(resultIndices.front(), resultIndices.size());
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++      // After backport two commits (e8b23ab0 and 271c7969) from mlir
++      // upstream, the community code will not fold reshapes if there exists
++      // more than two dynamic dims, which causes compilation errors. To handle
++      // this problem, the code here reverts the backported community code and
++      // performs reshape folding in an aggressive way, which may be dangerous.
++      // We should changed this code back to community version after we improve
++      // the symbolic derivation system, so that reshapes with dynamic dims can
++      // be folded correctly and safely.
++      if (srcSubShape.size() == resultSubShape.size()) {
++        if (srcSubShape != resultSubShape) {
++          return std::nullopt;
++        }
++        for (auto index : llvm::seq<int64_t>(0, srcSubShape.size())) {
++          composedReassociation.emplace_back(1, srcIndices.front() + index);
++        }
++        continue;
++      }
++#else
+       if (srcSubShape.size() == resultSubShape.size()) {
+         if (srcSubShape == resultSubShape &&
+             llvm::count_if(srcSubShape, ShapedType::isDynamic) < 2) {
+@@ -436,6 +454,7 @@ private:
+           return std::nullopt;
+         }
+       }
++#endif
+ 
+       // Find reassociation to collapse `srcSubShape` into `resultSubShape`.
+       auto subShapeReassociation =
+diff --git a/mlir/test/Dialect/Tensor/canonicalize.mlir b/mlir/test/Dialect/Tensor/canonicalize.mlir
+index 4b8efde78cc2..12df96d1c129 100644
+--- a/mlir/test/Dialect/Tensor/canonicalize.mlir
++++ b/mlir/test/Dialect/Tensor/canonicalize.mlir
+@@ -1,5 +1,6 @@
+ // RUN: mlir-opt %s -split-input-file -canonicalize="test-convergence" | FileCheck %s
+ 
++// UNSUPPORTED: bspub_davinci_bishengir
+ 
+ // CHECK-LABEL: expand_shape_identity_fold
+ // CHECK-NEXT: return

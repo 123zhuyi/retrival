@@ -1,0 +1,63 @@
+diff --git a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+index 89bc57f09ec8..d890f8c629ac 100644
+--- a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+@@ -265,10 +265,25 @@ struct ComposeCollapseOfExpandOp : public OpRewritePattern<CollapseOpTy> {
+     ShapedType srcType = expandOp.getSrcType();
+     ShapedType resultType = collapseOp.getResultType();
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    // expand `memref<?xf32, strided<[1]>>` with output_shape `[1, %x]` will get
++    // `memref<1x?xf32, strided<[?, 1]>>`, although not identity layout, it can
++    // still be safely combined with collapse op with same reassociations.
++#endif
++    bool hasNonIdentityLayoutResult =
++        hasNonIdentityLayout(collapseOp.getSrc().getType()) ||
++        hasNonIdentityLayout(expandOp.getSrc().getType()) ||
++        hasNonIdentityLayout(expandOp.getResult().getType());
++    if (hasNonIdentityLayoutResult &&
++        !isIdentiticalCollapseOfExpand(collapseOp, expandOp)) {
++      return failure();
++    }
++#else
+     if (hasNonIdentityLayout(collapseOp.getSrc().getType()) ||
+         hasNonIdentityLayout(expandOp.getSrc().getType()) ||
+         hasNonIdentityLayout(expandOp.getResult().getType()))
+       return failure();
++#endif
+ 
+     int64_t srcRank = srcType.getRank();
+     int64_t resultRank = resultType.getRank();
+@@ -317,6 +332,32 @@ struct ComposeCollapseOfExpandOp : public OpRewritePattern<CollapseOpTy> {
+     }
+     return success();
+   }
++#if BSPUB_DAVINCI_BISHENGIR
++  // treat collapse and expand op identitical, if they have the same
++  // reassociations, and the expanded shapes within each single reassociation
++  // group all equal to one (with at most one dynamic shape)
++  bool isIdentiticalCollapseOfExpand(CollapseOpTy collapseOp,
++                                     ExpandOpTy expandOp) const {
++    if (expandOp.getReassociationIndices() !=
++        collapseOp.getReassociationIndices()) {
++      return false;
++    }
++    ArrayRef<int64_t> outputShape = expandOp.getStaticOutputShape();
++    for (ReassociationIndicesRef indiceGroup :
++         expandOp.getReassociationIndices()) {
++      int count = 0;
++      for (int64_t indice : indiceGroup) {
++        if (outputShape[indice] != 1) {
++          count++;
++        }
++      }
++      if (count > 1) {
++        return false;
++      }
++    }
++    return true;
++  }
++#endif
+ };
+ 
+ template <typename ExpandOpTy, typename CollapseOpTy>

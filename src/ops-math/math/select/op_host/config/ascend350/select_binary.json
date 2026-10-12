@@ -1,0 +1,413 @@
+{
+    "op_type": "Select",
+    "op_list": [
+      {
+        "bin_filename": "Select_FLOAT16",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+      {
+        "bin_filename": "Select_BFLOAT16",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+      {
+        "bin_filename": "Select_FLOAT32",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+      {
+        "bin_filename": "Select_INT8",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+      {
+        "bin_filename": "Select_UINT8",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+{
+        "bin_filename": "Select_BOOL",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+      {
+        "bin_filename": "Select_INT32",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      },
+      {
+        "bin_filename": "Select_INT64",
+        "inputs": [
+          {
+            "name": "condition",
+            "index": 0,
+            "dtype": "bool",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1",
+            "index": 1,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 2,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ]
+      }
+    ]
+  }

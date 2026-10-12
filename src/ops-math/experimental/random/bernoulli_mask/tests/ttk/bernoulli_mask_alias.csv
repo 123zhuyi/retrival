@@ -1,0 +1,9 @@
+testcase_name,op_name,input_shapes,input_dtypes,input_formats,output_shapes,output_dtypes,output_formats,attributes,input_data_ranges,output_inplace_indexes
+bernoulli_mask_fallback_fp32_n15,bernoulli_mask,"((2,),)","('uint8',)","('ND',)","((15,),)","('float32',)","('ND',)","{'output_shape':[15],'mask_aliases_out':0}","((0,255),)","()"
+bernoulli_mask_alias_fp32_n15,bernoulli_mask,"((60,),)","('uint8',)","('ND',)","((15,),)","('float32',)","('ND',)","{'output_shape':[15],'mask_aliases_out':1}","((0,255),)","(0,)"
+bernoulli_mask_fallback_fp32_n16,bernoulli_mask,"((2,),)","('uint8',)","('ND',)","((16,),)","('float32',)","('ND',)","{'output_shape':[16],'mask_aliases_out':0}","((0,255),)","()"
+bernoulli_mask_alias_fp32_n16,bernoulli_mask,"((64,),)","('uint8',)","('ND',)","((16,),)","('float32',)","('ND',)","{'output_shape':[16],'mask_aliases_out':1}","((0,255),)","(0,)"
+bernoulli_mask_fallback_fp32_n257,bernoulli_mask,"((33,),)","('uint8',)","('ND',)","((257,),)","('float32',)","('ND',)","{'output_shape':[257],'mask_aliases_out':0}","((0,255),)","()"
+bernoulli_mask_alias_fp32_n257,bernoulli_mask,"((1028,),)","('uint8',)","('ND',)","((257,),)","('float32',)","('ND',)","{'output_shape':[257],'mask_aliases_out':1}","((0,255),)","(0,)"
+bernoulli_mask_fallback_fp32_large_multicore,bernoulli_mask,"((125000,),)","('uint8',)","('ND',)","((1000000,),)","('float32',)","('ND',)","{'output_shape':[1000000],'mask_aliases_out':0}","((0,255),)","()"
+bernoulli_mask_alias_fp32_large_multicore,bernoulli_mask,"((4000000,),)","('uint8',)","('ND',)","((1000000,),)","('float32',)","('ND',)","{'output_shape':[1000000],'mask_aliases_out':1}","((0,255),)","(0,)"

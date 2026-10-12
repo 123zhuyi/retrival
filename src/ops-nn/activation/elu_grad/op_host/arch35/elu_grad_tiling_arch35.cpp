@@ -1,0 +1,178 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file elu_grad_tiling_arch35.cpp
+ * \brief
+ */
+#include "elu_grad_tiling_arch35.h"
+#include <graph/utils/type_utils.h>
+#include "tiling/platform/platform_ascendc.h"
+#include "register/op_impl_registry.h"
+#include "log/log.h"
+#include <iostream>
+#include "../op_kernel/arch35/elu_grad_dag.h"
+#include "../op_kernel/arch35/elu_grad_struct.h"
+
+using namespace ge;
+using namespace EluGradOp;
+
+namespace optiling {
+const int64_t ASCEND_WORKSPACE = 16777216; // 16M
+
+const gert::Shape g_vec_1_shape = {1};
+inline const gert::Shape& EnsureNotScalar(const gert::Shape& in_shape)
+{
+    if (in_shape.IsScalar()) {
+        return g_vec_1_shape;
+    }
+    return in_shape;
+}
+
+ge::graphStatus EluGradTiling::CalcInputDtype()
+{
+    auto gradsDesc = tilingContext->GetInputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, gradsDesc);
+    auto activationsDesc = tilingContext->GetInputDesc(1);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, activationsDesc);
+    this->gradsDtype = gradsDesc->GetDataType();
+    OP_CHECK_IF(
+        this->gradsDtype != ge::DT_FLOAT16 && this->gradsDtype != ge::DT_BF16 && this->gradsDtype != ge::DT_FLOAT,
+        OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(tilingContext->GetNodeName(), "grads",
+                                              Ops::Base::ToString(static_cast<ge::DataType>(this->gradsDtype)),
+                                              "The dtype of grads must be DT_FLOAT16, DT_BF16, or DT_FLOAT"),
+        return ge::GRAPH_FAILED);
+    this->activationsDtype = activationsDesc->GetDataType();
+    OP_CHECK_IF(this->activationsDtype != this->gradsDtype,
+                OP_LOGE_FOR_INVALID_DTYPES_WITH_REASON(
+                    tilingContext->GetNodeName(), "grads, activations",
+                    Ops::Base::ToString(static_cast<ge::DataType>(this->gradsDtype)) + ", " +
+                        Ops::Base::ToString(static_cast<ge::DataType>(this->activationsDtype)),
+                    "The dtypes of grads and activations must be the same"),
+                return ge::GRAPH_FAILED);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus EluGradTiling::CalcOutputDtype()
+{
+    auto outputDesc = tilingContext->GetOutputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, outputDesc);
+    this->outputDtype = outputDesc->GetDataType();
+    OP_CHECK_IF(
+        this->outputDtype != ge::DT_FLOAT16 && this->outputDtype != ge::DT_BF16 && this->outputDtype != ge::DT_FLOAT,
+        OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(tilingContext->GetNodeName(), "y",
+                                              Ops::Base::ToString(static_cast<ge::DataType>(this->outputDtype)),
+                                              "The dtype of y must be DT_FLOAT16, DT_BF16, or DT_FLOAT"),
+        return ge::GRAPH_FAILED);
+    OP_CHECK_IF(
+        this->outputDtype != this->gradsDtype,
+        OP_LOGE_FOR_INVALID_DTYPES_WITH_REASON(tilingContext->GetNodeName(), "grads, y",
+                                               Ops::Base::ToString(static_cast<ge::DataType>(this->gradsDtype)) + ", " +
+                                                   Ops::Base::ToString(static_cast<ge::DataType>(this->outputDtype)),
+                                               "The dtypes of grads and y must be the same"),
+        return ge::GRAPH_FAILED);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus EluGradTiling::CheckShape()
+{
+    auto gradsStorageShape = tilingContext->GetInputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, gradsStorageShape);
+    const gert::Shape& gradsShape = EnsureNotScalar(gradsStorageShape->GetStorageShape());
+
+    auto activationsStorageShape = tilingContext->GetInputShape(1);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, activationsStorageShape);
+    const gert::Shape& activationsShape = EnsureNotScalar(activationsStorageShape->GetStorageShape());
+
+    auto outStorageShape = tilingContext->GetOutputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, outStorageShape);
+    const gert::Shape& outputShape = EnsureNotScalar(outStorageShape->GetStorageShape());
+
+    OP_CHECK_IF(gradsShape != outputShape && gradsShape != activationsShape,
+                OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(tilingContext->GetNodeName(), "grads, activations, y",
+                                                       Ops::Base::ToString(gradsShape) + ", " +
+                                                           Ops::Base::ToString(activationsShape) + ", " +
+                                                           Ops::Base::ToString(outputShape),
+                                                       "The shapes of grads, activations, and y must be the same"),
+                return ge::GRAPH_FAILED);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus EluGradTiling::RunTiling()
+{
+    ElewiseBaseTiling elewiseBaseTiling(tilingContext);
+    // 获取tiling计算所需的参数
+    ge::graphStatus status = ge::GRAPH_FAILED;
+    status = CalcInputDtype();
+    OP_CHECK_IF(status == ge::GRAPH_FAILED, OP_LOGE(tilingContext, "Get input dtype failed"), return ge::GRAPH_FAILED);
+    status = CalcOutputDtype();
+    OP_CHECK_IF(status == ge::GRAPH_FAILED, OP_LOGE(tilingContext, "Get output dtype failed"), return ge::GRAPH_FAILED);
+    status = CheckShape();
+    OP_CHECK_IF(status == ge::GRAPH_FAILED, OP_LOGE(tilingContext, "Check shape failed"), return ge::GRAPH_FAILED);
+
+    auto tiling = tilingContext->GetTilingData<EleBaseTilingDataV2>();
+    OP_CHECK_IF((tiling == nullptr), OP_LOGE(tilingContext->GetNodeName(), "Get EluGradTiling from GE context failed"),
+                return ge::GRAPH_FAILED);
+
+    if (this->outputDtype == ge::DT_FLOAT16) {
+        dType = static_cast<uint64_t>(TPL_FP16);
+        status = elewiseBaseTiling.DoTiling<EluGradDag<half>::OpDag>(*tiling);
+    } else if (this->outputDtype == ge::DT_BF16) {
+        dType = static_cast<uint64_t>(TPL_BF16);
+        status = elewiseBaseTiling.DoTiling<EluGradDag<bfloat16_t>::OpDag>(*tiling);
+    } else if (this->outputDtype == ge::DT_FLOAT) {
+        dType = static_cast<uint64_t>(TPL_FP32);
+        status = elewiseBaseTiling.DoTiling<EluGradDag<float>::OpDag>(*tiling);
+    } else {
+        OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(tilingContext->GetNodeName(), "y",
+                                              Ops::Base::ToString(static_cast<ge::DataType>(this->outputDtype)),
+                                              "The dtype of y must be DT_FLOAT16, DT_BF16, or DT_FLOAT");
+        return ge::GRAPH_FAILED;
+    }
+    OP_CHECK_IF(status == ge::GRAPH_FAILED,
+                OP_LOGE(tilingContext->GetNodeName(), "ElewiseBaseTiling failed, output dtype: %s.",
+                        ge::TypeUtils::DataTypeToSerialString(this->outputDtype).c_str()),
+                return ge::GRAPH_FAILED);
+
+    const uint64_t tilingKey = GET_TPL_TILING_KEY(tiling->scheMode, dType);
+    OP_LOGD(tilingContext->GetNodeName(), "[TilingData] : tilingKey=%ld.", tilingKey);
+    tilingContext->SetTilingKey(tilingKey);
+    tilingContext->SetBlockDim(tiling->blockNum);
+    size_t usrWorkspaceSize = 0;
+    size_t sysWorkspaceSize = ASCEND_WORKSPACE;
+    size_t* currentWorkspace = tilingContext->GetWorkspaceSizes(1);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, currentWorkspace);
+    currentWorkspace[0] = sysWorkspaceSize + usrWorkspaceSize;
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus Tiling4EluGrad(gert::TilingContext* tilingContextSelf)
+{
+    OP_LOGD(tilingContextSelf->GetNodeName(), "Tiling4EluGrad rt2.0 is running.");
+    auto compileInfo = tilingContextSelf->GetCompileInfo<EluGradCompileInfo>();
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContextSelf, compileInfo);
+    EluGradTiling eluGradTiling(tilingContextSelf);
+    return eluGradTiling.RunTiling();
+}
+
+static ge::graphStatus TilingPrepareForEluGrad(gert::TilingParseContext* context)
+{
+    auto compileInfoPtr = context->GetCompiledInfo<EluGradCompileInfo>();
+    OP_CHECK_NULL_WITH_CONTEXT(context, compileInfoPtr);
+    fe::PlatFormInfos* platformInfoPtr = context->GetPlatformInfo();
+    OP_CHECK_NULL_WITH_CONTEXT(context, platformInfoPtr);
+    auto ascendcPlatform = platform_ascendc::PlatformAscendC(platformInfoPtr);
+    compileInfoPtr->coreNum = ascendcPlatform.GetCoreNumAiv();
+    ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, compileInfoPtr->ubSize);
+    return ge::GRAPH_SUCCESS;
+}
+
+IMPL_OP_OPTILING(EluGrad).Tiling(Tiling4EluGrad).TilingParse<EluGradCompileInfo>(TilingPrepareForEluGrad);
+} // namespace optiling

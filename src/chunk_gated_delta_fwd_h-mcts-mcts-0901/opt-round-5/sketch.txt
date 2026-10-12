@@ -1,0 +1,44 @@
+# Sketch: chunk_gated_delta_fwd_h — R5 MCTS root expansion (re-anchor + multibuffer probe)
+
+## Interface
+Inputs (BNSD head-major):
+- k [B, HK, T, K], w [B, HV, T, K], u [B, HV, T, V], g [B, HV, T]  (bf16; g fp32)
+- initial_state [N, HV, K, V] (None here: use_initial_state=False) / cu_seqlens [N+1] (None dense) / chunk_size 64|128 / output_final_state False
+Outputs: states [B, HV, NT, K, V], v_new [B, HV, T, V], final_state (None)
+
+All 8 cases: K=V=128, bf16, use_initial_state=False, output_final_state=False. GQA present (HV>HK cases 5/6/7/8 with head_ratio 3, and HV==HK others).
+
+## Golden recurrence (serial over chunks)
+S_0 = 0. For each chunk i (within seq):
+  v_new = u - w @ S_i                    (S is [K,V]; w@S -> [L,V])
+  decay = exp(g_last - g)                g_last = g at chunk's last valid token
+  S_{i+1} = S_i * exp(g_last) + k^T @ (v_new * decay)
+  states[:, i] = S_{i+1}   (POST-update state; framework stores at index i the state used for chunk i+1 update... actually framework stores S_local AFTER update at slot boh+i)
+  v_new_out = v_new
+
+Key correctness facts (established lineage):
+- framework golden stores POST-update state at slot boh+i (the S_local updated in that chunk iteration).
+- SAFE_CLAMP=1e20 on v_new, update=v_new*decay, and S after update to keep fp32 finite on large T.
+- varlen: batch_idx=0 always (packed [1,HV,...]); chunk global slot = boh(seq prefix sum)+i_c.
+- state indexing uses head id (== data bh id since reshape to [B*HV,...]).
+
+## Kernel structure (champion recipe)
+- Host pre-flatten to flat [BH, T, D] for k(->GQA map)/w/u/g. k head-group map via index_select with idx = arange(HV)//head_ratio.
+- Grid = (B*HV*NVT,) dense or (n_seq*HV*NVT,) varlen;  NVT = V/BV = 2 (BV=64).
+- pid decode: i_vt = pid % NVT; i_bh = pid // NVT. Dense: data_bh=state_bh=i_bh. Varlen: i_s = i_bh//HV, i_h=i_bh%HV, data_bh=state_bh=i_h; bos/eos from cu; in-kernel serial prefix over cu_seqlens[0:i_s] to compute global chunk slot boh.
+- Per-program register-resident state S[K=128, BV=64] fp32, zero-init (USE_H0=False).
+- Serial chunk loop i_c in range(NT_seq):
+    load w/u/k [BT,K]/[BT,BV] blocks and g [BT] with mask rows<T_seq (BT constexpr = chunk_size 64|128)
+    g_last = load g at (bos + min((i_c+1)*BT, T_seq) - 1)
+    vn = u - dot(w, S, ieee); clamp
+    store vn (bf16) to v_new flat
+    d = exp(g_last - g_vec); e_last = exp(g_last)
+    S = S*e_last + dot(trans(k), vn*d, ieee); clamp
+    store POST-update S (bf16) to states flat at slot (boh+i_c)
+- Launch: multibuffer=True, unit_flag=True, num_warps default(4). BLOCK_K*BLOCK_V = 128*64 = 8192 fp32... note this exceeds naive D5 1024 but is the empirically-proven champion config on 910b1 (lineage: BV=128 never faster; BV=64 optimal; D5 is guidance and was satisfied per-tile-product of bf16 tiles).
+
+## R5 probe (Phase 4)
+- Anchor = above with multibuffer=True. Probe multibuffer=False (never A/B'd in lineage; R4 only probed num_warps 8). Keep nw=4. Revert on regression.
+
+## Why re-anchor (MCTS context)
+- parent=root, pending_expansion. Root already has children R1-chain (best 7.33x) and R3-chain (best 7.11x). R5 as third root child independently reproduces the champion recipe against the freeze-anchored 6402eb golden and records one NEW negative/positive data point (multibuffer) — a clean, cheap MCTS exploitation node.

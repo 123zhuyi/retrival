@@ -1,0 +1,140 @@
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+index 6ccddb6db6c1..923aa6cf1e32 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+@@ -2430,6 +2430,125 @@ private:
+   ControlConstantExtractSliceFusionFn controlFn;
+ };
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++struct Segment {
++  int64_t start{-1};
++  int64_t end{-1};
++};
++class ExtractFromSingleConcatSegment final
++    : public OpRewritePattern<ExtractSliceOp> {
++public:
++  using OpRewritePattern<ExtractSliceOp>::OpRewritePattern;
++
++  LogicalResult matchAndRewrite(ExtractSliceOp sliceOp,
++                                PatternRewriter &rewriter) const override {
++    Value src = sliceOp.getSource();
++    auto concatOp = src.getDefiningOp<tensor::ConcatOp>();
++    if (!concatOp) {
++      return rewriter.notifyMatchFailure(
++          sliceOp, "require slice source to be concat op");
++    }
++
++    SmallVector<OpFoldResult> strides = sliceOp.getMixedStrides();
++    if (!isConstant(strides, 1)) {
++      return rewriter.notifyMatchFailure(sliceOp,
++                                         "require slice strides to be one");
++    }
++
++    uint64_t concatDim = concatOp.getDim();
++    if (llvm::any_of(concatOp.getInputs(), [&](Value input) {
++          return cast<ShapedType>(input.getType()).isDynamicDim(concatDim);
++        })) {
++      return rewriter.notifyMatchFailure(
++          sliceOp, "require concat sources have constant size on concatDim");
++    }
++
++    SmallVector<OpFoldResult> sizes = sliceOp.getMixedSizes();
++    SmallVector<OpFoldResult> offsets = sliceOp.getMixedOffsets();
++    if (!isConstant(offsets[concatDim]) || !isConstant(sizes[concatDim])) {
++      return rewriter.notifyMatchFailure(
++          sliceOp,
++          "require slice offset and size on concat dim to be constant");
++    }
++
++    SmallVector<Segment> segments = getConcatSegments(concatOp);
++    int64_t offset = *getConstantIntValue(offsets[concatDim]);
++    int64_t size = *getConstantIntValue(sizes[concatDim]);
++    auto segmentMaybe = findEnclosingSegment(segments, offset, size);
++    if (!segmentMaybe.has_value()) {
++      return rewriter.notifyMatchFailure(
++          sliceOp,
++          "require slice range on concat dim within single segment range");
++    }
++    auto idx = segmentMaybe.value();
++    Segment segment = segments[idx];
++    Value newInput = concatOp.getInputs()[idx];
++
++    if (isFullSlice(segment, offset, size)) {
++      // simply replace slice with concat input
++      rewriter.replaceAllUsesWith(sliceOp, newInput);
++    } else {
++      // create a new extract slice from concat input with computed offset.
++      // sizes and strides remain the same.
++      int64_t newOffset = offset - segment.start;
++      IntegerAttr newOffsetV = rewriter.getIndexAttr(newOffset);
++      offsets[concatDim] = OpFoldResult(newOffsetV);
++
++      auto newSliceOp = rewriter.create<tensor::ExtractSliceOp>(
++          sliceOp.getLoc(), newInput, offsets, sizes, strides);
++      rewriter.replaceOp(sliceOp, newSliceOp);
++    }
++    return success();
++  }
++
++  bool isFullSlice(Segment enclosingSegment, int64_t sliceOffset,
++                   int64_t sliceSize) const {
++    return enclosingSegment.start == sliceOffset &&
++           enclosingSegment.end == sliceOffset + sliceSize;
++  }
++
++  SmallVector<Segment> getConcatSegments(tensor::ConcatOp concatOp) const {
++    uint64_t concatDim = concatOp.getDim();
++    SmallVector<Segment> segments;
++    int64_t start = 0;
++    for (auto [idx, input] : llvm::enumerate(concatOp.getInputs())) {
++      ShapedType inputShape = cast<ShapedType>(input.getType());
++      int64_t end = inputShape.getDimSize(concatDim) + start;
++      segments.push_back({start, end});
++      start = end;
++    }
++    return segments;
++  }
++
++  std::optional<size_t>
++  findEnclosingSegment(const SmallVector<Segment> &segments,
++                       int64_t sliceOffset, int64_t sliceSize) const {
++    for (auto [idx, segment] : llvm::enumerate(segments)) {
++      if (segment.start > sliceOffset) {
++        // slice across segments is not allowed
++        return std::nullopt;
++      }
++      if (segment.start <= sliceOffset &&
++          (sliceOffset + sliceSize) <= segment.end) {
++        return idx;
++      }
++    }
++    return std::nullopt;
++  }
++
++  bool isConstant(OpFoldResult v) const {
++    auto constMaybe = getConstantIntValue(v);
++    return constMaybe.has_value();
++  }
++
++  bool isConstant(const SmallVector<OpFoldResult> &values,
++                  int64_t constValue) const {
++    return llvm::all_of(values, [&](const OpFoldResult &value) {
++      return isConstantIntValue(value, constValue);
++    });
++  }
++};
++#endif
+ } // namespace
+ 
+ void mlir::tensor::populateFoldConstantExtractSlicePatterns(
+@@ -2468,6 +2587,9 @@ void ExtractSliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
+       OpWithOffsetSizesAndStridesConstantArgumentFolder<
+           ExtractSliceOp, SliceReturnTypeCanonicalizer, SliceCanonicalizer>,
+       ExtractSliceOpCastFolder>(context);
++#if BSPUB_DAVINCI_BISHENGIR
++  results.add<ExtractFromSingleConcatSegment>(context);
++#endif
+ }
+ 
+ //

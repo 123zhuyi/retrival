@@ -1,0 +1,783 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file max_pool_with_argmax_v3_nhwc_small_c_.h
+ * \brief
+ */
+
+#ifndef MAX_POOL_WITH_ARGMAX_V3_NHWC_SMALL_C__H_
+#define MAX_POOL_WITH_ARGMAX_V3_NHWC_SMALL_C__H_
+
+#include "kernel_operator.h"
+#include "kernel_tiling/kernel_tiling.h"
+#include "../inc/platform.h"
+#include "max_pool_with_argmax_v3_base.h"
+#include "max_pool_with_argmax_v3_nhwc_big_c.h"
+#include "pool_utils/arch35/compute/max_pool_with_argmax_nhwc_big_c_compute.h"
+#include "pool_utils/arch35/index/max_pool_with_argmax_index.h"
+
+namespace MaxPoolWithArgmaxV3SmallCNameSpace {
+using namespace AscendC;
+
+constexpr int64_t THREE = 3;
+constexpr int64_t DOUBLE = 2;
+
+constexpr AscendC::Reg::CastTrait castTraitU32U16 = {
+    AscendC::Reg::RegLayout::ZERO,
+    AscendC::Reg::SatMode::NO_SAT,
+    AscendC::Reg::MaskMergeMode::ZEROING,
+    AscendC::RoundMode::CAST_RINT,
+};
+
+template <typename T1, typename T2, const uint32_t IS_PAD = 0>
+__aicore__ inline void MaxPoolWithArgMaxV3GatherImpl(
+    __ubuf__ T1* xAddr, __ubuf__ T1* maxValueAddr, __ubuf__ T2* argmaxAddr, uint16_t kH, uint16_t kW,
+    uint32_t rowStrideInUb, uint16_t alignedC, int32_t gatterIndexOffset, Reg::RegTensor<uint32_t>& gatterStartIdx,
+    int32_t count, Reg::RegTensor<T2>& argmaxHStart, Reg::RegTensor<T2>& argmaxWStart, T2 argmaxHOffset,
+    T2 argmaxWOffset, Reg::RegTensor<uint32_t>& scatterStartIdx, int32_t scatterOffset, int32_t padH, int32_t padW,
+    int32_t wInput)
+{
+    Reg::RegTensor<T1> vd0;
+    Reg::RegTensor<T1> vd1;
+    Reg::RegTensor<uint32_t> gatterIndexReg;
+    Reg::RegTensor<uint32_t> scatterIndexReg;
+    Reg::RegTensor<uint16_t> gatterIdxU16Reg;
+    Reg::RegTensor<uint16_t> scatterIdxU16Reg;
+
+    AscendC::Reg::RegTensor<T2> argmaxUpdateHVreg;
+    AscendC::Reg::RegTensor<T2> argmaxUpdateWVreg;
+    AscendC::Reg::RegTensor<T2> argmaxHRes;
+    AscendC::Reg::RegTensor<T2> argmaxWRes;
+
+    AscendC::Reg::MaskReg neMask;
+    AscendC::Reg::MaskReg gtMask;
+    AscendC::Reg::MaskReg gtMaskT2;
+    AscendC::Reg::MaskReg gtMaskT4;
+
+    PoolUtils::Compute::DuplicateNegInfReg<T1>(vd0);
+
+    uint32_t numU32 = count;
+    uint32_t numT1 = count;
+    uint32_t numT2 = count;
+
+    Reg::MaskReg computeT1 = Reg::UpdateMask<T1>(numT1);
+    Reg::MaskReg computeT2 = Reg::UpdateMask<T2>(numT2);
+    Reg::MaskReg computeU32 = Reg::UpdateMask<uint32_t>(numU32);
+    Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+    Reg::MaskReg maskAllT2 = Reg::CreateMask<T2, Reg::MaskPattern::ALL>();
+
+    Reg::Adds(argmaxHRes, argmaxHStart, argmaxHOffset, computeT2);
+    Reg::Adds(argmaxWRes, argmaxWStart, argmaxWOffset, computeT2);
+
+    for (uint16_t hIdx = 0; hIdx < kH; hIdx++) {
+        int32_t hKernelOffset = hIdx * rowStrideInUb;
+        T2 argmaxHKernelOffset = hIdx + argmaxHOffset;
+
+        for (uint16_t wIdx = 0; wIdx < kW; wIdx++) {
+            int32_t wKernelOffset = wIdx * alignedC;
+            T2 argmaxWKernelOffset = wIdx + argmaxWOffset;
+
+            int32_t gatterIndexOffsetTotal = gatterIndexOffset + hKernelOffset + wKernelOffset;
+            Reg::Adds(gatterIndexReg, gatterStartIdx, gatterIndexOffsetTotal, computeU32);
+
+            if constexpr (std::is_same<T1, float>::value) {
+                Reg::Gather(vd1, xAddr, gatterIndexReg, computeT1);
+            } else {
+                AscendC::Reg::Cast<uint16_t, uint32_t, castTraitU32U16>(gatterIdxU16Reg, gatterIndexReg, computeU32);
+                AscendC::Reg::Pack(gatterIdxU16Reg, (AscendC::Reg::RegTensor<uint32_t>&)gatterIdxU16Reg);
+                AscendC::Reg::Gather(vd1, xAddr, gatterIdxU16Reg, computeT1);
+            }
+
+            AscendC::Reg::Compare<T1, CMPMODE::GT>(gtMask, vd1, vd0, computeT1);
+            AscendC::Reg::Compare<T1, CMPMODE::NE>(neMask, vd1, vd1, computeT1);
+            AscendC::Reg::Or(gtMask, gtMask, neMask, computeT1);
+
+            Reg::Adds(argmaxUpdateHVreg, argmaxHStart, argmaxHKernelOffset, computeT2);
+            Reg::Adds(argmaxUpdateWVreg, argmaxWStart, argmaxWKernelOffset, computeT2);
+            if constexpr (sizeof(T2) / sizeof(T1) == 1) {
+                AscendC::Reg::Select(argmaxHRes, argmaxUpdateHVreg, argmaxHRes, gtMask);
+                AscendC::Reg::Select(argmaxWRes, argmaxUpdateWVreg, argmaxWRes, gtMask);
+            } else if constexpr (sizeof(T2) / sizeof(T1) == DOUBLE) {
+                AscendC::Reg::UnPack(gtMaskT2, gtMask);
+                AscendC::Reg::Select(argmaxHRes, argmaxUpdateHVreg, argmaxHRes, gtMaskT2);
+                AscendC::Reg::Select(argmaxWRes, argmaxUpdateWVreg, argmaxWRes, gtMaskT2);
+            } else {
+                AscendC::Reg::UnPack(gtMaskT2, gtMask);
+                AscendC::Reg::UnPack(gtMaskT4, gtMaskT2);
+                AscendC::Reg::Select(argmaxHRes, argmaxUpdateHVreg, argmaxHRes, gtMaskT4);
+                AscendC::Reg::Select(argmaxWRes, argmaxUpdateWVreg, argmaxWRes, gtMaskT4);
+            }
+
+            Reg::Max(vd0, vd1, vd0, computeT1);
+        }
+    }
+
+    if constexpr (IS_PAD == 1) {
+        // 修正argmax
+        Reg::Adds(argmaxHRes, argmaxHRes, -padH, computeT2);
+        Reg::Adds(argmaxWRes, argmaxWRes, -padW, computeT2);
+
+        AscendC::Reg::MaskReg hMask;
+        AscendC::Reg::MaskReg wMask;
+        Reg::RegTensor<T2> argmaxZero;
+        AscendC::Reg::Duplicate(argmaxZero, 0);
+
+        AscendC::Reg::Compare<T2, CMPMODE::GE>(hMask, argmaxHRes, argmaxZero, computeT2);
+        AscendC::Reg::Select(argmaxHRes, argmaxHRes, argmaxZero, hMask);
+        AscendC::Reg::Compare<T2, CMPMODE::GE>(wMask, argmaxWRes, argmaxZero, computeT2);
+        AscendC::Reg::Select(argmaxWRes, argmaxWRes, argmaxZero, wMask);
+    }
+
+    Reg::RegTensor<T2> argmaxRes;
+    Reg::Muls(argmaxRes, argmaxHRes, wInput, computeT2);
+    Reg::Add(argmaxRes, argmaxRes, argmaxWRes, computeT2);
+
+    Reg::Adds(scatterIndexReg, scatterStartIdx, scatterOffset, computeU32);
+
+    AscendC::Reg::Scatter(argmaxAddr, argmaxRes, scatterIndexReg, computeT2);
+    if constexpr (std::is_same<T1, float>::value) {
+        AscendC::Reg::Scatter(maxValueAddr, vd0, scatterIndexReg, computeT1);
+    } else {
+        AscendC::Reg::Cast<uint16_t, uint32_t, castTraitU32U16>(scatterIdxU16Reg, scatterIndexReg, computeU32);
+        AscendC::Reg::Pack(scatterIdxU16Reg, (AscendC::Reg::RegTensor<uint32_t>&)scatterIdxU16Reg);
+        AscendC::Reg::Scatter(maxValueAddr, vd0, scatterIdxU16Reg, computeT1);
+    }
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD = 0>
+class MaxPoolWithArgmaxV3SmallC : public MaxPoolWithArgmaxV3NHWC::MaxPoolWithArgmaxV3NhwCKernel<T1, T2, IS_PAD> {
+public:
+    __aicore__ inline MaxPoolWithArgmaxV3SmallC(TPipe* pipe, const MaxPoolWithArgmaxV3NhwcTilingData* tiling)
+        : MaxPoolWithArgmaxV3NHWC::MaxPoolWithArgmaxV3NhwCKernel<T1, T2, IS_PAD>(pipe, tiling){};
+    __aicore__ inline void MaxPoolWithArgmaxV3SmallCProcess();
+    __aicore__ inline void MaxPoolWithArgmaxV3SmallCCompute();
+    __aicore__ inline void ComputeSingleRow(__ubuf__ T1* xAddr, __ubuf__ T1* maxValueAddr, __ubuf__ T2* argmaxAddr);
+    __aicore__ inline void ComputeMultiRow(__ubuf__ T1* xAddr, __ubuf__ T1* maxValueAddr, __ubuf__ T2* argmaxAddr);
+    __aicore__ inline void ComputeMultiRowForInt64(__ubuf__ T1* xAddr, __ubuf__ T1* maxValueAddr,
+                                                   __ubuf__ T2* argmaxAddr, __ubuf__ uint32_t* helpAddr);
+    __aicore__ inline void ComputeMultiBatch(__ubuf__ T1* xAddr, __ubuf__ T1* maxValueAddr, __ubuf__ T2* argmaxAddr);
+    __aicore__ inline void ComputeMultiBatchForInt64(__ubuf__ T1* xAddr, __ubuf__ T1* maxValueAddr,
+                                                     __ubuf__ T2* argmaxAddr, __ubuf__ uint32_t* helpAddr);
+
+public:
+    constexpr static uint32_t V_REG_SIZE = platform::GetVRegSize();
+};
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::MaxPoolWithArgmaxV3SmallCProcess()
+{
+    if (this->blockIdx_ >= this->usedCoreNum_) {
+        return;
+    }
+
+    int64_t curCoreProcessNum = (this->blockIdx_ + 1 == this->usedCoreNum_) ? this->tailCoreProcessNum_ :
+                                                                              this->normalCoreProcessNum_;
+    for (int64_t loopNum = 0; loopNum < curCoreProcessNum; loopNum++) {
+        this->ScalarCompute(loopNum);
+        this->CopyIn();
+        MaxPoolWithArgmaxV3SmallCCompute();
+        this->CopyOut();
+    }
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::MaxPoolWithArgmaxV3SmallCCompute()
+{
+    LocalTensor<T1> xLocal = this->inputQue_.template DeQue<T1>();
+    LocalTensor<T1> maxValueLocal = this->maxValueQue_.template AllocTensor<T1>();
+    LocalTensor<T2> argmaxLocal = this->argmaxQue_.template AllocTensor<T2>();
+    LocalTensor<uint32_t> helpTensor = this->helperTBuf_.template Get<uint32_t>();
+
+    __ubuf__ T1* xAddr = (__ubuf__ T1*)xLocal.GetPhyAddr();
+    __ubuf__ T1* maxValueAddr = (__ubuf__ T1*)maxValueLocal.GetPhyAddr();
+    __ubuf__ T2* argmaxAddr = (__ubuf__ T2*)argmaxLocal.GetPhyAddr();
+    __ubuf__ uint32_t* helpAddr = (__ubuf__ uint32_t*)helpTensor.GetPhyAddr();
+
+    if constexpr (IS_PAD == 1) {
+        PoolUtils::Compute::FillPadNegVF<T1>(xAddr, this->baseBlockTopOffsetInOcean_, this->baseBlockLeftOffsetInOcean_,
+                                             this->baseBlockRightOffsetInOcean_, this->baseBlockDownOffsetInOcean_,
+                                             this->wInputActual_, this->hInputActual_, this->cOutputActualAlign_,
+                                             this->hOutputActual_, this->hStride_, this->hKernel_, this->wOutputActual_,
+                                             this->wStride_, this->wKernel_, this->nOutputActual_);
+    }
+
+    uint16_t repeatElm = platform::GetVRegSize() / sizeof(T2);
+    if (repeatElm >= DOUBLE * this->hOutputActual_ * this->wOutputActual_ * this->cInput_) {
+        if constexpr (std::is_same<T2, int64_t>::value) { // 拼nhw，并发nhwc
+            ComputeMultiBatchForInt64(xAddr, maxValueAddr, argmaxAddr, helpAddr);
+        } else {
+            ComputeMultiBatch(xAddr, maxValueAddr, argmaxAddr);
+        }
+    } else if (repeatElm >= DOUBLE * this->wOutputActual_ * this->cInput_) {
+        if constexpr (std::is_same<T2, int64_t>::value) { // 拼hw，并发hwc
+            ComputeMultiRowForInt64(xAddr, maxValueAddr, argmaxAddr, helpAddr);
+        } else {
+            ComputeMultiRow(xAddr, maxValueAddr, argmaxAddr);
+        }
+    } else { // 拼w，并发wc
+        ComputeSingleRow(xAddr, maxValueAddr, argmaxAddr);
+    }
+
+    this->inputQue_.template FreeTensor(xLocal);
+    this->maxValueQue_.template EnQue(maxValueLocal);
+    this->argmaxQue_.template EnQue(argmaxLocal);
+    this->helperTBuf_.template FreeTensor(helpTensor);
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::ComputeMultiBatch(__ubuf__ T1* xAddr,
+                                                                                    __ubuf__ T1* maxValueAddr,
+                                                                                    __ubuf__ T2* argmaxAddr)
+{
+    uint16_t kH = static_cast<uint16_t>(this->hKernel_);
+    uint16_t kW = static_cast<uint16_t>(this->wKernel_);
+    uint16_t hStride = static_cast<uint16_t>(this->hStride_);
+    uint16_t padH = static_cast<uint16_t>(this->padTop_);
+    uint16_t padW = static_cast<uint16_t>(this->padLeft_);
+    int32_t wInput = static_cast<int32_t>(this->wInput_);
+    uint16_t alignedC = static_cast<uint16_t>(this->cOutputActualAlign_);
+
+    constexpr uint16_t repeatElm = platform::GetVRegSize() / sizeof(T2);
+    uint16_t nFactor = static_cast<uint16_t>(repeatElm / (this->hOutputActual_ * this->wOutputActual_ * this->cInput_));
+    nFactor = nFactor > this->nOutputActual_ ? this->nOutputActual_ : nFactor;
+    uint16_t loopN = static_cast<uint16_t>(this->nOutputActual_ / nFactor);
+    uint16_t tailN = static_cast<uint16_t>(this->nOutputActual_ - loopN * nFactor);
+
+    int32_t hInputActualAmend = (this->hOutputActual_ - 1) * this->hStride_ + this->hKernel_;
+    int32_t wInputActualAmend = (this->wOutputActual_ - 1) * this->wStride_ + this->wKernel_;
+    int32_t ubNumHWC = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    int64_t wBlockArgmaxOffset = this->wAxisIndex_ * this->wStride_ * this->wOutputInner_;
+    int64_t hBlockArgmaxOffset = this->hAxisIndex_ * this->hStride_ * this->hOutputInner_;
+
+    uint32_t oneLoopElements = static_cast<uint32_t>(nFactor * this->hOutputActual_ * this->wOutputActual_ *
+                                                     this->cInput_); // 一次循环处理的输出元素
+    uint32_t tailLoopElements = static_cast<uint32_t>(tailN * this->hOutputActual_ * this->wOutputActual_ *
+                                                      this->cInput_); // 尾循环处理输出
+    uint32_t rowStrideInUb = static_cast<uint32_t>(wInputActualAmend * this->cOutputActualAlign_);
+    uint32_t oneNOutScatterElements = static_cast<uint32_t>(this->hOutputActual_ * this->wOutputActual_ *
+                                                            this->cOutputActualAlign_);
+
+    int32_t num1D = this->cInput_;
+    int32_t rate2D = this->wStride_ * this->cOutputActualAlign_;
+    int32_t num2D = this->wOutputActual_ * this->cInput_;
+    int32_t rate3D = this->hStride_ * wInputActualAmend * this->cOutputActualAlign_;
+    int32_t num3D = this->hOutputActual_ * this->wOutputActual_ * this->cInput_;
+    int32_t rate4D = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    T2 argNum1D = this->cInput_;
+    T2 argRate2D = this->wStride_;
+    T2 argNum2D = this->wOutputActual_ * this->cInput_;
+    T2 argNum3D = this->hOutputActual_ * this->wOutputActual_ * this->cInput_;
+    int32_t scatterIdxNum1D = this->cInput_;
+    int32_t scatterIdxRate2D = this->cOutputActualAlign_;
+
+    // 产生N的输出索引的索引
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<uint32_t> gatterStartIdx;
+        Reg::RegTensor<uint32_t> gatterNStartIdx;
+        Reg::RegTensor<T2> argmaxHStart;
+        Reg::RegTensor<T2> argmaxWStart;
+        Reg::RegTensor<uint32_t> scatterStartIdx;
+        Reg::RegTensor<uint32_t> scatterNStartIdx;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+        Reg::MaskReg maskAllT2 = Reg::CreateMask<T2, Reg::MaskPattern::ALL>();
+
+        PoolUtils::Index::GenGatterIndex4D<int32_t>((Reg::RegTensor<int32_t>&)gatterStartIdx, rate4D, num3D, rate3D,
+                                                    num2D, rate2D, num1D);
+        PoolUtils::Index::GenGatterIndex4D<T2>(argmaxWStart, 0, argNum3D, 0, argNum2D, argRate2D, argNum1D, 0);
+        PoolUtils::Index::GenGatterIndex3D<T2>(argmaxHStart, 0, argNum3D, static_cast<T2>(hStride), argNum2D, 0);
+        PoolUtils::Index::GenGatterIndex2D<int32_t>((Reg::RegTensor<int32_t>&)scatterStartIdx, scatterIdxRate2D,
+                                                    scatterIdxNum1D);
+
+        for (uint16_t nIdex = 0; nIdex < loopN; nIdex++) {
+            // 校正N
+            Reg::Adds(gatterNStartIdx, gatterStartIdx, nIdex * nFactor * ubNumHWC, maskAllU32);
+            Reg::Adds(scatterNStartIdx, scatterStartIdx, nIdex * nFactor * oneNOutScatterElements, maskAllU32);
+
+            int32_t gatterIndexOffset = 0;
+            T2 argmaxHOffset = hBlockArgmaxOffset;
+            T2 argmaxWOffset = wBlockArgmaxOffset;
+            int32_t scatterOffset = 0;
+
+            MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb,
+                                                          alignedC, gatterIndexOffset, gatterNStartIdx, oneLoopElements,
+                                                          argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                                                          scatterNStartIdx, scatterOffset, padH, padW, wInput);
+        }
+
+        // tail N
+        Reg::Adds(gatterNStartIdx, gatterStartIdx, loopN * nFactor * ubNumHWC, maskAllU32);
+        Reg::Adds(scatterNStartIdx, scatterStartIdx, loopN * nFactor * oneNOutScatterElements, maskAllU32);
+
+        int32_t gatterIndexOffset = 0;
+        T2 argmaxHOffset = hBlockArgmaxOffset;
+        T2 argmaxWOffset = wBlockArgmaxOffset;
+        int32_t scatterOffset = 0;
+
+        MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC,
+                                                      gatterIndexOffset, gatterNStartIdx, tailLoopElements,
+                                                      argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                                                      scatterNStartIdx, scatterOffset, padH, padW, wInput);
+    }
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::ComputeMultiBatchForInt64(__ubuf__ T1* xAddr,
+                                                                                            __ubuf__ T1* maxValueAddr,
+                                                                                            __ubuf__ T2* argmaxAddr,
+                                                                                            __ubuf__ uint32_t* helpAddr)
+{
+    uint16_t kH = static_cast<uint16_t>(this->hKernel_);
+    uint16_t kW = static_cast<uint16_t>(this->wKernel_);
+    uint16_t hStride = static_cast<uint16_t>(this->hStride_);
+    uint16_t padH = static_cast<uint16_t>(this->padTop_);
+    uint16_t padW = static_cast<uint16_t>(this->padLeft_);
+    int32_t wInput = static_cast<int32_t>(this->wInput_);
+    uint16_t alignedC = static_cast<uint16_t>(this->cOutputActualAlign_);
+
+    constexpr uint16_t repeatElm = platform::GetVRegSize() / sizeof(T2);
+    uint16_t nFactor = static_cast<uint16_t>(repeatElm / (this->hOutputActual_ * this->wOutputActual_ * this->cInput_));
+    nFactor = nFactor > this->nOutputActual_ ? this->nOutputActual_ : nFactor;
+    uint16_t loopN = static_cast<uint16_t>(this->nOutputActual_ / nFactor);
+    uint16_t tailN = static_cast<uint16_t>(this->nOutputActual_ - loopN * nFactor);
+
+    int32_t hInputActualAmend = (this->hOutputActual_ - 1) * this->hStride_ + this->hKernel_;
+    int32_t wInputActualAmend = (this->wOutputActual_ - 1) * this->wStride_ + this->wKernel_;
+    int32_t ubNumHWC = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    int64_t wBlockArgmaxOffset = this->wAxisIndex_ * this->wStride_ * this->wOutputInner_;
+    int64_t hBlockArgmaxOffset = this->hAxisIndex_ * this->hStride_ * this->hOutputInner_;
+
+    uint32_t oneLoopElements = static_cast<uint32_t>(nFactor * this->hOutputActual_ * this->wOutputActual_ *
+                                                     this->cInput_); // 一次循环处理的输出元素
+    uint32_t tailLoopElements = static_cast<uint32_t>(tailN * this->hOutputActual_ * this->wOutputActual_ *
+                                                      this->cInput_); // 尾循环处理输出
+    uint32_t rowStrideInUb = static_cast<uint32_t>(wInputActualAmend * this->cOutputActualAlign_);
+    uint32_t oneNOutScatterElements = static_cast<uint32_t>(this->hOutputActual_ * this->wOutputActual_ *
+                                                            this->cOutputActualAlign_);
+
+    int32_t num1D = this->cInput_;
+    int32_t rate2D = this->wStride_ * this->cOutputActualAlign_;
+    int32_t num2D = this->wOutputActual_ * this->cInput_;
+    int32_t rate3D = this->hStride_ * wInputActualAmend * this->cOutputActualAlign_;
+    int32_t num3D = this->hOutputActual_ * this->wOutputActual_ * this->cInput_;
+    int32_t rate4D = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    T2 argNum1D = this->cInput_;
+    T2 argRate2D = this->wStride_;
+    T2 argNum2D = this->wOutputActual_ * this->cInput_;
+    T2 argNum3D = this->hOutputActual_ * this->wOutputActual_ * this->cInput_;
+    int32_t scatterIdxNum1D = this->cInput_;
+    int32_t scatterIdxRate2D = this->cOutputActualAlign_;
+
+    // 产生N的输出索引的索引
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<uint32_t> gatterStartIdx;
+        Reg::RegTensor<T2> argmaxHStart;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+
+        PoolUtils::Index::GenGatterIndex4D<int32_t>((Reg::RegTensor<int32_t>&)gatterStartIdx, rate4D, num3D, rate3D,
+                                                    num2D, rate2D, num1D);
+        PoolUtils::Index::GenGatterIndex3D<T2>(argmaxHStart, 0, argNum3D, hStride, argNum2D, 0);
+
+        AscendC::Reg::StoreAlign(helpAddr, gatterStartIdx, maskAllU32);
+        AscendC::Reg::StoreAlign(helpAddr + V_REG_SIZE / sizeof(uint32_t), (Reg::RegTensor<uint32_t>&)argmaxHStart,
+                                 maskAllU32);
+    }
+
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<T2> argmaxWStart;
+        Reg::RegTensor<uint32_t> scatterStartIdx;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+
+        PoolUtils::Index::GenGatterIndex4D<T2>(argmaxWStart, 0, argNum3D, 0, argNum2D, argRate2D, argNum1D, 0);
+        PoolUtils::Index::GenGatterIndex2D<int32_t>((Reg::RegTensor<int32_t>&)scatterStartIdx, scatterIdxRate2D,
+                                                    scatterIdxNum1D);
+
+        AscendC::Reg::StoreAlign(helpAddr + V_REG_SIZE / sizeof(uint32_t) * DOUBLE,
+                                 (Reg::RegTensor<uint32_t>&)argmaxWStart, maskAllU32);
+        AscendC::Reg::StoreAlign(helpAddr + V_REG_SIZE / sizeof(uint32_t) * THREE, scatterStartIdx, maskAllU32);
+    }
+
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<uint32_t> gatterStartIdx;
+        Reg::RegTensor<uint32_t> gatterNStartIdx;
+        Reg::RegTensor<T2> argmaxHStart;
+        Reg::RegTensor<T2> argmaxWStart;
+        Reg::RegTensor<uint32_t> scatterStartIdx;
+        Reg::RegTensor<uint32_t> scatterNStartIdx;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+        Reg::MaskReg maskAllT2 = Reg::CreateMask<T2, Reg::MaskPattern::ALL>();
+
+        AscendC::Reg::LoadAlign(gatterStartIdx, helpAddr);
+        AscendC::Reg::LoadAlign((Reg::RegTensor<uint32_t>&)argmaxHStart, helpAddr + V_REG_SIZE / sizeof(uint32_t));
+        AscendC::Reg::LoadAlign((Reg::RegTensor<uint32_t>&)argmaxWStart,
+                                helpAddr + V_REG_SIZE / sizeof(uint32_t) * DOUBLE);
+        AscendC::Reg::LoadAlign(scatterStartIdx, helpAddr + V_REG_SIZE / sizeof(uint32_t) * THREE);
+
+        for (uint16_t nIdex = 0; nIdex < loopN; nIdex++) {
+            // 校正N
+            Reg::Adds(gatterNStartIdx, gatterStartIdx, nIdex * nFactor * ubNumHWC, maskAllU32);
+            Reg::Adds(scatterNStartIdx, scatterStartIdx, nIdex * nFactor * oneNOutScatterElements, maskAllU32);
+
+            int32_t gatterIndexOffset = 0;
+            T2 argmaxHOffset = hBlockArgmaxOffset;
+            T2 argmaxWOffset = wBlockArgmaxOffset;
+            int32_t scatterOffset = 0;
+
+            MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb,
+                                                          alignedC, gatterIndexOffset, gatterNStartIdx, oneLoopElements,
+                                                          argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                                                          scatterNStartIdx, scatterOffset, padH, padW, wInput);
+        }
+
+        // tail N
+        Reg::Adds(gatterNStartIdx, gatterStartIdx, loopN * nFactor * ubNumHWC, maskAllU32);
+        Reg::Adds(scatterNStartIdx, scatterStartIdx, loopN * nFactor * oneNOutScatterElements, maskAllU32);
+
+        int32_t gatterIndexOffset = 0;
+        T2 argmaxHOffset = hBlockArgmaxOffset;
+        T2 argmaxWOffset = wBlockArgmaxOffset;
+        int32_t scatterOffset = 0;
+
+        MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC,
+                                                      gatterIndexOffset, gatterNStartIdx, tailLoopElements,
+                                                      argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                                                      scatterNStartIdx, scatterOffset, padH, padW, wInput);
+    }
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::ComputeMultiRow(__ubuf__ T1* xAddr,
+                                                                                  __ubuf__ T1* maxValueAddr,
+                                                                                  __ubuf__ T2* argmaxAddr)
+{
+    uint16_t kH = static_cast<uint16_t>(this->hKernel_);
+    uint16_t kW = static_cast<uint16_t>(this->wKernel_);
+    uint16_t hStride = static_cast<uint16_t>(this->hStride_);
+    uint16_t padH = static_cast<uint16_t>(this->padTop_);
+    uint16_t padW = static_cast<uint16_t>(this->padLeft_);
+    int32_t wInput = static_cast<int32_t>(this->wInput_);
+    uint16_t wOutputActual = static_cast<uint16_t>(this->wOutputActual_);
+    uint16_t alignedC = static_cast<uint16_t>(this->cOutputActualAlign_);
+
+    uint16_t loopN = static_cast<uint16_t>(this->nOutputActual_);
+    constexpr uint32_t repeatElm = platform::GetVRegSize() / sizeof(T2);
+    uint16_t hFactor = static_cast<uint16_t>(repeatElm / (this->wOutputActual_ * this->cInput_));
+    hFactor = hFactor > this->hOutputActual_ ? this->hOutputActual_ : hFactor;
+    uint16_t loopH = static_cast<uint16_t>(this->hOutputActual_ / hFactor);
+    uint16_t tailH = static_cast<uint16_t>(this->hOutputActual_ - loopH * hFactor);
+
+    int32_t hInputActualAmend = (this->hOutputActual_ - 1) * this->hStride_ + this->hKernel_;
+    int32_t wInputActualAmend = (this->wOutputActual_ - 1) * this->wStride_ + this->wKernel_;
+    int32_t ubNumHWC = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    int64_t wBlockArgmaxOffset = this->wAxisIndex_ * this->wStride_ * this->wOutputInner_;
+    int64_t hBlockArgmaxOffset = this->hAxisIndex_ * this->hStride_ * this->hOutputInner_;
+
+    uint32_t oneLoopStrideH = static_cast<uint32_t>(hFactor * this->hStride_ * wInputActualAmend *
+                                                    this->cOutputActualAlign_);
+    uint32_t oneLoopElements = static_cast<uint32_t>(hFactor * this->wOutputActual_ * this->cInput_);
+    uint32_t tailLoopElements = static_cast<uint32_t>(tailH * this->wOutputActual_ * this->cInput_);
+    uint32_t rowStrideInUb = static_cast<uint32_t>(wInputActualAmend * this->cOutputActualAlign_);
+    uint32_t oneNOutScatterElements = static_cast<uint32_t>(this->hOutputActual_ * this->wOutputActual_ *
+                                                            this->cOutputActualAlign_);
+
+    int32_t num1D = this->cInput_;
+    int32_t rate2D = this->wStride_ * this->cOutputActualAlign_;
+    int32_t num2D = this->wOutputActual_ * this->cInput_;
+    int32_t rate3D = this->hStride_ * wInputActualAmend * this->cOutputActualAlign_;
+    T2 argmaxNum1D = this->cInput_;
+    T2 argMaxRate2D = this->wStride_;
+    T2 argMaxNum2D = this->wOutputActual_ * this->cInput_;
+    T2 argHRate3D = this->hStride_;
+    int32_t scatterIdxNum1D = this->cInput_;
+    int32_t scatterIdxRate2D = this->cOutputActualAlign_;
+
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<uint32_t> gatterStartIdx;
+        Reg::RegTensor<uint32_t> gatterNStartIdx;
+        Reg::RegTensor<T2> argmaxHStart;
+        Reg::RegTensor<T2> argmaxWStart;
+        Reg::RegTensor<uint32_t> scatterStartIdx;
+        Reg::RegTensor<uint32_t> scatterNStartIdx;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+        Reg::MaskReg maskAllT2 = Reg::CreateMask<T2, Reg::MaskPattern::ALL>();
+
+        PoolUtils::Index::GenGatterIndex3D<int32_t>((Reg::RegTensor<int32_t>&)gatterStartIdx, rate3D, num2D, rate2D,
+                                                    num1D);
+        PoolUtils::Index::GenGatterIndex3D<T2>(argmaxWStart, 0, argMaxNum2D, argMaxRate2D, argmaxNum1D, 0);
+        PoolUtils::Index::GenGatterIndex2D<T2>(argmaxHStart, argHRate3D, argMaxNum2D, 0);
+        PoolUtils::Index::GenGatterIndex2D<int32_t>((Reg::RegTensor<int32_t>&)scatterStartIdx, scatterIdxRate2D,
+                                                    scatterIdxNum1D);
+
+        for (uint16_t nIdex = 0; nIdex < loopN; nIdex++) {
+            // 校正N
+            Reg::Adds(gatterNStartIdx, gatterStartIdx, nIdex * ubNumHWC, maskAllU32);
+            Reg::Adds(scatterNStartIdx, scatterStartIdx, nIdex * oneNOutScatterElements, maskAllU32);
+
+            for (uint16_t j = 0; j < loopH; j++) {
+                int32_t gatterIndexOffset = j * oneLoopStrideH;
+                T2 argmaxHOffset = j * hStride * hFactor + hBlockArgmaxOffset;
+                T2 argmaxWOffset = wBlockArgmaxOffset;
+                int32_t scatterOffset = j * hFactor * wOutputActual * alignedC;
+
+                MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(
+                    xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC, gatterIndexOffset,
+                    gatterNStartIdx, oneLoopElements, argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                    scatterNStartIdx, scatterOffset, padH, padW, wInput);
+            }
+
+            // tail H
+            int32_t gatterIndexOffset = loopH * oneLoopStrideH;
+            T2 argmaxHOffset = loopH * hStride * hFactor + hBlockArgmaxOffset;
+            T2 argmaxWOffset = wBlockArgmaxOffset;
+            int32_t scatterOffset = loopH * hFactor * wOutputActual * alignedC;
+
+            MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(
+                xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC, gatterIndexOffset, gatterNStartIdx,
+                tailLoopElements, argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset, scatterNStartIdx,
+                scatterOffset, padH, padW, wInput);
+        }
+    }
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::ComputeMultiRowForInt64(__ubuf__ T1* xAddr,
+                                                                                          __ubuf__ T1* maxValueAddr,
+                                                                                          __ubuf__ T2* argmaxAddr,
+                                                                                          __ubuf__ uint32_t* helpAddr)
+{
+    uint16_t kH = static_cast<uint16_t>(this->hKernel_);
+    uint16_t kW = static_cast<uint16_t>(this->wKernel_);
+    uint16_t hStride = static_cast<uint16_t>(this->hStride_);
+    uint16_t padH = static_cast<uint16_t>(this->padTop_);
+    uint16_t padW = static_cast<uint16_t>(this->padLeft_);
+    int32_t wInput = static_cast<int32_t>(this->wInput_);
+    uint16_t wOutputActual = static_cast<uint16_t>(this->wOutputActual_);
+    uint16_t alignedC = static_cast<uint16_t>(this->cOutputActualAlign_);
+
+    uint16_t loopN = static_cast<uint16_t>(this->nOutputActual_);
+    constexpr uint32_t repeatElm = platform::GetVRegSize() / sizeof(T2);
+    uint16_t hFactor = static_cast<uint16_t>(repeatElm / (this->wOutputActual_ * this->cInput_));
+    hFactor = hFactor > this->hOutputActual_ ? this->hOutputActual_ : hFactor;
+    uint16_t loopH = static_cast<uint16_t>(this->hOutputActual_ / hFactor);
+    uint16_t tailH = static_cast<uint16_t>(this->hOutputActual_ - loopH * hFactor);
+
+    int32_t hInputActualAmend = (this->hOutputActual_ - 1) * this->hStride_ + this->hKernel_;
+    int32_t wInputActualAmend = (this->wOutputActual_ - 1) * this->wStride_ + this->wKernel_;
+    int32_t ubNumHWC = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    int64_t wBlockArgmaxOffset = this->wAxisIndex_ * this->wStride_ * this->wOutputInner_;
+    int64_t hBlockArgmaxOffset = this->hAxisIndex_ * this->hStride_ * this->hOutputInner_;
+
+    uint32_t oneLoopStrideH = static_cast<uint32_t>(hFactor * this->hStride_ * wInputActualAmend *
+                                                    this->cOutputActualAlign_);
+    uint32_t oneLoopElements = static_cast<uint32_t>(hFactor * this->wOutputActual_ * this->cInput_);
+    uint32_t tailLoopElements = static_cast<uint32_t>(tailH * this->wOutputActual_ * this->cInput_);
+    uint32_t rowStrideInUb = static_cast<uint32_t>(wInputActualAmend * this->cOutputActualAlign_);
+    uint32_t oneNOutScatterElements = static_cast<uint32_t>(this->hOutputActual_ * this->wOutputActual_ *
+                                                            this->cOutputActualAlign_);
+
+    int32_t num1D = this->cInput_;
+    int32_t rate2D = this->wStride_ * this->cOutputActualAlign_;
+    int32_t num2D = this->wOutputActual_ * this->cInput_;
+    int32_t rate3D = this->hStride_ * wInputActualAmend * this->cOutputActualAlign_;
+    T2 argmaxNum1D = this->cInput_;
+    T2 argMaxRate2D = this->wStride_;
+    T2 argMaxNum2D = this->wOutputActual_ * this->cInput_;
+    T2 argHRate3D = this->hStride_;
+    int32_t scatterIdxNum1D = this->cInput_;
+    int32_t scatterIdxRate2D = this->cOutputActualAlign_;
+
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<uint32_t> gatterStartIdx;
+        Reg::RegTensor<uint32_t> scatterStartIdx;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+
+        PoolUtils::Index::GenGatterIndex3D<int32_t>((Reg::RegTensor<int32_t>&)gatterStartIdx, rate3D, num2D, rate2D,
+                                                    num1D);
+        PoolUtils::Index::GenGatterIndex2D<int32_t>((Reg::RegTensor<int32_t>&)scatterStartIdx, scatterIdxRate2D,
+                                                    scatterIdxNum1D);
+
+        AscendC::Reg::StoreAlign(helpAddr, gatterStartIdx, maskAllU32);
+        AscendC::Reg::StoreAlign(helpAddr + V_REG_SIZE / sizeof(uint32_t), scatterStartIdx, maskAllU32);
+    }
+
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<T2> argmaxHStart;
+        Reg::RegTensor<T2> argmaxWStart;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+
+        PoolUtils::Index::GenGatterIndex3D<T2>(argmaxWStart, 0, argMaxNum2D, argMaxRate2D, argmaxNum1D, 0);
+        PoolUtils::Index::GenGatterIndex2D<T2>(argmaxHStart, argHRate3D, argMaxNum2D, 0);
+
+        AscendC::Reg::StoreAlign(helpAddr + V_REG_SIZE / sizeof(uint32_t) * DOUBLE,
+                                 (Reg::RegTensor<uint32_t>&)argmaxHStart, maskAllU32);
+        AscendC::Reg::StoreAlign(helpAddr + V_REG_SIZE / sizeof(uint32_t) * THREE,
+                                 (Reg::RegTensor<uint32_t>&)argmaxWStart, maskAllU32);
+    }
+
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<uint32_t> gatterStartIdx;
+        Reg::RegTensor<uint32_t> gatterNStartIdx;
+        Reg::RegTensor<T2> argmaxHStart;
+        Reg::RegTensor<T2> argmaxWStart;
+        Reg::RegTensor<uint32_t> scatterStartIdx;
+        Reg::RegTensor<uint32_t> scatterNStartIdx;
+        Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+        Reg::MaskReg maskAllT2 = Reg::CreateMask<T2, Reg::MaskPattern::ALL>();
+
+        AscendC::Reg::LoadAlign(gatterStartIdx, helpAddr);
+        AscendC::Reg::LoadAlign(scatterStartIdx, helpAddr + V_REG_SIZE / sizeof(uint32_t));
+        AscendC::Reg::LoadAlign((Reg::RegTensor<uint32_t>&)argmaxHStart,
+                                helpAddr + V_REG_SIZE / sizeof(uint32_t) * DOUBLE);
+        AscendC::Reg::LoadAlign((Reg::RegTensor<uint32_t>&)argmaxWStart,
+                                helpAddr + V_REG_SIZE / sizeof(uint32_t) * THREE);
+
+        for (uint16_t nIdex = 0; nIdex < loopN; nIdex++) {
+            // 校正N
+            Reg::Adds(gatterNStartIdx, gatterStartIdx, nIdex * ubNumHWC, maskAllU32);
+            Reg::Adds(scatterNStartIdx, scatterStartIdx, nIdex * oneNOutScatterElements, maskAllU32);
+
+            for (uint16_t j = 0; j < loopH; j++) {
+                int32_t gatterIndexOffset = j * oneLoopStrideH;
+                T2 argmaxHOffset = j * hStride * hFactor + hBlockArgmaxOffset;
+                T2 argmaxWOffset = wBlockArgmaxOffset;
+                int32_t scatterOffset = j * hFactor * wOutputActual * alignedC;
+
+                MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(
+                    xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC, gatterIndexOffset,
+                    gatterNStartIdx, oneLoopElements, argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                    scatterNStartIdx, scatterOffset, padH, padW, wInput);
+            }
+
+            // tail H
+            int32_t gatterIndexOffset = loopH * oneLoopStrideH;
+            T2 argmaxHOffset = loopH * hStride * hFactor + hBlockArgmaxOffset;
+            T2 argmaxWOffset = wBlockArgmaxOffset;
+            int32_t scatterOffset = loopH * hFactor * wOutputActual * alignedC;
+
+            MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(
+                xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC, gatterIndexOffset, gatterNStartIdx,
+                tailLoopElements, argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset, scatterNStartIdx,
+                scatterOffset, padH, padW, wInput);
+        }
+    }
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3SmallC<T1, T2, IS_PAD>::ComputeSingleRow(__ubuf__ T1* xAddr,
+                                                                                   __ubuf__ T1* maxValueAddr,
+                                                                                   __ubuf__ T2* argmaxAddr)
+{
+    uint16_t kH = static_cast<uint16_t>(this->hKernel_);
+    uint16_t kW = static_cast<uint16_t>(this->wKernel_);
+    uint16_t hStride = static_cast<uint16_t>(this->hStride_);
+    uint16_t wStride = static_cast<uint16_t>(this->wStride_);
+    uint16_t padH = static_cast<uint16_t>(this->padTop_);
+    uint16_t padW = static_cast<uint16_t>(this->padLeft_);
+    int32_t wInput = static_cast<int32_t>(this->wInput_);
+    uint16_t wOutputActual = static_cast<uint16_t>(this->wOutputActual_);
+    uint16_t alignedC = static_cast<uint16_t>(this->cOutputActualAlign_);
+
+    uint16_t loopN = this->nOutputActual_;
+    uint16_t loopH = this->hOutputActual_;
+
+    constexpr uint32_t repeatElm = platform::GetVRegSize() / sizeof(T2);
+    uint16_t wFactor = repeatElm / this->cInput_;
+    wFactor = wFactor > this->wOutputActual_ ? this->wOutputActual_ : wFactor;
+    uint16_t loopW = static_cast<uint16_t>(this->wOutputActual_ / wFactor);
+    uint16_t tailW = static_cast<uint16_t>(this->wOutputActual_ - loopW * wFactor);
+
+    int32_t hInputActualAmend = (this->hOutputActual_ - 1) * this->hStride_ + this->hKernel_;
+    int32_t wInputActualAmend = (this->wOutputActual_ - 1) * this->wStride_ + this->wKernel_;
+    int32_t ubNumHWC = hInputActualAmend * wInputActualAmend * this->cOutputActualAlign_;
+
+    int64_t wBlockArgmaxOffset = this->wAxisIndex_ * this->wStride_ * this->wOutputInner_;
+    int64_t hBlockArgmaxOffset = this->hAxisIndex_ * this->hStride_ * this->hOutputInner_;
+
+    uint32_t oneLoopStrideH = static_cast<uint32_t>(this->hStride_ * wInputActualAmend * this->cOutputActualAlign_);
+    uint32_t oneLoopStrideW = static_cast<uint32_t>(this->wStride_ * wFactor * this->cOutputActualAlign_);
+    uint32_t oneLoopElements = static_cast<uint32_t>(wFactor * this->cInput_);
+    uint32_t tailLoopElements = tailW * this->cInput_;
+
+    uint32_t oneNOutScatterElements = static_cast<uint32_t>(this->hOutputActual_ * this->wOutputActual_ *
+                                                            this->cOutputActualAlign_);
+    uint32_t rowStrideInUb = static_cast<uint32_t>(wInputActualAmend * this->cOutputActualAlign_);
+
+    int32_t num1D = this->cInput_;
+    int32_t rate2D = this->wStride_ * this->cOutputActualAlign_;
+    int32_t argmaxNum1D = this->cInput_;
+    T2 argmaxRate2D = this->wStride_;
+    int32_t scatterIdxNum1D = this->cInput_;
+    int32_t scatterIdxRate2D = this->cOutputActualAlign_;
+
+    for (uint16_t nIdex = 0; nIdex < loopN; nIdex++) {
+        __VEC_SCOPE__
+        {
+            Reg::RegTensor<uint32_t> gatterStartIdx;
+            Reg::RegTensor<T2> argmaxHStart;
+            Reg::RegTensor<T2> argmaxWStart;
+            Reg::RegTensor<uint32_t> scatterStartIdx;
+            Reg::MaskReg maskAllU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+            Reg::MaskReg maskAllT2 = Reg::CreateMask<T2, Reg::MaskPattern::ALL>();
+
+            PoolUtils::Index::GenGatterIndex2D<int32_t>((Reg::RegTensor<int32_t>&)gatterStartIdx, rate2D, num1D);
+            PoolUtils::Index::GenGatterIndex2D<T2>(argmaxWStart, argmaxRate2D, static_cast<T2>(argmaxNum1D), 0);
+            AscendC::Reg::Duplicate(argmaxHStart, 0);
+            PoolUtils::Index::GenGatterIndex2D<int32_t>((Reg::RegTensor<int32_t>&)scatterStartIdx, scatterIdxRate2D,
+                                                        scatterIdxNum1D);
+
+            Reg::Adds(gatterStartIdx, gatterStartIdx, nIdex * ubNumHWC, maskAllU32);
+            Reg::Adds(scatterStartIdx, scatterStartIdx, nIdex * oneNOutScatterElements, maskAllU32);
+
+            for (uint16_t i = 0; i < loopH; i++) {
+                int32_t hOffset = i * oneLoopStrideH;
+                T2 argmaxHOffset = i * hStride + hBlockArgmaxOffset;
+
+                for (uint16_t j = 0; j < loopW; j++) {
+                    int32_t wOffset = j * oneLoopStrideW;
+                    T2 argmaxWOffset = j * wStride * wFactor + wBlockArgmaxOffset;
+                    int32_t gatterIndexOffset = hOffset + wOffset;
+                    int32_t scatterOffset = (j * wFactor + i * wOutputActual) * alignedC;
+
+                    MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(
+                        xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC, gatterIndexOffset,
+                        gatterStartIdx, oneLoopElements, argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset,
+                        scatterStartIdx, scatterOffset, padH, padW, wInput);
+                }
+
+                // tail w
+                int32_t wOffset = loopW * oneLoopStrideW;
+                T2 argmaxWOffset = loopW * wStride * wFactor + wBlockArgmaxOffset;
+                int32_t gatterIndexOffset = hOffset + wOffset;
+                int32_t scatterOffset = (loopW * wFactor + i * wOutputActual) * alignedC;
+
+                MaxPoolWithArgMaxV3GatherImpl<T1, T2, IS_PAD>(
+                    xAddr, maxValueAddr, argmaxAddr, kH, kW, rowStrideInUb, alignedC, gatterIndexOffset, gatterStartIdx,
+                    tailLoopElements, argmaxHStart, argmaxWStart, argmaxHOffset, argmaxWOffset, scatterStartIdx,
+                    scatterOffset, padH, padW, wInput);
+            }
+        }
+    }
+}
+} // namespace MaxPoolWithArgmaxV3SmallCNameSpace
+#endif // MAX_POOL_WITH_ARGMAX_V3_NHWC_SMALL_C__H_

@@ -1,0 +1,114 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file fused_matmul_common.h
+ * \brief
+ */
+#pragma once
+#include <cstdint>
+#include <map>
+#include <set>
+#include "error_util.h"
+#include "exe_graph/runtime/tiling_context.h"
+#include "matmul/fused_mat_mul/op_kernel/arch35/fused_mat_mul_tilingkey.h"
+
+namespace optiling {
+
+constexpr size_t INPUT_X1_IDX = 0UL;
+constexpr size_t INPUT_X2_IDX = 1UL;
+constexpr size_t INPUT_BIAS_IDX = 2UL;
+constexpr size_t INPUT_X3_IDX = 3UL;
+
+constexpr size_t ATTR_TRANS_X1_IDX = 0UL;
+constexpr size_t ATTR_TRANS_X2_IDX = 1UL;
+constexpr size_t ATTR_ENABLE_HF32_IDX = 2UL;
+constexpr size_t ATTR_OP_TYPE_IDX = 3UL;
+constexpr size_t ATTR_INNER_PRECISE_IDX = 4UL;
+constexpr size_t ATTR_ALPHA_IDX = 5UL;
+constexpr size_t ATTR_BETA_IDX = 6UL;
+
+constexpr size_t TRANS_MODE_BIT_WIDTH = 4UL;
+constexpr size_t FUSED_MATMUL_MATMUL_DIM_NUM = 2UL;
+constexpr size_t FUSED_MATMUL_BATCH_MATMUL_DIM_NUM = 3UL;
+constexpr int64_t INNER_PRECISE_HIGH_PRECISION = 0L;
+constexpr int64_t INNER_PRECISE_HIGH_PERFORMANCE = 1L;
+
+enum class FusedMatmulTrans : std::uint8_t {
+    NO_TRANS = F_NO_TRANS,
+    A_TRANS = F_A_TRANS,
+    B_TRANS = F_B_TRANS,
+    AB_TRANS = F_AB_TRANS
+};
+
+enum class FusedOpType : std::uint8_t {
+    NONE = F_OPTYPE_NONE,
+    ADD = F_OPTYPE_ADD,
+    MUL = F_OPTYPE_MUL,
+    GELU_ERF = F_OPTYPE_GELU_ERF,
+    GELU_TANH = F_OPTYPE_GELU_TANH,
+    RELU = F_OPTYPE_RELU,
+    CAST32 = F_OPTYPE_16CAST32,
+    QUANT = F_OPTYPE_QUANT,
+    RELU_QUANT = F_OPTYPE_RELU_QUANT,
+    SCALE_ADD = F_OPTYPE_SCALE_ADD,
+};
+
+enum class FusedInnerPrecise : std::uint8_t {
+    HIGH_PRECISION = F_INNER_PRECISE_HIGH_PRECISION,
+    HIGH_PERFORMANCE = F_INNER_PRECISE_HIGH_PERFORMANCE,
+};
+
+const std::map<std::string, FusedOpType> FUSED_OP_TYPE_MAP = {{"", FusedOpType::NONE},
+                                                              {"add", FusedOpType::ADD},
+                                                              {"mul", FusedOpType::MUL},
+                                                              {"gelu_erf", FusedOpType::GELU_ERF},
+                                                              {"gelu_tanh", FusedOpType::GELU_TANH},
+                                                              {"relu", FusedOpType::RELU},
+                                                              {"16cast32", FusedOpType::CAST32},
+                                                              {"quant", FusedOpType::QUANT},
+                                                              {"relu_quant", FusedOpType::RELU_QUANT},
+                                                              {"scale_add", FusedOpType::SCALE_ADD}};
+
+const std::set<std::string> FusedOpTypeSupportStreamK = {"", "relu", "16cast32", "add", "mul"};
+
+inline bool IsQuantOpType(const std::string& opType) { return opType == "quant" || opType == "relu_quant"; }
+
+inline bool IsAddMulOpType(const std::string& opType) { return opType == "add" || opType == "mul"; }
+
+inline bool IsGeluOpType(const std::string& opType) { return opType == "gelu_erf" || opType == "gelu_tanh"; }
+
+inline bool IsBatchBroadcast(const gert::Shape& aShape, const gert::Shape& bShape)
+{
+    const size_t aDimNum = aShape.GetDimNum();
+    const size_t bDimNum = bShape.GetDimNum();
+    if (aDimNum != bDimNum) {
+        return true;
+    }
+    for (size_t i = 0; i + 2UL < aDimNum; ++i) {
+        if (aShape.GetDim(i) != bShape.GetDim(i)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline bool IsFusedMatMulBmmShape(const gert::TilingContext* context)
+{
+    if (context == nullptr || context->GetInputShape(INPUT_X1_IDX) == nullptr ||
+        context->GetInputShape(INPUT_X2_IDX) == nullptr || context->GetOutputShape(0) == nullptr) {
+        return false;
+    }
+    return context->GetInputShape(INPUT_X1_IDX)->GetOriginShape().GetDimNum() > FUSED_MATMUL_MATMUL_DIM_NUM ||
+           context->GetInputShape(INPUT_X2_IDX)->GetOriginShape().GetDimNum() > FUSED_MATMUL_MATMUL_DIM_NUM ||
+           context->GetOutputShape(0)->GetOriginShape().GetDimNum() > FUSED_MATMUL_MATMUL_DIM_NUM;
+}
+
+} // namespace optiling

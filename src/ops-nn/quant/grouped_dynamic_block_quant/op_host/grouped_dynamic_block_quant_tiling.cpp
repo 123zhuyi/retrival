@@ -1,0 +1,539 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file grouped_dynamic_block_quant_tiling.cpp
+ * \brief
+ */
+#include "grouped_dynamic_block_quant_tiling.h"
+
+#include "register/op_impl_registry.h"
+#include "log/log.h"
+#include "util/math_util.h"
+#include "op_common/op_host/util/platform_util.h"
+#include "tiling/platform/platform_ascendc.h"
+#include "platform/platform_infos_def.h"
+#include "error_util.h"
+
+using namespace ge;
+using namespace AscendC;
+
+namespace optiling {
+constexpr int64_t INDEX_ATTR_MIN_SCALE = 0;
+constexpr int64_t INDEX_ATTR_ROUND_MODE = 1;
+constexpr int64_t INDEX_ATTR_DST_DTYPE = 2;
+constexpr int64_t INDEX_ATTR_ROW_BLOCK_SIZE = 3;
+constexpr int64_t INDEX_ATTR_COL_BLOCK_SIZE = 4;
+constexpr int64_t INDEX_ATTR_GROUP_LIST_TYPE = 5;
+constexpr int64_t INDEX_ATTR_DST_DTYPE_MAX = 6;
+constexpr int64_t BYTES_OF_INPUT_TYPE = 2;
+constexpr int64_t BYTES_OF_OUTPUT_TYPE = 1;
+constexpr int64_t BYTES_OF_SCALE_TYPE = 4;
+constexpr int64_t SCALE_ALIGN_NUM = 8;
+constexpr int64_t RESERVED_SPACE_SCALE = 32;
+constexpr int64_t DIGIT_ONE = 1;
+constexpr int64_t DIGIT_TWO = 2;
+constexpr int64_t DIGIT_THREE = 3;
+constexpr int64_t DIGIT_FOUR = 4;
+constexpr int64_t DIGIT_TEN = 10;
+constexpr int64_t DIGIT_HUNDRED = 100;
+constexpr int64_t DIGIT_THOUSAND = 1000;
+constexpr int64_t DB_BUFFER = 2;
+constexpr int64_t WORKSPACE_SIZE = 0; // 置0
+const std::set<ge::DataType> INPUT_X_SUPPORT_DTYPE_SET = {ge::DT_FLOAT16, ge::DT_BF16};
+const std::set<ge::DataType> INPUT_GROUP_LIST_SUPPORT_DTYPE_SET = {ge::DT_INT32};
+const std::set<ge::DataType> OUTPUT_Y_SUPPORT_DTYPE_SET = {ge::DT_HIFLOAT8, ge::DT_FLOAT8_E4M3FN, ge::DT_FLOAT8_E5M2};
+const std::set<ge::DataType> OUTPUT_SCALE_SUPPORT_DTYPE_SET = {ge::DT_FLOAT};
+constexpr int64_t GROUP_LIST_TYPE_ZERO = 0;
+constexpr int64_t GROUP_LIST_TYPE_ONE = 1;
+constexpr int64_t BLOCK_SIZE_1 = 1;
+constexpr int64_t BLOCK_SIZE_64 = 64;
+constexpr int64_t BLOCK_SIZE_128 = 128;
+constexpr int64_t BLOCK_SIZE_192 = 192;
+constexpr int64_t BLOCK_SIZE_256 = 256;
+constexpr int64_t BLOCK_SIZE_512 = 512;
+constexpr int64_t DT_HIFLOAT8_TYPE = 34;
+constexpr int64_t DT_FLOAT8_E5M2_TYPE = 35;
+constexpr int64_t DT_FLOAT8_E4M3FN_TYPE = 36;
+constexpr float FLOAT_0 = 0.0;
+constexpr float FLOAT_15 = 15.0;
+constexpr float FLOAT_56 = 56.0;
+constexpr float FLOAT_224 = 224.0;
+constexpr float FLOAT_32768 = 32768.0;
+
+inline static ge::graphStatus GroupedDynamicBlockQuantSetTilingData(gert::TilingContext* context,
+                                                                    GroupedDynamicBlockQuantTilingData& tilingData)
+{
+    if (tilingData.GetDataSize() > context->GetRawTilingData()->GetCapacity()) {
+        return ge::GRAPH_FAILED;
+    }
+    tilingData.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
+    context->GetRawTilingData()->SetDataSize(tilingData.GetDataSize());
+    return ge::GRAPH_SUCCESS;
+}
+
+inline static void PrintTilingData(const gert::TilingContext* context, GroupedDynamicBlockQuantTilingData& tilingData)
+{
+    OP_LOGI(context,
+            "tilingData is tilingKey:%ld, usedCoreNum:%ld, nBatch:%ld, minScale:%f, "
+            "rowBlockSize:%ld, colBlockSize:%ld, dstTypeMax:%f, batchNum:%ld, rowNum:%ld, colNum:%ld, "
+            "scaleRowNum:%ld, scaleColNum:%ld, uo:%ld, groupNum:%ld, blockFactor:%ld, tailBlockFactor:%ld, "
+            "maxUbRow:%ld",
+            tilingData.get_tilingKey(), tilingData.get_usedCoreNum(), tilingData.get_nBatch(),
+            tilingData.get_minScale(), tilingData.get_rowBlockSize(), tilingData.get_colBlockSize(),
+            tilingData.get_dstTypeMax(), tilingData.get_batchNum(), tilingData.get_rowNum(), tilingData.get_colNum(),
+            tilingData.get_scaleRowNum(), tilingData.get_scaleColNum(), tilingData.get_uo(), tilingData.get_groupNum(),
+            tilingData.get_blockFactor(), tilingData.get_tailBlockFactor(), tilingData.get_maxUbRow());
+}
+
+static RoundModeList GetRoundMode(const std::string& roundMode)
+{
+    if (roundMode == "rint") {
+        return RoundModeList::MODE_RINT;
+    }
+    if (roundMode == "round") {
+        return RoundModeList::MODE_ROUND;
+    }
+    if (roundMode == "hybrid") {
+        return RoundModeList::MODE_HYBRID;
+    }
+    return RoundModeList::MODE_UNDEFINED;
+}
+
+static ge::graphStatus GetAttr(const gert::TilingContext* context, GroupedDynamicBlockQuantTilingParam& tilingParam)
+{
+    auto* attrs = context->GetAttrs();
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrs);
+
+    auto* attrMinScale = attrs->GetAttrPointer<float>(INDEX_ATTR_MIN_SCALE);
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrMinScale);
+    tilingParam.minScale = static_cast<float>(*attrMinScale);
+    OP_LOGD(context, "The attr minScale is %f", tilingParam.minScale);
+    OP_CHECK_IF(
+        (tilingParam.minScale < 0.0),
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(context->GetNodeName(), "min_scale", std::to_string(tilingParam.minScale),
+                                              "The value of min_scale must be greater than or equal to 0"),
+        return ge::GRAPH_FAILED);
+
+    auto outputYPtr = context->GetOutputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, outputYPtr);
+    auto yDtype = outputYPtr->GetDataType();
+
+    auto* attrDstType = attrs->GetAttrPointer<int64_t>(INDEX_ATTR_DST_DTYPE);
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrDstType);
+    tilingParam.dstType = static_cast<int64_t>(*attrDstType);
+
+    auto* attrRoundMode = attrs->GetAttrPointer<char>(INDEX_ATTR_ROUND_MODE);
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrRoundMode);
+    std::string roundModeStr = attrRoundMode;
+    RoundModeList roundMode = GetRoundMode(roundModeStr);
+    tilingParam.roundMode = static_cast<int64_t>(roundMode);
+
+    OP_CHECK_IF((tilingParam.dstType != DT_HIFLOAT8_TYPE && tilingParam.dstType != DT_FLOAT8_E5M2_TYPE &&
+                 tilingParam.dstType != DT_FLOAT8_E4M3FN_TYPE),
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                    context->GetNodeName(), "dst_type", std::to_string(tilingParam.dstType),
+                    "The value of dst_type must be DT_HIFLOAT8, DT_FLOAT8_E4M3FN, or DT_FLOAT8_E5M2"),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(tilingParam.dstType != static_cast<int64_t>(yDtype),
+                OP_LOGE_FOR_INVALID_DTYPES_WITH_REASON(
+                    context->GetNodeName(), "y, dst_type",
+                    ge::TypeUtils::DataTypeToSerialString(yDtype) + ", " + std::to_string(tilingParam.dstType),
+                    "The dtypes of y and dst_type must be the same"),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF((tilingParam.dstType == DT_HIFLOAT8_TYPE && roundMode != RoundModeList::MODE_ROUND &&
+                 roundMode != RoundModeList::MODE_HYBRID),
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                    context->GetNodeName(), "round_mode", roundModeStr,
+                    "If the dtype of output y is DT_HIFLOAT8, parameter round_mode must be round or hybrid"),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(((tilingParam.dstType == DT_FLOAT8_E5M2_TYPE || tilingParam.dstType == DT_FLOAT8_E4M3FN_TYPE) &&
+                 roundMode != RoundModeList::MODE_RINT),
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                    context->GetNodeName(), "round_mode", roundModeStr,
+                    "If the dtype of output y is DT_FLOAT8_E4M3FN/DT_FLOAT8_E5M2, parameter round_mode must be rint"),
+                return ge::GRAPH_FAILED);
+
+    auto* attrRowBlockSize = attrs->GetAttrPointer<int64_t>(INDEX_ATTR_ROW_BLOCK_SIZE);
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrRowBlockSize);
+    tilingParam.rowBlockSize = static_cast<int64_t>(*attrRowBlockSize);
+    OP_CHECK_IF(tilingParam.rowBlockSize != BLOCK_SIZE_1 && tilingParam.rowBlockSize != BLOCK_SIZE_128 &&
+                    tilingParam.rowBlockSize != BLOCK_SIZE_256 && tilingParam.rowBlockSize != BLOCK_SIZE_512,
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(context->GetNodeName(), "row_block_size",
+                                                      std::to_string(tilingParam.rowBlockSize),
+                                                      "The value of row_block_size must be 1, 128, 256, or 512"),
+                return ge::GRAPH_FAILED);
+
+    auto* attrColBlockSize = attrs->GetAttrPointer<int64_t>(INDEX_ATTR_COL_BLOCK_SIZE);
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrColBlockSize);
+    tilingParam.colBlockSize = static_cast<int64_t>(*attrColBlockSize);
+    OP_CHECK_IF(tilingParam.colBlockSize != BLOCK_SIZE_64 && tilingParam.colBlockSize != BLOCK_SIZE_128 &&
+                    tilingParam.colBlockSize != BLOCK_SIZE_192 && tilingParam.colBlockSize != BLOCK_SIZE_256,
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(context->GetNodeName(), "col_block_size",
+                                                      std::to_string(tilingParam.colBlockSize),
+                                                      "The value of col_block_size must be 64, 128, 192, or 256"),
+                return ge::GRAPH_FAILED);
+
+    auto* attrGroupListType = attrs->GetAttrPointer<int64_t>(INDEX_ATTR_GROUP_LIST_TYPE);
+    OP_CHECK_NULL_WITH_CONTEXT(context, attrGroupListType);
+    int64_t groupListType = static_cast<int64_t>(*attrGroupListType);
+    OP_CHECK_IF(
+        groupListType != GROUP_LIST_TYPE_ZERO,
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(context->GetNodeName(), "group_list_type", std::to_string(groupListType),
+                                              "The value of group_list_type must be 0"),
+        return ge::GRAPH_FAILED);
+
+    auto* attrDstTypeMax = attrs->GetAttrPointer<float>(INDEX_ATTR_DST_DTYPE_MAX);
+    tilingParam.dstTypeMax = (attrDstTypeMax != nullptr) ? static_cast<float>(*attrDstTypeMax) : 0.0f;
+    OP_CHECK_IF(tilingParam.dstType == DT_HIFLOAT8_TYPE &&
+                    (tilingParam.dstTypeMax < FLOAT_0 || tilingParam.dstTypeMax > FLOAT_32768),
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                    context->GetNodeName(), "dst_type_max", std::to_string(tilingParam.dstTypeMax),
+                    "The value of dst_type_max must be in the range [" + std::to_string(FLOAT_0) + ", " +
+                        std::to_string(FLOAT_32768) + "] when dst_type is DT_HIFLOAT8"),
+                return GRAPH_FAILED);
+
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus CheckDtype(const gert::TilingContext* context)
+{
+    auto inputXPtr = context->GetInputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, inputXPtr);
+    auto xDtype = inputXPtr->GetDataType();
+    OP_CHECK_IF(INPUT_X_SUPPORT_DTYPE_SET.count(xDtype) == 0,
+                OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(context->GetNodeName(), "x",
+                                                      ge::TypeUtils::DataTypeToSerialString(xDtype),
+                                                      "The dtype of x must be DT_FLOAT16 or DT_BF16"),
+                return ge::GRAPH_FAILED);
+
+    auto inputGroupedIndexPtr = context->GetInputDesc(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, inputGroupedIndexPtr);
+    auto groupedIndexDtype = inputGroupedIndexPtr->GetDataType();
+    OP_CHECK_IF(INPUT_GROUP_LIST_SUPPORT_DTYPE_SET.count(groupedIndexDtype) == 0,
+                OP_LOGE_FOR_INVALID_DTYPE(context->GetNodeName(), "group_list",
+                                          ge::TypeUtils::DataTypeToSerialString(groupedIndexDtype), "DT_INT32"),
+                return ge::GRAPH_FAILED);
+
+    auto outputYPtr = context->GetOutputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, outputYPtr);
+    auto yDtype = outputYPtr->GetDataType();
+    OP_CHECK_IF(OUTPUT_Y_SUPPORT_DTYPE_SET.count(yDtype) == 0,
+                OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(
+                    context->GetNodeName(), "y", ge::TypeUtils::DataTypeToSerialString(yDtype),
+                    "The dtype of y must be DT_HIFLOAT8, DT_FLOAT8_E4M3FN, or DT_FLOAT8_E5M2"),
+                return ge::GRAPH_FAILED);
+
+    auto outputScalePtr = context->GetOutputDesc(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, outputScalePtr);
+    auto scaleDtype = outputScalePtr->GetDataType();
+    OP_CHECK_IF(OUTPUT_SCALE_SUPPORT_DTYPE_SET.count(scaleDtype) == 0,
+                OP_LOGE_FOR_INVALID_DTYPE(context->GetNodeName(), "scale",
+                                          ge::TypeUtils::DataTypeToSerialString(scaleDtype), "DT_FLOAT"),
+                return ge::GRAPH_FAILED);
+
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus CheckShape(const gert::TilingContext* context, GroupedDynamicBlockQuantTilingParam& tilingParam)
+{
+    auto xShapePtr = context->GetInputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, xShapePtr);
+    auto xShape = xShapePtr->GetStorageShape();
+
+    auto groupListShapePtr = context->GetInputShape(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, groupListShapePtr);
+    auto groupListShape = groupListShapePtr->GetStorageShape();
+    tilingParam.groupNum = static_cast<int64_t>(groupListShape.GetDim(0));
+
+    OP_CHECK_IF(static_cast<int64_t>(xShape.GetDimNum()) == 0,
+                OP_LOGE_FOR_INVALID_SHAPEDIM_WITH_REASON(
+                    context->GetNodeName(), "x", std::to_string(xShape.GetDimNum()), "input x is an empty tensor"),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(static_cast<int64_t>(groupListShape.GetDimNum()) == 0,
+                OP_LOGE_FOR_INVALID_SHAPEDIM_WITH_REASON(context->GetNodeName(), "group_index",
+                                                         std::to_string(groupListShape.GetDimNum()),
+                                                         "group_index is an empty tensor"),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(tilingParam.groupNum == 0,
+                OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(context->GetNodeName(), "group_index",
+                                                      Ops::Base::ToString(groupListShape),
+                                                      "the shape of group_index cannot be 0"),
+                return ge::GRAPH_FAILED);
+
+    for (size_t i = 0; i < xShape.GetDimNum(); ++i) {
+        OP_CHECK_IF(xShape.GetDim(i) == 0,
+                    OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(context->GetNodeName(), "x", Ops::Base::ToString(xShape),
+                                                          "the dimension of x cannot be 0"),
+                    return ge::GRAPH_FAILED);
+    }
+
+    auto outputYPtr = context->GetOutputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, outputYPtr);
+    auto yShape = outputYPtr->GetStorageShape();
+
+    auto scaleShapePtr = context->GetOutputShape(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, scaleShapePtr);
+    auto scaleShape = scaleShapePtr->GetStorageShape();
+
+    OP_CHECK_IF(xShape != yShape,
+                OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "x, y",
+                                                       Ops::Base::ToString(xShape) + ", " + Ops::Base::ToString(yShape),
+                                                       "The shapes of x and y must be the same"),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(static_cast<int64_t>(groupListShape.GetDimNum()) != 1,
+                OP_LOGE_FOR_INVALID_SHAPEDIM(context->GetNodeName(), "group_list",
+                                             std::to_string(groupListShape.GetDimNum()), "1"),
+                return ge::GRAPH_FAILED);
+
+    if (static_cast<int64_t>(xShape.GetDimNum()) == DIGIT_TWO) {
+        OP_CHECK_IF(
+            ((static_cast<int64_t>(scaleShape.GetDim(0)) !=
+              static_cast<int64_t>(xShape.GetDim(0)) / tilingParam.rowBlockSize + tilingParam.groupNum) ||
+             (static_cast<int64_t>(scaleShape.GetDim(1)) !=
+              Ops::Base::CeilDiv(xShape.GetDim(1), tilingParam.colBlockSize))),
+            OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(
+                context->GetNodeName(), "x, scale",
+                Ops::Base::ToString(xShape) + ", " + Ops::Base::ToString(scaleShape),
+                "The shape of scale must be [x.rows / row_block_size + groupListSize, ceil(x.cols / col_block_size)]"),
+            return ge::GRAPH_FAILED);
+    } else if (static_cast<int64_t>(xShape.GetDimNum()) == DIGIT_THREE) {
+        OP_CHECK_IF(
+            ((static_cast<int64_t>(scaleShape.GetDim(0)) != static_cast<int64_t>(xShape.GetDim(0))) ||
+             (static_cast<int64_t>(scaleShape.GetDim(1)) !=
+              static_cast<int64_t>(xShape.GetDim(1)) / tilingParam.rowBlockSize + tilingParam.groupNum) ||
+             (static_cast<int64_t>(scaleShape.GetDim(DIGIT_TWO)) !=
+              Ops::Base::CeilDiv(xShape.GetDim(DIGIT_TWO), tilingParam.colBlockSize))),
+            OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "x, scale",
+                                                   Ops::Base::ToString(xShape) + ", " + Ops::Base::ToString(scaleShape),
+                                                   "The shape of scale must be [x.batch, x.rows / row_block_size + "
+                                                   "groupListSize, ceil(x.cols / col_block_size)]"),
+            return ge::GRAPH_FAILED);
+    } else {
+        OP_CHECK_IF(
+            true,
+            OP_LOGE_FOR_INVALID_SHAPEDIM_WITH_REASON(context->GetNodeName(), "x", std::to_string(xShape.GetDimNum()),
+                                                     "The shape dim of x must be 2 or 3"),
+            return ge::GRAPH_FAILED);
+    }
+
+    return ge::GRAPH_SUCCESS;
+}
+
+inline static void CalcTilingKey(DataType inputType, DataType outputType, bool blockIsSmallThanUB,
+                                 GroupedDynamicBlockQuantTilingParam& tilingParam)
+{
+    // 千位数为1、2，分别表示Block放得下UB和Block放不下UB得情况;
+    int64_t thousandDigit = blockIsSmallThanUB ? DIGIT_ONE : DIGIT_TWO;
+    // 百位数为1、2，分别表示输入类型是float16、bfloat16;
+    int64_t hundredDigit = inputType == DT_FLOAT16 ? DIGIT_ONE : DIGIT_TWO;
+    // 十位数为1、2、3，分别表示输出类型是float8_e5m2、float8_e4m3fn、hifloat8
+    // 前面已做过Dtype校验
+    int64_t tenDigit = 0;
+    if (outputType == ge::DT_FLOAT8_E4M3FN) {
+        tenDigit = DIGIT_ONE;
+    } else if (outputType == ge::DT_FLOAT8_E5M2) {
+        tenDigit = DIGIT_TWO;
+    } else if (outputType == ge::DT_HIFLOAT8) {
+        tenDigit = DIGIT_THREE;
+    }
+    // 个位表示 RoundMode
+    int64_t digit = tilingParam.roundMode;
+    tilingParam.tilingKey = thousandDigit * DIGIT_THOUSAND + hundredDigit * DIGIT_HUNDRED + tenDigit * DIGIT_TEN +
+                            digit * DIGIT_ONE;
+}
+
+static void CalcAxisSize(GroupedDynamicBlockQuantTilingParam& tilingParam, const gert::Shape& xShape)
+{
+    if (xShape.GetDimNum() == DIGIT_TWO) {
+        tilingParam.batchNum = 1;
+        tilingParam.rowNum = xShape.GetDim(0);
+        tilingParam.colNum = xShape.GetDim(1);
+    } else {
+        tilingParam.batchNum = xShape.GetDim(0);
+        tilingParam.rowNum = xShape.GetDim(1);
+        tilingParam.colNum = xShape.GetDim(DIGIT_TWO);
+    }
+}
+
+static ge::graphStatus DoTiling(const gert::TilingContext* context, GroupedDynamicBlockQuantTilingParam& tilingParam)
+{
+    auto xShapePtr = context->GetInputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, xShapePtr);
+    auto xShape = xShapePtr->GetStorageShape();
+    CalcAxisSize(tilingParam, xShape);
+
+    // 获取输入/输出数据类型
+    auto inputXPtr = context->GetInputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, inputXPtr);
+    auto inDtype = inputXPtr->GetDataType();
+    auto outputYPtr = context->GetOutputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, outputYPtr);
+    auto outDtype = outputYPtr->GetDataType();
+
+    tilingParam.scaleRowNum = tilingParam.rowNum / tilingParam.rowBlockSize + tilingParam.groupNum;
+    tilingParam.scaleColNum = Ops::Base::CeilDiv(tilingParam.colNum, tilingParam.colBlockSize);
+
+    tilingParam.blockFactor = tilingParam.colNum <= tilingParam.colBlockSize ? 0 : tilingParam.colBlockSize;
+    tilingParam.tailBlockFactor = tilingParam.colNum % tilingParam.colBlockSize == 0 ?
+                                      tilingParam.colBlockSize :
+                                      tilingParam.colNum % tilingParam.colBlockSize;
+
+    tilingParam.uo = Ops::Base::CeilDiv(tilingParam.colNum, tilingParam.colBlockSize);
+
+    // 推导公式
+    // (BYTES_OF_INPUT_TYPE+BYTES_OF_OUTPUT_TYPE)*colBlockSize*maxUbAvailableRows +
+    // BYTES_OF_SCALE_TYPE*SCALE_ALIGN_NUM*Ceil(maxUbAvailableRows,rowBlockSize) = ubSize/DB_BUFFER
+    int64_t totalElementSize = BYTES_OF_SCALE_TYPE * SCALE_ALIGN_NUM + tilingParam.rowBlockSize *
+                                                                           tilingParam.colBlockSize *
+                                                                           (BYTES_OF_INPUT_TYPE + BYTES_OF_OUTPUT_TYPE);
+    int64_t maxUbAvailableRows = tilingParam.rowBlockSize * (tilingParam.ubSize / DB_BUFFER) / totalElementSize;
+
+    bool blockIsSmallThanUB = tilingParam.rowBlockSize <= maxUbAvailableRows;
+    tilingParam.maxUbRow = blockIsSmallThanUB ?
+                               maxUbAvailableRows / tilingParam.rowBlockSize * tilingParam.rowBlockSize :
+                               tilingParam.rowBlockSize * ((tilingParam.ubSize - tilingParam.vfLen) / DB_BUFFER) /
+                                   totalElementSize;
+
+    CalcTilingKey(inDtype, outDtype, blockIsSmallThanUB, tilingParam);
+
+    // wide-N 优化：当 rowBlockSize=1 且 M 轴行数远小于 maxUbRow 时，UB 的 M 轴容量被浪费。
+    // 将 UB 容量从 M 轴转向 N 轴批量加载：每次 CopyIn 加载 nBatch 个 N 轴 sub-block，
+    // 在 UB 内循环计算每个 colBlockSize 元素的 scale，将 MTE 调度次数降低 nBatch 倍。
+    // 条件：rowBlockSize==1，M 轴总行数(rowNum*batchNum) 不足 maxUbRow 的一半，N 轴 block 数足够多。
+    // 相比旧实现放宽了"colNum 可被 colBlockSize 整除"的限制：
+    // 不整除时最后一个 sub-block 只有 rem 个元素，若按整块对齐参与 wide-N 会越界读 GM，
+    // 故 wide-N 仅覆盖 [0, fullSubBlocks) 个整 sub-block，余量 rem 由 kernel 侧 ProcessPartialTail
+    // 按原始小块路径逐行补齐（每行一次，开销极小）。
+    if (blockIsSmallThanUB && tilingParam.rowBlockSize == BLOCK_SIZE_1 &&
+        tilingParam.rowNum * tilingParam.batchNum < tilingParam.maxUbRow / DIGIT_TWO && tilingParam.uo > DIGIT_FOUR) {
+        // nBatch 上限为 maxUbRow-1：LoadAlign 每次加载 vfLen(256) 个元素到寄存器，
+        // 即使 mask 只选中 colBlockSize(128) 个，硬件仍读取 vfLen 个元素的地址范围。
+        // 最后一个 sub-block 起始偏移为 (nBatch-1)*colBlockSize，加载范围到 (nBatch-1)*colBlockSize+vfLen-1，
+        // 需 <= maxUbRow*colBlockSize-1，故 nBatch <= maxUbRow - vfLen/colBlockSize = maxUbRow - 1。
+        int64_t rem = tilingParam.colNum % tilingParam.colBlockSize;
+        int64_t fullSubBlocks = (rem == 0) ? tilingParam.uo : (tilingParam.uo - 1);
+        if (fullSubBlocks > DIGIT_FOUR) {
+            int64_t nBatchLimit = tilingParam.maxUbRow - 1;
+            int64_t nBatch = std::min(nBatchLimit, fullSubBlocks);
+            int64_t wideUo = Ops::Base::CeilDiv(fullSubBlocks, nBatch);
+            int64_t tailFullSubs = fullSubBlocks - (wideUo - 1) * nBatch;
+            tilingParam.blockFactor = nBatch * tilingParam.colBlockSize;
+            tilingParam.tailBlockFactor = tailFullSubs * tilingParam.colBlockSize;
+            tilingParam.uo = wideUo;
+            tilingParam.nBatch = nBatch;
+        }
+        // fullSubBlocks<=4 时整块数过少，维持原始小块路径（blockFactor/tailBlockFactor 不变）
+    }
+
+    // 核数策略：仅对元素量极小的任务回退低核数，降低56核全开的启动/调度开销；
+    // 其余任务一律满核。实测满核对中尺寸2D等非极小任务均为最优或近似最优：
+    // 块数封顶在块数<核数时会把核数压到块数，而这类用例多核并行的memory-level parallelism/
+    // 更浅调度反而更优，故非极小任务直接满核。
+    int64_t totalElements = tilingParam.batchNum * tilingParam.rowNum * tilingParam.colNum;
+    constexpr int64_t ELEMS_TINY_THRESHOLD = 20000;
+    constexpr int64_t ELEMS_PER_CORE = 1024;
+    if (totalElements <= ELEMS_TINY_THRESHOLD) {
+        // 极小任务：max(按数据量估算核数, batch核数)，保留batch并行、抑制行/列碎片化过度开核
+        int64_t dataCore = Ops::Base::CeilDiv(totalElements, ELEMS_PER_CORE);
+        int64_t batchCore = tilingParam.batchNum;
+        tilingParam.usedCoreNum = std::min(tilingParam.totalCoreNum,
+                                           std::max<int64_t>({DIGIT_ONE, dataCore, batchCore}));
+    } else {
+        tilingParam.usedCoreNum = tilingParam.totalCoreNum;
+    }
+
+    return ge::GRAPH_SUCCESS;
+}
+
+inline static void SetTilingData(GroupedDynamicBlockQuantTilingData& tilingData,
+                                 const GroupedDynamicBlockQuantTilingParam& tilingParam)
+{
+    tilingData.set_tilingKey(tilingParam.tilingKey);
+    tilingData.set_usedCoreNum(tilingParam.usedCoreNum);
+    tilingData.set_nBatch(tilingParam.nBatch);
+    tilingData.set_minScale(tilingParam.minScale);
+    tilingData.set_rowBlockSize(tilingParam.rowBlockSize);
+    tilingData.set_colBlockSize(tilingParam.colBlockSize);
+    tilingData.set_dstTypeMax(tilingParam.dstTypeMax);
+    tilingData.set_batchNum(tilingParam.batchNum);
+    tilingData.set_rowNum(tilingParam.rowNum);
+    tilingData.set_colNum(tilingParam.colNum);
+    tilingData.set_scaleRowNum(tilingParam.scaleRowNum);
+    tilingData.set_scaleColNum(tilingParam.scaleColNum);
+    tilingData.set_uo(tilingParam.uo);
+    tilingData.set_groupNum(tilingParam.groupNum);
+    tilingData.set_blockFactor(tilingParam.blockFactor);
+    tilingData.set_tailBlockFactor(tilingParam.tailBlockFactor);
+    tilingData.set_maxUbRow(tilingParam.maxUbRow);
+}
+
+ge::graphStatus Tiling4GroupedDynamicBlockQuant(gert::TilingContext* context)
+{
+    OP_LOGD(context, "Tiling4GroupedDynamicBlockQuant running begin.");
+    GroupedDynamicBlockQuantTilingParam tilingParam;
+
+    OP_CHECK_IF(CheckDtype(context) != ge::GRAPH_SUCCESS, OP_LOGE(context, "The dtype check failed."),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(GetAttr(context, tilingParam) != ge::GRAPH_SUCCESS, OP_LOGE(context, "The attr get failed."),
+                return ge::GRAPH_FAILED);
+
+    OP_CHECK_IF(CheckShape(context, tilingParam) != ge::GRAPH_SUCCESS, OP_LOGE(context, "The shape check failed."),
+                return ge::GRAPH_FAILED);
+
+    auto platformInfo = context->GetPlatformInfo();
+    OP_CHECK_NULL_WITH_CONTEXT(context, platformInfo);
+    auto ascendcPlatform = platform_ascendc::PlatformAscendC(platformInfo);
+    tilingParam.totalCoreNum = ascendcPlatform.GetCoreNumAiv();
+    OP_CHECK_IF((tilingParam.totalCoreNum <= 0), OP_LOGE(context, "Failed to core num."), return ge::GRAPH_FAILED);
+    uint64_t ubSize;
+    ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, ubSize);
+    tilingParam.ubSize = static_cast<int64_t>(ubSize);
+    tilingParam.vfLen = Ops::Base::GetVRegSize(context);
+
+    OP_CHECK_IF((tilingParam.ubSize <= 0), OP_LOGE(context, "Failed to get ub size."), return ge::GRAPH_FAILED);
+
+    GroupedDynamicBlockQuantTilingData tilingData;
+    OP_CHECK_IF(DoTiling(context, tilingParam) != ge::GRAPH_SUCCESS, OP_LOGE(context, "Dotiling failed."),
+                return ge::GRAPH_FAILED);
+    SetTilingData(tilingData, tilingParam);
+
+    OP_CHECK_IF(GroupedDynamicBlockQuantSetTilingData(context, tilingData) != ge::GRAPH_SUCCESS,
+                OP_LOGE(context, "GroupedDynamicBlockQuantSetTilingData set tiling data fail."),
+                return ge::GRAPH_FAILED);
+
+    context->SetBlockDim(tilingData.get_usedCoreNum());
+    context->SetTilingKey(tilingData.get_tilingKey());
+    size_t* workspaces = context->GetWorkspaceSizes(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, workspaces);
+    workspaces[0] = WORKSPACE_SIZE;
+
+    PrintTilingData(context, tilingData);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus TilingPrepare4GroupedDynamicBlockQuant(gert::TilingParseContext* context)
+{
+    OP_LOGD(context, "TilingPrepare4GroupedDynamicBlockQuant entering.");
+    return ge::GRAPH_SUCCESS;
+}
+
+// register tiling interface of the GroupedDynamicBlockQuant op.
+IMPL_OP_OPTILING(GroupedDynamicBlockQuant)
+    .Tiling(Tiling4GroupedDynamicBlockQuant)
+    .TilingParse<GroupedDynamicBlockQuantCompileInfo>(TilingPrepare4GroupedDynamicBlockQuant);
+} // namespace optiling

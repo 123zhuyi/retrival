@@ -1,0 +1,85 @@
+diff --git a/mlir/lib/Dialect/SCF/IR/SCF.cpp b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+index 656d88118ced..ca553af22695 100644
+--- a/mlir/lib/Dialect/SCF/IR/SCF.cpp
++++ b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+@@ -1052,6 +1052,70 @@ replaceTensorCastForOpIterArg(PatternRewriter &rewriter, OpOperand &operand,
+   return newResults;
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++// Pattern to move outside memref.cast operation
++struct MoveOutLoopMemRefCast : public OpRewritePattern<ForOp> {
++  using OpRewritePattern<ForOp>::OpRewritePattern;
++
++  LogicalResult matchAndRewrite(ForOp forOp,
++                                PatternRewriter &rewriter) const override {
++    if (forOp.getResults().empty()) {
++      return failure();
++    }
++
++    bool changed = false;
++    int idx = -1;
++    auto yieldOp = cast<scf::YieldOp>(forOp.getBody()->getTerminator());
++    for (auto [initValue, yieldValue] :
++         llvm::zip(forOp.getInitArgs(), forOp.getYieldedValues())) {
++      idx++;
++      auto initCastOp =
++          dyn_cast_if_present<memref::CastOp>(initValue.getDefiningOp());
++      auto yieldCastOp =
++          dyn_cast_if_present<memref::CastOp>(yieldValue.getDefiningOp());
++      if (initCastOp == nullptr || yieldCastOp == nullptr) {
++        continue;
++      }
++      if (initCastOp.getSource().getType() !=
++          yieldCastOp.getSource().getType()) {
++        continue;
++      }
++
++      changed = true;
++      auto newType = initCastOp.getSource().getType();
++      // update init value and iter arg type and insert cast inside
++      rewriter.modifyOpInPlace(forOp, [&]() {
++        forOp.getInitArgsMutable()[idx].assign(initCastOp.getSource());
++        forOp.getRegionIterArg(idx).setType(newType);
++      });
++      rewriter.setInsertionPointToStart(forOp.getBody(0));
++      IRMapping mapping;
++      mapping.map(initCastOp.getSource(), forOp.getRegionIterArg(idx));
++      auto newCastInLoop = rewriter.clone(*initCastOp, mapping);
++      rewriter.replaceAllUsesExcept(forOp.getRegionIterArg(idx),
++                                    newCastInLoop->getResult(0),
++                                    {newCastInLoop});
++      // update for yield value and result type
++      rewriter.modifyOpInPlace(yieldOp, [&]() {
++        yieldOp->setOperand(static_cast<uint>(idx), yieldCastOp.getSource());
++      });
++      rewriter.modifyOpInPlace(
++          forOp, [&]() { forOp->getResult(idx).setType(newType); });
++
++      // insert cast outside and replace loop result
++      rewriter.setInsertionPointAfter(forOp);
++      mapping.clear();
++      mapping.map(initCastOp.getSource(), forOp->getResult(idx));
++      auto newCastOutLoop = rewriter.clone(*initCastOp, mapping);
++      rewriter.replaceAllUsesExcept(
++          forOp.getResult(idx), newCastOutLoop->getResult(0), {newCastOutLoop});
++    }
++
++    return changed ? success() : failure();
++  }
++};
++#endif
++
+ /// Fold scf.for iter_arg/result pairs that go through incoming/ougoing
+ /// a tensor.cast op pair so as to pull the tensor.cast inside the scf.for:
+ ///
+@@ -1114,6 +1178,9 @@ void ForOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                         MLIRContext *context) {
+   results.add<ForOpIterArgsFolder, SimplifyTrivialLoops, ForOpTensorCastFolder>(
+       context);
++#if BSPUB_DAVINCI_BISHENGIR
++  results.add<MoveOutLoopMemRefCast>(context);
++#endif
+ }
+ 
+ std::optional<APInt> ForOp::getConstantStep() {

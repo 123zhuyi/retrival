@@ -1,0 +1,226 @@
+diff --git a/lib/Conversion/TorchToLinalg/Linear.cpp b/lib/Conversion/TorchToLinalg/Linear.cpp
+index 98f11f8a..46806a60 100644
+--- a/lib/Conversion/TorchToLinalg/Linear.cpp
++++ b/lib/Conversion/TorchToLinalg/Linear.cpp
+@@ -1220,7 +1220,7 @@ public:
+     if (numGroups == 1 && inputZp) {
+       switch (numSpatialDims) {
+       case 2:
+-#ifdef BSPUB_DAVINCI_BISHENGIR
++#if BSPUB_DAVINCI_BISHENGIR
+         // [Huawei][BiShengIR] LLVM version unmatched, not support this.
+         return rewriter.notifyMatchFailure(
+             op, "unimplemented: quantized grouped convolutions");
+@@ -1446,12 +1446,17 @@ public:
+                      expandOutputTensor.getResult(), stridesAttr, dilationAttr)
+                  .getResult(0);
+     } else {
++#if BSPUB_DAVINCI_BISHENGIR
++      return rewriter.notifyMatchFailure(
++          op, "unimplemented: quantized grouped convolutions");
++#else
+       conv = rewriter
+                  .create<linalg::Conv2DNgchwGfchwQOp>(
+                      loc, expandOutputTensor.getResultType(),
+                      ValueRange{paddedInputExpanded, weight, inputZp, weightZp},
+                      expandOutputTensor.getResult(), stridesAttr, dilationAttr)
+                  .getResult(0);
++#endif
+     }
+     conv = rewriter.create<tensor::CollapseShapeOp>(
+         loc, outputTensor.getType(), conv,
+diff --git a/lib/Dialect/TMTensor/Transforms/Bufferize.cpp b/lib/Dialect/TMTensor/Transforms/Bufferize.cpp
+index d82919ef..a7216eaf 100644
+--- a/lib/Dialect/TMTensor/Transforms/Bufferize.cpp
++++ b/lib/Dialect/TMTensor/Transforms/Bufferize.cpp
+@@ -178,7 +178,11 @@ struct TMTensorBufferizePass
+       }
+       if (isa<TensorType>(inputs[0].getType())) {
+         // Tensor to MemRef cast.
++#if BSPUB_DAVINCI_BISHENGIR
++        return builder.create<bufferization::ToMemrefOp>(loc, type, inputs[0]);
++#else
+         return builder.create<bufferization::ToBufferOp>(loc, type, inputs[0]);
++#endif
+       }
+       llvm_unreachable("only tensor/memref input types supported");
+     });
+diff --git a/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp b/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp
+index acb9556c..487ae59e 100644
+--- a/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp
++++ b/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp
+@@ -13099,7 +13099,7 @@ public:
+     addPatternIfTargetOpIsIllegal<DecomposeAtenAsStridedOp>(patterns);
+ 
+     GreedyRewriteConfig config;
+-#ifdef BSPUB_DAVINCI_BISHENGIR
++#if BSPUB_DAVINCI_BISHENGIR
+     config.useTopDownTraversal = true;
+     config.maxIterations = GreedyRewriteConfig::kNoLimit;
+ #else
+diff --git a/lib/Dialect/Torch/Transforms/GlobalizeObjectGraph.cpp b/lib/Dialect/Torch/Transforms/GlobalizeObjectGraph.cpp
+index a63b6f31..8835ac47 100644
+--- a/lib/Dialect/Torch/Transforms/GlobalizeObjectGraph.cpp
++++ b/lib/Dialect/Torch/Transforms/GlobalizeObjectGraph.cpp
+@@ -9,6 +9,7 @@
+ 
+ #include "PassDetail.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/IR/BuiltinOps.h"
+ #include "mlir/IR/IRMapping.h"
+ #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+@@ -564,8 +565,12 @@ static LogicalResult rewriteMonomorphizedFuncClone(
+       argsToErase.set(type.index());
+     }
+   }
++#if BSPUB_DAVINCI_BISHENGIR
++  func.eraseArguments(argsToErase);
++#else
+   if (failed(func.eraseArguments(argsToErase)))
+     return failure();
++#endif
+ 
+   return success(!walkResult.wasInterrupted());
+ }
+diff --git a/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp b/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp
+index 4a15083a..3ae90132 100644
+--- a/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp
++++ b/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp
+@@ -27,6 +27,7 @@
+ 
+ #include "mlir/Analysis/DataFlowFramework.h"
+ #include "mlir/Analysis/SliceAnalysis.h"
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/IR/BuiltinOps.h"
+ #include "mlir/IR/IRMapping.h"
+ #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+diff --git a/lib/Dialect/Torch/Transforms/RecomposeComplexOps.cpp b/lib/Dialect/Torch/Transforms/RecomposeComplexOps.cpp
+index d954731f..411cad88 100644
+--- a/lib/Dialect/Torch/Transforms/RecomposeComplexOps.cpp
++++ b/lib/Dialect/Torch/Transforms/RecomposeComplexOps.cpp
+@@ -820,8 +820,13 @@ public:
+     patterns.add<RecomposeMeshgridIndexingListUnpack>(context);
+ 
+     GreedyRewriteConfig config;
++#if BSPUB_DAVINCI_BISHENGIR
++    config.useTopDownTraversal = true;
++    config.maxIterations = GreedyRewriteConfig::kNoLimit;
++#else
+     config.setUseTopDownTraversal(true);
+     config.setMaxIterations(GreedyRewriteConfig::kNoLimit);
++#endif
+ 
+     if (failed(applyPatternsGreedily(getOperation(), std::move(patterns),
+                                      config))) {
+diff --git a/lib/Dialect/Torch/Transforms/RestructureNonConstantAxes.cpp b/lib/Dialect/Torch/Transforms/RestructureNonConstantAxes.cpp
+index dd7e3732..8c4579c4 100644
+--- a/lib/Dialect/Torch/Transforms/RestructureNonConstantAxes.cpp
++++ b/lib/Dialect/Torch/Transforms/RestructureNonConstantAxes.cpp
+@@ -261,8 +261,13 @@ public:
+     // TODO: Debug visitation order to make this more efficient.
+     // A single linear scan should suffice.
+     GreedyRewriteConfig config;
++#if BSPUB_DAVINCI_BISHENGIR
++    config.useTopDownTraversal = true;
++    config.maxIterations = GreedyRewriteConfig::kNoLimit;
++#else
+     config.setUseTopDownTraversal(true);
+     config.setMaxIterations(GreedyRewriteConfig::kNoLimit);
++#endif
+     if (failed(applyPatternsGreedily(getOperation(), std::move(patterns),
+                                      config))) {
+       return signalPassFailure();
+diff --git a/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp b/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp
+index c4d9d9e1..26cf0658 100644
+--- a/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp
++++ b/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp
+@@ -1601,7 +1601,7 @@ public:
+     // When propagating, we need to go back and clean up aten.Tensor ops that
+     // have been futher propagated. It is also necessary to add newly created
+     // ops for custom folding after scalarizing a where.self op.
+-#ifdef BSPUB_DAVINCI_BISHENGIR
++#if BSPUB_DAVINCI_BISHENGIR
+     config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
+ #else
+     config.setStrictness(GreedyRewriteStrictness::ExistingAndNewOps);
+diff --git a/lib/Dialect/Torch/Transforms/SimplifyDtypeCalculations.cpp b/lib/Dialect/Torch/Transforms/SimplifyDtypeCalculations.cpp
+index 2432a3b4..688bde79 100644
+--- a/lib/Dialect/Torch/Transforms/SimplifyDtypeCalculations.cpp
++++ b/lib/Dialect/Torch/Transforms/SimplifyDtypeCalculations.cpp
+@@ -211,8 +211,13 @@ class SimplifyDtypeCalculationsPass
+     // TODO: Debug visitation order to make this more efficient.
+     // A single linear scan should suffice.
+     GreedyRewriteConfig config;
++#if BSPUB_DAVINCI_BISHENGIR
++    config.useTopDownTraversal = true;
++    config.maxIterations = GreedyRewriteConfig::kNoLimit;
++#else
+     config.setUseTopDownTraversal(true);
+     config.setMaxIterations(GreedyRewriteConfig::kNoLimit);
++#endif
+     if (failed(applyPatternsGreedily(getOperation(), std::move(patterns),
+                                      config))) {
+       return signalPassFailure();
+diff --git a/lib/Dialect/Torch/Transforms/SimplifyShapeCalculations.cpp b/lib/Dialect/Torch/Transforms/SimplifyShapeCalculations.cpp
+index b690be48..f48db7da 100644
+--- a/lib/Dialect/Torch/Transforms/SimplifyShapeCalculations.cpp
++++ b/lib/Dialect/Torch/Transforms/SimplifyShapeCalculations.cpp
+@@ -207,8 +207,13 @@ class SimplifyShapeCalculationsPass
+     // TODO: Debug visitation order to make this more efficient.
+     // A single linear scan should suffice.
+     GreedyRewriteConfig config;
++#if BSPUB_DAVINCI_BISHENGIR
++    config.useTopDownTraversal = true;
++    config.maxIterations = GreedyRewriteConfig::kNoLimit;
++#else
+     config.setUseTopDownTraversal(true);
+     config.setMaxIterations(GreedyRewriteConfig::kNoLimit);
++#endif
+     if (failed(applyPatternsGreedily(getOperation(), std::move(patterns),
+                                      config))) {
+       return signalPassFailure();
+diff --git a/lib/Dialect/TorchConversion/Transforms/UnpackQuantTensor.cpp b/lib/Dialect/TorchConversion/Transforms/UnpackQuantTensor.cpp
+index fcc0beb8..9bc15802 100644
+--- a/lib/Dialect/TorchConversion/Transforms/UnpackQuantTensor.cpp
++++ b/lib/Dialect/TorchConversion/Transforms/UnpackQuantTensor.cpp
+@@ -105,7 +105,11 @@ public:
+       for (int b = 0; b < packRatio; b++) {
+         newData[i * packRatio + b] =
+             APInt(unpackedBitWidth, (el & mask) >> (unpackedBitWidth * b),
++#if BSPUB_DAVINCI_BISHENGIR
++                  /*isSigned=*/false);
++#else
+                   /*isSigned=*/false, /*implicitTrunc=*/true);
++#endif
+         mask = mask << unpackedBitWidth;
+       }
+     }
+diff --git a/lib/RefBackend/RefBackend.cpp b/lib/RefBackend/RefBackend.cpp
+index 0050a6c1..9e1a0dfd 100644
+--- a/lib/RefBackend/RefBackend.cpp
++++ b/lib/RefBackend/RefBackend.cpp
+@@ -279,7 +279,11 @@ bufferizeMLProgramGlobaStoreOp(ml_program::GlobalStoreOp globalStoreOp,
+   Value memref = b.create<memref::GetGlobalOp>(
+       globalStoreOp.getLoc(), memrefType,
+       globalStoreOp.getGlobalAttr().getLeafReference());
++#if BSPUB_DAVINCI_BISHENGIR
++  Value copyValue = b.create<bufferization::ToMemrefOp>(
++#else
+   Value copyValue = b.create<bufferization::ToBufferOp>(
++#endif
+       globalStoreOp->getLoc(), memrefType, globalStoreOp.getValue());
+   b.create<memref::CopyOp>(globalStoreOp->getLoc(), copyValue, memref);
+   return success();
+@@ -469,7 +473,11 @@ class GeneralizeTensorPad
+   void runOnOperation() override {
+     MLIRContext *context = &getContext();
+     RewritePatternSet patterns(&getContext());
++#if BSPUB_DAVINCI_BISHENGIR
++    patterns.insert<linalg::GeneralizePadOpPattern>(context);
++#else
+     patterns.insert<linalg::DecomposePadOpPattern>(context);
++#endif
+     if (failed(applyPatternsGreedily(getOperation(), std::move(patterns)))) {
+       return signalPassFailure();
+     }

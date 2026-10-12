@@ -1,0 +1,199 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file quant_batch_matmul_v3_tiling_util.cpp
+ * \brief
+ */
+#include "quant_batch_matmul_v3_tiling_util.h"
+
+#include <new>
+#include "error_util.h"
+#include "quant_batch_matmul_v3_checker.h"
+#include "quant_batch_matmul_v3_checker_for_mmads8s4.h"
+
+namespace optiling {
+namespace {
+// Minimum HBM bandwidth of Ascend 950 series, in TB/s.
+constexpr double HBM_BW = 1.4;
+// Minimum L2 bandwidth of Ascend 950 series, in TB/s.
+constexpr double L2_BW = 5.2;
+// MXFP4 Cube throughput of 32-core Ascend 950 series, in TFLOPS.
+constexpr double MXFP4_CUBE_THROUGHPUT = 1728.0;
+// MXFP8 Cube throughput of 32-core Ascend 950 series, in TFLOPS.
+constexpr double MXFP8_CUBE_THROUGHPUT = 864.0;
+constexpr double MMAD_OPS_PER_DOT = 2.0;
+constexpr uint64_t MMAD_BLOCK_SIZE = 256UL;
+constexpr uint64_t MX_SCALE_GROUP_SIZE = 32UL;
+constexpr uint64_t L2_CACHE_SIZE = 128UL * 1024UL * 1024UL;
+constexpr uint64_t L2_CACHE_THRESHOLD_PERCENT = 80UL;
+constexpr uint64_t PERCENT_BASE = 100UL;
+constexpr uint64_t L2_CACHE_THRESHOLD_SIZE = L2_CACHE_SIZE * L2_CACHE_THRESHOLD_PERCENT / PERCENT_BASE;
+constexpr uint64_t MXFP8_L0C_PINGPONG_INNER_AXIS_ALIGN_SIZE = 128UL;
+constexpr uint64_t MXFP4_L0C_PINGPONG_INNER_AXIS_ALIGN_SIZE = 256UL;
+
+template <typename Checker>
+bool CheckDtypeWithChecker(gert::TilingContext* context, const QuantBatchMatmulInfo& inputParams)
+{
+    auto* qmmV3Checker = new (std::nothrow) Checker(context, inputParams);
+    OP_TILING_CHECK(qmmV3Checker == nullptr,
+                    CUBE_INNER_ERR_REPORT(inputParams.opName, "Failed to instantiate qmmV3Checker."), return false);
+    bool res = qmmV3Checker->CheckDtype();
+    delete qmmV3Checker;
+    return res;
+}
+
+template <typename Checker>
+bool CheckShapeWithChecker(gert::TilingContext* context, const QuantBatchMatmulInfo& inputParams,
+                           const std::vector<gert::Shape*>& mandatoryShape, const gert::StorageShape* biasShape,
+                           const gert::StorageShape* pertokenShape, const std::vector<int64_t>& dimValueOfMKN)
+{
+    auto* qmmV3Checker = new (std::nothrow) Checker(context, inputParams);
+    OP_TILING_CHECK(qmmV3Checker == nullptr,
+                    CUBE_INNER_ERR_REPORT(inputParams.opName, "Failed to instantiate qmmV3Checker."), return false);
+    bool res = qmmV3Checker->CheckShape(mandatoryShape, biasShape, pertokenShape, dimValueOfMKN);
+    delete qmmV3Checker;
+    return res;
+}
+bool IsMxCubeBound(const QuantBatchMatmulInfo& inputParams)
+{
+    const uint64_t m = inputParams.mSize;
+    const uint64_t n = inputParams.nSize;
+    const uint64_t k = inputParams.kSize;
+    bool isMxfp4Input = inputParams.isMxPerGroup && inputParams.aDtype == ge::DT_FLOAT4_E2M1 &&
+                        inputParams.bDtype == ge::DT_FLOAT4_E2M1;
+    bool isMxfp8Input = inputParams.isMxPerGroup &&
+                        (inputParams.aDtype == ge::DT_FLOAT8_E4M3FN || inputParams.aDtype == ge::DT_FLOAT8_E5M2) &&
+                        (inputParams.bDtype == ge::DT_FLOAT8_E4M3FN || inputParams.bDtype == ge::DT_FLOAT8_E5M2);
+    if (!isMxfp4Input && !isMxfp8Input) {
+        return false;
+    }
+    const double cubeThroughput = isMxfp4Input ? MXFP4_CUBE_THROUGHPUT : MXFP8_CUBE_THROUGHPUT;
+    const uint64_t aInputCost = m * k;
+    const uint64_t bInputCost = n * k;
+    const uint64_t aScaleCost = ops::CeilDiv(aInputCost, MX_SCALE_GROUP_SIZE);
+    const uint64_t bScaleCost = ops::CeilDiv(bInputCost, MX_SCALE_GROUP_SIZE);
+    const uint64_t copyOutBytes = GetSizeWithDataType(m * n, inputParams.cDtype);
+    const uint64_t hbmBytes = GetSizeWithDataType(aInputCost, inputParams.aDtype) +
+                              GetSizeWithDataType(aScaleCost, inputParams.perTokenScaleDtype) +
+                              GetSizeWithDataType(bInputCost, inputParams.bDtype) +
+                              GetSizeWithDataType(bScaleCost, inputParams.scaleDtype);
+    const uint64_t aL2Cost = m * k * (ops::CeilDiv(n, MMAD_BLOCK_SIZE) - 1UL);
+    const uint64_t bL2Cost = n * k * (ops::CeilDiv(m, MMAD_BLOCK_SIZE) - 1UL);
+    const uint64_t l2Bytes = GetSizeWithDataType(aL2Cost, inputParams.aDtype) +
+                             GetSizeWithDataType(ops::CeilDiv(aL2Cost, MX_SCALE_GROUP_SIZE),
+                                                 inputParams.perTokenScaleDtype) +
+                             GetSizeWithDataType(bL2Cost, inputParams.bDtype) +
+                             GetSizeWithDataType(ops::CeilDiv(bL2Cost, MX_SCALE_GROUP_SIZE), inputParams.scaleDtype);
+    const uint64_t l2Footprint = hbmBytes + copyOutBytes;
+    const double copyOutBandwidth = l2Footprint < L2_CACHE_THRESHOLD_SIZE ? L2_BW : HBM_BW;
+    const double transferCost = static_cast<double>(hbmBytes) / HBM_BW + static_cast<double>(l2Bytes) / L2_BW +
+                                static_cast<double>(copyOutBytes) / copyOutBandwidth;
+    const double computeCost = MMAD_OPS_PER_DOT * static_cast<double>(m) * static_cast<double>(n) *
+                               static_cast<double>(k) / cubeThroughput;
+    return computeCost > transferCost;
+}
+
+} // namespace
+
+bool IsMxL0CPingpong(const QuantBatchMatmulInfo& inputParams)
+{
+    bool isMxfp4Input = inputParams.aDtype == ge::DT_FLOAT4_E2M1 && inputParams.bDtype == ge::DT_FLOAT4_E2M1;
+    bool isMxfp8Input = (inputParams.aDtype == ge::DT_FLOAT8_E4M3FN || inputParams.aDtype == ge::DT_FLOAT8_E5M2) &&
+                        (inputParams.bDtype == ge::DT_FLOAT8_E4M3FN || inputParams.bDtype == ge::DT_FLOAT8_E5M2);
+    bool isMxDataInput = isMxfp4Input || isMxfp8Input;
+    bool isSupportedOutputDtype = inputParams.cDtype == ge::DT_FLOAT16 || inputParams.cDtype == ge::DT_BF16;
+    uint64_t aInnerAxis = inputParams.transA ? inputParams.mSize : inputParams.kSize;
+    uint64_t bInnerAxis = inputParams.transB ? inputParams.kSize : inputParams.nSize;
+    uint64_t innerAxisAlignSize = isMxfp4Input ? MXFP4_L0C_PINGPONG_INNER_AXIS_ALIGN_SIZE :
+                                                 MXFP8_L0C_PINGPONG_INNER_AXIS_ALIGN_SIZE;
+    bool isInnerAxisAligned = GetSizeWithDataType(aInnerAxis, inputParams.aDtype) % innerAxisAlignSize == 0UL &&
+                              GetSizeWithDataType(bInnerAxis, inputParams.bDtype) % innerAxisAlignSize == 0UL;
+    return inputParams.isMxPerGroup && inputParams.scaleDtype == ge::DT_FLOAT8_E8M0 && IsTensorapiCapable() &&
+           isMxDataInput && isSupportedOutputDtype && isInnerAxisAligned && IsMxCubeBound(inputParams);
+}
+
+void QuantBatchMatMulV3TilingUtil::SetBasicTilingData(const QuantBatchMatmulInfo& inputParams,
+                                                      const BasicRunInfoTiling& basicTiling,
+                                                      DequantBmm::QuantBatchMatmulV3TilingDataParams& tilingData)
+{
+    SetCommonTilingData(inputParams, tilingData);
+    tilingData.params.ubCalcN = basicTiling.ubCalcN;
+    tilingData.params.ubCalcM = basicTiling.ubCalcM;
+    tilingData.params.isPerTensor = static_cast<uint32_t>(inputParams.isPerTensor);
+    tilingData.params.isPertoken = static_cast<uint32_t>(inputParams.isPertoken);
+    tilingData.params.isDoubleScale = static_cast<uint32_t>(inputParams.isDoubleScale);
+}
+
+void QuantBatchMatMulV3TilingUtil::SetBasicLibApiTiling(const QuantBatchMatmulInfo& inputParams,
+                                                        const BasicRunInfoTiling& basicTiling,
+                                                        DequantBmm::QuantBatchMatmulV3TilingDataParams& tilingData)
+{
+    tilingData.matmulTiling.M = inputParams.mSize;
+    tilingData.matmulTiling.N = inputParams.nSize;
+    tilingData.matmulTiling.Ka = inputParams.kSize;
+    tilingData.matmulTiling.Kb = inputParams.kSize;
+    tilingData.matmulTiling.usedCoreNum = basicTiling.usedCoreNum;
+    tilingData.matmulTiling.singleCoreM = basicTiling.singleCoreM;
+    tilingData.matmulTiling.singleCoreN = basicTiling.singleCoreN;
+    tilingData.matmulTiling.singleCoreK = basicTiling.singleCoreK;
+    tilingData.matmulTiling.baseM = basicTiling.baseM;
+    tilingData.matmulTiling.baseN = basicTiling.baseN;
+    tilingData.matmulTiling.baseK = basicTiling.baseK;
+    tilingData.matmulTiling.depthA1 = basicTiling.depthA1;
+    tilingData.matmulTiling.depthB1 = basicTiling.depthB1;
+    tilingData.matmulTiling.stepM = basicTiling.stepM;
+    tilingData.matmulTiling.stepN = basicTiling.stepN;
+    tilingData.matmulTiling.stepKa = basicTiling.stepKa;
+    tilingData.matmulTiling.stepKb = basicTiling.stepKb;
+    tilingData.matmulTiling.isBias = inputParams.hasBias ? 1 : 0;
+    tilingData.matmulTiling.iterateOrder = basicTiling.iterateOrder;
+    tilingData.matmulTiling.dbL0A = 2; // Double buffer flag: 1 disables DB, 2 enables DB.
+    tilingData.matmulTiling.dbL0B = 2; // Double buffer flag: 1 disables DB, 2 enables DB.
+    tilingData.matmulTiling.dbL0C = basicTiling.dbL0c;
+}
+
+bool QuantBatchMatMulV3TilingUtil::CheckDtype(gert::TilingContext* context, const QuantBatchMatmulInfo& inputParams,
+                                              const QuantBatchMatmulV3CompileInfo& compileInfo)
+{
+    switch (compileInfo.npuArch) {
+        case NpuArch::DAV_3510:
+            return CheckDtypeWithChecker<QuantBatchMatmulV3Checker>(context, inputParams);
+        case NpuArch::DAV_RESV:
+            return CheckDtypeWithChecker<QuantBatchMatmulV3Checker4MmadS8S4>(context, inputParams);
+        default:
+            CUBE_INNER_ERR_REPORT(inputParams.opName,
+                                  "Failed to find CheckDtype function for current NPU architecture.");
+            return false;
+    }
+}
+
+bool QuantBatchMatMulV3TilingUtil::CheckShape(gert::TilingContext* context, const QuantBatchMatmulInfo& inputParams,
+                                              const QuantBatchMatmulV3CompileInfo& compileInfo,
+                                              const std::vector<gert::Shape*>& mandatoryShape,
+                                              const gert::StorageShape* biasShape,
+                                              const gert::StorageShape* pertokenShape,
+                                              const std::vector<int64_t>& dimValueOfMKN)
+{
+    switch (compileInfo.npuArch) {
+        case NpuArch::DAV_3510:
+            return CheckShapeWithChecker<QuantBatchMatmulV3Checker>(context, inputParams, mandatoryShape, biasShape,
+                                                                    pertokenShape, dimValueOfMKN);
+        case NpuArch::DAV_RESV:
+            return CheckShapeWithChecker<QuantBatchMatmulV3Checker4MmadS8S4>(context, inputParams, mandatoryShape,
+                                                                             biasShape, pertokenShape, dimValueOfMKN);
+        default:
+            CUBE_INNER_ERR_REPORT(inputParams.opName,
+                                  "Failed to find CheckShape function for current NPU architecture.");
+            return false;
+    }
+}
+
+} // namespace optiling

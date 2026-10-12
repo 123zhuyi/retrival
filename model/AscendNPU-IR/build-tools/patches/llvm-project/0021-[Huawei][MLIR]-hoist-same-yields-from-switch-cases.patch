@@ -1,0 +1,119 @@
+diff --git a/mlir/lib/Dialect/SCF/IR/SCF.cpp b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+index a4aadfb17ecc..37f34aa0fae8 100644
+--- a/mlir/lib/Dialect/SCF/IR/SCF.cpp
++++ b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+@@ -4437,9 +4437,113 @@ struct FoldConstantCase : OpRewritePattern<scf::IndexSwitchOp> {
+   }
+ };
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++struct HoistSameYieldsFromSwitchCases : public OpRewritePattern<IndexSwitchOp> {
++  using OpRewritePattern<IndexSwitchOp>::OpRewritePattern;
++
++  LogicalResult matchAndRewrite(IndexSwitchOp op,
++                                PatternRewriter &rewriter) const override {
++    SmallVector<Value> yieldResults;
++    SmallVector<Block *> switchBlocks = getSwitchBlocks(op);
++    for (Block *block : switchBlocks) {
++      if (!block->mightHaveTerminator()) {
++        continue;
++      }
++      Operation *terminator = block->getTerminator();
++      auto yieldOp = llvm::dyn_cast_or_null<scf::YieldOp>(terminator);
++      if (!yieldOp) {
++        continue;
++      }
++
++      // only hoist if all yield results are defined outside case block
++      SmallVector<Value> curYieldResults;
++      for (Value result : yieldOp->getOperands()) {
++        if (result.getParentBlock() == block) {
++          // do not hoist if any yield result within case block
++          return failure();
++        }
++        curYieldResults.push_back(result);
++      }
++
++      // only hoist if all yield results are the same values
++      if (yieldResults.empty()) {
++        yieldResults = curYieldResults;
++      } else if (yieldResults != curYieldResults) {
++        // do not hoist if yield results differ between switch cases
++        return failure();
++      }
++    }
++
++    if (yieldResults.empty()) {
++      // no yield result to hoist
++      return failure();
++    }
++
++    // replace IndexSwitchOp results using yield results
++    assert(op.getNumResults() == yieldResults.size() &&
++           "op results and yield results number mismatch");
++    for (size_t i = 0; i < op.getNumResults(); ++i) {
++      auto switchResult = op.getResult(i);
++      auto yieldResult = yieldResults[i];
++      rewriter.replaceAllUsesWith(switchResult, yieldResult);
++    }
++
++    // remove yields in origin IndexSwitchOp
++    for (Block *block : switchBlocks) {
++      if (!block->mightHaveTerminator()) {
++        continue;
++      }
++      Operation *terminator = block->getTerminator();
++      if (auto yieldOp = llvm::dyn_cast<scf::YieldOp>(terminator)) {
++        rewriter.setInsertionPointToEnd(block);
++        auto emptyYield = rewriter.create<scf::YieldOp>(yieldOp.getLoc());
++        rewriter.replaceOp(yieldOp, emptyYield);
++      }
++    }
++
++    // create new IndexSwitchOp with void return type
++    rewriter.setInsertionPoint(op);
++    auto newSwitchOp = rewriter.create<scf::IndexSwitchOp>(
++        op.getLoc(), TypeRange{}, op.getArg(), op.getCases(), op.getNumCases());
++    copyIndexSwitchOpRegions(op, newSwitchOp, rewriter);
++    rewriter.eraseOp(op);
++    return success();
++  }
++
++private:
++  SmallVector<Block *> getSwitchBlocks(IndexSwitchOp op) const {
++    SmallVector<Block *> switchBlocks;
++    for (size_t caseId = 0; caseId < op.getNumCases(); ++caseId) {
++      switchBlocks.push_back(&op.getCaseBlock(caseId));
++    }
++    switchBlocks.push_back(&op.getDefaultBlock());
++    return switchBlocks;
++  }
++
++  void copyIndexSwitchOpRegions(scf::IndexSwitchOp srcOp,
++                                scf::IndexSwitchOp dstOp,
++                                PatternRewriter &rewriter) const {
++    for (auto [src, dst] :
++         llvm::zip(srcOp.getCaseRegions(), dstOp.getCaseRegions())) {
++      // copy case regions
++      rewriter.inlineRegionBefore(src, dst, dst.begin());
++    }
++    // copy default region
++    rewriter.inlineRegionBefore(srcOp.getDefaultRegion(),
++                                dstOp.getDefaultRegion(),
++                                dstOp.getDefaultRegion().begin());
++  }
++};
++#endif
++
+ void IndexSwitchOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                                 MLIRContext *context) {
+-  results.add<FoldConstantCase>(context);
++  results.add<FoldConstantCase
++#if BSPUB_DAVINCI_BISHENGIR
++              ,
++              HoistSameYieldsFromSwitchCases
++#endif
++              >(context);
+ }
+ 
+ //===----------------------------------------------------------------------===//

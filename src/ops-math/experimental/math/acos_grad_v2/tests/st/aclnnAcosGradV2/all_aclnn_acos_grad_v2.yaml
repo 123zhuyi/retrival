@@ -1,0 +1,45 @@
+api: pytorch
+api_type: ascend_acos_grad_v2
+version: v1.0
+name: torch.acos.backward
+aclnn_name: AcosGradV2
+generate: ascend_aclnn_acos_grad_v2
+dtype_numbers: 100
+standard:
+  acc:
+    single_bm:
+      type: high_performance
+  perf: not_key
+inputs:
+  - name: y
+    type: tensor
+    required: true
+    dtypes:
+      values: [ fp16, fp32, bf16 ]
+    shapes:
+      dim_numbers:
+        values: [ 1, 2, 3, 4 ]
+      dim_values:
+        values: [ [ 1, 10 ], [10, 100], [100, 255], 1024, 2048, 4096 ]
+        weights: [0.8, 0.05, 0.005, 0.002, 0.001, 0.001]
+    ranges:
+      valid:
+        values: [ [-1, 1] ]
+      invalid:
+        values: [ [ '-inf' ], [ 'inf' ], [ 'nan' ] ]
+  - name: dy
+    type: tensor
+    required: true
+    dtypes:
+      values: [ fp16, fp32, bf16 ]
+    shapes:
+      dim_numbers:
+        values: [ 1, 2, 3, 4 ]
+      dim_values:
+        values: [ [ 1, 10 ], [10, 100], [100, 255], 1024, 2048, 4096 ]
+        weights: [0.8, 0.05, 0.005, 0.002, 0.001, 0.001]
+    ranges:
+      valid:
+        values: [ [-10, 10] ]
+      invalid:
+        values: [ [ '-inf' ], [ 'inf' ], [ 'nan' ] ]

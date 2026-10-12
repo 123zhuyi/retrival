@@ -1,0 +1,1907 @@
+diff --git a/mlir/docs/PatternRewriter.md b/mlir/docs/PatternRewriter.md
+index 0ba76199874c..f31b7e549c9a 100644
+--- a/mlir/docs/PatternRewriter.md
++++ b/mlir/docs/PatternRewriter.md
+@@ -332,7 +332,7 @@ the driver finishes.
+ 
+ This driver comes in two fashions:
+ 
+-*   `applyPatternsAndFoldGreedily` ("region-based driver") applies patterns to
++*   `applyPatternsGreedily` ("region-based driver") applies patterns to
+     all ops in a given region or a given container op (but not the container op
+     itself). I.e., the worklist is initialized with all containing ops.
+ *   `applyOpPatternsAndFold` ("op-based driver") applies patterns to the
+diff --git a/mlir/examples/standalone/lib/Standalone/StandalonePasses.cpp b/mlir/examples/standalone/lib/Standalone/StandalonePasses.cpp
+index 8166aa238bf2..8c79a0753793 100644
+--- a/mlir/examples/standalone/lib/Standalone/StandalonePasses.cpp
++++ b/mlir/examples/standalone/lib/Standalone/StandalonePasses.cpp
+@@ -39,7 +39,7 @@ public:
+     RewritePatternSet patterns(&getContext());
+     patterns.add<StandaloneSwitchBarFooRewriter>(&getContext());
+     FrozenRewritePatternSet patternSet(std::move(patterns));
+-    if (failed(applyPatternsAndFoldGreedily(getOperation(), patternSet)))
++    if (failed(applyPatternsGreedily(getOperation(), patternSet)))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/include/mlir/Transforms/GreedyPatternRewriteDriver.h b/mlir/include/mlir/Transforms/GreedyPatternRewriteDriver.h
+index eaff85804f6b..110b4f64856e 100644
+--- a/mlir/include/mlir/Transforms/GreedyPatternRewriteDriver.h
++++ b/mlir/include/mlir/Transforms/GreedyPatternRewriteDriver.h
+@@ -91,6 +91,13 @@ public:
+ 
+   /// An optional listener that should be notified about IR modifications.
+   RewriterBase::Listener *listener = nullptr;
++
++  /// Whether this should fold while greedily rewriting.
++  bool fold = true;
++
++  /// If set to "true", constants are CSE'd (even across multiple regions that
++  /// are in a parent-ancestor relationship).
++  bool cseConstants = true;
+ };
+ 
+ //===----------------------------------------------------------------------===//
+@@ -104,8 +111,8 @@ public:
+ /// The greedy rewrite may prematurely stop after a maximum number of
+ /// iterations, which can be configured in the configuration parameter.
+ ///
+-/// Also performs folding and simple dead-code elimination before attempting to
+-/// match any of the provided patterns.
++/// Also performs simple dead-code elimination before attempting to match any of
++/// the provided patterns.
+ ///
+ /// A region scope can be set in the configuration parameter. By default, the
+ /// scope is set to the specified region. Only in-scope ops are added to the
+@@ -117,10 +124,20 @@ public:
+ ///
+ /// Note: This method does not apply patterns to the region's parent operation.
+ LogicalResult
++applyPatternsGreedily(Region &region, const FrozenRewritePatternSet &patterns,
++                      GreedyRewriteConfig config = GreedyRewriteConfig(),
++                      bool *changed = nullptr);
++/// Same as `applyPatternsAndGreedily` above with folding.
++/// FIXME: Remove this once transition to above is complieted.
++LLVM_DEPRECATED("Use applyPatternsGreedily() instead", "applyPatternsGreedily")
++inline LogicalResult
+ applyPatternsAndFoldGreedily(Region &region,
+                              const FrozenRewritePatternSet &patterns,
+                              GreedyRewriteConfig config = GreedyRewriteConfig(),
+-                             bool *changed = nullptr);
++                             bool *changed = nullptr) {
++  config.fold = true;
++  return applyPatternsGreedily(region, patterns, config, changed);
++}
+ 
+ /// Rewrite ops nested under the given operation, which must be isolated from
+ /// above, by repeatedly applying the highest benefit patterns in a greedy
+@@ -129,8 +146,8 @@ applyPatternsAndFoldGreedily(Region &region,
+ /// The greedy rewrite may prematurely stop after a maximum number of
+ /// iterations, which can be configured in the configuration parameter.
+ ///
+-/// Also performs folding and simple dead-code elimination before attempting to
+-/// match any of the provided patterns.
++/// Also performs simple dead-code elimination before attempting to match any of
++/// the provided patterns.
+ ///
+ /// This overload runs a separate greedy rewrite for each region of the
+ /// specified op. A region scope can be set in the configuration parameter. By
+@@ -147,23 +164,32 @@ applyPatternsAndFoldGreedily(Region &region,
+ ///
+ /// Note: This method does not apply patterns to the given operation itself.
+ inline LogicalResult
+-applyPatternsAndFoldGreedily(Operation *op,
+-                             const FrozenRewritePatternSet &patterns,
+-                             GreedyRewriteConfig config = GreedyRewriteConfig(),
+-                             bool *changed = nullptr) {
++applyPatternsGreedily(Operation *op, const FrozenRewritePatternSet &patterns,
++                      GreedyRewriteConfig config = GreedyRewriteConfig(),
++                      bool *changed = nullptr) {
+   bool anyRegionChanged = false;
+   bool failed = false;
+   for (Region &region : op->getRegions()) {
+     bool regionChanged;
+-    failed |=
+-        applyPatternsAndFoldGreedily(region, patterns, config, &regionChanged)
+-            .failed();
++    failed |= applyPatternsGreedily(region, patterns, config, &regionChanged)
++                  .failed();
+     anyRegionChanged |= regionChanged;
+   }
+   if (changed)
+     *changed = anyRegionChanged;
+   return failure(failed);
+ }
++/// Same as `applyPatternsGreedily` above with folding.
++/// FIXME: Remove this once transition to above is complieted.
++LLVM_DEPRECATED("Use applyPatternsGreedily() instead", "applyPatternsGreedily")
++inline LogicalResult
++applyPatternsAndFoldGreedily(Operation *op,
++                             const FrozenRewritePatternSet &patterns,
++                             GreedyRewriteConfig config = GreedyRewriteConfig(),
++                             bool *changed = nullptr) {
++  config.fold = true;
++  return applyPatternsGreedily(op, patterns, config, changed);
++}
+ 
+ /// Rewrite the specified ops by repeatedly applying the highest benefit
+ /// patterns in a greedy worklist driven manner until a fixpoint is reached.
+@@ -171,8 +197,8 @@ applyPatternsAndFoldGreedily(Operation *op,
+ /// The greedy rewrite may prematurely stop after a maximum number of
+ /// iterations, which can be configured in the configuration parameter.
+ ///
+-/// Also performs folding and simple dead-code elimination before attempting to
+-/// match any of the provided patterns.
++/// Also performs simple dead-code elimination before attempting to match any of
++/// the provided patterns.
+ ///
+ /// Newly created ops and other pre-existing ops that use results of rewritten
+ /// ops or supply operands to such ops are also processed, unless such ops are
+@@ -180,24 +206,36 @@ applyPatternsAndFoldGreedily(Operation *op,
+ /// regardless of `strictMode`).
+ ///
+ /// In addition to strictness, a region scope can be specified. Only ops within
+-/// the scope are simplified. This is similar to `applyPatternsAndFoldGreedily`,
++/// the scope are simplified. This is similar to `applyPatternsGreedily`,
+ /// where only ops within the given region/op are simplified by default. If no
+ /// scope is specified, it is assumed to be the first common enclosing region of
+ /// the given ops.
+ ///
+ /// Note that ops in `ops` could be erased as result of folding, becoming dead,
+ /// or via pattern rewrites. If more far reaching simplification is desired,
+-/// `applyPatternsAndFoldGreedily` should be used.
++/// `applyPatternsGreedily` should be used.
+ ///
+ /// Returns "success" if the iterative process converged (i.e., fixpoint was
+ /// reached) and no more patterns can be matched. `changed` is set to "true" if
+ /// the IR was modified at all. `allOpsErased` is set to "true" if all ops in
+ /// `ops` were erased.
+ LogicalResult
++applyOpPatternsGreedily(ArrayRef<Operation *> ops,
++                        const FrozenRewritePatternSet &patterns,
++                        GreedyRewriteConfig config = GreedyRewriteConfig(),
++                        bool *changed = nullptr, bool *allErased = nullptr);
++/// Same as `applyOpPatternsGreedily` with folding.
++/// FIXME: Remove this once transition to above is complieted.
++LLVM_DEPRECATED("Use applyOpPatternsGreedily() instead",
++                "applyOpPatternsGreedily")
++inline LogicalResult
+ applyOpPatternsAndFold(ArrayRef<Operation *> ops,
+                        const FrozenRewritePatternSet &patterns,
+                        GreedyRewriteConfig config = GreedyRewriteConfig(),
+-                       bool *changed = nullptr, bool *allErased = nullptr);
++                       bool *changed = nullptr, bool *allErased = nullptr) {
++  config.fold = true;
++  return applyOpPatternsGreedily(ops, patterns, config, changed, allErased);
++}
+ 
+ } // namespace mlir
+ 
+diff --git a/mlir/lib/CAPI/Transforms/Rewrite.cpp b/mlir/lib/CAPI/Transforms/Rewrite.cpp
+index 379f09cf5cc2..c4717ca61331 100644
+--- a/mlir/lib/CAPI/Transforms/Rewrite.cpp
++++ b/mlir/lib/CAPI/Transforms/Rewrite.cpp
+@@ -289,8 +289,7 @@ MlirLogicalResult
+ mlirApplyPatternsAndFoldGreedily(MlirModule op,
+                                  MlirFrozenRewritePatternSet patterns,
+                                  MlirGreedyRewriteDriverConfig) {
+-  return wrap(
+-      mlir::applyPatternsAndFoldGreedily(unwrap(op), *unwrap(patterns)));
++  return wrap(mlir::applyPatternsGreedily(unwrap(op), *unwrap(patterns)));
+ }
+ 
+ //===----------------------------------------------------------------------===//
+diff --git a/mlir/lib/Conversion/ArithToArmSME/ArithToArmSME.cpp b/mlir/lib/Conversion/ArithToArmSME/ArithToArmSME.cpp
+index b12aa92001ff..f6410929d9b4 100644
+--- a/mlir/lib/Conversion/ArithToArmSME/ArithToArmSME.cpp
++++ b/mlir/lib/Conversion/ArithToArmSME/ArithToArmSME.cpp
+@@ -117,8 +117,7 @@ struct ArithToArmSMEConversionPass final
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     arith::populateArithToArmSMEConversionPatterns(patterns);
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Conversion/ArmNeon2dToIntr/ArmNeon2dToIntr.cpp b/mlir/lib/Conversion/ArmNeon2dToIntr/ArmNeon2dToIntr.cpp
+index bdbf276d79b2..de8bfd6a1710 100644
+--- a/mlir/lib/Conversion/ArmNeon2dToIntr/ArmNeon2dToIntr.cpp
++++ b/mlir/lib/Conversion/ArmNeon2dToIntr/ArmNeon2dToIntr.cpp
+@@ -59,8 +59,7 @@ class ConvertArmNeon2dToIntr
+     RewritePatternSet patterns(context);
+     populateConvertArmNeon2dToIntrPatterns(patterns);
+ 
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Conversion/GPUToNVVM/LowerGpuOpsToNVVMOps.cpp b/mlir/lib/Conversion/GPUToNVVM/LowerGpuOpsToNVVMOps.cpp
+index fea8a0ddc7f0..e7e5e3bb7262 100644
+--- a/mlir/lib/Conversion/GPUToNVVM/LowerGpuOpsToNVVMOps.cpp
++++ b/mlir/lib/Conversion/GPUToNVVM/LowerGpuOpsToNVVMOps.cpp
+@@ -256,7 +256,7 @@ struct LowerGpuOpsToNVVMOpsPass
+     {
+       RewritePatternSet patterns(m.getContext());
+       populateGpuRewritePatterns(patterns);
+-      if (failed(applyPatternsAndFoldGreedily(m, std::move(patterns))))
++      if (failed(applyPatternsGreedily(m, std::move(patterns))))
+         return signalPassFailure();
+     }
+ 
+diff --git a/mlir/lib/Conversion/GPUToROCDL/LowerGpuOpsToROCDLOps.cpp b/mlir/lib/Conversion/GPUToROCDL/LowerGpuOpsToROCDLOps.cpp
+index 100181cdc69f..292e5fb0f30e 100644
+--- a/mlir/lib/Conversion/GPUToROCDL/LowerGpuOpsToROCDLOps.cpp
++++ b/mlir/lib/Conversion/GPUToROCDL/LowerGpuOpsToROCDLOps.cpp
+@@ -266,7 +266,7 @@ struct LowerGpuOpsToROCDLOpsPass
+       RewritePatternSet patterns(ctx);
+       populateGpuRewritePatterns(patterns);
+       arith::populateExpandBFloat16Patterns(patterns);
+-      (void)applyPatternsAndFoldGreedily(m, std::move(patterns));
++      (void)applyPatternsGreedily(m, std::move(patterns));
+     }
+ 
+     LLVMTypeConverter converter(ctx, options);
+diff --git a/mlir/lib/Conversion/ShapeToStandard/ConvertShapeConstraints.cpp b/mlir/lib/Conversion/ShapeToStandard/ConvertShapeConstraints.cpp
+index 7df1407da6f9..d92027a5e3d4 100644
+--- a/mlir/lib/Conversion/ShapeToStandard/ConvertShapeConstraints.cpp
++++ b/mlir/lib/Conversion/ShapeToStandard/ConvertShapeConstraints.cpp
+@@ -62,7 +62,7 @@ class ConvertShapeConstraints
+     RewritePatternSet patterns(context);
+     populateConvertShapeConstraintsConversionPatterns(patterns);
+ 
+-    if (failed(applyPatternsAndFoldGreedily(func, std::move(patterns))))
++    if (failed(applyPatternsGreedily(func, std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Conversion/VectorToArmSME/VectorToArmSMEPass.cpp b/mlir/lib/Conversion/VectorToArmSME/VectorToArmSMEPass.cpp
+index cc00bf4ca190..7419276651ae 100644
+--- a/mlir/lib/Conversion/VectorToArmSME/VectorToArmSMEPass.cpp
++++ b/mlir/lib/Conversion/VectorToArmSME/VectorToArmSMEPass.cpp
+@@ -33,7 +33,7 @@ void ConvertVectorToArmSMEPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   populateVectorToArmSMEPatterns(patterns, getContext());
+ 
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ std::unique_ptr<Pass> mlir::createConvertVectorToArmSMEPass() {
+diff --git a/mlir/lib/Conversion/VectorToGPU/VectorToGPU.cpp b/mlir/lib/Conversion/VectorToGPU/VectorToGPU.cpp
+index 0150ff667e4e..669a4465ae53 100644
+--- a/mlir/lib/Conversion/VectorToGPU/VectorToGPU.cpp
++++ b/mlir/lib/Conversion/VectorToGPU/VectorToGPU.cpp
+@@ -1324,8 +1324,7 @@ struct ConvertVectorToGPUPass
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populatePrepareVectorToMMAPatterns(patterns, useNvGpu.getValue());
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+ 
+     IRRewriter rewriter(&getContext());
+diff --git a/mlir/lib/Conversion/VectorToSCF/VectorToSCF.cpp b/mlir/lib/Conversion/VectorToSCF/VectorToSCF.cpp
+index 19f02297bfbb..4f6632899042 100644
+--- a/mlir/lib/Conversion/VectorToSCF/VectorToSCF.cpp
++++ b/mlir/lib/Conversion/VectorToSCF/VectorToSCF.cpp
+@@ -1534,12 +1534,12 @@ struct ConvertVectorToSCFPass
+     RewritePatternSet lowerTransferPatterns(&getContext());
+     mlir::vector::populateVectorTransferPermutationMapLoweringPatterns(
+         lowerTransferPatterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(),
+-                                       std::move(lowerTransferPatterns));
++    (void)applyPatternsGreedily(getOperation(),
++                                std::move(lowerTransferPatterns));
+ 
+     RewritePatternSet patterns(&getContext());
+     populateVectorToSCFConversionPatterns(patterns, options);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/lib/Dialect/Affine/TransformOps/AffineTransformOps.cpp b/mlir/lib/Dialect/Affine/TransformOps/AffineTransformOps.cpp
+index 6457655cfe41..05dc9042c9c0 100644
+--- a/mlir/lib/Dialect/Affine/TransformOps/AffineTransformOps.cpp
++++ b/mlir/lib/Dialect/Affine/TransformOps/AffineTransformOps.cpp
+@@ -132,7 +132,7 @@ SimplifyBoundedAffineOpsOp::apply(transform::TransformRewriter &rewriter,
+       static_cast<RewriterBase::Listener *>(rewriter.getListener());
+   config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
+   // Apply the simplification pattern to a fixpoint.
+-  if (failed(applyOpPatternsAndFold(targets, frozenPatterns, config))) {
++  if (failed(applyOpPatternsGreedily(targets, frozenPatterns, config))) {
+     auto diag = emitDefiniteFailure()
+                 << "affine.min/max simplification did not converge";
+     return diag;
+diff --git a/mlir/lib/Dialect/Affine/Transforms/AffineDataCopyGeneration.cpp b/mlir/lib/Dialect/Affine/Transforms/AffineDataCopyGeneration.cpp
+index 331b0f1b2c2b..9ffe54f61ebb 100644
+--- a/mlir/lib/Dialect/Affine/Transforms/AffineDataCopyGeneration.cpp
++++ b/mlir/lib/Dialect/Affine/Transforms/AffineDataCopyGeneration.cpp
+@@ -239,5 +239,5 @@ void AffineDataCopyGeneration::runOnOperation() {
+   FrozenRewritePatternSet frozenPatterns(std::move(patterns));
+   GreedyRewriteConfig config;
+   config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
+-  (void)applyOpPatternsAndFold(copyOps, frozenPatterns, config);
++  (void)applyOpPatternsGreedily(copyOps, frozenPatterns, config);
+ }
+diff --git a/mlir/lib/Dialect/Affine/Transforms/AffineExpandIndexOps.cpp b/mlir/lib/Dialect/Affine/Transforms/AffineExpandIndexOps.cpp
+index c6bc3862256a..66a4abdd2b30 100644
+--- a/mlir/lib/Dialect/Affine/Transforms/AffineExpandIndexOps.cpp
++++ b/mlir/lib/Dialect/Affine/Transforms/AffineExpandIndexOps.cpp
+@@ -54,8 +54,7 @@ public:
+     MLIRContext *context = &getContext();
+     RewritePatternSet patterns(context);
+     populateAffineExpandIndexOpsPatterns(patterns);
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Affine/Transforms/SimplifyAffineStructures.cpp b/mlir/lib/Dialect/Affine/Transforms/SimplifyAffineStructures.cpp
+index 49618074ec22..31711ade3153 100644
+--- a/mlir/lib/Dialect/Affine/Transforms/SimplifyAffineStructures.cpp
++++ b/mlir/lib/Dialect/Affine/Transforms/SimplifyAffineStructures.cpp
+@@ -111,5 +111,5 @@ void SimplifyAffineStructures::runOnOperation() {
+   });
+   GreedyRewriteConfig config;
+   config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
+-  (void)applyOpPatternsAndFold(opsToSimplify, frozenPatterns, config);
++  (void)applyOpPatternsGreedily(opsToSimplify, frozenPatterns, config);
+ }
+diff --git a/mlir/lib/Dialect/Affine/Utils/LoopUtils.cpp b/mlir/lib/Dialect/Affine/Utils/LoopUtils.cpp
+index f09d93f3ba44..ebd52dc70149 100644
+--- a/mlir/lib/Dialect/Affine/Utils/LoopUtils.cpp
++++ b/mlir/lib/Dialect/Affine/Utils/LoopUtils.cpp
+@@ -313,8 +313,8 @@ LogicalResult mlir::affine::affineForOpBodySkew(AffineForOp forOp,
+         GreedyRewriteConfig config;
+         config.strictMode = GreedyRewriteStrictness::ExistingOps;
+         bool erased;
+-        (void)applyOpPatternsAndFold(res.getOperation(), std::move(patterns),
+-                                     config, /*changed=*/nullptr, &erased);
++        (void)applyOpPatternsGreedily(res.getOperation(), std::move(patterns),
++                                      config, /*changed=*/nullptr, &erased);
+         if (!erased && !prologue)
+           prologue = res;
+         if (!erased)
+diff --git a/mlir/lib/Dialect/Affine/Utils/Utils.cpp b/mlir/lib/Dialect/Affine/Utils/Utils.cpp
+index f46381403bc5..243fe04e3c87 100644
+--- a/mlir/lib/Dialect/Affine/Utils/Utils.cpp
++++ b/mlir/lib/Dialect/Affine/Utils/Utils.cpp
+@@ -424,8 +424,8 @@ LogicalResult mlir::affine::hoistAffineIfOp(AffineIfOp ifOp, bool *folded) {
+   GreedyRewriteConfig config;
+   config.strictMode = GreedyRewriteStrictness::ExistingOps;
+   bool erased;
+-  (void)applyOpPatternsAndFold(ifOp.getOperation(), frozenPatterns, config,
+-                               /*changed=*/nullptr, &erased);
++  (void)applyOpPatternsGreedily(ifOp.getOperation(), frozenPatterns, config,
++                                /*changed=*/nullptr, &erased);
+   if (erased) {
+     if (folded)
+       *folded = true;
+@@ -453,7 +453,7 @@ LogicalResult mlir::affine::hoistAffineIfOp(AffineIfOp ifOp, bool *folded) {
+ 
+   // Canonicalize to remove dead else blocks (happens whenever an 'if' moves up
+   // a sequence of affine.fors that are all perfectly nested).
+-  (void)applyPatternsAndFoldGreedily(
++  (void)applyPatternsGreedily(
+       hoistedIfOp->getParentWithTrait<OpTrait::IsIsolatedFromAbove>(),
+       frozenPatterns);
+ 
+diff --git a/mlir/lib/Dialect/Arith/Transforms/IntRangeOptimizations.cpp b/mlir/lib/Dialect/Arith/Transforms/IntRangeOptimizations.cpp
+index 8005f9103b23..b30f0166aeae 100644
+--- a/mlir/lib/Dialect/Arith/Transforms/IntRangeOptimizations.cpp
++++ b/mlir/lib/Dialect/Arith/Transforms/IntRangeOptimizations.cpp
+@@ -204,7 +204,7 @@ struct IntRangeOptimizationsPass
+     GreedyRewriteConfig config;
+     config.listener = &listener;
+ 
+-    if (failed(applyPatternsAndFoldGreedily(op, std::move(patterns), config)))
++    if (failed(applyPatternsGreedily(op, std::move(patterns), config)))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/ArmSME/Transforms/OuterProductFusion.cpp b/mlir/lib/Dialect/ArmSME/Transforms/OuterProductFusion.cpp
+index 39292c4533d6..6bc7b42e01d3 100644
+--- a/mlir/lib/Dialect/ArmSME/Transforms/OuterProductFusion.cpp
++++ b/mlir/lib/Dialect/ArmSME/Transforms/OuterProductFusion.cpp
+@@ -562,8 +562,7 @@ struct OuterProductFusionPass
+     RewritePatternSet patterns(&getContext());
+     populateOuterProductFusionPatterns(patterns);
+ 
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/ArmSVE/Transforms/LegalizeVectorStorage.cpp b/mlir/lib/Dialect/ArmSVE/Transforms/LegalizeVectorStorage.cpp
+index 8b4bacd72271..d2ac850a5f70 100644
+--- a/mlir/lib/Dialect/ArmSVE/Transforms/LegalizeVectorStorage.cpp
++++ b/mlir/lib/Dialect/ArmSVE/Transforms/LegalizeVectorStorage.cpp
+@@ -317,8 +317,7 @@ struct LegalizeVectorStorage
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateLegalizeVectorStoragePatterns(patterns);
+-    if (failed(applyPatternsAndFoldGreedily(getOperation(),
+-                                            std::move(patterns)))) {
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns)))) {
+       signalPassFailure();
+     }
+     ConversionTarget target(getContext());
+diff --git a/mlir/lib/Dialect/Async/Transforms/AsyncParallelFor.cpp b/mlir/lib/Dialect/Async/Transforms/AsyncParallelFor.cpp
+index 8c3e25355f60..6d11892684a6 100644
+--- a/mlir/lib/Dialect/Async/Transforms/AsyncParallelFor.cpp
++++ b/mlir/lib/Dialect/Async/Transforms/AsyncParallelFor.cpp
+@@ -936,7 +936,7 @@ void AsyncParallelForPass::runOnOperation() {
+       [&](ImplicitLocOpBuilder builder, scf::ParallelOp op) {
+         return builder.create<arith::ConstantIndexOp>(minTaskSize);
+       });
+-  if (failed(applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++  if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+     signalPassFailure();
+ }
+ 
+diff --git a/mlir/lib/Dialect/Bufferization/Transforms/BufferDeallocationSimplification.cpp b/mlir/lib/Dialect/Bufferization/Transforms/BufferDeallocationSimplification.cpp
+index 5227b22653ee..de3ae82f8708 100644
+--- a/mlir/lib/Dialect/Bufferization/Transforms/BufferDeallocationSimplification.cpp
++++ b/mlir/lib/Dialect/Bufferization/Transforms/BufferDeallocationSimplification.cpp
+@@ -470,8 +470,8 @@ struct BufferDeallocationSimplificationPass
+     config.enableRegionSimplification = GreedySimplifyRegionLevel::Normal;
+     populateDeallocOpCanonicalizationPatterns(patterns, &getContext());
+ 
+-    if (failed(applyPatternsAndFoldGreedily(getOperation(), std::move(patterns),
+-                                            config)))
++    if (failed(
++            applyPatternsGreedily(getOperation(), std::move(patterns), config)))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Bufferization/Transforms/EmptyTensorToAllocTensor.cpp b/mlir/lib/Dialect/Bufferization/Transforms/EmptyTensorToAllocTensor.cpp
+index 7670220dce77..d20c6966d4eb 100644
+--- a/mlir/lib/Dialect/Bufferization/Transforms/EmptyTensorToAllocTensor.cpp
++++ b/mlir/lib/Dialect/Bufferization/Transforms/EmptyTensorToAllocTensor.cpp
+@@ -60,7 +60,7 @@ void EmptyTensorToAllocTensor::runOnOperation() {
+   Operation *op = getOperation();
+   RewritePatternSet patterns(op->getContext());
+   populateEmptyTensorToAllocTensorPattern(patterns);
+-  if (failed(applyPatternsAndFoldGreedily(op, std::move(patterns))))
++  if (failed(applyPatternsGreedily(op, std::move(patterns))))
+     signalPassFailure();
+ }
+ 
+diff --git a/mlir/lib/Dialect/EmitC/Transforms/FormExpressions.cpp b/mlir/lib/Dialect/EmitC/Transforms/FormExpressions.cpp
+index 82bd031430d3..338551437580 100644
+--- a/mlir/lib/Dialect/EmitC/Transforms/FormExpressions.cpp
++++ b/mlir/lib/Dialect/EmitC/Transforms/FormExpressions.cpp
+@@ -47,7 +47,7 @@ struct FormExpressionsPass
+     RewritePatternSet patterns(context);
+     populateExpressionPatterns(patterns);
+ 
+-    if (failed(applyPatternsAndFoldGreedily(rootOp, std::move(patterns))))
++    if (failed(applyPatternsGreedily(rootOp, std::move(patterns))))
+       return signalPassFailure();
+   }
+ 
+diff --git a/mlir/lib/Dialect/GPU/Transforms/EliminateBarriers.cpp b/mlir/lib/Dialect/GPU/Transforms/EliminateBarriers.cpp
+index 1adc381092bf..b303fcacc1e2 100644
+--- a/mlir/lib/Dialect/GPU/Transforms/EliminateBarriers.cpp
++++ b/mlir/lib/Dialect/GPU/Transforms/EliminateBarriers.cpp
+@@ -607,7 +607,7 @@ class GpuEliminateBarriersPass
+     auto funcOp = getOperation();
+     RewritePatternSet patterns(&getContext());
+     mlir::populateGpuEliminateBarriersPatterns(patterns);
+-    if (failed(applyPatternsAndFoldGreedily(funcOp, std::move(patterns)))) {
++    if (failed(applyPatternsGreedily(funcOp, std::move(patterns)))) {
+       return signalPassFailure();
+     }
+   }
+diff --git a/mlir/lib/Dialect/LLVMIR/Transforms/OptimizeForNVVM.cpp b/mlir/lib/Dialect/LLVMIR/Transforms/OptimizeForNVVM.cpp
+index 8c33148d1d2d..c1ec1df48e5b 100644
+--- a/mlir/lib/Dialect/LLVMIR/Transforms/OptimizeForNVVM.cpp
++++ b/mlir/lib/Dialect/LLVMIR/Transforms/OptimizeForNVVM.cpp
+@@ -96,7 +96,7 @@ void NVVMOptimizeForTarget::runOnOperation() {
+   MLIRContext *ctx = getOperation()->getContext();
+   RewritePatternSet patterns(ctx);
+   patterns.add<ExpandDivF16>(ctx);
+-  if (failed(applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++  if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+     return signalPassFailure();
+ }
+ 
+diff --git a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+index 2c463649b0d2..ba58bfe9ca57 100644
+--- a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
++++ b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+@@ -3712,7 +3712,7 @@ transform::VectorizeChildrenAndApplyPatternsOp::applyToOne(
+   TrackingListener listener(state, *this);
+   GreedyRewriteConfig config;
+   config.listener = &listener;
+-  if (failed(applyPatternsAndFoldGreedily(target, std::move(patterns), config)))
++  if (failed(applyPatternsGreedily(target, std::move(patterns), config)))
+     return emitDefaultDefiniteFailure(target);
+ 
+   results.push_back(target);
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BlockPackMatmul.cpp b/mlir/lib/Dialect/Linalg/Transforms/BlockPackMatmul.cpp
+index 91d4efa3372b..57344f986480 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BlockPackMatmul.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BlockPackMatmul.cpp
+@@ -301,7 +301,7 @@ struct LinalgBlockPackMatmul
+     };
+ 
+     linalg::populateBlockPackMatmulPatterns(patterns, controlFn);
+-    if (failed(applyPatternsAndFoldGreedily(op, std::move(patterns))))
++    if (failed(applyPatternsGreedily(op, std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/Detensorize.cpp b/mlir/lib/Dialect/Linalg/Transforms/Detensorize.cpp
+index af3848529118..0e651f4cee4c 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/Detensorize.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/Detensorize.cpp
+@@ -563,8 +563,7 @@ struct LinalgDetensorize
+ 
+     RewritePatternSet canonPatterns(context);
+     tensor::FromElementsOp::getCanonicalizationPatterns(canonPatterns, context);
+-    if (failed(applyPatternsAndFoldGreedily(getOperation(),
+-                                            std::move(canonPatterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(canonPatterns))))
+       signalPassFailure();
+ 
+     // Get rid of the dummy entry block we created in the beginning to work
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/ElementwiseOpFusion.cpp b/mlir/lib/Dialect/Linalg/Transforms/ElementwiseOpFusion.cpp
+index e73df61c9643..aee93b00d690 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/ElementwiseOpFusion.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/ElementwiseOpFusion.cpp
+@@ -2159,7 +2159,7 @@ struct LinalgElementwiseOpFusionPass
+     // Use TopDownTraversal for compile time reasons
+     GreedyRewriteConfig grc;
+     grc.useTopDownTraversal = true;
+-    (void)applyPatternsAndFoldGreedily(op, std::move(patterns), grc);
++    (void)applyPatternsGreedily(op, std::move(patterns), grc);
+   }
+ };
+ 
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/Generalization.cpp b/mlir/lib/Dialect/Linalg/Transforms/Generalization.cpp
+index 7ab3fef5dd03..78cee47c497e 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/Generalization.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/Generalization.cpp
+@@ -89,7 +89,7 @@ struct LinalgGeneralizeNamedOpsPass
+ void LinalgGeneralizeNamedOpsPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   populateLinalgNamedOpsGeneralizationPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ void mlir::linalg::populateLinalgNamedOpsGeneralizationPatterns(
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/InlineScalarOperands.cpp b/mlir/lib/Dialect/Linalg/Transforms/InlineScalarOperands.cpp
+index 6db51f4b84d1..7a72e3959ef7 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/InlineScalarOperands.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/InlineScalarOperands.cpp
+@@ -110,7 +110,7 @@ struct LinalgInlineScalarOperandsPass
+     MLIRContext &ctx = getContext();
+     RewritePatternSet patterns(&ctx);
+     populateInlineConstantOperandsPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(op, std::move(patterns));
++    (void)applyPatternsGreedily(op, std::move(patterns));
+   }
+ };
+ } // namespace
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/Loops.cpp b/mlir/lib/Dialect/Linalg/Transforms/Loops.cpp
+index 8b0e04fb61b1..62876091997d 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/Loops.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/Loops.cpp
+@@ -321,7 +321,7 @@ static void lowerLinalgToLoopsImpl(Operation *enclosingOp) {
+   affine::AffineApplyOp::getCanonicalizationPatterns(patterns, context);
+   patterns.add<FoldAffineOp>(context);
+   // Just apply the patterns greedily.
+-  (void)applyPatternsAndFoldGreedily(enclosingOp, std::move(patterns));
++  (void)applyPatternsGreedily(enclosingOp, std::move(patterns));
+ }
+ 
+ struct LowerToAffineLoops
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/NamedOpConversions.cpp b/mlir/lib/Dialect/Linalg/Transforms/NamedOpConversions.cpp
+index 84bde1bc0b84..bb1e97439187 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/NamedOpConversions.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/NamedOpConversions.cpp
+@@ -152,7 +152,7 @@ struct LinalgNamedOpConversionPass
+     Operation *op = getOperation();
+     RewritePatternSet patterns(op->getContext());
+     populateLinalgNamedOpConversionPatterns(patterns);
+-    if (failed(applyPatternsAndFoldGreedily(op, std::move(patterns))))
++    if (failed(applyPatternsGreedily(op, std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Math/Transforms/UpliftToFMA.cpp b/mlir/lib/Dialect/Math/Transforms/UpliftToFMA.cpp
+index 6b0d0f5e7466..de950bac819c 100644
+--- a/mlir/lib/Dialect/Math/Transforms/UpliftToFMA.cpp
++++ b/mlir/lib/Dialect/Math/Transforms/UpliftToFMA.cpp
+@@ -66,8 +66,7 @@ struct MathUpliftToFMA final
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateUpliftToFMAPatterns(patterns);
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/MemRef/Transforms/ExpandStridedMetadata.cpp b/mlir/lib/Dialect/MemRef/Transforms/ExpandStridedMetadata.cpp
+index 585c5b738142..e383b6ba2e21 100644
+--- a/mlir/lib/Dialect/MemRef/Transforms/ExpandStridedMetadata.cpp
++++ b/mlir/lib/Dialect/MemRef/Transforms/ExpandStridedMetadata.cpp
+@@ -1139,7 +1139,7 @@ struct ExpandStridedMetadataPass final
+ void ExpandStridedMetadataPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   memref::populateExpandStridedMetadataPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ std::unique_ptr<Pass> memref::createExpandStridedMetadataPass() {
+diff --git a/mlir/lib/Dialect/MemRef/Transforms/FoldMemRefAliasOps.cpp b/mlir/lib/Dialect/MemRef/Transforms/FoldMemRefAliasOps.cpp
+index 96daf4c5972a..8e927a60087f 100644
+--- a/mlir/lib/Dialect/MemRef/Transforms/FoldMemRefAliasOps.cpp
++++ b/mlir/lib/Dialect/MemRef/Transforms/FoldMemRefAliasOps.cpp
+@@ -857,7 +857,7 @@ struct FoldMemRefAliasOpsPass final
+ void FoldMemRefAliasOpsPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   memref::populateFoldMemRefAliasOpPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ std::unique_ptr<Pass> memref::createFoldMemRefAliasOpsPass() {
+diff --git a/mlir/lib/Dialect/MemRef/Transforms/ResolveShapedTypeResultDims.cpp b/mlir/lib/Dialect/MemRef/Transforms/ResolveShapedTypeResultDims.cpp
+index 0cb5931ce6bf..8f7a99f76ee2 100644
+--- a/mlir/lib/Dialect/MemRef/Transforms/ResolveShapedTypeResultDims.cpp
++++ b/mlir/lib/Dialect/MemRef/Transforms/ResolveShapedTypeResultDims.cpp
+@@ -142,7 +142,7 @@ void memref::populateResolveShapedTypeResultDimsPatterns(
+ void ResolveRankedShapeTypeResultDimsPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   memref::populateResolveRankedShapedTypeResultDimsPatterns(patterns);
+-  if (failed(applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++  if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+     return signalPassFailure();
+ }
+ 
+@@ -150,7 +150,7 @@ void ResolveShapedTypeResultDimsPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   memref::populateResolveRankedShapedTypeResultDimsPatterns(patterns);
+   memref::populateResolveShapedTypeResultDimsPatterns(patterns);
+-  if (failed(applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++  if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+     return signalPassFailure();
+ }
+ 
+diff --git a/mlir/lib/Dialect/SCF/Transforms/ForToWhile.cpp b/mlir/lib/Dialect/SCF/Transforms/ForToWhile.cpp
+index 9f8189ae15e6..3e93dc80b18e 100644
+--- a/mlir/lib/Dialect/SCF/Transforms/ForToWhile.cpp
++++ b/mlir/lib/Dialect/SCF/Transforms/ForToWhile.cpp
+@@ -112,7 +112,7 @@ struct ForToWhileLoop : public impl::SCFForToWhileLoopBase<ForToWhileLoop> {
+     MLIRContext *ctx = parentOp->getContext();
+     RewritePatternSet patterns(ctx);
+     patterns.add<ForLoopLoweringPattern>(ctx);
+-    (void)applyPatternsAndFoldGreedily(parentOp, std::move(patterns));
++    (void)applyPatternsGreedily(parentOp, std::move(patterns));
+   }
+ };
+ } // namespace
+diff --git a/mlir/lib/Dialect/SCF/Transforms/LoopCanonicalization.cpp b/mlir/lib/Dialect/SCF/Transforms/LoopCanonicalization.cpp
+index c6d024c462e8..4ebd90dbcc1d 100644
+--- a/mlir/lib/Dialect/SCF/Transforms/LoopCanonicalization.cpp
++++ b/mlir/lib/Dialect/SCF/Transforms/LoopCanonicalization.cpp
+@@ -167,7 +167,7 @@ struct SCFForLoopCanonicalization
+     MLIRContext *ctx = parentOp->getContext();
+     RewritePatternSet patterns(ctx);
+     scf::populateSCFForLoopCanonicalizationPatterns(patterns);
+-    if (failed(applyPatternsAndFoldGreedily(parentOp, std::move(patterns))))
++    if (failed(applyPatternsGreedily(parentOp, std::move(patterns))))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/SCF/Transforms/LoopSpecialization.cpp b/mlir/lib/Dialect/SCF/Transforms/LoopSpecialization.cpp
+index a30e349d4913..3a72125f6e86 100644
+--- a/mlir/lib/Dialect/SCF/Transforms/LoopSpecialization.cpp
++++ b/mlir/lib/Dialect/SCF/Transforms/LoopSpecialization.cpp
+@@ -332,7 +332,7 @@ struct ForLoopPeeling : public impl::SCFForLoopPeelingBase<ForLoopPeeling> {
+     MLIRContext *ctx = parentOp->getContext();
+     RewritePatternSet patterns(ctx);
+     patterns.add<ForLoopPeelingPattern>(ctx, peelFront, skipPartial);
+-    (void)applyPatternsAndFoldGreedily(parentOp, std::move(patterns));
++    (void)applyPatternsGreedily(parentOp, std::move(patterns));
+ 
+     // Drop the markers.
+     parentOp->walk([](Operation *op) {
+diff --git a/mlir/lib/Dialect/SPIRV/Transforms/CanonicalizeGLPass.cpp b/mlir/lib/Dialect/SPIRV/Transforms/CanonicalizeGLPass.cpp
+index 374c205897c8..cc59c2116ed3 100644
+--- a/mlir/lib/Dialect/SPIRV/Transforms/CanonicalizeGLPass.cpp
++++ b/mlir/lib/Dialect/SPIRV/Transforms/CanonicalizeGLPass.cpp
+@@ -29,8 +29,7 @@ public:
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     spirv::populateSPIRVGLCanonicalizationPatterns(patterns);
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/SPIRV/Transforms/SPIRVWebGPUTransforms.cpp b/mlir/lib/Dialect/SPIRV/Transforms/SPIRVWebGPUTransforms.cpp
+index d75c8552c9ad..af1cf2a1373e 100644
+--- a/mlir/lib/Dialect/SPIRV/Transforms/SPIRVWebGPUTransforms.cpp
++++ b/mlir/lib/Dialect/SPIRV/Transforms/SPIRVWebGPUTransforms.cpp
+@@ -236,8 +236,7 @@ struct WebGPUPreparePass final
+     populateSPIRVExpandExtendedMultiplicationPatterns(patterns);
+     populateSPIRVExpandNonFiniteArithmeticPatterns(patterns);
+ 
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Shape/Transforms/OutlineShapeComputation.cpp b/mlir/lib/Dialect/Shape/Transforms/OutlineShapeComputation.cpp
+index f467123f9b33..8e50e7f1da86 100644
+--- a/mlir/lib/Dialect/Shape/Transforms/OutlineShapeComputation.cpp
++++ b/mlir/lib/Dialect/Shape/Transforms/OutlineShapeComputation.cpp
+@@ -207,7 +207,7 @@ void OutlineShapeComputationPass::runOnOperation() {
+     MLIRContext *context = funcOp.getContext();
+     RewritePatternSet prevPatterns(context);
+     prevPatterns.insert<TensorDimOpRewriter>(context);
+-    if (failed(applyPatternsAndFoldGreedily(funcOp, std::move(prevPatterns))))
++    if (failed(applyPatternsGreedily(funcOp, std::move(prevPatterns))))
+       return signalPassFailure();
+ 
+     // initialize class member `onlyUsedByWithShapes`
+@@ -254,7 +254,7 @@ void OutlineShapeComputationPass::runOnOperation() {
+     }
+ 
+     // Apply patterns, note this also performs DCE.
+-    if (failed(applyPatternsAndFoldGreedily(funcOp, {})))
++    if (failed(applyPatternsGreedily(funcOp, {})))
+       return signalPassFailure();
+   });
+ }
+diff --git a/mlir/lib/Dialect/Shape/Transforms/RemoveShapeConstraints.cpp b/mlir/lib/Dialect/Shape/Transforms/RemoveShapeConstraints.cpp
+index e1cccd8fd5d6..d2b245f832e5 100644
+--- a/mlir/lib/Dialect/Shape/Transforms/RemoveShapeConstraints.cpp
++++ b/mlir/lib/Dialect/Shape/Transforms/RemoveShapeConstraints.cpp
+@@ -55,7 +55,7 @@ class RemoveShapeConstraintsPass
+     RewritePatternSet patterns(&ctx);
+     populateRemoveShapeConstraintsPatterns(patterns);
+ 
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/lib/Dialect/SparseTensor/Transforms/SparseTensorPasses.cpp b/mlir/lib/Dialect/SparseTensor/Transforms/SparseTensorPasses.cpp
+index 8004bdb904b8..1cac949b68c7 100644
+--- a/mlir/lib/Dialect/SparseTensor/Transforms/SparseTensorPasses.cpp
++++ b/mlir/lib/Dialect/SparseTensor/Transforms/SparseTensorPasses.cpp
+@@ -57,7 +57,7 @@ struct SparseAssembler : public impl::SparseAssemblerBase<SparseAssembler> {
+     auto *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     populateSparseAssembler(patterns, directOut);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -73,7 +73,7 @@ struct SparseReinterpretMap
+     auto *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     populateSparseReinterpretMap(patterns, scope);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -87,7 +87,7 @@ struct PreSparsificationRewritePass
+     auto *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     populatePreSparsificationRewriting(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -110,7 +110,7 @@ struct SparsificationPass
+     RewritePatternSet patterns(ctx);
+     populateSparsificationPatterns(patterns, options);
+     scf::ForOp::getCanonicalizationPatterns(patterns, ctx);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -122,7 +122,7 @@ struct StageSparseOperationsPass
+     auto *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     populateStageSparseOperationsPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -141,7 +141,7 @@ struct LowerSparseOpsToForeachPass
+     RewritePatternSet patterns(ctx);
+     populateLowerSparseOpsToForeachPatterns(patterns, enableRuntimeLibrary,
+                                             enableConvert);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -154,7 +154,7 @@ struct LowerForeachToSCFPass
+     auto *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     populateLowerForeachToSCFPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -329,7 +329,7 @@ struct SparseBufferRewritePass
+     auto *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     populateSparseBufferRewriting(patterns, enableBufferInitialization);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -351,7 +351,7 @@ struct SparseVectorizationPass
+     populateSparseVectorizationPatterns(
+         patterns, vectorLength, enableVLAVectorization, enableSIMDIndex32);
+     vector::populateVectorToVectorCanonicalizationPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -371,7 +371,7 @@ struct SparseGPUCodegenPass
+       populateSparseGPULibgenPatterns(patterns, enableRuntimeLibrary);
+     else
+       populateSparseGPUCodegenPatterns(patterns, numThreads);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/lib/Dialect/Tensor/Transforms/FoldTensorSubsetOps.cpp b/mlir/lib/Dialect/Tensor/Transforms/FoldTensorSubsetOps.cpp
+index 5396531922aa..16f453becfba 100644
+--- a/mlir/lib/Dialect/Tensor/Transforms/FoldTensorSubsetOps.cpp
++++ b/mlir/lib/Dialect/Tensor/Transforms/FoldTensorSubsetOps.cpp
+@@ -257,7 +257,7 @@ struct FoldTensorSubsetOpsPass final
+ void FoldTensorSubsetOpsPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   tensor::populateFoldTensorSubsetOpPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ std::unique_ptr<Pass> tensor::createFoldTensorSubsetOpsPass() {
+diff --git a/mlir/lib/Dialect/Tosa/Transforms/TosaLayerwiseConstantFoldPass.cpp b/mlir/lib/Dialect/Tosa/Transforms/TosaLayerwiseConstantFoldPass.cpp
+index e1400f0c907b..9299db7e51a0 100644
+--- a/mlir/lib/Dialect/Tosa/Transforms/TosaLayerwiseConstantFoldPass.cpp
++++ b/mlir/lib/Dialect/Tosa/Transforms/TosaLayerwiseConstantFoldPass.cpp
+@@ -60,7 +60,7 @@ struct TosaLayerwiseConstantFoldPass
+                                               aggressiveReduceConstant);
+     populateTosaOpsCanonicalizationPatterns(ctx, patterns);
+ 
+-    if (applyPatternsAndFoldGreedily(func, std::move(patterns)).failed())
++    if (applyPatternsGreedily(func, std::move(patterns)).failed())
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Tosa/Transforms/TosaMakeBroadcastable.cpp b/mlir/lib/Dialect/Tosa/Transforms/TosaMakeBroadcastable.cpp
+index 9c6ee4c62eee..2a990eed3f68 100644
+--- a/mlir/lib/Dialect/Tosa/Transforms/TosaMakeBroadcastable.cpp
++++ b/mlir/lib/Dialect/Tosa/Transforms/TosaMakeBroadcastable.cpp
+@@ -246,7 +246,7 @@ public:
+     patterns.add<ConvertTosaOp<tosa::LogicalXorOp>>(ctx);
+     patterns.add<ConvertTosaOp<tosa::SelectOp>>(ctx);
+     patterns.add<ConvertTosaOp<tosa::PowOp>>(ctx);
+-    (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
++    (void)applyPatternsGreedily(func, std::move(patterns));
+   }
+ };
+ } // namespace
+diff --git a/mlir/lib/Dialect/Tosa/Transforms/TosaOptionalDecompositions.cpp b/mlir/lib/Dialect/Tosa/Transforms/TosaOptionalDecompositions.cpp
+index cef903a39e45..603185e48aa9 100644
+--- a/mlir/lib/Dialect/Tosa/Transforms/TosaOptionalDecompositions.cpp
++++ b/mlir/lib/Dialect/Tosa/Transforms/TosaOptionalDecompositions.cpp
+@@ -42,7 +42,7 @@ struct TosaOptionalDecompositions
+     mlir::tosa::populateTosaDecomposeTransposeConv(ctx, patterns);
+     mlir::tosa::populateTosaDecomposeDepthwise(ctx, patterns);
+ 
+-    if (applyPatternsAndFoldGreedily(func, std::move(patterns)).failed())
++    if (applyPatternsGreedily(func, std::move(patterns)).failed())
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/lib/Dialect/Transform/IR/TransformOps.cpp b/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
+index 37e4d22815c8..7c64958a3dd3 100644
+--- a/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
++++ b/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
+@@ -434,7 +434,7 @@ DiagnosedSilenceableFailure transform::ApplyPatternsOp::applyToOne(
+     if (target->hasTrait<OpTrait::IsIsolatedFromAbove>()) {
+       // Op is isolated from above. Apply patterns and also perform region
+       // simplification.
+-      result = applyPatternsAndFoldGreedily(target, frozenPatterns, config);
++      result = applyPatternsGreedily(target, frozenPatterns, config);
+     } else {
+       // Manually gather list of ops because the other
+       // GreedyPatternRewriteDriver overloads only accepts ops that are isolated
+@@ -446,7 +446,7 @@ DiagnosedSilenceableFailure transform::ApplyPatternsOp::applyToOne(
+         if (target != nestedOp)
+           ops.push_back(nestedOp);
+       });
+-      result = applyOpPatternsAndFold(ops, frozenPatterns, config);
++      result = applyOpPatternsGreedily(ops, frozenPatterns, config);
+     }
+ 
+     // A failure typically indicates that the pattern application did not
+diff --git a/mlir/lib/Dialect/Vector/Transforms/LowerVectorMask.cpp b/mlir/lib/Dialect/Vector/Transforms/LowerVectorMask.cpp
+index dfeb7bc53ada..6abfa4414d5c 100644
+--- a/mlir/lib/Dialect/Vector/Transforms/LowerVectorMask.cpp
++++ b/mlir/lib/Dialect/Vector/Transforms/LowerVectorMask.cpp
+@@ -286,7 +286,7 @@ struct LowerVectorMaskPass
+     populateVectorMaskLoweringPatternsForSideEffectingOps(loweringPatterns);
+     MaskOp::getCanonicalizationPatterns(loweringPatterns, context);
+ 
+-    if (failed(applyPatternsAndFoldGreedily(op, std::move(loweringPatterns))))
++    if (failed(applyPatternsGreedily(op, std::move(loweringPatterns))))
+       signalPassFailure();
+   }
+ 
+diff --git a/mlir/lib/Dialect/Vector/Transforms/LowerVectorMultiReduction.cpp b/mlir/lib/Dialect/Vector/Transforms/LowerVectorMultiReduction.cpp
+index ac576ed0b4f0..c05737a808a0 100644
+--- a/mlir/lib/Dialect/Vector/Transforms/LowerVectorMultiReduction.cpp
++++ b/mlir/lib/Dialect/Vector/Transforms/LowerVectorMultiReduction.cpp
+@@ -490,7 +490,7 @@ struct LowerVectorMultiReductionPass
+     populateVectorMultiReductionLoweringPatterns(loweringPatterns,
+                                                  this->loweringStrategy);
+ 
+-    if (failed(applyPatternsAndFoldGreedily(op, std::move(loweringPatterns))))
++    if (failed(applyPatternsGreedily(op, std::move(loweringPatterns))))
+       signalPassFailure();
+   }
+ 
+diff --git a/mlir/lib/Dialect/XeGPU/Transforms/XeGPUFoldAliasOps.cpp b/mlir/lib/Dialect/XeGPU/Transforms/XeGPUFoldAliasOps.cpp
+index 9307e8eb784b..e3082c55427f 100644
+--- a/mlir/lib/Dialect/XeGPU/Transforms/XeGPUFoldAliasOps.cpp
++++ b/mlir/lib/Dialect/XeGPU/Transforms/XeGPUFoldAliasOps.cpp
+@@ -78,5 +78,5 @@ struct XeGPUFoldAliasOpsPass final
+ void XeGPUFoldAliasOpsPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   xegpu::populateXeGPUFoldAliasOpsPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+diff --git a/mlir/lib/Reducer/ReductionTreePass.cpp b/mlir/lib/Reducer/ReductionTreePass.cpp
+index b00045a3a41b..2d2744bfc273 100644
+--- a/mlir/lib/Reducer/ReductionTreePass.cpp
++++ b/mlir/lib/Reducer/ReductionTreePass.cpp
+@@ -65,7 +65,7 @@ static void applyPatterns(Region &region,
+     // because we don't have expectation this reduction will be success or not.
+     GreedyRewriteConfig config;
+     config.strictMode = GreedyRewriteStrictness::ExistingOps;
+-    (void)applyOpPatternsAndFold(op, patterns, config);
++    (void)applyOpPatternsGreedily(op, patterns, config);
+   }
+ 
+   if (eraseOpNotInRange)
+diff --git a/mlir/lib/Transforms/Canonicalizer.cpp b/mlir/lib/Transforms/Canonicalizer.cpp
+index 08823a5129c9..db0861ac9e98 100644
+--- a/mlir/lib/Transforms/Canonicalizer.cpp
++++ b/mlir/lib/Transforms/Canonicalizer.cpp
+@@ -75,7 +75,7 @@ struct Canonicalizer : public impl::CanonicalizerBase<Canonicalizer> {
+   }
+   void runOnOperation() override {
+     LogicalResult converged =
+-        applyPatternsAndFoldGreedily(getOperation(), *patterns, config);
++        applyPatternsGreedily(getOperation(), *patterns, config);
+     // Canonicalization is best-effort. Non-convergence is not a pass failure.
+     if (testConvergence && failed(converged))
+       signalPassFailure();
+diff --git a/mlir/lib/Transforms/Utils/GreedyPatternRewriteDriver.cpp b/mlir/lib/Transforms/Utils/GreedyPatternRewriteDriver.cpp
+index e0d0acd122e2..99f3569b767b 100644
+--- a/mlir/lib/Transforms/Utils/GreedyPatternRewriteDriver.cpp
++++ b/mlir/lib/Transforms/Utils/GreedyPatternRewriteDriver.cpp
+@@ -6,7 +6,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+ //
+-// This file implements mlir::applyPatternsAndFoldGreedily.
++// This file implements mlir::applyPatternsGreedily.
+ //
+ //===----------------------------------------------------------------------===//
+ 
+@@ -488,7 +488,7 @@ bool GreedyPatternRewriteDriver::processWorklist() {
+     // infinite folding loop, as every constant op would be folded to an
+     // Attribute and then immediately be rematerialized as a constant op, which
+     // is then put on the worklist.
+-    if (!op->hasTrait<OpTrait::ConstantLike>()) {
++    if (config.fold && !op->hasTrait<OpTrait::ConstantLike>()) {
+       SmallVector<OpFoldResult> foldResults;
+       if (succeeded(op->fold(foldResults))) {
+         LLVM_DEBUG(logResultWithLine("success", "operation was folded"));
+@@ -852,13 +852,13 @@ LogicalResult RegionPatternRewriteDriver::simplify(bool *changed) && {
+     if (!config.useTopDownTraversal) {
+       // Add operations to the worklist in postorder.
+       region.walk([&](Operation *op) {
+-        if (!insertKnownConstant(op))
++        if (!config.cseConstants || !insertKnownConstant(op))
+           addToWorklist(op);
+       });
+     } else {
+       // Add all nested operations to the worklist in preorder.
+       region.walk<WalkOrder::PreOrder>([&](Operation *op) {
+-        if (!insertKnownConstant(op)) {
++        if (!config.cseConstants || !insertKnownConstant(op)) {
+           addToWorklist(op);
+           return WalkResult::advance();
+         }
+@@ -894,9 +894,9 @@ LogicalResult RegionPatternRewriteDriver::simplify(bool *changed) && {
+ }
+ 
+ LogicalResult
+-mlir::applyPatternsAndFoldGreedily(Region &region,
+-                                   const FrozenRewritePatternSet &patterns,
+-                                   GreedyRewriteConfig config, bool *changed) {
++mlir::applyPatternsGreedily(Region &region,
++                            const FrozenRewritePatternSet &patterns,
++                            GreedyRewriteConfig config, bool *changed) {
+   // The top-level operation must be known to be isolated from above to
+   // prevent performing canonicalizations on operations defined at or above
+   // the region containing 'op'.
+@@ -1012,7 +1012,7 @@ static Region *findCommonAncestor(ArrayRef<Operation *> ops) {
+   return region;
+ }
+ 
+-LogicalResult mlir::applyOpPatternsAndFold(
++LogicalResult mlir::applyOpPatternsGreedily(
+     ArrayRef<Operation *> ops, const FrozenRewritePatternSet &patterns,
+     GreedyRewriteConfig config, bool *changed, bool *allErased) {
+   if (ops.empty()) {
+diff --git a/mlir/lib/Transforms/Utils/OneToNTypeConversion.cpp b/mlir/lib/Transforms/Utils/OneToNTypeConversion.cpp
+index f6e8e9e7ad33..c320eb8c9565 100644
+--- a/mlir/lib/Transforms/Utils/OneToNTypeConversion.cpp
++++ b/mlir/lib/Transforms/Utils/OneToNTypeConversion.cpp
+@@ -310,7 +310,7 @@ OneToNConversionPattern::matchAndRewrite(Operation *op,
+ namespace mlir {
+ 
+ // This function applies the provided patterns using
+-// `applyPatternsAndFoldGreedily` and then replaces all newly inserted
++// `applyPatternsGreedily` and then replaces all newly inserted
+ // `UnrealizedConversionCastOps` that haven't folded away. ("Backward" casts
+ // from target to source types inserted by a `OneToNConversionPattern` normally
+ // fold away with the "forward" casts from source to target types inserted by
+@@ -331,7 +331,7 @@ applyPartialOneToNConversion(Operation *op, OneToNTypeConverter &typeConverter,
+ #endif // NDEBUG
+ 
+   // Apply provided conversion patterns.
+-  if (failed(applyPatternsAndFoldGreedily(op, patterns))) {
++  if (failed(applyPatternsGreedily(op, patterns))) {
+     emitError(op->getLoc()) << "failed to apply conversion patterns";
+     return failure();
+   }
+diff --git a/mlir/test/Transforms/test-operation-folder.mlir b/mlir/test/Transforms/test-operation-folder.mlir
+index 46ee07af993c..647890f0d065 100644
+--- a/mlir/test/Transforms/test-operation-folder.mlir
++++ b/mlir/test/Transforms/test-operation-folder.mlir
+@@ -25,7 +25,8 @@ func.func @test_fold_before_previously_folded_op() -> (i32, i32) {
+ }
+ 
+ func.func @test_dont_reorder_constants() -> (i32, i32, i32) {
+-  // Test that we don't reorder existing constants during folding if it isn't necessary.
++  // Test that we don't reorder existing constants during folding if it isn't
++  // necessary.
+   // CHECK: %[[CST:.+]] = arith.constant 1
+   // CHECK-NEXT: %[[CST:.+]] = arith.constant 2
+   // CHECK-NEXT: %[[CST:.+]] = arith.constant 3
+@@ -34,3 +35,45 @@ func.func @test_dont_reorder_constants() -> (i32, i32, i32) {
+   %2 = arith.constant 3 : i32
+   return %0, %1, %2 : i32, i32, i32
+ }
++
++// CHECK-LABEL: test_fold_nofold_nocse
++// NOCSE-LABEL: test_fold_nofold_nocse
++// NOFOLD-LABEL: test_fold_nofold_nocse
++func.func @test_fold_nofold_nocse() -> (i32, i32, i32, i32, i32, i32) {
++  // Test either not folding or deduping constants.
++
++  // Testing folding. There should be only 4 constants here.
++  // CHECK-NOT: arith.constant
++  // CHECK-DAG: %[[CST:.+]] = arith.constant 0
++  // CHECK-DAG: %[[CST:.+]] = arith.constant 1
++  // CHECK-DAG: %[[CST:.+]] = arith.constant 2
++  // CHECK-DAG: %[[CST:.+]] = arith.constant 3
++  // CHECK-NOT: arith.constant
++  // CHECK-NEXT: return
++
++  // Testing not-CSE'ing. In this case we have the 3 original constants and 3
++  // produced by folding.
++  // NOCSE-DAG: arith.constant 0 : i32
++  // NOCSE-DAG: arith.constant 1 : i32
++  // NOCSE-DAG: arith.constant 2 : i32
++  // NOCSE-DAG: arith.constant 1 : i32
++  // NOCSE-DAG: arith.constant 2 : i32
++  // NOCSE-DAG: arith.constant 3 : i32
++  // NOCSE-NEXT: return
++
++  // Testing not folding. In this case we just have the original constants.
++  // NOFOLD-DAG: %[[CST:.+]] = arith.constant 0
++  // NOFOLD-DAG: %[[CST:.+]] = arith.constant 1
++  // NOFOLD-DAG: %[[CST:.+]] = arith.constant 2
++  // NOFOLD: arith.addi
++  // NOFOLD: arith.addi
++  // NOFOLD: arith.addi
++
++  %c0 = arith.constant 0 : i32
++  %c1 = arith.constant 1 : i32
++  %c2 = arith.constant 2 : i32
++  %0 = arith.addi %c0, %c1 : i32
++  %1 = arith.addi %0, %c1 : i32
++  %2 = arith.addi %c2, %c1 : i32
++  return %0, %1, %2, %c0, %c1, %c2 : i32, i32, i32, i32, i32, i32
++}
+diff --git a/mlir/test/lib/Conversion/MathToVCIX/TestMathToVCIXConversion.cpp b/mlir/test/lib/Conversion/MathToVCIX/TestMathToVCIXConversion.cpp
+index e17fe12b9088..1e45ab57ebcc 100644
+--- a/mlir/test/lib/Conversion/MathToVCIX/TestMathToVCIXConversion.cpp
++++ b/mlir/test/lib/Conversion/MathToVCIX/TestMathToVCIXConversion.cpp
+@@ -248,7 +248,7 @@ struct TestMathToVCIX
+     RewritePatternSet patterns(ctx);
+     patterns.add<MathCosToVCIX, MathSinToVCIX, MathTanToVCIX, MathLogToVCIX>(
+         ctx);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/test/lib/Conversion/VectorToSPIRV/TestVectorReductionToSPIRVDotProd.cpp b/mlir/test/lib/Conversion/VectorToSPIRV/TestVectorReductionToSPIRVDotProd.cpp
+index 1864d2f7f503..d49b4e391a68 100644
+--- a/mlir/test/lib/Conversion/VectorToSPIRV/TestVectorReductionToSPIRVDotProd.cpp
++++ b/mlir/test/lib/Conversion/VectorToSPIRV/TestVectorReductionToSPIRVDotProd.cpp
+@@ -41,7 +41,7 @@ struct TestVectorReductionToSPIRVDotProd
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorReductionToSPIRVDotProductPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/test/lib/Dialect/Affine/TestAffineDataCopy.cpp b/mlir/test/lib/Dialect/Affine/TestAffineDataCopy.cpp
+index b418a457473a..404f34ebee17 100644
+--- a/mlir/test/lib/Dialect/Affine/TestAffineDataCopy.cpp
++++ b/mlir/test/lib/Dialect/Affine/TestAffineDataCopy.cpp
+@@ -136,7 +136,7 @@ void TestAffineDataCopy::runOnOperation() {
+   }
+   GreedyRewriteConfig config;
+   config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
+-  (void)applyOpPatternsAndFold(copyOps, std::move(patterns), config);
++  (void)applyOpPatternsGreedily(copyOps, std::move(patterns), config);
+ }
+ 
+ namespace mlir {
+diff --git a/mlir/test/lib/Dialect/ArmNeon/TestLowerToArmNeon.cpp b/mlir/test/lib/Dialect/ArmNeon/TestLowerToArmNeon.cpp
+index f6bfd9f85828..03c80b601a34 100644
+--- a/mlir/test/lib/Dialect/ArmNeon/TestLowerToArmNeon.cpp
++++ b/mlir/test/lib/Dialect/ArmNeon/TestLowerToArmNeon.cpp
+@@ -47,7 +47,7 @@ void TestLowerToArmNeon::runOnOperation() {
+   MLIRContext *context = &getContext();
+   RewritePatternSet patterns(context);
+   populateLowerContractionToSMMLAPatternPatterns(patterns);
+-  if (failed(applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++  if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+     return signalPassFailure();
+ }
+ 
+diff --git a/mlir/test/lib/Dialect/GPU/TestGpuRewrite.cpp b/mlir/test/lib/Dialect/GPU/TestGpuRewrite.cpp
+index 8c13c0e2575c..34b55351e0b9 100644
+--- a/mlir/test/lib/Dialect/GPU/TestGpuRewrite.cpp
++++ b/mlir/test/lib/Dialect/GPU/TestGpuRewrite.cpp
+@@ -38,7 +38,7 @@ struct TestGpuRewritePass
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateGpuRewritePatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/test/lib/Dialect/Linalg/TestDataLayoutPropagation.cpp b/mlir/test/lib/Dialect/Linalg/TestDataLayoutPropagation.cpp
+index 4cf2460150d1..d0700f9a4f1a 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestDataLayoutPropagation.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestDataLayoutPropagation.cpp
+@@ -34,8 +34,7 @@ struct TestDataLayoutPropagationPass
+     RewritePatternSet patterns(context);
+     linalg::populateDataLayoutPropagationPatterns(
+         patterns, [](OpOperand *opOperand) { return true; });
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/test/lib/Dialect/Linalg/TestLinalgDecomposeOps.cpp b/mlir/test/lib/Dialect/Linalg/TestLinalgDecomposeOps.cpp
+index 311244aeffb9..0143a27bfe84 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestLinalgDecomposeOps.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestLinalgDecomposeOps.cpp
+@@ -43,8 +43,8 @@ struct TestLinalgDecomposeOps
+     RewritePatternSet decompositionPatterns(context);
+     linalg::populateDecomposeLinalgOpsPattern(decompositionPatterns,
+                                               removeDeadArgsAndResults);
+-    if (failed(applyPatternsAndFoldGreedily(
+-            getOperation(), std::move(decompositionPatterns)))) {
++    if (failed(applyPatternsGreedily(getOperation(),
++                                     std::move(decompositionPatterns)))) {
+       return signalPassFailure();
+     }
+   }
+diff --git a/mlir/test/lib/Dialect/Linalg/TestLinalgElementwiseFusion.cpp b/mlir/test/lib/Dialect/Linalg/TestLinalgElementwiseFusion.cpp
+index 7f68f4aec3a1..e4883e47f206 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestLinalgElementwiseFusion.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestLinalgElementwiseFusion.cpp
+@@ -155,8 +155,8 @@ struct TestLinalgElementwiseFusion
+       RewritePatternSet fusionPatterns(context);
+       auto controlFn = [](OpOperand *operand) { return true; };
+       linalg::populateElementwiseOpsFusionPatterns(fusionPatterns, controlFn);
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(fusionPatterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(),
++                                       std::move(fusionPatterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -166,8 +166,8 @@ struct TestLinalgElementwiseFusion
+       linalg::populateElementwiseOpsFusionPatterns(fusionPatterns,
+                                                    setFusedOpOperandLimit<4>);
+ 
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(fusionPatterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(),
++                                       std::move(fusionPatterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -176,8 +176,8 @@ struct TestLinalgElementwiseFusion
+       RewritePatternSet fusionPatterns(context);
+       linalg::populateFoldReshapeOpsByExpansionPatterns(
+           fusionPatterns, [](OpOperand * /*fusedOperand*/) { return true; });
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(fusionPatterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(),
++                                       std::move(fusionPatterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -212,8 +212,8 @@ struct TestLinalgElementwiseFusion
+ 
+       linalg::populateFoldReshapeOpsByExpansionPatterns(fusionPatterns,
+                                                         controlReshapeFusionFn);
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(fusionPatterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(),
++                                       std::move(fusionPatterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -222,8 +222,7 @@ struct TestLinalgElementwiseFusion
+       RewritePatternSet patterns(context);
+       linalg::populateFoldReshapeOpsByCollapsingPatterns(
+           patterns, [](OpOperand * /*fusedOperand */) { return true; });
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(patterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(), std::move(patterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -239,8 +238,7 @@ struct TestLinalgElementwiseFusion
+         return true;
+       };
+       linalg::populateFoldReshapeOpsByCollapsingPatterns(patterns, controlFn);
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(patterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(), std::move(patterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -248,8 +246,7 @@ struct TestLinalgElementwiseFusion
+     if (fuseMultiUseProducer) {
+       RewritePatternSet patterns(context);
+       patterns.insert<TestMultiUseProducerFusion>(context);
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(patterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(), std::move(patterns))))
+         return signalPassFailure();
+       return;
+     }
+@@ -265,8 +262,7 @@ struct TestLinalgElementwiseFusion
+           };
+       RewritePatternSet patterns(context);
+       linalg::populateCollapseDimensions(patterns, collapseFn);
+-      if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                              std::move(patterns))))
++      if (failed(applyPatternsGreedily(funcOp.getBody(), std::move(patterns))))
+         return signalPassFailure();
+       return;
+     }
+diff --git a/mlir/test/lib/Dialect/Linalg/TestLinalgFusionTransforms.cpp b/mlir/test/lib/Dialect/Linalg/TestLinalgFusionTransforms.cpp
+index 2d8ee2f9bb6e..81e7eedabd5d 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestLinalgFusionTransforms.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestLinalgFusionTransforms.cpp
+@@ -84,7 +84,7 @@ struct TestLinalgGreedyFusion
+     pm.addPass(createCanonicalizerPass());
+     pm.addPass(createCSEPass());
+     do {
+-      (void)applyPatternsAndFoldGreedily(getOperation(), frozenPatterns);
++      (void)applyPatternsGreedily(getOperation(), frozenPatterns);
+       if (failed(runPipeline(pm, getOperation())))
+         this->signalPassFailure();
+     } while (succeeded(fuseLinalgOpsGreedily(getOperation())));
+diff --git a/mlir/test/lib/Dialect/Linalg/TestLinalgRankReduceContractionOps.cpp b/mlir/test/lib/Dialect/Linalg/TestLinalgRankReduceContractionOps.cpp
+index 8b455d7d68c3..750ba6b5d987 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestLinalgRankReduceContractionOps.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestLinalgRankReduceContractionOps.cpp
+@@ -49,8 +49,7 @@ struct TestLinalgRankReduceContractionOps
+ 
+     RewritePatternSet patterns(context);
+     linalg::populateContractionOpRankReducingPatterns(patterns);
+-    if (failed(applyPatternsAndFoldGreedily(funcOp.getBody(),
+-                                            std::move(patterns))))
++    if (failed(applyPatternsGreedily(funcOp.getBody(), std::move(patterns))))
+       return signalPassFailure();
+     return;
+   }
+diff --git a/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp b/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp
+index 6315e4623a16..d511f5fa7b02 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp
+@@ -147,14 +147,14 @@ static void applyPatterns(func::FuncOp funcOp) {
+   //===--------------------------------------------------------------------===//
+   patterns.add<CopyVectorizationPattern>(ctx);
+ 
+-  (void)applyPatternsAndFoldGreedily(funcOp, std::move(patterns));
++  (void)applyPatternsGreedily(funcOp, std::move(patterns));
+ }
+ 
+ static void applyVectorTransferForwardingPatterns(func::FuncOp funcOp) {
+   RewritePatternSet forwardPattern(funcOp.getContext());
+   forwardPattern.add<LinalgCopyVTRForwardingPattern>(funcOp.getContext());
+   forwardPattern.add<LinalgCopyVTWForwardingPattern>(funcOp.getContext());
+-  (void)applyPatternsAndFoldGreedily(funcOp, std::move(forwardPattern));
++  (void)applyPatternsGreedily(funcOp, std::move(forwardPattern));
+ }
+ 
+ static void applyLinalgToVectorPatterns(func::FuncOp funcOp) {
+diff --git a/mlir/test/lib/Dialect/Linalg/TestPadFusion.cpp b/mlir/test/lib/Dialect/Linalg/TestPadFusion.cpp
+index 073e0d8d4e14..b927767038a9 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestPadFusion.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestPadFusion.cpp
+@@ -36,8 +36,7 @@ struct TestPadFusionPass
+     MLIRContext *context = &getContext();
+     RewritePatternSet patterns(context);
+     linalg::populateFuseTensorPadWithProducerLinalgOpPatterns(patterns);
+-    if (failed(
+-            applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
++    if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+       return signalPassFailure();
+   }
+ };
+diff --git a/mlir/test/lib/Dialect/Math/TestAlgebraicSimplification.cpp b/mlir/test/lib/Dialect/Math/TestAlgebraicSimplification.cpp
+index 084a59221524..42491d4c716c 100644
+--- a/mlir/test/lib/Dialect/Math/TestAlgebraicSimplification.cpp
++++ b/mlir/test/lib/Dialect/Math/TestAlgebraicSimplification.cpp
+@@ -40,7 +40,7 @@ struct TestMathAlgebraicSimplificationPass
+ void TestMathAlgebraicSimplificationPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   populateMathAlgebraicSimplificationPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ namespace mlir {
+diff --git a/mlir/test/lib/Dialect/Math/TestExpandMath.cpp b/mlir/test/lib/Dialect/Math/TestExpandMath.cpp
+index 69af2a08b97b..0139eabba373 100644
+--- a/mlir/test/lib/Dialect/Math/TestExpandMath.cpp
++++ b/mlir/test/lib/Dialect/Math/TestExpandMath.cpp
+@@ -53,7 +53,7 @@ void TestExpandMathPass::runOnOperation() {
+   populateExpandRoundFPattern(patterns);
+   populateExpandRoundEvenPattern(patterns);
+   populateExpandRsqrtPattern(patterns);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ namespace mlir {
+diff --git a/mlir/test/lib/Dialect/Math/TestPolynomialApproximation.cpp b/mlir/test/lib/Dialect/Math/TestPolynomialApproximation.cpp
+index 8a01ac509c30..9fdd200e2b2c 100644
+--- a/mlir/test/lib/Dialect/Math/TestPolynomialApproximation.cpp
++++ b/mlir/test/lib/Dialect/Math/TestPolynomialApproximation.cpp
+@@ -59,7 +59,7 @@ void TestMathPolynomialApproximationPass::runOnOperation() {
+   MathPolynomialApproximationOptions approxOptions;
+   approxOptions.enableAvx2 = enableAvx2;
+   populateMathPolynomialApproximationPatterns(patterns, approxOptions);
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ 
+ namespace mlir {
+diff --git a/mlir/test/lib/Dialect/MemRef/TestComposeSubView.cpp b/mlir/test/lib/Dialect/MemRef/TestComposeSubView.cpp
+index 02a9dbbe263f..08d22ab59f94 100644
+--- a/mlir/test/lib/Dialect/MemRef/TestComposeSubView.cpp
++++ b/mlir/test/lib/Dialect/MemRef/TestComposeSubView.cpp
+@@ -38,7 +38,7 @@ void TestComposeSubViewPass::getDependentDialects(
+ void TestComposeSubViewPass::runOnOperation() {
+   RewritePatternSet patterns(&getContext());
+   memref::populateComposeSubViewPatterns(patterns, &getContext());
+-  (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+ }
+ } // namespace
+ 
+diff --git a/mlir/test/lib/Dialect/Mesh/TestOpLowering.cpp b/mlir/test/lib/Dialect/Mesh/TestOpLowering.cpp
+index 1f836be1ae7a..dbae93b380f2 100644
+--- a/mlir/test/lib/Dialect/Mesh/TestOpLowering.cpp
++++ b/mlir/test/lib/Dialect/Mesh/TestOpLowering.cpp
+@@ -26,9 +26,9 @@ struct TestAllSliceOpLoweringPass
+     SymbolTableCollection symbolTableCollection;
+     mesh::populateAllSliceOpLoweringPatterns(patterns, symbolTableCollection);
+     LogicalResult status =
+-        applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++        applyPatternsGreedily(getOperation(), std::move(patterns));
+     (void)status;
+-    assert(succeeded(status) && "applyPatternsAndFoldGreedily failed.");
++    assert(succeeded(status) && "applyPatternsGreedily failed.");
+   }
+   void getDependentDialects(DialectRegistry &registry) const override {
+     mesh::registerAllSliceOpLoweringDialects(registry);
+@@ -51,9 +51,9 @@ struct TestMultiIndexOpLoweringPass
+     mesh::populateProcessMultiIndexOpLoweringPatterns(patterns,
+                                                       symbolTableCollection);
+     LogicalResult status =
+-        applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++        applyPatternsGreedily(getOperation(), std::move(patterns));
+     (void)status;
+-    assert(succeeded(status) && "applyPatternsAndFoldGreedily failed.");
++    assert(succeeded(status) && "applyPatternsGreedily failed.");
+   }
+   void getDependentDialects(DialectRegistry &registry) const override {
+     mesh::registerProcessMultiIndexOpLoweringDialects(registry);
+diff --git a/mlir/test/lib/Dialect/Mesh/TestReshardingSpmdization.cpp b/mlir/test/lib/Dialect/Mesh/TestReshardingSpmdization.cpp
+index f96410245f28..ac8834150247 100644
+--- a/mlir/test/lib/Dialect/Mesh/TestReshardingSpmdization.cpp
++++ b/mlir/test/lib/Dialect/Mesh/TestReshardingSpmdization.cpp
+@@ -93,8 +93,8 @@ struct TestMeshReshardingPass
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     patterns.insert<TestMeshReshardingRewritePattern>(&getContext());
+-    if (failed(applyPatternsAndFoldGreedily(getOperation().getOperation(),
+-                                            std::move(patterns)))) {
++    if (failed(applyPatternsGreedily(getOperation().getOperation(),
++                                     std::move(patterns)))) {
+       return signalPassFailure();
+     }
+   }
+diff --git a/mlir/test/lib/Dialect/Mesh/TestSimplifications.cpp b/mlir/test/lib/Dialect/Mesh/TestSimplifications.cpp
+index 512b16af64c9..01e196d29f7a 100644
+--- a/mlir/test/lib/Dialect/Mesh/TestSimplifications.cpp
++++ b/mlir/test/lib/Dialect/Mesh/TestSimplifications.cpp
+@@ -34,7 +34,7 @@ void TestMeshSimplificationsPass::runOnOperation() {
+   SymbolTableCollection symbolTableCollection;
+   mesh::populateSimplificationPatterns(patterns, symbolTableCollection);
+   [[maybe_unused]] LogicalResult status =
+-      applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++      applyPatternsGreedily(getOperation(), std::move(patterns));
+   assert(succeeded(status) && "Rewrite patters application did not converge.");
+ }
+ 
+diff --git a/mlir/test/lib/Dialect/NVGPU/TestNVGPUTransforms.cpp b/mlir/test/lib/Dialect/NVGPU/TestNVGPUTransforms.cpp
+index 8ca29257b812..0099dc8caf42 100644
+--- a/mlir/test/lib/Dialect/NVGPU/TestNVGPUTransforms.cpp
++++ b/mlir/test/lib/Dialect/NVGPU/TestNVGPUTransforms.cpp
+@@ -60,7 +60,7 @@ struct TestMmaSyncF32ToTF32Patterns
+     RewritePatternSet patterns(&getContext());
+ 
+     populateMmaSyncF32ToTF32Patterns(patterns, tf32Precision);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/test/lib/Dialect/SCF/TestUpliftWhileToFor.cpp b/mlir/test/lib/Dialect/SCF/TestUpliftWhileToFor.cpp
+index 468bc0ca7848..cf123fe28024 100644
+--- a/mlir/test/lib/Dialect/SCF/TestUpliftWhileToFor.cpp
++++ b/mlir/test/lib/Dialect/SCF/TestUpliftWhileToFor.cpp
+@@ -34,7 +34,7 @@ struct TestSCFUpliftWhileToFor
+     MLIRContext *ctx = op->getContext();
+     RewritePatternSet patterns(ctx);
+     scf::populateUpliftWhileToForPatterns(patterns);
+-    if (failed(applyPatternsAndFoldGreedily(op, std::move(patterns))))
++    if (failed(applyPatternsGreedily(op, std::move(patterns))))
+       signalPassFailure();
+   }
+ };
+diff --git a/mlir/test/lib/Dialect/Tensor/TestTensorTransforms.cpp b/mlir/test/lib/Dialect/Tensor/TestTensorTransforms.cpp
+index ae4f77f5873e..0ed1e194e283 100644
+--- a/mlir/test/lib/Dialect/Tensor/TestTensorTransforms.cpp
++++ b/mlir/test/lib/Dialect/Tensor/TestTensorTransforms.cpp
+@@ -121,26 +121,26 @@ static void applyFoldConstantExtractSlicePatterns(Operation *rootOp) {
+       };
+ 
+   tensor::populateFoldConstantExtractSlicePatterns(patterns, controlFn);
+-  (void)applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
++  (void)applyPatternsGreedily(rootOp, std::move(patterns));
+ }
+ 
+ static void applyFoldConsecutiveInsertExtractSlicePatterns(Operation *rootOp) {
+   RewritePatternSet patterns(rootOp->getContext());
+   tensor::populateMergeConsecutiveInsertExtractSlicePatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
++  (void)applyPatternsGreedily(rootOp, std::move(patterns));
+ }
+ 
+ static void
+ applyDropRedundantInsertSliceRankExpansionPatterns(Operation *rootOp) {
+   RewritePatternSet patterns(rootOp->getContext());
+   tensor::populateDropRedundantInsertSliceRankExpansionPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
++  (void)applyPatternsGreedily(rootOp, std::move(patterns));
+ }
+ 
+ static void applySimplifyPackUnpackPatterns(Operation *rootOp) {
+   RewritePatternSet patterns(rootOp->getContext());
+   tensor::populateSimplifyPackAndUnpackPatterns(patterns);
+-  (void)applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
++  (void)applyPatternsGreedily(rootOp, std::move(patterns));
+ }
+ 
+ namespace {
+@@ -282,7 +282,7 @@ applyRewriteExtractFromCollapseShapePatterns(Operation *rootOp,
+   else
+     patterns.add<RewriteExtractSliceFromCollapseShapeUsingScfFor>(
+         rootOp->getContext());
+-  return applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
++  return applyPatternsGreedily(rootOp, std::move(patterns));
+ }
+ 
+ namespace {
+diff --git a/mlir/test/lib/Dialect/Test/TestPatterns.cpp b/mlir/test/lib/Dialect/Test/TestPatterns.cpp
+index a14a5da34109..a92eddde1ccf 100644
+--- a/mlir/test/lib/Dialect/Test/TestPatterns.cpp
++++ b/mlir/test/lib/Dialect/Test/TestPatterns.cpp
+@@ -311,8 +311,9 @@ struct TestPatternDriver
+     GreedyRewriteConfig config;
+     config.useTopDownTraversal = this->useTopDownTraversal;
+     config.maxIterations = this->maxIterations;
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns),
+-                                       config);
++    config.fold = this->fold;
++    config.cseConstants = this->cseConstants;
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns), config);
+   }
+ 
+   Option<bool> useTopDownTraversal{
+@@ -323,6 +324,11 @@ struct TestPatternDriver
+       *this, "max-iterations",
+       llvm::cl::desc("Max. iterations in the GreedyRewriteConfig"),
+       llvm::cl::init(GreedyRewriteConfig().maxIterations)};
++  Option<bool> fold{*this, "fold", llvm::cl::desc("Whether to fold"),
++                    llvm::cl::init(GreedyRewriteConfig().fold)};
++  Option<bool> cseConstants{*this, "cse-constants",
++                            llvm::cl::desc("Whether to CSE constants"),
++                            llvm::cl::init(GreedyRewriteConfig().cseConstants)};
+ };
+ 
+ struct DumpNotifications : public RewriterBase::Listener {
+@@ -434,8 +440,8 @@ public:
+     // operation will trigger the assertion while processing.
+     bool changed = false;
+     bool allErased = false;
+-    (void)applyOpPatternsAndFold(ArrayRef(ops), std::move(patterns), config,
+-                                 &changed, &allErased);
++    (void)applyOpPatternsGreedily(ArrayRef(ops), std::move(patterns), config,
++                                  &changed, &allErased);
+     Builder b(ctx);
+     getOperation()->setAttr("pattern_driver_changed", b.getBoolAttr(changed));
+     getOperation()->setAttr("pattern_driver_all_erased",
+@@ -1891,7 +1897,7 @@ struct TestSelectiveReplacementPatternDriver
+     MLIRContext *context = &getContext();
+     mlir::RewritePatternSet patterns(context);
+     patterns.add<TestSelectiveOpReplacementPattern>(context);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ } // namespace
+diff --git a/mlir/test/lib/Dialect/Test/TestTraits.cpp b/mlir/test/lib/Dialect/Test/TestTraits.cpp
+index 031e1062dac7..d8763f562cbe 100644
+--- a/mlir/test/lib/Dialect/Test/TestTraits.cpp
++++ b/mlir/test/lib/Dialect/Test/TestTraits.cpp
+@@ -38,8 +38,8 @@ struct TestTraitFolder
+   StringRef getArgument() const final { return "test-trait-folder"; }
+   StringRef getDescription() const final { return "Run trait folding"; }
+   void runOnOperation() override {
+-    (void)applyPatternsAndFoldGreedily(getOperation(),
+-                                       RewritePatternSet(&getContext()));
++    (void)applyPatternsGreedily(getOperation(),
++                                RewritePatternSet(&getContext()));
+   }
+ };
+ } // namespace
+diff --git a/mlir/test/lib/Dialect/Tosa/TosaTestPasses.cpp b/mlir/test/lib/Dialect/Tosa/TosaTestPasses.cpp
+index e5a3e2b6fcca..ac904c3e01c9 100644
+--- a/mlir/test/lib/Dialect/Tosa/TosaTestPasses.cpp
++++ b/mlir/test/lib/Dialect/Tosa/TosaTestPasses.cpp
+@@ -197,7 +197,7 @@ void TosaTestQuantUtilAPI::runOnOperation() {
+ 
+   patterns.add<ConvertTosaNegateOp>(ctx);
+   patterns.add<ConvertTosaConv2DOp>(ctx);
+-  (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
++  (void)applyPatternsGreedily(func, std::move(patterns));
+ }
+ 
+ } // namespace
+diff --git a/mlir/test/lib/Dialect/Vector/TestVectorTransforms.cpp b/mlir/test/lib/Dialect/Vector/TestVectorTransforms.cpp
+index c978699e179f..37f05f6350ee 100644
+--- a/mlir/test/lib/Dialect/Vector/TestVectorTransforms.cpp
++++ b/mlir/test/lib/Dialect/Vector/TestVectorTransforms.cpp
+@@ -73,7 +73,7 @@ struct TestVectorToVectorLowering
+     populateVectorToVectorCanonicalizationPatterns(patterns);
+     populateBubbleVectorBitCastOpPatterns(patterns);
+     populateCastAwayVectorLeadingOneDimPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ 
+ private:
+@@ -138,7 +138,7 @@ struct TestVectorContractionPrepareForMMTLowering
+     MLIRContext *ctx = &getContext();
+     RewritePatternSet patterns(ctx);
+     vector::populateVectorContractCanonicalizeMatmulToMMT(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -224,7 +224,7 @@ struct TestVectorUnrollingPatterns
+                                        }));
+     }
+     populateVectorToVectorCanonicalizationPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ 
+   ListOption<int64_t> unrollOrder{*this, "unroll-order",
+@@ -284,7 +284,7 @@ struct TestVectorTransferUnrollingPatterns
+     }
+     populateVectorUnrollPatterns(patterns, opts);
+     populateVectorToVectorCanonicalizationPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ 
+   Option<bool> reverseUnrollOrder{
+@@ -327,7 +327,7 @@ struct TestScalarVectorTransferLoweringPatterns
+     RewritePatternSet patterns(ctx);
+     vector::populateScalarVectorTransferLoweringPatterns(
+         patterns, /*benefit=*/1, allowMultipleUses.getValue());
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -371,7 +371,7 @@ struct TestVectorTransferCollapseInnerMostContiguousDims
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorTransferCollapseInnerMostContiguousDimsPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -416,7 +416,7 @@ struct TestVectorReduceToContractPatternsPatterns
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorReductionToContractPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -435,7 +435,7 @@ struct TestVectorChainedReductionFoldingPatterns
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateChainedVectorReductionFoldingPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -456,7 +456,7 @@ struct TestVectorBreakDownReductionPatterns
+     RewritePatternSet patterns(&getContext());
+     populateBreakDownVectorReductionPatterns(patterns,
+                                              /*maxNumElementsToExtract=*/2);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -497,7 +497,7 @@ struct TestFlattenVectorTransferPatterns
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateFlattenVectorTransferPatterns(patterns, targetVectorBitwidth);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -513,7 +513,7 @@ struct TestVectorScanLowering
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorScanLoweringPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -662,18 +662,18 @@ struct TestVectorDistribution
+           /*readBenefit=*/0);
+       vector::populateDistributeReduction(patterns, warpReduction, 1);
+       populateDistributeTransferWriteOpPatterns(patterns, distributionFn, 2);
+-      (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++      (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+     } else if (distributeTransferWriteOps) {
+       RewritePatternSet patterns(ctx);
+       populateDistributeTransferWriteOpPatterns(patterns, distributionFn,
+                                                 maxTransferWriteElements);
+-      (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++      (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+     } else if (propagateDistribution) {
+       RewritePatternSet patterns(ctx);
+       vector::populatePropagateWarpVectorDistributionPatterns(
+           patterns, distributionFn, shuffleFn);
+       vector::populateDistributeReduction(patterns, warpReduction);
+-      (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++      (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+     }
+     WarpExecuteOnLane0LoweringOptions options;
+     options.warpAllocationFn = allocateGlobalSharedMemory;
+@@ -684,7 +684,7 @@ struct TestVectorDistribution
+     // Test on one pattern in isolation.
+     if (warpOpToSCF) {
+       populateWarpExecuteOnLane0OpToScfForPattern(patterns, options);
+-      (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++      (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+       return;
+     }
+   }
+@@ -706,7 +706,7 @@ struct TestVectorExtractStridedSliceLowering
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorExtractStridedSliceToExtractInsertChainPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -726,7 +726,7 @@ struct TestVectorBreakDownBitCast
+     populateBreakDownVectorBitCastOpPatterns(patterns, [](BitCastOp op) {
+       return op.getSourceVectorType().getShape().back() > 4;
+     });
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -782,7 +782,7 @@ struct TestVectorGatherLowering
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorGatherLoweringPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -809,7 +809,7 @@ struct TestFoldArithExtensionIntoVectorContractPatterns
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateFoldArithExtensionPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+@@ -834,7 +834,7 @@ struct TestVectorEmulateMaskedLoadStore final
+   void runOnOperation() override {
+     RewritePatternSet patterns(&getContext());
+     populateVectorMaskedLoadStoreEmulationPatterns(patterns);
+-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
++    (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+   }
+ };
+ 
+diff --git a/mlir/test/lib/Rewrite/TestPDLByteCode.cpp b/mlir/test/lib/Rewrite/TestPDLByteCode.cpp
+index 77aa30f847dc..7b96bf5e28d3 100644
+--- a/mlir/test/lib/Rewrite/TestPDLByteCode.cpp
++++ b/mlir/test/lib/Rewrite/TestPDLByteCode.cpp
+@@ -161,8 +161,8 @@ struct TestPDLByteCodePass
+     patternList.add(std::move(pdlPattern));
+ 
+     // Invoke the pattern driver with the provided patterns.
+-    (void)applyPatternsAndFoldGreedily(irModule.getBodyRegion(),
+-                                       std::move(patternList));
++    (void)applyPatternsGreedily(irModule.getBodyRegion(),
++                                std::move(patternList));
+   }
+ };
+ } // namespace
+diff --git a/mlir/test/lib/Tools/PDLL/TestPDLL.cpp b/mlir/test/lib/Tools/PDLL/TestPDLL.cpp
+index db45d0eadf81..f6b2b2b1c683 100644
+--- a/mlir/test/lib/Tools/PDLL/TestPDLL.cpp
++++ b/mlir/test/lib/Tools/PDLL/TestPDLL.cpp
+@@ -39,7 +39,7 @@ struct TestPDLLPass : public PassWrapper<TestPDLLPass, OperationPass<>> {
+ 
+   void runOnOperation() final {
+     // Invoke the pattern driver with the provided patterns.
+-    (void)applyPatternsAndFoldGreedily(getOperation(), patterns);
++    (void)applyPatternsGreedily(getOperation(), patterns);
+   }
+ 
+   FrozenRewritePatternSet patterns;
+diff --git a/mlir/test/lib/Transforms/TestCommutativityUtils.cpp b/mlir/test/lib/Transforms/TestCommutativityUtils.cpp
+index 2ec0334ae0d0..5ea35759bb72 100644
+--- a/mlir/test/lib/Transforms/TestCommutativityUtils.cpp
++++ b/mlir/test/lib/Transforms/TestCommutativityUtils.cpp
+@@ -36,7 +36,7 @@ struct CommutativityUtils
+     RewritePatternSet patterns(context);
+     populateCommutativityUtilsPatterns(patterns);
+ 
+-    (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
++    (void)applyPatternsGreedily(func, std::move(patterns));
+   }
+ };
+ } // namespace
+diff --git a/mlir/test/lib/Transforms/TestMakeIsolatedFromAbove.cpp b/mlir/test/lib/Transforms/TestMakeIsolatedFromAbove.cpp
+index 82fa6cdb68d2..4e0213c0e4cf 100644
+--- a/mlir/test/lib/Transforms/TestMakeIsolatedFromAbove.cpp
++++ b/mlir/test/lib/Transforms/TestMakeIsolatedFromAbove.cpp
+@@ -123,7 +123,7 @@ void TestMakeIsolatedFromAbovePass::runOnOperation() {
+   if (simple) {
+     RewritePatternSet patterns(context);
+     patterns.insert<SimpleMakeIsolatedFromAbove>(context);
+-    if (failed(applyPatternsAndFoldGreedily(funcOp, std::move(patterns)))) {
++    if (failed(applyPatternsGreedily(funcOp, std::move(patterns)))) {
+       return signalPassFailure();
+     }
+     return;
+@@ -132,7 +132,7 @@ void TestMakeIsolatedFromAbovePass::runOnOperation() {
+   if (cloneOpsWithNoOperands) {
+     RewritePatternSet patterns(context);
+     patterns.insert<MakeIsolatedFromAboveAndCloneOpsWithNoOperands>(context);
+-    if (failed(applyPatternsAndFoldGreedily(funcOp, std::move(patterns)))) {
++    if (failed(applyPatternsGreedily(funcOp, std::move(patterns)))) {
+       return signalPassFailure();
+     }
+     return;
+@@ -141,7 +141,7 @@ void TestMakeIsolatedFromAbovePass::runOnOperation() {
+   if (cloneOpsWithOperands) {
+     RewritePatternSet patterns(context);
+     patterns.insert<MakeIsolatedFromAboveAndCloneOpsWithOperands>(context);
+-    if (failed(applyPatternsAndFoldGreedily(funcOp, std::move(patterns)))) {
++    if (failed(applyPatternsGreedily(funcOp, std::move(patterns)))) {
+       return signalPassFailure();
+     }
+     return;

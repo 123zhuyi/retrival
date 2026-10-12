@@ -1,0 +1,411 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv_instr_impl.h
+ * \brief
+ */
+
+#ifndef CONV_INSTR_IMPL_H
+#define CONV_INSTR_IMPL_H
+
+#include "conv_config.h"
+#include "conv_util.h"
+
+namespace ConvFunc {
+using namespace AscendC;
+using namespace conv;
+
+template <class Intf, typename ChannelWiseT>
+class LoadChannelWiseL1Tools {
+public:
+    __aicore__ inline LoadChannelWiseL1Tools() {}
+
+    __aicore__ inline void SetParams(Intf* self) { self_ = self; }
+
+    __aicore__ inline void SetN(uint64_t n) { currentNL0_ = n; }
+
+    __aicore__ inline void LoadChannelWiseL1FullLoad(const LocalTensor<ChannelWiseT>& tensorL1,
+                                                     const GlobalTensor<ChannelWiseT>& tensorGm, uint64_t loadNum,
+                                                     uint64_t gmStartAddr)
+    {
+        uint64_t byteNum = sizeof(ChannelWiseT);
+        InitConstValueParams<ChannelWiseT> initParams;
+        DataCopyParams dataCopyParams;
+        uint16_t initDataNum = AlignB(loadNum, BLOCK_L0_N) * byteNum / C0_SIZE;
+        if constexpr (Intf::groupOptPreloadFlag) {
+            initParams = InitConstValueParams<ChannelWiseT>(
+                1, static_cast<uint16_t>(initDataNum * self_->ctx.singleGroupOpt), 0, 0);
+            dataCopyParams = DataCopyParams(self_->ctx.singleGroupOpt, loadNum * byteNum,
+                                            (self_->ctx.convTilingData->coutOpt - loadNum) * byteNum, 0);
+        } else {
+            initParams = InitConstValueParams<ChannelWiseT>(1, static_cast<uint16_t>(initDataNum), 0, 0);
+            dataCopyParams = DataCopyParams(1, loadNum * byteNum, 0, 0);
+        }
+        InitConstValue<ChannelWiseT>(tensorL1, initParams);
+        PipeBarrier<PIPE_MTE2>();
+        uint8_t rightPadding = (uint8_t)(AlignB(loadNum * byteNum, PADDING_ALIGN_SIZE) / byteNum - loadNum);
+        DataCopyPadParams padParams(true, 0, rightPadding, 0);
+        DataCopyPad<ChannelWiseT>(tensorL1, tensorGm[gmStartAddr], dataCopyParams, padParams);
+    }
+
+    __aicore__ inline void LoadChannelWiseL1(const LocalTensor<ChannelWiseT>& tensorL1,
+                                             const GlobalTensor<ChannelWiseT>& tensorGm)
+    {
+        if constexpr (Intf::isKL1NL0FullLoad) {
+            LoadChannelWiseL1FullLoad(tensorL1, tensorGm, currentNL0_, 0);
+        } else {
+            uint64_t tensorGmOffset = self_->ctx.nBL1Iter * self_->ctx.convTilingData->nBL1 +
+                                      self_->ctx.nL0Iter * self_->ctx.convTilingData->nL0;
+            LoadChannelWiseL1FullLoad(tensorL1, tensorGm, currentNL0_, tensorGmOffset);
+        }
+    }
+
+private:
+    Intf* self_ = nullptr;
+    uint64_t currentNL0_ = 0;
+};
+
+template <class Intf, typename BiasL1T, typename BiasBtT>
+class LoadBiasBtTools {
+public:
+    __aicore__ inline LoadBiasBtTools() {}
+
+    __aicore__ inline void SetParams(Intf* self)
+    {
+        self_ = self;
+
+        if constexpr (Intf::groupOptPreloadFlag) {
+            if (self_->ctx.convTilingData->biasFullLoadFlag) {
+                groupStride = self_->ctx.singleCoreCo;
+            }
+        }
+    }
+
+    __aicore__ inline void SetN(uint64_t n) { currentNL0_ = n; }
+
+    __aicore__ inline void LoadBiasBt(const LocalTensor<BiasBtT>& biasBt, const LocalTensor<BiasL1T>& biasL1)
+    {
+        if ASCEND_IS_AIV {
+            return;
+        }
+        uint32_t offset = 0;
+
+        if (self_->ctx.convTilingData->biasFullLoadFlag) {
+            if constexpr (!Intf::isKL1NL0FullLoad) {
+                offset += self_->ctx.nBL1Iter * self_->ctx.convTilingData->nBL1 +
+                          self_->ctx.nL0Iter * self_->ctx.convTilingData->nL0;
+            }
+            if constexpr (Intf::groupOptPreloadFlag) {
+                offset += self_->ctx.groupOptIter * groupStride;
+            }
+        }
+
+        // fixed-point multiplication should set cvt_mode = 2 and fix_val, which is encapsulated by basic api.
+        DataCopyParams biasBtCopyParams(1, currentNL0_ * Intf::sizeOfBias / BT_BLOCK_SIZE, 0, 0);
+#if defined(__DAV_35_FAMILY__)
+        if constexpr (Intf::isFixedPoint) {
+            biasBtCopyParams.fixShiftVal = FIX_SHIFT_VAL_LEN_A16W16 - self_->ctx.convTilingData->fixedShiftValue;
+        }
+#endif
+        DataCopy(biasBt, biasL1[offset], biasBtCopyParams);
+    }
+
+private:
+    Intf* self_ = nullptr;
+    uint64_t currentNL0_ = 0;
+    uint64_t groupStride = 0;
+};
+
+template <class Intf>
+class LoadBL0Tools {
+public:
+    __aicore__ inline LoadBL0Tools() {}
+
+    __aicore__ inline void SetParams(Intf* self)
+    {
+        self_ = self;
+        nStep_ = self_->ctx.convTilingData->nL0 / BLOCK_L0_N;
+    }
+
+    __aicore__ inline void SetN(uint64_t n)
+    {
+        if constexpr (Intf::isKL1NL0FullLoad) {
+            ratioOfNToN0 = n / BLOCK_L0_N;
+        } else {
+            ratioOfNToN0 = (self_->ctx.nBL1Iter == self_->ctx.maxNBL1Iter &&
+                            self_->ctx.nL0Iter == self_->ctx.maxNL0Iter) ?
+                               n / BLOCK_L0_N :
+                               self_->ctx.convTilingData->nStep;
+        }
+    }
+
+    __aicore__ inline void SetFirst()
+    {
+        if constexpr (Intf::isKL1NL0FullLoad) {
+            param_.SetMStartPosition(static_cast<uint32_t>(0));
+        } else {
+            param_.SetMStartPosition(static_cast<uint32_t>(self_->ctx.nL0Iter * nStep_));
+        }
+        param_.SetMStep(static_cast<uint16_t>(ratioOfNToN0));
+        param_.SetSrcStride(static_cast<int32_t>(self_->ctx.convTilingData->nL1DivBlockSize));
+        param_.SetDstStride(static_cast<uint16_t>(ratioOfNToN0));
+        param_.SetIfTranspose(false);
+    }
+
+    __aicore__ inline void LoadBL0(const uint64_t& KStartPosition, const uint64_t& kStep,
+                                   const LocalTensor<typename Intf::WeightT>& bl0)
+    {
+        param_.SetKStartPosition(static_cast<uint32_t>(KStartPosition));
+        param_.SetKStep(static_cast<uint16_t>(kStep));
+#ifndef ASCENDC_CPU_DEBUG
+        LoadData<TPosition::B2, TPosition::B1, typename Intf::WeightT>(bl0, self_->ctx.bl1, param_);
+#endif
+    }
+
+    __aicore__ inline void FullLoadBL0(const LocalTensor<typename Intf::WeightT>& bl0)
+    {
+        static uint32_t isLoaded = false;
+        if (isLoaded) {
+            return;
+        }
+        isLoaded = true;
+        param_.SetMStartPosition(0);
+        param_.SetKStartPosition(0);
+        uint16_t nL0Tail = self_->ctx.nBL1Tail % self_->ctx.convTilingData->nL0;
+        nL0Tail = nL0Tail == 0 ? self_->ctx.convTilingData->nL0 : nL0Tail;
+        uint16_t mGap = static_cast<uint16_t>(CeilDiv(nL0Tail, BLOCK_L0_N));
+        param_.SetMStep(mGap);
+        param_.SetKStep(static_cast<uint16_t>(CeilDiv(self_->ctx.convTilingData->kBL1, Intf::k0)));
+        param_.SetSrcStride(static_cast<uint16_t>(self_->ctx.convTilingData->nBL1 / BLOCK_L0_N));
+        param_.SetDstStride(mGap);
+        param_.SetIfTranspose(false);
+        LoadData<TPosition::B2, TPosition::B1, typename Intf::WeightT>(bl0, self_->ctx.bl1, param_);
+    }
+
+private:
+    Intf* self_ = nullptr;
+    uint64_t ratioOfNToN0 = 0;
+    uint64_t nStep_ = 0;
+    Load2DBitModeParam param_;
+};
+
+template <class Intf>
+class MMadTools {
+public:
+    __aicore__ inline MMadTools() {}
+
+    __aicore__ inline void SetParams(Intf* self) { self_ = self; }
+
+    __aicore__ inline void Mad(const uint64_t& kIter, const LocalTensor<typename Intf::FmapT>& al0,
+                               const LocalTensor<typename Intf::WeightT>& bl0, const MmadParams& mmadParams)
+    {
+        if constexpr (Intf::ConvParam::innerBatch == static_cast<int8_t>(ConvInnerBatch::MULTI_BATCH)) {
+            uint32_t srcOffset = 0;
+            uint32_t dstOffset = 0;
+            uint32_t srcBatchStride = self_->ctx.currentML0Align * self_->ctx.convTilingData->kL0;
+            uint32_t dstBatchStride = self_->ctx.currentML0Align * self_->ctx.currentNL0Align;
+            for (uint32_t batchIdx = 0; batchIdx < self_->ctx.innerBatch; batchIdx++) {
+                Mmad<typename Intf::L0cT, typename Intf::FmapT, typename Intf::WeightT>(
+                    self_->ctx.cl0[dstOffset], al0[srcOffset], bl0, mmadParams);
+                srcOffset += srcBatchStride;
+                dstOffset += dstBatchStride;
+            }
+        } else {
+            Mmad<typename Intf::L0cT, typename Intf::FmapT, typename Intf::WeightT>(self_->ctx.cl0, al0, bl0,
+                                                                                    mmadParams);
+        }
+    }
+
+private:
+    __aicore__ inline bool IsKL0Tail(const uint64_t& kIter) { return kIter == self_->ctx.maxKL0Iter; }
+
+private:
+    Intf* self_ = nullptr;
+};
+
+template <class Intf, typename OutputT, uint64_t FixpipeIdx = 0>
+__aicore__ inline QuantMode_t GetQuantPreHif8Fp8(Intf* self)
+{
+    // quant conv2d/conv3d: must be vector quant
+    // extend conv2d: may be scalar or vector quant
+    if constexpr (AscendC::IsSameType<OutputT, float>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                return QuantMode_t::VQF322F32_PRE;
+            } else {
+                return QuantMode_t::QF322F32_PRE;
+            }
+        } else {
+            return QuantMode_t::VQF322F32_PRE;
+        }
+    }
+
+    if constexpr (AscendC::IsSameType<OutputT, half>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                return QuantMode_t::VQF322F16_PRE;
+            } else {
+                return QuantMode_t::QF322F16_PRE;
+            }
+        } else {
+            return QuantMode_t::VQF322F16_PRE;
+        }
+    }
+
+    if constexpr (AscendC::IsSameType<OutputT, bfloat16_t>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                return QuantMode_t::VQF322BF16_PRE;
+            } else {
+                return QuantMode_t::QF322BF16_PRE;
+            }
+        } else {
+            return QuantMode_t::VQF322BF16_PRE;
+        }
+    }
+
+    if constexpr (AscendC::IsSameType<OutputT, hifloat8_t>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                return QuantMode_t::VQF322HIF8_PRE;
+            } else {
+                return QuantMode_t::QF322HIF8_PRE;
+            }
+        } else {
+            if (self->ctx.convTilingData->hasScale == 0) {
+                // conv2d support hif8 in hif8 out
+                return QuantMode_t::QF322HIF8_PRE;
+            } else if (self->ctx.convTilingData->roundMode == ROUND_MODE_ROUND) {
+                // quantconv2d/quantconv3d
+                return QuantMode_t::VQF322HIF8_PRE;
+            }
+        }
+    }
+
+    if constexpr (AscendC::IsSameType<OutputT, fp8_e4m3fn_t>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                return QuantMode_t::VQF322FP8_PRE;
+            } else {
+                return QuantMode_t::QF322FP8_PRE;
+            }
+        } else {
+            return QuantMode_t::VQF322FP8_PRE;
+        }
+    }
+
+    return QuantMode_t::F322F16;
+}
+
+template <class Intf, typename OutputT, uint64_t FixpipeIdx = 0>
+__aicore__ inline QuantMode_t GetQuantPreInt32(Intf* self)
+{
+    // l0c (int32) -> ddr(fp16/int8)
+    if constexpr (AscendC::IsSameType<OutputT, half>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if constexpr (FixpipeIdx == 0) {
+                if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                    return QuantMode_t::VDEQF16;
+                } else {
+                    return QuantMode_t::DEQF16;
+                }
+            } else {
+                if (self->ctx.convTilingData->quantMode1 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                    return QuantMode_t::VDEQF16;
+                } else {
+                    return QuantMode_t::DEQF16;
+                }
+            }
+        } else if constexpr (Intf::isFixedPoint) {
+            return QuantMode_t::DEQF16;
+        } else {
+            // current quant_conv2d/quant_conv3d are both vector quant.
+            return QuantMode_t::VDEQF16;
+        }
+    } else if constexpr (AscendC::IsSameType<OutputT, int8_t>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if constexpr (FixpipeIdx == 0) {
+                if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                    return QuantMode_t::VREQ8;
+                } else {
+                    return QuantMode_t::REQ8;
+                }
+            } else {
+                if (self->ctx.convTilingData->quantMode1 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                    return QuantMode_t::VREQ8;
+                } else {
+                    return QuantMode_t::REQ8;
+                }
+            }
+        } else if constexpr (Intf::isFixedPoint) {
+            return QuantMode_t::REQ8;
+        } else {
+            // current quant_conv2d/quant_conv3d are both vector quant.
+            return QuantMode_t::VREQ8;
+        }
+    }
+
+    return QuantMode_t::F322F16;
+}
+
+template <class Intf, typename OutputT, uint64_t FixpipeIdx = 0>
+__aicore__ inline QuantMode_t GetQuantPreFp32(Intf* self)
+{
+    // l0c (fp32) -> ddr(fp32/fp16/bf16/int8)
+    if constexpr (AscendC::IsSameType<OutputT, float>::value) {
+        return QuantMode_t::NoQuant;
+    } else if constexpr (AscendC::IsSameType<OutputT, bfloat16_t>::value) {
+        return QuantMode_t::F322BF16;
+    } else if constexpr (AscendC::IsSameType<OutputT, half>::value) {
+        return QuantMode_t::F322F16;
+    } else if constexpr (AscendC::IsSameType<OutputT, int8_t>::value) {
+        if constexpr (Intf::isExtendConv2d) {
+            if constexpr (FixpipeIdx == 0) {
+                if (self->ctx.convTilingData->quantMode0 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                    return QuantMode_t::VQF322B8_PRE;
+                } else {
+                    return QuantMode_t::QF322B8_PRE;
+                }
+            } else {
+                if (self->ctx.convTilingData->quantMode1 == static_cast<uint8_t>(QuantModeType::VECTOR_QUANT)) {
+                    return QuantMode_t::VQF322B8_PRE;
+                } else {
+                    return QuantMode_t::QF322B8_PRE;
+                }
+            }
+        }
+    }
+
+    return QuantMode_t::F322F16;
+}
+
+template <class Intf, typename OutputT, uint64_t FixpipeIdx = 0>
+__aicore__ inline QuantMode_t GetQuantPre(Intf* self)
+{
+    if constexpr (AscendC::IsSameType<typename Intf::FmapT, hifloat8_t>::value ||
+                  AscendC::IsSameType<typename Intf::FmapT, fp8_e4m3fn_t>::value) {
+        return GetQuantPreHif8Fp8<Intf, OutputT, FixpipeIdx>(self);
+    }
+
+    if constexpr (AscendC::IsSameType<typename Intf::L0cT, int32_t>::value) {
+        return GetQuantPreInt32<Intf, OutputT, FixpipeIdx>(self);
+    }
+
+    if constexpr (AscendC::IsSameType<typename Intf::L0cT, float>::value) {
+        return GetQuantPreFp32<Intf, OutputT, FixpipeIdx>(self);
+    }
+
+    return QuantMode_t::F322F16;
+}
+
+}; // namespace ConvFunc
+
+#endif // CONV_INSTR_IMPL_H

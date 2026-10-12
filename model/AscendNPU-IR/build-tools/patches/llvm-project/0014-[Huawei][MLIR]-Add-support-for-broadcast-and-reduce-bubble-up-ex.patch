@@ -1,0 +1,184 @@
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index 9b9daa26258e..a5df36602d47 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -52,6 +52,145 @@ private:
+   BubbleUpExtractSliceOptions options;
+ #endif
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++public:
++  BubbleUpExtractSliceOpPattern(MLIRContext *ctx,
++                                const BubbleUpExtractSliceOptions &options)
++      : OpRewritePattern<tensor::ExtractSliceOp>(ctx), options(options) {}
++
++  LogicalResult bubbleUpBroadcast(tensor::ExtractSliceOp sliceOp,
++                                  PatternRewriter &rewriter) const {
++    LLVM_DEBUG(llvm::dbgs() << "Debug broadcast " << sliceOp << "\n";);
++    auto broadcastOp =
++        dyn_cast<linalg::BroadcastOp>(sliceOp.getSource().getDefiningOp());
++
++    auto inputType =
++        dyn_cast<RankedTensorType>(broadcastOp.getInput().getType());
++    if (!inputType)
++      return failure();
++    auto outputType =
++        dyn_cast<RankedTensorType>(broadcastOp.getResult()[0].getType());
++    // Get the positions of the input dimensions in the output.
++    auto inputDimPositions = broadcastOp.getDimensions();
++    auto isBroadcastedDimension = BitVector(outputType.getRank(), false);
++    for (auto &dim : inputDimPositions) {
++      isBroadcastedDimension[dim] = true;
++    }
++
++    // Get the offsets and sizes from the slice operation.
++    auto outputOffsets = sliceOp.getMixedOffsets();
++    auto outputSizes = sliceOp.getMixedSizes();
++
++    // Compute the input offsets and sizes.
++    SmallVector<OpFoldResult> inputOffsets, inputSizes;
++    LLVM_DEBUG(llvm::dbgs() << broadcastOp << "\n";);
++    for (int position = 0; position < outputType.getRank(); position++) {
++      if (!isBroadcastedDimension[position]) {
++        inputOffsets.push_back(outputOffsets[position]);
++        inputSizes.push_back(outputSizes[position]);
++      }
++    }
++    SmallVector<OpFoldResult> inputStrides(isBroadcastedDimension.size() -
++                                               isBroadcastedDimension.count(),
++                                           rewriter.getIndexAttr(1));
++
++    // Create the extract_slice of the input.
++    Location loc = broadcastOp.getLoc();
++    rewriter.setInsertionPointAfterValue(broadcastOp.getInput());
++    Value tiledInput = rewriter.create<tensor::ExtractSliceOp>(
++        loc, broadcastOp.getInput(), inputOffsets, inputSizes, inputStrides);
++    LLVM_DEBUG(llvm::dbgs() << tiledInput << "\n";);
++    rewriter.setInsertionPointAfterValue(broadcastOp.getInit());
++
++    Value tiledInit = rewriter.create<tensor::ExtractSliceOp>(
++        loc, broadcastOp.getInit(), sliceOp.getMixedOffsets(),
++        sliceOp.getMixedSizes(), sliceOp.getMixedStrides());
++
++    // Create the new BroadcastOp with the tiled input.
++    SmallVector<Value> newOperands = {tiledInput, tiledInit};
++    rewriter.setInsertionPointAfter(broadcastOp);
++    Operation *newOp =
++        clone(rewriter, broadcastOp, {sliceOp.getType()}, newOperands);
++    rewriter.replaceOp(sliceOp, newOp->getResults());
++    return success();
++  }
++
++  LogicalResult bubbleUpReduce(tensor::ExtractSliceOp sliceOp,
++                               PatternRewriter &rewriter) const {
++    auto reduceOp =
++        dyn_cast<linalg::ReduceOp>(sliceOp.getSource().getDefiningOp());
++    // For reduce, the output has lower rank than the input.
++    // We need to map the output slice back to the input dimensions.
++
++    // Get the reduction dimensions.
++    ArrayRef<int64_t> reductionDims = reduceOp.getDimensions();
++
++    // Build a map of reduction dimensions.
++    auto inputType =
++        dyn_cast<RankedTensorType>(reduceOp.getInputs()[0].getType());
++    if (!inputType)
++      return failure();
++    auto inputRank = inputType.getRank();
++    BitVector isReductionDim(inputRank, false);
++    for (int64_t dim : reductionDims) {
++      isReductionDim[dim] = true;
++    }
++
++    // Get the offsets and sizes from the slice operation.
++    auto outputOffsets = sliceOp.getMixedOffsets();
++    auto outputSizes = sliceOp.getMixedSizes();
++
++    // Compute the input offsets and sizes.
++    // Assert unit stride
++    SmallVector<OpFoldResult> inputStrides(inputRank, rewriter.getIndexAttr(1));
++    SmallVector<Value> newDpsInputs, newDpsInits;
++    for (int i = 0; i < reduceOp.getNumDpsInits(); i++) {
++      unsigned outIdx = 0;
++      SmallVector<OpFoldResult> inputOffsets(inputRank);
++      SmallVector<OpFoldResult> inputSizes(inputRank);
++      auto inputReduce = reduceOp.getDpsInputOperand(i)->get();
++      auto initReduce = reduceOp.getDpsInitOperand(i)->get();
++      auto mixedSizeFinal =
++          tensor::getMixedSizes(rewriter, reduceOp.getLoc(), inputReduce);
++      for (unsigned inIdx = 0; inIdx < inputRank; ++inIdx) {
++        if (isReductionDim[inIdx]) {
++          inputOffsets[inIdx] = rewriter.getIndexAttr(0);
++          if (inputType.isDynamicDim(inIdx)) {
++            inputSizes[inIdx] = mixedSizeFinal[inIdx].get<Value>();
++          } else {
++            inputSizes[inIdx] =
++                rewriter.getIndexAttr(inputType.getDimSize(inIdx));
++          }
++        } else {
++          inputOffsets[inIdx] = outputOffsets[outIdx];
++          inputSizes[inIdx] = outputSizes[outIdx];
++          ++outIdx;
++        }
++      }
++      rewriter.setInsertionPointAfterValue(inputReduce);
++      Value tiledInput = rewriter.create<tensor::ExtractSliceOp>(
++          inputReduce.getLoc(), inputReduce, inputOffsets, inputSizes,
++          inputStrides);
++      rewriter.setInsertionPointAfterValue(initReduce);
++      Value tiledInit = rewriter.create<tensor::ExtractSliceOp>(
++          initReduce.getLoc(), initReduce, outputOffsets, outputSizes,
++          sliceOp.getMixedStrides());
++      newDpsInputs.push_back(tiledInput);
++      newDpsInits.push_back(tiledInit);
++    }
++
++    // Create the new ReduceOp with tiled operands.
++    SmallVector<Value> newOperands;
++    newOperands.append(newDpsInputs.begin(), newDpsInputs.end());
++    newOperands.append(newDpsInits.begin(), newDpsInits.end());
++    Operation *newOp =
++        clone(rewriter, reduceOp, ValueRange(newDpsInits), newOperands);
++
++    rewriter.replaceOp(sliceOp, newOp->getResults());
++    return success();
++  }
++#endif
++
+   LogicalResult matchAndRewrite(tensor::ExtractSliceOp sliceOp,
+                                 PatternRewriter &rewriter) const final {
+     Value source = sliceOp.getSource();
+@@ -94,6 +233,15 @@ private:
+       return rewriter.notifyMatchFailure(sliceOp, "expected no rank reduction");
+     }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    if (isa<linalg::BroadcastOp>(linalgOp)) {
++      return bubbleUpBroadcast(sliceOp, rewriter);
++    }
++    if (isa<linalg::ReduceOp>(linalgOp)) {
++      return bubbleUpReduce(sliceOp, rewriter);
++    }
++#endif
++
+     OpOperand *outOperand = linalgOp.getDpsInitOperand(0);
+     AffineMap indexingMap = linalgOp.getMatchingIndexingMap(outOperand);
+     if (!indexingMap.isProjectedPermutation()) {
+@@ -145,8 +293,16 @@ private:
+ };
+ } // namespace
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++void mlir::linalg::populateBubbleUpExtractSliceOpPatterns(
++    RewritePatternSet &patterns, const BubbleUpExtractSliceOptions &options) {
++  auto *context = patterns.getContext();
++  patterns.add<BubbleUpExtractSliceOpPattern>(context, options);
++}
++#else
+ void mlir::linalg::populateBubbleUpExtractSliceOpPatterns(
+     RewritePatternSet &patterns) {
+   auto *context = patterns.getContext();
+   patterns.add<BubbleUpExtractSliceOpPattern>(context);
+ }
++#endif
+\ No newline at end of file

@@ -1,0 +1,48 @@
+diff --git a/lib/Dialect/Torch/Transforms/AdjustCallingConventions.cpp b/lib/Dialect/Torch/Transforms/AdjustCallingConventions.cpp
+index 1c30df45..55626474 100644
+--- a/lib/Dialect/Torch/Transforms/AdjustCallingConventions.cpp
++++ b/lib/Dialect/Torch/Transforms/AdjustCallingConventions.cpp
+@@ -159,6 +159,7 @@ private:
+ } // namespace
+ 
+ namespace {
++#if not BSPUB_DAVINCI_BISHENGIR
+ class AdjustCallingConventionForReturn
+     : public OpConversionPattern<func::ReturnOp> {
+ public:
+@@ -213,6 +214,7 @@ public:
+     return success();
+   }
+ };
++#endif
+ } // namespace
+ 
+ static LogicalResult adjustCallingConventions(func::FuncOp func,
+@@ -236,7 +238,9 @@ static LogicalResult adjustCallingConventions(func::FuncOp func,
+   patterns.add<AdjustCallingConventionForFunc>(typeConverter, context);
+   patterns.add<AdjustCallingConventionForCall>(typeConverter, context,
+                                                typeBoundMap);
++#if not BSPUB_DAVINCI_BISHENGIR
+   patterns.add<AdjustCallingConventionForReturn>(typeConverter, context);
++#endif
+ 
+   ConversionTarget target(*context);
+   target.addDynamicallyLegalOp<func::FuncOp>([](func::FuncOp func) {
+diff --git a/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp b/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp
+index 3ae90132..1d0f9c0b 100644
+--- a/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp
++++ b/lib/Dialect/Torch/Transforms/InlineGlobalSlots.cpp
+@@ -252,9 +252,13 @@ bool InlineGlobalSlotsAnalysis::isValueSafeTransferFunction(Value value) {
+ 
+ SmallVector<Operation *> getBackwardSliceIncludingRoot(Value initialValue) {
+   SetVector<Operation *> sliceSet;
++#if BSPUB_DAVINCI_BISHENGIR
++  getBackwardSlice(initialValue, &sliceSet);
++#else
+   [[maybe_unused]] LogicalResult result =
+       getBackwardSlice(initialValue, &sliceSet);
+   assert(result.succeeded() && "expected a backward slice");
++#endif
+   SmallVector<Operation *> slice;
+   llvm::append_range(slice, sliceSet);
+   slice.push_back(initialValue.getDefiningOp());

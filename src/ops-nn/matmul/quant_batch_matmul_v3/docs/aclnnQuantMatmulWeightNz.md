@@ -1,0 +1,1856 @@
+# aclnnQuantMatmulWeightNz
+
+## 产品支持情况
+
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：支持
+<!-- end id1 -->
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：支持
+<!-- end id5 -->
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
+
+## 功能说明
+
+- 接口功能：完成量化的矩阵乘计算。相似接口有aclnnMm（仅支持2维Tensor作为输入的矩阵乘）和aclnnBatchMatMul（仅支持三维的矩阵乘，其中第一维是Batch维度）。支持T-C、T-T、K-C、K-T、G-B、B-B、MX [量化模式](../../../docs/zh/context/quant_mode_introduction.md)。
+
+- 计算公式：
+
+    <!-- npu="950,A3,910b,310p" id7 -->
+    <details>
+    <summary><term>Atlas 推理系列产品</term>、<term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>、<term>Ascend 950PR/Ascend 950DT</term></summary>
+
+    - 无x1Scale、无bias：
+
+    $$
+    out = x1@x2 * x2Scale + x2Offset
+    $$
+
+    - bias INT32：
+
+    $$
+    out = (x1@x2 + bias) * x2Scale + x2Offset
+    $$
+
+    - 有x1Scale无bias
+
+    $$
+    out = x1@x2 * x2Scale * x1Scale
+    $$
+
+    - 有x1Scale，bias INT32
+
+    $$
+    out = (x1@x2 + bias) * x2Scale * x1Scale
+    $$
+
+    </details>
+    <!-- end id7 -->
+
+    <!-- npu="950,A3,910b" id8 -->
+    <details>
+    <summary><term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>、<term>Ascend 950PR/Ascend 950DT</term></summary>
+
+    - bias BFLOAT16/FLOAT32（此场景无x2Offset）：
+
+    $$
+    out = x1@x2 * x2Scale + bias
+    $$
+
+    - x1Scale、无bias：
+
+    $$
+    out = x1@x2 * x2Scale * x1Scale
+    $$
+
+    - x1Scale、bias INT32（此场景无x2Offset）：
+
+    $$
+    out = (x1@x2 + bias) * x2Scale * x1Scale
+    $$
+
+    - x1Scale、bias BFLOAT16/FLOAT16/FLOAT32（此场景无x2Offset）：
+
+    $$
+    out = x1@x2 * x2Scale * x1Scale + bias
+    $$
+
+    - x1为INT8，x2为INT32，x1Scale为FLOAT32，x2Scale为UINT64，yOffset为FLOAT32：
+
+    $$
+    out = ((x1 @ (x2*x2Scale)) + yOffset) * x1Scale
+    $$
+
+    </details>
+    <!-- end id8 -->
+
+    <!-- npu="950" id9 -->
+    <details>
+    <summary><term>Ascend 950PR/Ascend 950DT</term></summary>
+
+    - G-B && B-B && MX量化模式：
+
+        $$
+        out[m,n] = \sum_{j=0}^{kLoops-1} ((\sum_{k=0}^{gsK-1} (x1Slice * x2Slice))* (x1Scale[m/gsM, j] * x2Scale[j, n/gsN]))+bias[n]
+        $$
+
+        其中，gsM，gsN和gsK分别代表groupSizeM，groupSizeN和groupSizeK；x1Slice代表x1第m行长度为groupSizeK的向量，x2Slice代表x2第n列长度为groupSizeK的向量；K轴均从j*groupSizeK起始切片，j的取值范围为[0, kLoops)，kLoops = ceil(K / groupSizeK)，K为K轴长度，支持最后的切片长度不足groupSizeK。
+    </details>
+    <!-- end id9 -->
+
+## 函数原型
+
+每个算子分为[两段式接口](../../../docs/zh/context/two_phase_api.md)，必须先调用“aclnnQuantMatmulWeightNzGetWorkspaceSize”接口获取计算所需workspace大小以及包含了算子计算流程的执行器，再调用“aclnnQuantMatmulWeightNz”接口执行计算。
+
+```cpp
+aclnnStatus aclnnQuantMatmulWeightNzGetWorkspaceSize(
+    const aclTensor *x1,
+    const aclTensor *x2,
+    const aclTensor *x1Scale,
+    const aclTensor *x2Scale,
+    const aclTensor *yScale,
+    const aclTensor *x1Offset,
+    const aclTensor *x2Offset,
+    const aclTensor *yOffset,
+    const aclTensor *bias,
+    bool             transposeX1,
+    bool             transposeX2,
+    int64_t          groupSize,
+    aclTensor       *out,
+    uint64_t        *workspaceSize,
+    aclOpExecutor   **executor)
+```
+
+```cpp
+aclnnStatus aclnnQuantMatmulWeightNz(
+    void          *workspace,
+    uint64_t       workspaceSize,
+    aclOpExecutor *executor,
+    aclrtStream    stream)
+```
+
+## aclnnQuantMatmulWeightNzGetWorkspaceSize
+
+- **参数说明：**
+  <table style="table-layout: fixed; width: 1552px"><colgroup>
+  <col style="width: 198px">
+  <col style="width: 121px">
+  <col style="width: 220px">
+  <col style="width: 450px">
+  <col style="width: 165px">
+  <col style="width: 115px">
+  <col style="width: 138px">
+  <col style="width: 145px">
+  </colgroup>
+    <thead>
+      <tr>
+        <th>参数名</th>
+        <th>输入/输出</th>
+        <th>描述</th>
+        <th>使用说明</th>
+        <th>数据类型</th>
+        <th>数据格式</th>
+        <th>维度(shape)</th>
+        <th>非连续Tensor</th>
+      </tr></thead>
+    <tbody>
+    <tr>
+        <td>x1</td>
+        <td>输入</td>
+        <td>公式中的输入x1。</td>
+        <td>
+          <ul>
+              <li>支持最后两根轴转置情况下的非连续tensor，其他场景的<a href="../../../docs/zh/context/non_contiguous_tensor.md"> 非连续的Tensor</a>不支持。</li>
+              <li>在transposeX1为false情况下各个维度表示：(batch, m, k)，batch可不存在。</li>
+              <li>在transposeX1为true情况下各个维度表示：(batch, k, m)，batch可不存在。</li>
+          </ul>
+        </td>
+        <td>INT4<sup>1、3</sup>、INT8、HIFLOAT8<sup>1、2</sup>、FLOAT8_E4M3FN<sup>1、2</sup>、FLOAT4_E2M1<sup>1、2</sup></td>
+        <td>ND</td>
+        <td>2-6</td>
+        <td>✓</td>
+    </tr>
+    <tr>
+        <td>x2</td>
+        <td>输入</td>
+        <td>公式中的输入x2。</td>
+        <td>
+          <ul>
+              <li>在transposeX2为true情况下各个维度表示：(batch, k1, n1, n0, k0)，batch可不存在，k0 = 32， n0 = 16。</li>
+              <li>在transposeX2为false情况下各个维度表示：(batch, n1, k1, k0, n0)，batch可不存在，k0 = 16， n0 = 32。</li>
+              <li>x1 shape中的k和x2 shape中的k1需要满足ceil(k / k0) = k1，<br>x2 shape中的n1与out的n需要满足ceil(n / n0) = n1。</li>
+          </ul>
+        </td>
+        <td>INT4<sup>1、3</sup>、INT8、INT32<sup>1、3</sup>、HIFLOAT8<sup>1、2</sup>、FLOAT4_E2M1<sup>1、2</sup>、FLOAT32<sup>1、2</sup>、FLOAT8_E4M3FN<sup>1、2</sup></td>
+        <td>NZ</td>
+        <td>4-8</td>
+        <td>✓</td>
+    </tr>
+    <tr>
+        <td>x1Scale</td>
+        <td>输入</td>
+        <td>可选的量化参数，公式中的输入x1Scale。</td>
+        <td>
+          <ul>
+              <li>x1Scale是FLOAT8_E8M0时，各个维度表示：transposeX1为false时为(batch, m, ceil(k / 64), 2)，transposeX1为true时为(batch, ceil(k / 64), m, 2)，batch与x1的batch维度保持一致。</li>
+              <li>x1Scale是FLOAT32时，shape是1维(t, )，t = m，其中m与x1的m一致。</li>
+          </ul>
+        </td>
+        <td>FLOAT32<sup>1</sup>、FLOAT8_E8M0<sup>1、2</sup></td>
+        <td>ND</td>
+        <td>1、3~7</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>x2Scale</td>
+        <td>输入</td>
+        <td>表示量化参数，公式中的输入x2Scale。</td>
+        <td>
+          <ul>
+              <li>x2Scale是FLOAT8_E8M0时，各个维度表示：transposeX2为false时为(batch, ceil(k / 64), n, 2)，transposeX2为true时为(batch, n, ceil(k / 64), 2)，batch与x2的batch维度保持一致。</li>
+              <li>x2Scale是其他dtype时，shape是1维(t, )，t = 1或n，其中n与x2的n一致。</li>
+              <li>当x1、x2的数据类型为HIFLOAT8且x2为NZ格式时，静态量化场景下x2Scale支持UINT64、INT64；动态量化场景下x1Scale和x2Scale均支持FLOAT32。</li>
+              <li>当原始输入类型不满足<a href="#约束说明">约束说明</a>中组合时，需提前调用TransQuantParamV2算子的aclnn接口来将scale转成INT64、UINT64数据类型。</li>
+          </ul>
+        </td>
+        <td>UINT64、INT64、FLOAT32<sup>1</sup>、BFLOAT16<sup>1</sup>、FLOAT8_E8M0<sup>1、2</sup>、FLOAT16<sup>1、2</sup></td>
+        <td>ND</td>
+        <td>1、3~7</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>yScale</td>
+        <td>输入</td>
+        <td>输出y的反量化scale参数。</td>
+        <td>
+            shape是2维(1, n)，其中n与x2的n一致。
+        </td>
+        <td>UINT64<sup>1、2</sup>、INT64<sup>1、2</sup></td>
+        <td>ND</td>
+        <td>2</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>x1Offset</td>
+        <td>输入</td>
+        <td>预留参数。</td>
+        <td>
+            当前版本不支持，需要传入nullptr或空tensor。
+        </td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>x2Offset</td>
+        <td>输入</td>
+        <td>可选量化参数，公式中的输入x2Offset。</td>
+        <td>
+            shape是1维(t, )，t = 1或n，其中n与x2的n一致。
+        </td>
+        <td>FLOAT32</td>
+        <td>ND</td>
+        <td>1</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>yOffset</td>
+        <td>输入</td>
+        <td>公式中的输入yOffset。</td>
+        <td>-</td>
+        <td>FLOAT32</td>
+        <td>ND</td>
+        <td>1</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>bias</td>
+        <td>输入</td>
+        <td>可选参数，公式中的输入bias。</td>
+        <td>
+          <ul>
+              <li>shape支持1维(n, )或3维(batch, 1, n)，n与x2的n一致。</li>
+              <li>当out的shape为2、4、5、6维时，bias的shape只支持1维(n, )。</li>
+          </ul>
+        </td>
+        <td>INT32、BFLOAT16<sup>1</sup>、FLOAT16<sup>1</sup>、FLOAT32<sup>1</sup></td>
+        <td>ND</td>
+        <td>1、3</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>transposeX1</td>
+        <td>输入</td>
+        <td>表示x1的输入shape是否包含transpose。</td>
+        <td>-</td>
+        <td>BOOL</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>transposeX2</td>
+        <td>输入</td>
+        <td>表示x2的输入shape是否包含transpose。</td>
+        <td>-</td>
+        <td>BOOL</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>groupSize</td>
+        <td>输入</td>
+        <td>用于输入m、n、k方向上的量化分组大小。</td>
+        <td>
+            由3个方向的groupSizeM，groupSizeN，groupSizeK三个值拼接组成，每个值占16位，共占用int64_t类型groupSize的低48位（高16位的数值无效），计算公式见表格下方公式一。不支持groupSize的场景，传入0。
+        </td>
+        <td>INT64</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+    <tr>
+        <td>out</td>
+        <td>输出</td>
+        <td>公式中的输出out。</td>
+        <td>
+          <ul>
+              <li>shape支持2~6维，(batch, m, n)，batch可不存在。</li>
+              <li>支持x1与x2的batch维度broadcast，输出batch与broadcast之后的batch一致，m与x1的m一致，n与x2的n1以及n0满足ceil(n / n0) = n1的关系。</li>
+          </ul>
+        </td>
+        <td>FLOAT16、INT8、BFLOAT16<sup>1</sup>、INT32<sup>1</sup>、FLOAT32<sup>1、2</sup></td>
+        <td>ND</td>
+        <td>2-6</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>workspaceSize</td>
+        <td>输出</td>
+        <td>返回需要在Device侧申请的workspace大小。</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>executor</td>
+        <td>输出</td>
+        <td>返回op执行器，包含了算子计算流程。</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+    </tbody></table>
+
+  - 公式一：
+
+    $$
+    groupSize = groupSizeK | groupSizeN << 16 | groupSizeM << 32
+    $$
+    <!-- npu="310p" id16 -->
+    <details>
+
+    <summary><term>Atlas 推理系列产品</term></summary>
+
+    - 上表数据类型列中的角标“1”代表该系列不支持的数据类型。
+    - x2不支持[非连续的Tensor](../../../docs/zh/context/non_contiguous_tensor.md)。
+    - 不支持yScale。
+    - 不支持groupSize，groupSize传0。
+    </details>
+    <!-- end id16 -->
+    <!-- npu="A3,910b" id17 -->
+    <details>
+
+    <summary><term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term></summary>
+
+    - 上表数据类型列中的角标“2”代表该系列不支持的数据类型。
+    - x2不支持[非连续的Tensor](../../../docs/zh/context/non_contiguous_tensor.md)。
+    - 不支持yScale。
+    - 不支持groupSize，groupSize传0。
+    </details>
+    <!-- end id17 -->
+    <!-- npu="950" id18 -->
+    <details>
+
+    <summary><term>Ascend 950PR/Ascend 950DT</term></summary>
+
+    - 上表数据类型列中的角标“3”代表该系列不支持的数据类型。
+    - x2支持最后两根轴转置情况下的[非连续的Tensor](../../../docs/zh/context/non_contiguous_tensor.md)，其他场景的[非连续的Tensor](../../../docs/zh/context/non_contiguous_tensor.md)不支持。
+    - 支持groupSize传非0。
+    </details>
+    <!-- end id18 -->
+
+- **返回值：**
+
+  aclnnStatus：返回状态码，具体参见[aclnn返回码](../../../docs/zh/context/aclnn_return_code.md)。
+
+    第一段接口完成入参校验，出现以下场景时报错：
+
+    <table style="table-layout: fixed; width: 1149px"><colgroup>
+    <col style="width: 291px">
+    <col style="width: 135px">
+    <col style="width: 723px">
+    </colgroup>
+    <thead>
+    <tr>
+    <th>返回值</th>
+    <th>错误码</th>
+    <th>描述</th>
+    </tr></thead>
+    <tbody>
+    <tr>
+      <td>ACLNN_ERR_PARAM_NULLPTR</td>
+      <td>161001</td>
+      <td>传入的x1、x2、x2Scale或out是空指针。</td>
+    </tr>
+    <tr>
+      <td rowspan="5">ACLNN_ERR_PARAM_INVALID</td>
+      <td rowspan="5">161002</td>
+      <td>x1、x2、bias、x1Scale、x2Scale、x2Offset或out的数据类型和数据格式不在支持的范围之内。</td>
+    </tr>
+    <tr>
+      <td>x1、x2、bias、x1Scale、x2Scale、x2Offset或out的shape不满足校验条件。</td>
+    </tr>
+    <tr>
+      <td>x1、x2、bias、x1Scale、x2Scale、x2Offset或out是空tensor。</td>
+    </tr>
+    <tr>
+        <td>输入的yScale、x1Offset和yOffset不是nullptr并且不是空tensor。</td>
+    </tr>
+    <tr>
+        <td>传入的groupSize不满足校验条件。</td>
+    </tr>
+    </tbody>
+    </table>
+
+## aclnnQuantMatmulWeightNz
+
+- **参数说明：**
+
+    <table style="table-layout: fixed; width: 1151px"><colgroup>
+    <col style="width: 184px">
+    <col style="width: 134px">
+    <col style="width: 833px">
+    </colgroup>
+    <thead>
+      <tr>
+      <th>参数名</th>
+      <th>输入/输出</th>
+      <th>描述</th>
+      </tr></thead>
+    <tbody>
+    <tr>
+      <td>workspace</td>
+      <td>输入</td>
+      <td>在Device侧申请的workspace内存地址。</td>
+    </tr>
+    <tr>
+      <td>workspaceSize</td>
+      <td>输入</td>
+      <td>在Device侧申请的workspace大小，由第一段接口aclnnQuantMatmulWeightNzGetWorkspaceSize获取。</td>
+    </tr>
+    <tr>
+      <td>executor</td>
+      <td>输入</td>
+      <td>op执行器，包含了算子计算流程。</td>
+    </tr>
+    <tr>
+      <td>stream</td>
+      <td>输入</td>
+      <td>指定执行任务的Stream。</td>
+    </tr>
+  </tbody></table>
+
+- **返回值：**
+
+  aclnnStatus：返回状态码，具体参见[aclnn返回码](../../../docs/zh/context/aclnn_return_code.md)。
+
+## 约束说明
+
+- 确定性说明：
+  - aclnnQuantMatmulWeightNz默认确定性实现。
+
+<!-- npu="A3,910b" id10 -->
+<details>
+<summary><term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term></summary>
+
+  - x1的最后一维大小不能超过65535，但当x1和x2的dtype为INT8，x2Scale的dtype为FLOAT32或BFLOAT16且x2Scale和x1Scale维度都为1时，支持大于65535。x1的最后一维指transposeX1为true时的m或transposeX1为false时的k。
+  - x2的最后一维大小不能超过65535，但当x1和x2的dtype为INT8，x2Scale的dtype为FLOAT32或BFLOAT16且x2Scale和x1Scale维度都为1时，支持大于65535。x2的最后一维指transposeX2为true时的k或transposeX2为false时的n。
+  - 支持调用本接口前，通过[aclnnTransMatmulWeight](https://gitcode.com/cann/ops-math/blob/master/conversion/trans_data/docs/aclnnTransMatmulWeight.md)对format为ND的x2处理得到AI处理器亲和数据排布格式。
+
+  - 当原始ND的后两维中存在某一维度为1时，无法使用weightNz特性，本接口不支持此种场景。
+
+  - 输入和输出支持以下数据类型组合：
+
+    | x1   | x2    | x1Scale      | x2Scale          | x2Offset      | yOffset | bias                        | out               |
+    | ---- | ----- | ------------ | ---------------- | ------------- | ------- | --------------------------- | ----------------- |
+    | INT8 | INT8  | null         | UINT64/INT64     | null          | null    | null/INT32                  | FLOAT16           |
+    | INT8 | INT8  | null         | UINT64/INT64     | null/FLOAT32  | null    | null/INT32                  | INT8              |
+    | INT8 | INT8  | null/FLOAT32 | FLOAT32/BFLOAT16 | null          | null    | null/INT32/BFLOAT16/FLOAT32 | BFLOAT16          |
+    | INT8 | INT8  | FLOAT32      | FLOAT32          | null          | null    | null/INT32/FLOAT16/FLOAT32  | FLOAT16           |
+    | INT8 | INT8  | null         | FLOAT32/BFLOAT16 | null          | null    | null/INT32                  | INT32             |
+    | INT4 | INT4  | null/FLOAT32 | BFLOAT16         | null/FLOAT32  | null    | null/BFLOAT16               | BFLOAT16          |
+    | INT4 | INT4  | null/FLOAT32 | FLOAT32          | null/FLOAT32  | null    | null/BFLOAT16               | BFLOAT16          |
+    | INT4 | INT4  | null/FLOAT32 | UINT64           | null/FLOAT32  | null    | null/INT32                  | FLOAT16           |
+    | INT4 | INT4  | null/FLOAT32 | FLOAT32          | null/FLOAT32  | null    | null/INT32                  | FLOAT16           |
+    | INT8 | INT32 | FLOAT32      | UINT64           | null          | FLOAT32 | null                        | FLOAT16/BFLOAT16  |
+
+  - x1的约束：当数据类型为INT8时，且x2的数据类型为INT32时，transposeX1为false。维度为：（m，k），要求k为偶数，并小于29576。
+  - yOffset的约束：shape支持1维（n）。为计算过程中离线计算的辅助结果，值要求为8\*x2\*x2Scale，并在第1维累加。
+
+</details>
+<!-- end id10 -->
+
+<!-- npu="310p" id11 -->
+<details>
+<summary><term>Atlas 推理系列产品</term></summary>
+
+  - x1的最后一维大小不能超过65535，x1的最后一维指transposeX1为true时的m或transposeX1为false时的k。
+  - x2的最后一维大小不能超过65535，x2的最后一维指transposeX2为true时的k或transposeX2为false时的n。
+  - 支持调用本接口前，通过[aclnnTransMatmulWeight](https://gitcode.com/cann/ops-math/blob/master/conversion/trans_data/docs/aclnnTransMatmulWeight.md)对format为ND的x2处理得到AI处理器亲和数据排布格式。
+
+  - 当原始ND的后两维中存在某一维度为1时，无法使用weightNz特性，本接口不支持此种场景。
+
+  - 输入和输出支持以下数据类型组合：
+
+    | x1   | x2   | x1Scale | x2Scale      | x2Offset      | bias       | out     |
+    | ---- | ---- | ------- | ------------ | ------------- | ---------- | ------- |
+    | INT8 | INT8 | null    | UINT64/INT64 | null          | null/INT32 | FLOAT16 |
+    | INT8 | INT8 | null    | UINT64/INT64 | null/FLOAT32  | null/INT32 | INT8    |
+    | INT8 | INT8 | FLOAT   | FLOAT        | null          | null/INT32 | FLOAT16 |
+
+  - 当x1Scale不为null时，只支持K-C量化。
+
+</details>
+<!-- end id11 -->
+
+<!-- npu="950" id12 -->
+<details>
+<summary><term>Ascend 950PR/Ascend 950DT</term></summary>
+
+  - 支持调用本接口前，通过[aclnnTransMatmulWeight](https://gitcode.com/cann/ops-math/blob/master/conversion/trans_data/docs/aclnnTransMatmulWeight.md)或[aclnnNpuFormatCast](https://gitcode.com/cann/ops-math/blob/master/conversion/npu_format_cast/docs/aclnnNpuFormatCast.md)对format为ND的x2处理得到NZ格式，在使用时必须使用0来填充以防引入脏数据。
+
+  - 当原始ND的后两维中存在某一维度为1时，无法使用weightNz特性，本接口不支持此种场景。
+
+  - **T-C量化 && T-T量化场景约束：**
+  <a id="T-C量化 && T-T量化"></a>
+    - 输入和输出支持以下数据类型组合：
+  <a id="输入和输出支持以下数据类型组合TC/TT"></a>
+
+      | x1              | x2          | x1Scale     |   x2Scale         | x2Offset     | yScale | bias                       |   out                   |
+      | --------------- | ----------- | ----------- |   --------------- | ------------ | -------| -------------------------- |   ----------------------|
+      | INT8            | INT8        | null        | UINT64/ INT64     | null         | null   | null/INT32                 |   FLOAT16/ BFLOAT16     |
+      | INT8            | INT8        | null        | UINT64/ INT64     | null/FLOAT32 | null   | null/INT32                 |   INT8                  |
+      | INT8            | INT8        | null        | FLOAT32/BFLOAT16  | null         | null   | null/INT32/FLOAT32/BFLOAT16|   BFLOAT16              |
+      | INT8            | INT8        | null        | FLOAT32/BFLOAT16  | null         | null   | null/INT32                 |   INT32                 |
+      | HIFLOAT8        | HIFLOAT8    | null        | UINT64/INT64      | null         | null   | null/FLOAT32               |   FLOAT16/BFLOAT16/FLOAT32 |
+      | FLOAT8_E4M3FN   | FLOAT8_E4M3FN | null        | UINT64/INT64      | null         | null   | null/FLOAT32               |   FLOAT16/BFLOAT16/FLOAT32 |
+
+    - T-T量化场景下，x1Scale传入null，x2Scale的shape为(1,)。
+    - T-C量化场景下，x1Scale传入null，x2Scale的shape为(n,)，其中n与x2的n一致。
+    - 不支持动态T-C或动态T-T量化。
+
+  - **K-C量化 && K-T量化场景约束：**
+  <a id="K-C量化 && K-T量化"></a>
+    - 输入和输出支持以下数据类型组合：
+  <a id="输入和输出支持以下数据类型组合KC/KT"></a>
+
+      | x1                   | x2                   | x1Scale | x2Scale         | x2Offset | yScale |   bias                      | out                       |
+      | -------------------- | -------------------- | ------- | --------------- | -------- | -------|   ------------------------- | ------------------------- |
+      | INT8                 | INT8                 | FLOAT32 | FLOAT32/BFLOAT16| null     | null   | null/INT32/FLOAT32/BFLOAT16 | BFLOAT16                  |
+      | INT8                 | INT8                 | FLOAT32 | FLOAT32         | null     | null   | null/INT32/FLOAT32/FLOAT16  | FLOAT16                   |
+      | FLOAT8_E4M3FN        | FLOAT8_E4M3FN        | FLOAT32 | FLOAT32         | null     | null   | null/FLOAT32                | FLOAT16/BFLOAT16/FLOAT32  |
+      | HIFLOAT8             | HIFLOAT8             | FLOAT32 | FLOAT32         | null     | null   | null/FLOAT32                | FLOAT16/BFLOAT16/FLOAT32  |
+
+    - K-C量化场景下，x1Scale的shape为(m,)，x2Scale的shape为(n,)，其中m与x1的m一致，n与x2的n一致;
+    - K-T量化场景下，x1Scale的shape为(m,)，x2Scale的shape为(1,)，其中m与x1的m一致。
+    - 当x1与x2数据类型为FLOAT8_E4M3FN和HIFLOAT8时，仅支持transA为false。
+
+
+  - **G-B量化 && B-B量化场景约束：**
+  <a id="G-B量化 && B-B量化"></a>
+    - 输入和输出支持以下数据类型组合：
+  <a id="输入和输出支持以下数据类型组合GB/BB"></a>
+
+      | x1                   | x2                   | x1Scale | x2Scale         | x2Offset | yScale |   bias                      | out                       |
+      | -------------------- | -------------------- | ------- | --------------- | -------- | -------|   ------------------------- | ------------------------- |
+      | FLOAT8_E4M3FN        | FLOAT8_E4M3FN        | FLOAT32 | FLOAT32         | null     | null   | null | FLOAT16/BFLOAT16/  FLOAT32               |
+      | HIFLOAT8             | HIFLOAT8             | FLOAT32 | FLOAT32         | null     | null   | null | FLOAT16/BFLOAT16/  FLOAT32               |
+
+    - x1、x2、x1Scale、x2Scale和groupSize的取值关系：
+
+      |量化类型|x1 shape|x2 shape|x1Scale shape|x2Scale shape|yScale shape|[gsM，gsN，gsK]|groupSize|
+      |-------|--------|--------|-------------|-------------|------------|---|---|
+      |B-B量化|<li>非转置：(batch, m, k)</li>|<li>非转置：(batch, k, n)</li><li>转置：(batch, n, k)</li>|<li>非转置：(batch, ceil(m / 128), ceil(k / 128))</li>|<li>非转置：(batch, ceil(k / 128), ceil(n / 128))</li><li>转置：(batch, ceil(n / 128), ceil(k / 128))</li>|null|[128, 128, 128]|549764202624|
+      |G-B量化|<li>非转置：(batch, m, k)</li>|<li>非转置：(batch, k, n)</li><li>转置：(batch, n, k)</li>|<li>非转置：(batch, m, ceil(k / 128))</li>|<li>非转置：(batch, ceil(k / 128), ceil(n / 128))</li><li>转置：(batch, ceil(n / 128), ceil(k / 128))</li>|null|[1, 128, 128]|4303356032|
+
+    - 注：上表中gsM、gsK和gsN分别表示groupSizeM、groupSizeK和groupSizeN。gsM、gsK和gsN为0的维度会自动推导，上表中是不用自动推导的情况。
+    - G-B量化和B-B量化场景下，x1只支持非转置，x2和x2Scale的转置属性需要保持一致(当shape轴里有1，并且非动态图NZ场景，x和scale的转置属性可以不一致)。
+    - Batch一致性说明：B-B量化场景不支持Batch一致性。即使开启Batch一致性开关，也不能保证输出满足Batch一致性要求。
+
+  - **MX量化场景约束：**
+  <a id="MX量化"></a>
+    - 输入和输出支持以下数据类型组合：
+  <a id="输入和输出支持以下数据类型组合MX"></a>
+
+      | x1            | x2            | x1Scale     | x2Scale     | x2Offset | yScale | bias         | out                         |
+      |---------------| ------------- | ----------- | ----------- | -------- | ------ | -------------| --------------------------- |
+      | FLOAT8_E4M3FN | FLOAT8_E4M3FN | FLOAT8_E8M0 | FLOAT8_E8M0 | null     | null   | null/FLOAT32 | FLOAT16/BFLOAT16/FLOAT32    |
+      | FLOAT4_E2M1 | FLOAT4_E2M1 | FLOAT8_E8M0 | FLOAT8_E8M0 | null     | null   | null/FLOAT32 | FLOAT16/BFLOAT16/FLOAT32    |
+
+    - x1数据类型、x2数据类型、x1、x2、x1Scale、x2Scale和groupSize的取值关系：
+
+      |量化类型|x1数据类型|x2数据类型|x1 shape|x2 shape|x1Scale shape|x2Scale shape|bias shape|yScale shape|[groupSizeM, groupSizeN, groupSizeK]|groupSize|
+      |-------|--------|--------|--------|--------|-------------|-------------|------------|---------------------------------------|--|--|
+      |MX全量化|FLOAT8_E4M3FN|FLOAT8_E4M3FN|<li>非转置：(batch, m, k)</li>|<li>非转置：(batch, k, n)</li><li>转置：(batch, n, k)</li>|<li>非转置：(batch, m, ceil(k / 64), 2)</li>|<li>非转置：(batch, ceil(k / 64), n, 2)</li><li>转置：(batch, n, ceil(k / 64), 2)</li>|(n,)或(batch, 1, n)|null|[1, 1, 32]|4295032864|
+      |MX全量化|FLOAT4_E2M1|FLOAT4_E2M1|<li>非转置：(batch, m, k)</li>|<li>非转置：(batch, k, n)</li><li>转置：(batch, n, k)</li>|<li>非转置：(batch, m, ceil(k / 64), 2)</li>|<li>非转置：(batch, ceil(k / 64), n, 2)</li><li>转置：(batch, n, ceil(k / 64), 2)</li>|(n,)或(batch, 1, n)|null|[1, 1, 32]|4295032864|
+
+    - MX全量化场景下，当x1与x2数据类型为FLOAT8_E4M3FN/FLOAT4_E2M1时，x1和x1Scale的转置属性需要保持一致，x2和x2Scale的转置属性需要保持一致。
+    - MX全量化场景下，当x1与x2数据类型为FLOAT4_E2M1时，需满足以下条件：
+      - x1和x2的内轴必须为偶数，且k必须大于2。
+      - transposeX1必须为false。
+      - 当transposeX2为false时，n必须大于2。
+      - 当transposeX2为true时，n必须大于1。
+
+  - **伪量化场景下dtype和shape要求如下：**
+
+    |量化类型|x1 dtype       |x2 dtype     | x1Scale dtype  |x2Scale dtype |bias dtype| yScale dtype  | out dtype | x1 shape  | x2 shape| x1Scale shape | x2Scale shape     |bias shape | yScale shape| [groupSizeM, groupSizeN, groupSizeK]|
+    |---------------| ------------| -------------- |--------------|-------------|--------- | -------- |--------| ---------- | --------------| ------------      |---------- | ------------| ---------------------------------------|-------|
+    | MX量化 |FLOAT8_E4M3FN  |FLOAT4_E2M1  |FLOAT8_E8M0     |FLOAT8_E8M0   |null/BFLOAT16/FLOAT16| null |BFLOAT16/FLOAT16|(m, k)  |(n, k)  |(m, ceil(k / 64), 2)    |(n, ceil(k / 64), 2)        |(1, n)    | null        | [0, 0, 32] / [1, 1, 32]                |
+    | MX量化 |FLOAT8_E4M3FN  |FLOAT32      |FLOAT8_E8M0     |FLOAT8_E8M0   |null/BFLOAT16/FLOAT16| null |BFLOAT16/FLOAT16|(m, k)  |(n, k/8)|(m, ceil(k / 64), 2)    |(n, ceil(k / 64), 2)        |(1, n)    | null        | [0, 0, 32] / [1, 1, 32]                |
+    | T-CG量化 |FLOAT8_E4M3FN  |FLOAT4_E2M1  |null            |BFLOAT16/FLOAT16      |null| uint64/int64 |BFLOAT16/FLOAT16|(m, k)  |(k, n)  |null           |(k/32, n)        |null       |(1, n)      | [0, 0, 32] / [1, 1, 32]                |
+    | T-CG量化 |FLOAT8_E4M3FN  |FLOAT32      |null            |BFLOAT16/FLOAT16      |null| uint64/int64 |BFLOAT16/FLOAT16|(m, k)  |(k, n/8)|null           |(k/32, n)        |null       |(1, n)      | [0, 0, 32] / [1, 1, 32]                |
+
+    - 约束说明：
+      - MX量化模式下, k要求8对齐, n要求8对齐。
+      - T-CG量化模式下，k要求32对齐且大于等于64，n要求8对齐。
+      - x1是FLOAT8_E4M3FN，x2是FLOAT32时, x2表示一个FLOAT32存储8个FLOAT4_E2M1的紧密排布的数据格式。
+      - MX量化模式下，bias数据类型与out数据类型需要一致；T-CG量化模式下，x2Scale的数据类型和out的数据类型需要一致。
+
+</details>
+<!-- end id12 -->
+
+## 调用示例
+
+示例代码如下，仅供参考，具体编译和执行过程请参考[编译与运行样例](../../../docs/zh/context/compile_and_run_sample.md)。
+
+<!-- npu="950" id19 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：
+  MM_MX_A8W4场景下，先调用`aclnnWeightQuantPreprocess`同步预处理weight和weightScale，再调用本接口完成矩阵乘。
+
+  ```cpp
+  #include <cstring>
+  #include <iostream>
+  #include <memory>
+  #include <vector>
+
+  #include "acl/acl.h"
+  #include "aclnn/opdev/float4_e2m1.h"
+  #include "aclnnop/aclnn_quant_matmul_weight_nz.h"
+  #include "aclnnop/aclnn_weight_quant_preprocess.h"
+
+  #define CHECK_RET(cond, return_expr) \
+      do {                             \
+          if (!(cond)) {               \
+              return_expr;             \
+          }                            \
+      } while (0)
+
+  #define LOG_PRINT(message, ...)         \
+      do {                                \
+          printf(message, ##__VA_ARGS__); \
+      } while (0)
+
+  #define CEIL_DIV(x, y) (((x) + (y) - 1) / (y))
+
+  int64_t GetShapeSize(const std::vector<int64_t>& shape)
+  {
+      int64_t shapeSize = 1;
+      for (auto dim : shape) {
+          shapeSize *= dim;
+      }
+      return shapeSize;
+  }
+
+  class AclRuntimeGuard {
+  public:
+      explicit AclRuntimeGuard(int32_t deviceId) : deviceId_(deviceId) {}
+
+      ~AclRuntimeGuard()
+      {
+          if (stream_ != nullptr) {
+              aclrtDestroyStream(stream_);
+          }
+          if (deviceSet_) {
+              aclrtResetDevice(deviceId_);
+          }
+          if (aclInited_) {
+              aclFinalize();
+          }
+      }
+
+      int Init(aclrtStream* stream)
+      {
+          auto ret = aclInit(nullptr);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
+          aclInited_ = true;
+
+          ret = aclrtSetDevice(deviceId_);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSetDevice failed. ERROR: %d\n", ret); return ret);
+          deviceSet_ = true;
+
+          ret = aclrtCreateStream(stream);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtCreateStream failed. ERROR: %d\n", ret); return ret);
+          stream_ = *stream;
+          return ACL_SUCCESS;
+      }
+
+  private:
+      int32_t deviceId_;
+      aclrtStream stream_ = nullptr;
+      bool aclInited_ = false;
+      bool deviceSet_ = false;
+  };
+
+  template <typename T>
+  int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& viewShape,
+                      const std::vector<int64_t>& viewStrides, const std::vector<int64_t>& storageShape,
+                      aclDataType dataType, aclFormat format, void** deviceAddr, aclTensor** tensor)
+  {
+      auto size = hostData.size() * sizeof(T);
+      auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      const int64_t* strides = viewStrides.empty() ? nullptr : viewStrides.data();
+      *tensor = aclCreateTensor(viewShape.data(), viewShape.size(), dataType, strides, 0, format, storageShape.data(),
+                                storageShape.size(), *deviceAddr);
+      CHECK_RET(*tensor != nullptr, LOG_PRINT("aclCreateTensor failed.\n"); return ACL_ERROR_INVALID_PARAM);
+      return ACL_SUCCESS;
+  }
+
+  std::vector<uint8_t> PackFp4(const std::vector<float>& data)
+  {
+      std::vector<uint8_t> packedData((data.size() + 1) / 2, 0);
+      for (size_t i = 0; i < data.size(); i += 2) {
+          uint8_t low = op::Float4E2M1(data[i]).value;
+          uint8_t high = i + 1 < data.size() ? op::Float4E2M1(data[i + 1]).value : 0;
+          packedData[i / 2] = static_cast<uint8_t>((high << 4) | low);
+      }
+      return packedData;
+  }
+
+  float Bf16ToFloat(uint16_t value)
+  {
+      uint32_t bits = static_cast<uint32_t>(value) << 16;
+      float result;
+      std::memcpy(&result, &bits, sizeof(result));
+      return result;
+  }
+
+  int AclnnQuantMatmulWeightNzA8W4PreprocessTest(int32_t deviceId)
+  {
+      aclrtStream stream = nullptr;
+      AclRuntimeGuard runtime(deviceId);
+      auto ret = runtime.Init(&stream);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      const int64_t m = 5;
+      const int64_t k = 64;
+      const int64_t n = 128;
+      const int64_t kGroupSize = 32;
+      const int64_t scaleK = CEIL_DIV(k, 64);
+      const bool transposeX1 = false;
+      const bool transposeX2 = false;
+
+      std::vector<int64_t> x1Shape = {m, k};
+      std::vector<int64_t> x1Strides = {k, 1};
+      std::vector<int64_t> weightViewShape = {k, n};
+      std::vector<int64_t> weightStorageShape = {n, k};
+      std::vector<int64_t> weightStrides = {1, k};
+      std::vector<int64_t> x1ScaleShape = {m, scaleK, 2};
+      std::vector<int64_t> x1ScaleStrides = {scaleK * 2, 2, 1};
+      std::vector<int64_t> weightScaleViewShape = {scaleK, n, 2};
+      std::vector<int64_t> weightScaleStorageShape = {n, scaleK, 2};
+      std::vector<int64_t> weightScaleStrides = {2, scaleK * 2, 1};
+      std::vector<int64_t> outWeightStorageShape = {CEIL_DIV(k, 32), CEIL_DIV(n, 16), 16, 32};
+      std::vector<int64_t> outShape = {m, n};
+      std::vector<int64_t> outStrides = {n, 1};
+
+      std::vector<uint8_t> x1HostData(GetShapeSize(x1Shape), 0b00111000); // FLOAT8_E4M3FN 1.0
+      std::vector<float> weightFloatData(GetShapeSize(weightStorageShape), 1.0f);
+      std::vector<uint8_t> weightHostData = PackFp4(weightFloatData);
+      std::vector<uint8_t> x1ScaleHostData(GetShapeSize(x1ScaleShape), 0b01111111); // FLOAT8_E8M0 1.0
+      std::vector<uint8_t> weightScaleHostData(GetShapeSize(weightScaleStorageShape),
+                                               0b10000101); // FLOAT8_E8M0 64.0
+      std::vector<uint8_t> outWeightHostData(GetShapeSize(outWeightStorageShape) / 2, 0);
+      std::vector<uint8_t> outWeightScaleHostData(GetShapeSize(weightScaleStorageShape), 0);
+      std::vector<uint16_t> outHostData(GetShapeSize(outShape), 0);
+
+      void* x1DeviceAddr = nullptr;
+      void* weightDeviceAddr = nullptr;
+      void* x1ScaleDeviceAddr = nullptr;
+      void* weightScaleDeviceAddr = nullptr;
+      void* outWeightDeviceAddr = nullptr;
+      void* outWeightScaleDeviceAddr = nullptr;
+      void* outDeviceAddr = nullptr;
+      aclTensor* x1 = nullptr;
+      aclTensor* weight = nullptr;
+      aclTensor* x1Scale = nullptr;
+      aclTensor* weightScale = nullptr;
+      aclTensor* outWeight = nullptr;
+      aclTensor* outWeightScale = nullptr;
+      aclTensor* out = nullptr;
+
+      ret = CreateAclTensor(x1HostData, x1Shape, x1Strides, x1Shape, ACL_FLOAT8_E4M3FN, ACL_FORMAT_ND, &x1DeviceAddr,
+                            &x1);
+      std::unique_ptr<void, aclError (*)(void*)> x1DeviceAddrPtr(x1DeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x1Ptr(x1, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      ret = CreateAclTensor(weightHostData, weightViewShape, weightStrides, weightStorageShape, ACL_FLOAT4_E2M1,
+                            ACL_FORMAT_ND, &weightDeviceAddr, &weight);
+      std::unique_ptr<void, aclError (*)(void*)> weightDeviceAddrPtr(weightDeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> weightPtr(weight, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      ret = CreateAclTensor(x1ScaleHostData, x1ScaleShape, x1ScaleStrides, x1ScaleShape, ACL_FLOAT8_E8M0, ACL_FORMAT_ND,
+                            &x1ScaleDeviceAddr, &x1Scale);
+      std::unique_ptr<void, aclError (*)(void*)> x1ScaleDeviceAddrPtr(x1ScaleDeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x1ScalePtr(x1Scale, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      ret = CreateAclTensor(weightScaleHostData, weightScaleViewShape, weightScaleStrides, weightScaleStorageShape,
+                            ACL_FLOAT8_E8M0, ACL_FORMAT_ND, &weightScaleDeviceAddr, &weightScale);
+      std::unique_ptr<void, aclError (*)(void*)> weightScaleDeviceAddrPtr(weightScaleDeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> weightScalePtr(weightScale, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      // 保留weight的转置stride，使QuantMatmul在transposeX2=false时能从tensor元数据识别转置布局。
+      ret = CreateAclTensor(outWeightHostData, weightViewShape, weightStrides, outWeightStorageShape, ACL_FLOAT4_E2M1,
+                            ACL_FORMAT_FRACTAL_NZ_C0_32, &outWeightDeviceAddr, &outWeight);
+      std::unique_ptr<void, aclError (*)(void*)> outWeightDeviceAddrPtr(outWeightDeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> outWeightPtr(outWeight, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      ret = CreateAclTensor(outWeightScaleHostData, weightScaleViewShape, weightScaleStrides, weightScaleStorageShape,
+                            ACL_FLOAT8_E8M0, ACL_FORMAT_ND, &outWeightScaleDeviceAddr, &outWeightScale);
+      std::unique_ptr<void, aclError (*)(void*)> outWeightScaleDeviceAddrPtr(outWeightScaleDeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> outWeightScalePtr(outWeightScale, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      ret = CreateAclTensor(outHostData, outShape, outStrides, outShape, ACL_BF16, ACL_FORMAT_ND, &outDeviceAddr, &out);
+      std::unique_ptr<void, aclError (*)(void*)> outDeviceAddrPtr(outDeviceAddr, aclrtFree);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> outPtr(out, aclDestroyTensor);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      uint64_t workspaceSize = 0;
+      aclOpExecutor* executor = nullptr;
+      ret = aclnnWeightQuantPreprocessGetWorkspaceSize(weight, weightScale, nullptr, nullptr, ACL_FLOAT8_E4M3FN,
+                                                       ACL_FLOAT8_E8M0, kGroupSize, outWeight, outWeightScale, nullptr,
+                                                       nullptr, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnWeightQuantPreprocessGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+
+      void* preprocessWorkspaceAddr = nullptr;
+      std::unique_ptr<void, aclError (*)(void*)> preprocessWorkspacePtr(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&preprocessWorkspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate preprocess workspace failed. ERROR: %d\n", ret); return ret);
+          preprocessWorkspacePtr.reset(preprocessWorkspaceAddr);
+      }
+
+      ret = aclnnWeightQuantPreprocess(preprocessWorkspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnWeightQuantPreprocess failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtSynchronizeStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream after preprocess failed. ERROR: %d\n", ret);
+                return ret);
+
+      workspaceSize = 0;
+      executor = nullptr;
+      // WeightQuantPreprocess的输出已满足QuantMatmul输入要求，直接作为x2和x2Scale使用。
+      ret = aclnnQuantMatmulWeightNzGetWorkspaceSize(x1, outWeight, x1Scale, outWeightScale, nullptr, nullptr, nullptr,
+                                                     nullptr, nullptr, transposeX1, transposeX2, kGroupSize, out,
+                                                     &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+
+      void* matmulWorkspaceAddr = nullptr;
+      std::unique_ptr<void, aclError (*)(void*)> matmulWorkspacePtr(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&matmulWorkspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate matmul workspace failed. ERROR: %d\n", ret); return ret);
+          matmulWorkspacePtr.reset(matmulWorkspaceAddr);
+      }
+
+      ret = aclnnQuantMatmulWeightNz(matmulWorkspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNz failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtSynchronizeStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream after matmul failed. ERROR: %d\n", ret);
+                return ret);
+
+      std::vector<uint16_t> resultData(GetShapeSize(outShape), 0);
+      ret = aclrtMemcpy(resultData.data(), resultData.size() * sizeof(resultData[0]), outDeviceAddr,
+                        resultData.size() * sizeof(resultData[0]), ACL_MEMCPY_DEVICE_TO_HOST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
+      for (size_t i = 0; i < resultData.size(); ++i) {
+          LOG_PRINT("result[%zu] is: %.1f\n", i, Bf16ToFloat(resultData[i]));
+      }
+      return ACL_SUCCESS;
+  }
+
+  int main()
+  {
+      // WeightQuantPreprocess当前仅支持Ascend 950PR/Ascend 950DT。
+      int32_t deviceId = 0;
+      auto ret = AclnnQuantMatmulWeightNzA8W4PreprocessTest(deviceId);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("AclnnQuantMatmulWeightNzA8W4PreprocessTest failed. ERROR: %d\n", ret);
+                return ret);
+      return 0;
+  }
+  ```
+
+<!-- end id19 -->
+
+<!-- npu="A3,910b" id13 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：
+
+  x2为NZ格式场景下的示例代码如下(transposeX2=false)。
+
+  ```cpp
+  #include <iostream>
+  #include <memory>
+  #include <vector>
+
+  #include "acl/acl.h"
+  #include "aclnnop/aclnn_permute.h"
+  #include "aclnnop/aclnn_quant_matmul_weight_nz.h"
+  #include "aclnnop/aclnn_trans_matmul_weight.h"
+  #include "aclnnop/aclnn_trans_quant_param_v2.h"
+
+  #define CHECK_RET(cond, return_expr) \
+      do {                             \
+          if (!(cond)) {               \
+              return_expr;             \
+          }                            \
+      } while (0)
+
+  #define CHECK_FREE_RET(cond, return_expr) \
+      do {                                  \
+          if (!(cond)) {                    \
+              Finalize(deviceId, stream);   \
+              return_expr;                  \
+          }                                 \
+      } while (0)
+
+  #define LOG_PRINT(message, ...)         \
+      do {                                \
+          printf(message, ##__VA_ARGS__); \
+      } while (0)
+
+  int64_t GetShapeSize(const std::vector<int64_t> &shape)
+  {
+      int64_t shapeSize = 1;
+      for (auto i : shape) {
+          shapeSize *= i;
+      }
+      return shapeSize;
+  }
+
+  int Init(int32_t deviceId, aclrtStream *stream)
+  {
+      // 固定写法，资源初始化
+      auto ret = aclInit(nullptr);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtSetDevice(deviceId);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSetDevice failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtCreateStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtCreateStream failed. ERROR: %d\n", ret); return ret);
+      return 0;
+  }
+
+  template <typename T>
+  int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
+                      aclDataType dataType, aclTensor **tensor)
+  {
+      auto size = GetShapeSize(shape) * sizeof(T);
+      // 调用aclrtMalloc申请device侧内存
+      auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      // 计算连续tensor的strides
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+
+      // 调用aclCreateTensor接口创建aclTensor
+      *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                                shape.data(), shape.size(), *deviceAddr);
+      return 0;
+  }
+
+  void Finalize(int32_t deviceId, aclrtStream stream)
+  {
+      aclrtDestroyStream(stream);
+      aclrtResetDevice(deviceId);
+      aclFinalize();
+  }
+
+  template <typename T>
+  int CreateAclTensorX2(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
+                        aclDataType dataType, aclTensor **tensor)
+  {
+      auto size = static_cast<uint64_t>(GetShapeSize(shape));
+
+      const aclIntArray *mat2Size = aclCreateIntArray(shape.data(), shape.size());
+      auto ret = aclnnCalculateMatmulWeightSizeV2(mat2Size, dataType, &size);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnCalculateMatmulWeightSizeV2 failed. ERROR: %d\n", ret);
+                return ret);
+      size *= sizeof(T);
+
+      // 调用aclrtMalloc申请device侧内存
+      ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      // 计算连续tensor的strides
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+
+      std::vector<int64_t> storageShape;
+      storageShape.push_back(GetShapeSize(shape));
+
+      // 调用aclCreateTensor接口创建aclTensor
+      *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                                storageShape.data(), storageShape.size(), *deviceAddr);
+      return 0;
+  }
+
+  int aclnnQuantMatmulWeightNzTest(int32_t deviceId, aclrtStream &stream)
+  {
+      auto ret = Init(deviceId, &stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("Init acl failed. ERROR: %d\n", ret); return ret);
+
+      // 2. 构造输入与输出，需要根据API的接口自定义构造
+      std::vector<int64_t> x1Shape = {5, 32};
+      std::vector<int64_t> x2Shape = {32, 32};
+      std::vector<int64_t> biasShape = {32};
+      std::vector<int64_t> offsetShape = {32};
+      std::vector<int64_t> scaleShape = {32};
+      std::vector<int64_t> outShape = {5, 32};
+      void *x1DeviceAddr = nullptr;
+      void *x2DeviceAddr = nullptr;
+      void *scaleDeviceAddr = nullptr;
+      void *quantParamDeviceAddr = nullptr;
+      void *offsetDeviceAddr = nullptr;
+      void *biasDeviceAddr = nullptr;
+      void *outDeviceAddr = nullptr;
+      aclTensor *x1 = nullptr;
+      aclTensor *x2 = nullptr;
+      aclTensor *bias = nullptr;
+      aclTensor *scale = nullptr;
+      aclTensor *quantParam = nullptr;
+      aclTensor *offset = nullptr;
+      aclTensor *out = nullptr;
+      std::vector<int8_t> x1HostData(5 * 32, 1);
+      std::vector<int8_t> x2HostData(32 * 32, 1);
+      std::vector<int32_t> biasHostData(32, 1);
+      std::vector<float> scaleHostData(32, 1);
+      std::vector<float> offsetHostData(32, 1);
+      std::vector<uint16_t> outHostData(5 * 32, 1);  // 实际上是float16半精度方式
+      // 创建x1 aclTensor
+      ret = CreateAclTensor(x1HostData, x1Shape, &x1DeviceAddr, aclDataType::ACL_INT8, &x1);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> x1TensorPtr(x1, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> x1DeviceAddrPtr(x1DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建NZ格式的x2 aclTensor
+      ret = CreateAclTensorX2(x2HostData, x2Shape, &x2DeviceAddr, aclDataType::ACL_INT8, &x2);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> x2HPTensorPtr(x2, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> x2HPDeviceAddrPtr(x2DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建scale aclTensor
+      ret = CreateAclTensor(scaleHostData, scaleShape, &scaleDeviceAddr, aclDataType::ACL_FLOAT, &scale);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> scaleTensorPtr(scale, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> scaleDeviceAddrPtr(scaleDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建quantParam aclTensor
+      ret = CreateAclTensor(scaleHostData, scaleShape, &quantParamDeviceAddr, aclDataType::ACL_UINT64, &quantParam);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> quantParamTensorPtr(quantParam,
+                                                                                        aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> quantParamDeviceAddrPtr(quantParamDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建offset aclTensor
+      ret = CreateAclTensor(offsetHostData, offsetShape, &offsetDeviceAddr, aclDataType::ACL_FLOAT, &offset);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> offsetTensorPtr(offset, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> offsetDeviceAddrPtr(offsetDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建bias aclTensor
+      ret = CreateAclTensor(biasHostData, biasShape, &biasDeviceAddr, aclDataType::ACL_INT32, &bias);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> biasTensorPtr(bias, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> biasDeviceAddrPtr(biasDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建out aclTensor
+      ret = CreateAclTensor(outHostData, outShape, &outDeviceAddr, aclDataType::ACL_FLOAT16, &out);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> outTensorPtr(out, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> outDeviceAddrPtr(outDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      bool transposeX1 = false;
+      bool transposeX2 = false;
+
+      // 3. 调用CANN算子库API，需要修改为具体的API名称
+      uint64_t workspaceSize = 0;
+      aclOpExecutor *executor;
+      void *workspaceAddr = nullptr;
+
+      // 调用aclnnTransMatmulWeight第一段接口
+      ret = aclnnTransMatmulWeightGetWorkspaceSize(x2, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransMatmulWeightGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrTrans(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrTrans.reset(workspaceAddr);
+      }
+      // 调用aclnnTransMatmulWeight第二段接口
+      ret = aclnnTransMatmulWeight(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransMatmulWeight failed. ERROR: %d\n", ret); return ret);
+
+      // FLOAT数据类型的scale需要提前调用TransQuantParamV2算子的aclnn接口
+      // 调用aclnnTransQuantParamV2第一段接口
+      ret = aclnnTransQuantParamV2GetWorkspaceSize(scale, offset, quantParam, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransQuantParamV2GetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      workspaceAddr = nullptr;
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrV2(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrV2.reset(workspaceAddr);
+      }
+      // 调用aclnnTransQuantParamV2第二段接口
+      ret = aclnnTransQuantParamV2(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransQuantParamV2 failed. ERROR: %d\n", ret); return ret);
+
+      // 调用aclnnQuantMatmulWeightNz第一段接口
+      workspaceSize = 0;
+      ret = aclnnQuantMatmulWeightNzGetWorkspaceSize(x1, x2, nullptr, quantParam, nullptr, nullptr, nullptr, nullptr,
+                                                    bias, transposeX1, transposeX2, 0, out, &workspaceSize,
+                                                    &executor);
+
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrNZ(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrNZ.reset(workspaceAddr);
+      }
+      // 调用aclnnQuantMatmulWeightNz第二段接口
+      ret = aclnnQuantMatmulWeightNz(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNz failed. ERROR: %d\n", ret); return ret);
+
+      // 4.（固定写法）同步等待任务执行结束
+      ret = aclrtSynchronizeStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
+
+      // 5. 获取输出的值，将device侧内存上的结果拷贝至host侧，需要根据具体API的接口定义修改
+      auto size = GetShapeSize(outShape);
+      std::vector<uint16_t> resultData(
+          size, 0);  // C语言中无法直接打印fp16的数据，需要用uint16读出来，自行通过二进制转成fp16
+      ret = aclrtMemcpy(resultData.data(), resultData.size() * sizeof(resultData[0]), outDeviceAddr,
+                        size * sizeof(resultData[0]), ACL_MEMCPY_DEVICE_TO_HOST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret);
+                return ret);
+      for (int64_t i = 0; i < size; i++) {
+          LOG_PRINT("result[%ld] is: %u\n", i, resultData[i]);
+      }
+      return ACL_SUCCESS;
+  }
+
+  int main()
+  {
+      // 1.（固定写法）device/stream初始化，参考acl API手册
+      // 根据自己的实际device填写deviceId
+      int32_t deviceId = 0;
+      aclrtStream stream;
+      auto ret = aclnnQuantMatmulWeightNzTest(deviceId, stream);
+      CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzTest failed. ERROR: %d\n", ret);
+                    return ret);
+
+      Finalize(deviceId, stream);
+      return 0;
+  }
+  ```
+
+<!-- end id13 -->
+<!-- npu="310p" id14 -->
+- <term>Atlas 推理系列产品</term>：
+  x2为NZ格式场景下的示例代码如下(transposeX2=true)。
+
+  ```cpp
+  #include <iostream>
+  #include <memory>
+  #include <vector>
+
+  #include "acl/acl.h"
+  #include "aclnnop/aclnn_permute.h"
+  #include "aclnnop/aclnn_quant_matmul_weight_nz.h"
+  #include "aclnnop/aclnn_trans_matmul_weight.h"
+  #include "aclnnop/aclnn_trans_quant_param_v2.h"
+
+  #define CHECK_RET(cond, return_expr) \
+      do {                             \
+          if (!(cond)) {               \
+              return_expr;             \
+          }                            \
+      } while (0)
+
+  #define CHECK_FREE_RET(cond, return_expr) \
+      do {                                  \
+          if (!(cond)) {                    \
+              Finalize(deviceId, stream);   \
+              return_expr;                  \
+          }                                 \
+      } while (0)
+
+  #define LOG_PRINT(message, ...)         \
+      do {                                \
+          printf(message, ##__VA_ARGS__); \
+      } while (0)
+
+  int64_t GetShapeSize(const std::vector<int64_t> &shape)
+  {
+      int64_t shapeSize = 1;
+      for (auto i : shape) {
+          shapeSize *= i;
+      }
+      return shapeSize;
+  }
+
+  int Init(int32_t deviceId, aclrtStream *stream)
+  {
+      // 固定写法，资源初始化
+      auto ret = aclInit(nullptr);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtSetDevice(deviceId);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSetDevice failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtCreateStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtCreateStream failed. ERROR: %d\n", ret); return ret);
+      return 0;
+  }
+
+  template <typename T>
+  int CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
+                      aclDataType dataType, aclTensor **tensor)
+  {
+      auto size = GetShapeSize(shape) * sizeof(T);
+      // 调用aclrtMalloc申请device侧内存
+      auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      // 计算连续tensor的strides
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+
+      // 调用aclCreateTensor接口创建aclTensor
+      *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                                shape.data(), shape.size(), *deviceAddr);
+      return 0;
+  }
+
+  void Finalize(int32_t deviceId, aclrtStream stream)
+  {
+      aclrtDestroyStream(stream);
+      aclrtResetDevice(deviceId);
+      aclFinalize();
+  }
+
+  template <typename T>
+  int CreateAclTensorX2(const std::vector<T> &hostData, const std::vector<int64_t> &shape, void **deviceAddr,
+                        aclDataType dataType, aclTensor **tensor)
+  {
+      auto size = static_cast<uint64_t>(GetShapeSize(shape));
+
+      const aclIntArray *mat2Size = aclCreateIntArray(shape.data(), shape.size());
+      auto ret = aclnnCalculateMatmulWeightSizeV2(mat2Size, dataType, &size);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnCalculateMatmulWeightSizeV2 failed. ERROR: %d\n", ret);
+                return ret);
+      size *= sizeof(T);
+
+      // 调用aclrtMalloc申请device侧内存
+      ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      // 计算连续tensor的strides
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+
+      std::vector<int64_t> storageShape;
+      storageShape.push_back(GetShapeSize(shape));
+
+      // 调用aclCreateTensor接口创建aclTensor
+      *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                                storageShape.data(), storageShape.size(), *deviceAddr);
+      return 0;
+  }
+
+  int aclnnQuantMatmulWeightNzTest(int32_t deviceId, aclrtStream &stream)
+  {
+      auto ret = Init(deviceId, &stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("Init acl failed. ERROR: %d\n", ret); return ret);
+
+      // 2. 构造输入与输出，需要根据API的接口自定义构造
+      std::vector<int64_t> x1Shape = {5, 32};
+      std::vector<int64_t> x2Shape = {32, 32};
+      std::vector<int64_t> x2TransposedShape = {32, 32};
+      std::vector<int64_t> biasShape = {32};
+      std::vector<int64_t> offsetShape = {32};
+      std::vector<int64_t> scaleShape = {32};
+      std::vector<int64_t> outShape = {5, 32};
+      void *x1DeviceAddr = nullptr;
+      void *x2DeviceAddr = nullptr;
+      void *x2TransposedDeviceAddr = nullptr;
+      void *scaleDeviceAddr = nullptr;
+      void *quantParamDeviceAddr = nullptr;
+      void *offsetDeviceAddr = nullptr;
+      void *biasDeviceAddr = nullptr;
+      void *outDeviceAddr = nullptr;
+      aclTensor *x1 = nullptr;
+      aclTensor *x2 = nullptr;
+      aclTensor *x2Transposed = nullptr;
+      aclTensor *bias = nullptr;
+      aclTensor *scale = nullptr;
+      aclTensor *quantParam = nullptr;
+      aclTensor *offset = nullptr;
+      aclTensor *out = nullptr;
+      std::vector<int8_t> x1HostData(5 * 32, 1);
+      std::vector<int8_t> x2HostData(32 * 32, 1);
+      std::vector<int8_t> x2TransposedHostData(32 * 32, 1);
+      std::vector<int32_t> biasHostData(32, 1);
+      std::vector<float> scaleHostData(32, 1);
+      std::vector<float> offsetHostData(32, 1);
+      std::vector<uint16_t> outHostData(5 * 32, 1);  // 实际上是float16半精度方式
+      // 创建x1 aclTensor
+      ret = CreateAclTensor(x1HostData, x1Shape, &x1DeviceAddr, aclDataType::ACL_INT8, &x1);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> x1TensorPtr(x1, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> x1DeviceAddrPtr(x1DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建NZ格式的x2 aclTensor
+      ret = CreateAclTensorX2(x2HostData, x2Shape, &x2DeviceAddr, aclDataType::ACL_INT8, &x2);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> x2HPTensorPtr(x2, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> x2HPDeviceAddrPtr(x2DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建NZ格式的x2Transposed aclTensor
+      ret = CreateAclTensorX2(x2TransposedHostData, x2TransposedShape, &x2TransposedDeviceAddr,
+                              aclDataType::ACL_INT8, &x2Transposed);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> x2TransposedHPTensorPtr(x2Transposed,
+                                                                                            aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> x2TransposedHPDeviceAddrPtr(x2TransposedDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建scale aclTensor
+      ret = CreateAclTensor(scaleHostData, scaleShape, &scaleDeviceAddr, aclDataType::ACL_FLOAT, &scale);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> scaleTensorPtr(scale, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> scaleDeviceAddrPtr(scaleDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建quantParam aclTensor
+      ret = CreateAclTensor(scaleHostData, scaleShape, &quantParamDeviceAddr, aclDataType::ACL_UINT64, &quantParam);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> quantParamTensorPtr(quantParam,
+                                                                                        aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> quantParamDeviceAddrPtr(quantParamDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建offset aclTensor
+      ret = CreateAclTensor(offsetHostData, offsetShape, &offsetDeviceAddr, aclDataType::ACL_FLOAT, &offset);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> offsetTensorPtr(offset, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> offsetDeviceAddrPtr(offsetDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建bias aclTensor
+      ret = CreateAclTensor(biasHostData, biasShape, &biasDeviceAddr, aclDataType::ACL_INT32, &bias);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> biasTensorPtr(bias, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> biasDeviceAddrPtr(biasDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建out aclTensor
+      ret = CreateAclTensor(outHostData, outShape, &outDeviceAddr, aclDataType::ACL_FLOAT16, &out);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> outTensorPtr(out, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void *)> outDeviceAddrPtr(outDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      bool transposeX1 = false;
+      bool transposeX2 = true;
+
+      // 3. 调用CANN算子库API，需要修改为具体的API名称
+      uint64_t workspaceSize = 0;
+      aclOpExecutor *executor;
+      void *workspaceAddr = nullptr;
+
+      // x2的shape需要transpose成nk格式，再进行transdata
+      std::vector<int64_t> dimsData = {1, 0};
+      // 创建dims aclIntArray
+      aclIntArray *dims = aclCreateIntArray(dimsData.data(), dimsData.size());
+      // 调用aclnnPermute第一段接口
+      ret = aclnnPermuteGetWorkspaceSize(x2, dims, x2Transposed, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnPermuteGetWorkspaceSize failed. ERROR: %d\n", ret); return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrPermute(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrPermute.reset(workspaceAddr);
+      }
+      // 调用aclnnPermute第二段接口
+      ret = aclnnPermute(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnPermuteGetWorkspaceSize failed. ERROR: %d\n", ret); return ret);
+
+      workspaceSize = 0;
+      // 调用aclnnTransMatmulWeight第一段接口
+      ret = aclnnTransMatmulWeightGetWorkspaceSize(x2Transposed, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransMatmulWeightGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrTrans(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrTrans.reset(workspaceAddr);
+      }
+      // 调用aclnnTransMatmulWeight第二段接口
+      ret = aclnnTransMatmulWeight(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransMatmulWeight failed. ERROR: %d\n", ret); return ret);
+
+      // FLOAT数据类型的scale需要提前调用TransQuantParamV2算子的aclnn接口
+      // 调用aclnnTransQuantParamV2第一段接口
+      ret = aclnnTransQuantParamV2GetWorkspaceSize(scale, offset, quantParam, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransQuantParamV2GetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      workspaceAddr = nullptr;
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrV2(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrV2.reset(workspaceAddr);
+      }
+      // 调用aclnnTransQuantParamV2第二段接口
+      ret = aclnnTransQuantParamV2(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnTransQuantParamV2 failed. ERROR: %d\n", ret); return ret);
+
+      // 调用aclnnQuantMatmulWeightNz第一段接口
+      workspaceSize = 0;
+      ret = aclnnQuantMatmulWeightNzGetWorkspaceSize(x1, x2Transposed, nullptr, quantParam, nullptr, nullptr,
+                                                    nullptr, nullptr, bias, transposeX1, transposeX2, 0, out,
+                                                    &workspaceSize, &executor);
+
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+
+      std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtrNZ(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtrNZ.reset(workspaceAddr);
+      }
+      // 调用aclnnQuantMatmulWeightNz第二段接口
+      ret = aclnnQuantMatmulWeightNz(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNz failed. ERROR: %d\n", ret); return ret);
+
+      // 4.（固定写法）同步等待任务执行结束
+      ret = aclrtSynchronizeStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
+
+      // 5. 获取输出的值，将device侧内存上的结果拷贝至host侧，需要根据具体API的接口定义修改
+      auto size = GetShapeSize(outShape);
+      std::vector<uint16_t> resultData(
+          size, 0);  // C语言中无法直接打印fp16的数据，需要用uint16读出来，自行通过二进制转成fp16
+      ret = aclrtMemcpy(resultData.data(), resultData.size() * sizeof(resultData[0]), outDeviceAddr,
+                        size * sizeof(resultData[0]), ACL_MEMCPY_DEVICE_TO_HOST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret);
+                return ret);
+      for (int64_t i = 0; i < size; i++) {
+          LOG_PRINT("result[%ld] is: %u\n", i, resultData[i]);
+      }
+      return ACL_SUCCESS;
+  }
+
+  int main()
+  {
+      // 1.（固定写法）device/stream初始化，参考acl API手册
+      // 根据自己的实际device填写deviceId
+      int32_t deviceId = 0;
+      aclrtStream stream;
+      auto ret = aclnnQuantMatmulWeightNzTest(deviceId, stream);
+      CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzTest failed. ERROR: %d\n", ret);
+                    return ret);
+
+      Finalize(deviceId, stream);
+      return 0;
+  }
+  ```
+
+<!-- end id14 -->
+<!-- npu="950" id15 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：
+  x2为NZ格式场景下的示例代码如下(transposeX2=true)。
+
+  ```cpp
+  #include <cstring>
+  #include <iostream>
+  #include <memory>
+  #include <vector>
+  #include "acl/acl.h"
+  #include "aclnnop/aclnn_npu_format_cast.h"
+  #include "aclnnop/aclnn_quant_matmul_weight_nz.h"
+  #include "aclnn/opdev/float4_e2m1.h"
+
+  #define CHECK_RET(cond, return_expr) \
+      do {                             \
+          if (!(cond)) {               \
+              return_expr;             \
+          }                            \
+      } while (0)
+
+  #define CHECK_FREE_RET(cond, return_expr) \
+      do {                                  \
+          if (!(cond)) {                    \
+              Finalize(deviceId, stream);   \
+              return_expr;                  \
+          }                                 \
+      } while (0)
+
+  #define LOG_PRINT(message, ...)         \
+      do {                                \
+          printf(message, ##__VA_ARGS__); \
+      } while (0)
+
+  int64_t GetShapeSize(const std::vector<int64_t>& shape)
+  {
+      int64_t shapeSize = 1;
+      for (auto i : shape) {
+          shapeSize *= i;
+      }
+      return shapeSize;
+  }
+
+  int Init(int32_t deviceId, aclrtStream* stream)
+  {
+      // 固定写法，资源初始化
+      auto ret = aclInit(nullptr);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtSetDevice(deviceId);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSetDevice failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtCreateStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtCreateStream failed. ERROR: %d\n", ret); return ret);
+      return 0;
+  }
+
+  template <typename T>
+  int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                      aclDataType dataType, aclTensor** tensor)
+  {
+      auto size = GetShapeSize(shape) * sizeof(T);
+      // 调用aclrtMalloc申请device侧内存
+      auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      // 计算连续tensor的strides
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+
+      // 调用aclCreateTensor接口创建aclTensor
+      *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                                shape.data(), shape.size(), *deviceAddr);
+      CHECK_RET(*tensor != nullptr, LOG_PRINT("aclCreateTensor failed.\n"); return ACL_ERROR_INVALID_PARAM);
+      return 0;
+  }
+
+  void Finalize(int32_t deviceId, aclrtStream stream)
+  {
+      aclrtDestroyStream(stream);
+      aclrtResetDevice(deviceId);
+      aclFinalize();
+  }
+
+  // 将bfloat16的uint16_t表示转换为float表示
+  float Bf16ToFloat(uint16_t h)
+  {
+      uint32_t sign = (h & 0x8000U) ? 0x80000000U : 0x00000000U; // sign bit
+      uint32_t exponent = (h >> 7) & 0x00FFU;                    // exponent bits
+      uint32_t mantissa = h & 0x007FU;                           // mantissa bits
+      // 指数偏移不变
+      // mantissa左移23 - 7 ，其余补0
+      uint32_t fBits = sign | (exponent << 23) | (mantissa << (23 - 7));
+      // 使用memcpy避免严格别名违规
+      float result;
+      std::memcpy(&result, &fBits, sizeof(float));
+      return result;
+  }
+
+  uint64_t GetStorageTensorSize(const int64_t* storageShape, uint64_t storageShapeSize, aclDataType dataType)
+  {
+      uint64_t elementCount = 1;
+      for (uint64_t i = 0; i < storageShapeSize; ++i) {
+          elementCount *= static_cast<uint64_t>(storageShape[i]);
+      }
+      if (dataType == aclDataType::ACL_FLOAT) {
+          return elementCount * sizeof(float);
+      }
+      if (dataType == aclDataType::ACL_FLOAT4_E2M1) {
+          return (elementCount + 1) / 2;
+      }
+      return 0;
+  }
+
+  int CreateAclTensorFp4(const std::vector<float>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                         aclTensor** tensor)
+  {
+      auto elementCount = GetShapeSize(shape);
+      auto size = (elementCount + 1) / 2;
+      std::vector<uint8_t> packedData(size, 0);
+      for (int64_t i = 0; i < elementCount; i += 2) {
+          uint8_t low = op::Float4E2M1(hostData[i]).value;
+          uint8_t high = (i + 1 < elementCount) ? op::Float4E2M1(hostData[i + 1]).value : 0;
+          packedData[i / 2] = (high << 4) | low;
+      }
+      auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      ret = aclrtMemcpy(*deviceAddr, size, packedData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+      *tensor = aclCreateTensor(shape.data(), shape.size(), aclDataType::ACL_FLOAT4_E2M1, strides.data(), 0,
+                                aclFormat::ACL_FORMAT_ND, shape.data(), shape.size(), *deviceAddr);
+      CHECK_RET(*tensor != nullptr, LOG_PRINT("aclCreateTensor failed.\n"); return ACL_ERROR_INVALID_PARAM);
+      return 0;
+  }
+
+  int CreateAclTensorWithFormat(const std::vector<int64_t>& shape, int64_t** storageShape, uint64_t* storageShapeSize,
+                                void** deviceAddr, aclDataType dataType, aclTensor** tensor, aclFormat format)
+  {
+      auto size = GetStorageTensorSize(*storageShape, *storageShapeSize, dataType);
+      CHECK_RET(size > 0, LOG_PRINT("unsupported data type. ERROR: %d\n", static_cast<int>(dataType));
+                return ACL_ERROR_INVALID_PARAM);
+      // 调用aclrtMalloc申请device侧内存
+      auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+      std::vector<uint8_t> hostData(size, 0);
+      // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+      ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+      // 计算连续tensor的strides
+      std::vector<int64_t> strides(shape.size(), 1);
+      for (int64_t i = shape.size() - 2; i >= 0; i--) {
+          strides[i] = shape[i + 1] * strides[i + 1];
+      }
+
+      *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, format, *storageShape,
+                                *storageShapeSize, *deviceAddr);
+      CHECK_RET(*tensor != nullptr, LOG_PRINT("aclCreateTensor failed.\n"); return ACL_ERROR_INVALID_PARAM);
+      return 0;
+  }
+
+  int aclnnQuantMatmulWeightNzTest(int32_t deviceId, aclrtStream& stream)
+  {
+      auto ret = Init(deviceId, &stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("Init acl failed. ERROR: %d\n", ret); return ret);
+
+      // 2. 构造输入与输出，需要根据API的接口自定义构造
+      int64_t m = 5;
+      int64_t k = 64;
+      int64_t n = 128;
+      bool transposeX1 = false;
+      bool transposeX2 = true;
+      int64_t groupSize = 32;
+      int64_t numGroups = (k + groupSize - 1) / groupSize;
+      int64_t scaleMidDim = (numGroups + 1) / 2;
+      std::vector<int64_t> x1Shape = {m, k};
+      std::vector<int64_t> x2Shape = {n, k};
+      std::vector<int64_t> x1ScaleShape = {m, scaleMidDim, 2};
+      std::vector<int64_t> x2ScaleShape = {n, scaleMidDim, 2};
+      std::vector<int64_t> outShape = {m, n};
+      void* x1DeviceAddr = nullptr;
+      void* x2DeviceAddr = nullptr;
+      void* x2NzFp4DeviceAddr = nullptr;
+      void* x1ScaleDeviceAddr = nullptr;
+      void* x2ScaleDeviceAddr = nullptr;
+      void* outDeviceAddr = nullptr;
+      aclTensor* x1 = nullptr;
+      aclTensor* x2 = nullptr;
+      aclTensor* x1Scale = nullptr;
+      aclTensor* x2Scale = nullptr;
+      aclTensor* bias = nullptr;
+      aclTensor* out = nullptr;
+      std::vector<uint8_t> x1HostData(m * k, 0b00111000);                    // float8_e4m3的1.0
+      std::vector<float> x2HostData(n * k, 1);                               // 输入为fp32，打包成fp4后转Nz
+      std::vector<uint8_t> x1ScaleHostData(m * scaleMidDim * 2, 0b01111111); // float8_e8m0的1.0
+      std::vector<uint8_t> x2ScaleHostData(n * scaleMidDim * 2,
+                                           0b10000101); // float8_e8m0的1.0*64，参考文档需要扩大64倍输入
+      std::vector<uint16_t> outHostData(m * n, 0);      // 实际上是bfloat16
+      int64_t* dstShape = nullptr;
+      uint64_t dstShapeSize = 0;
+      aclTensor* x2NzFp4 = nullptr;
+      int actualFormat;
+
+      // 创建x1 aclTensor
+      ret = CreateAclTensor(x1HostData, x1Shape, &x1DeviceAddr, aclDataType::ACL_FLOAT8_E4M3FN, &x1);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x1TensorPtr(x1, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void*)> x1DeviceAddrPtr(x1DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建x2 aclTensor (直接构建为fp4_e2m1 ND格式)
+      ret = CreateAclTensorFp4(x2HostData, x2Shape, &x2DeviceAddr, &x2);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x2TensorPtr(x2, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void*)> x2DeviceAddrPtr(x2DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建x1Scale aclTensor
+      ret = CreateAclTensor(x1ScaleHostData, x1ScaleShape, &x1ScaleDeviceAddr, aclDataType::ACL_FLOAT8_E8M0, &x1Scale);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x1ScaleTensorPtr(x1Scale, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void*)> x1ScaleDeviceAddrPtr(x1ScaleDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建x2Scale aclTensor
+      ret = CreateAclTensor(x2ScaleHostData, x2ScaleShape, &x2ScaleDeviceAddr, aclDataType::ACL_FLOAT8_E8M0, &x2Scale);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x2ScaleTensorPtr(x2Scale, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void*)> x2ScaleDeviceAddrPtr(x2ScaleDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+      // 创建out aclTensor
+      ret = CreateAclTensor(outHostData, outShape, &outDeviceAddr, aclDataType::ACL_BF16, &out);
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> outTensorPtr(out, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void*)> outDeviceAddrPtr(outDeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, return ret);
+
+      // 3. 调用CANN算子库API，需要修改为具体的API名称
+      uint64_t workspaceSize = 0;
+      aclOpExecutor* executor = nullptr;
+      // x2已经是fp4_e2m1 ND格式，用NpuFormatCast转为fp4 NZ格式
+      // 使用ACL_FLOAT8_E4M3FN推断C0=32，与fp4的Ascend亲和格式一致
+      aclDataType additionalDtype = aclDataType::ACL_FLOAT8_E4M3FN;
+      ret = aclnnNpuFormatCastCalculateSizeAndFormat(x2, 29, additionalDtype, &dstShape, &dstShapeSize, &actualFormat);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnNpuFormatCastCalculateSizeAndFormat failed. ERROR: %d\n", ret);
+                return ret);
+
+      // 创建fp4 NZ格式的输出tensor
+      ret = CreateAclTensorWithFormat(x2Shape, &dstShape, &dstShapeSize, &x2NzFp4DeviceAddr, aclDataType::ACL_FLOAT4_E2M1,
+                                      &x2NzFp4, static_cast<aclFormat>(actualFormat));
+      std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor*)> x2NzFp4TensorPtr(x2NzFp4, aclDestroyTensor);
+      std::unique_ptr<void, aclError (*)(void*)> x2NzFp4DeviceAddrPtr(x2NzFp4DeviceAddr, aclrtFree);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("CreateAclTensorWithFormat failed. ERROR: %d\n", ret); return ret);
+
+      // 调用aclnnNpuFormatCast直接将x2从fp32 ND转为fp4 NZ
+      ret = aclnnNpuFormatCastGetWorkspaceSize(x2, x2NzFp4, &workspaceSize, &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnNpuFormatCastGetWorkspaceSize failed. ERROR: %d\n", ret); return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      void* workspaceNzAddr = nullptr;
+      std::unique_ptr<void, aclError (*)(void*)> workspaceNzAddrPtr(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceNzAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceNzAddrPtr.reset(workspaceNzAddr);
+      }
+
+      // 调用aclnnNpuFormatCast第二段接口
+      ret = aclnnNpuFormatCast(workspaceNzAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnNpuFormatCast failed. ERROR: %d\n", ret); return ret);
+
+      // 4.（固定写法）同步等待任务执行结束
+      ret = aclrtSynchronizeStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
+
+      // 调用aclnnQuantMatmulWeightNz第一段接口
+      workspaceSize = 0;
+      executor = nullptr;
+      ret = aclnnQuantMatmulWeightNzGetWorkspaceSize(x1, x2NzFp4, x1Scale, x2Scale, nullptr, nullptr, nullptr, nullptr,
+                                                     bias, transposeX1, transposeX2, groupSize, out, &workspaceSize,
+                                                     &executor);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzGetWorkspaceSize failed. ERROR: %d\n", ret);
+                return ret);
+      // 根据第一段接口计算出的workspaceSize申请device内存
+      void* workspaceAddr = nullptr;
+      std::unique_ptr<void, aclError (*)(void*)> workspaceAddrPtr(nullptr, aclrtFree);
+      if (workspaceSize > 0) {
+          ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+          CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+          workspaceAddrPtr.reset(workspaceAddr);
+      }
+      // 调用aclnnQuantMatmulWeightNz第二段接口
+      ret = aclnnQuantMatmulWeightNz(workspaceAddr, workspaceSize, executor, stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNz failed. ERROR: %d\n", ret); return ret);
+
+      // 4.（固定写法）同步等待任务执行结束
+      ret = aclrtSynchronizeStream(stream);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
+
+      // 5. 获取输出的值，将device侧内存上的结果拷贝至host侧，需要根据具体API的接口定义修改
+      auto size = GetShapeSize(outShape);
+      std::vector<uint16_t> resultData(size,
+                                       0); // C语言中无法直接打印fp16的数据，需要用uint16读出来，自行通过二进制转成fp16
+      ret = aclrtMemcpy(resultData.data(), resultData.size() * sizeof(resultData[0]), outDeviceAddr,
+                        size * sizeof(resultData[0]), ACL_MEMCPY_DEVICE_TO_HOST);
+      CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
+      for (int64_t i = 0; i < size; i++) {
+          LOG_PRINT("result[%ld] is: %.1f\n", i, Bf16ToFloat(resultData[i]));
+      }
+      return ACL_SUCCESS;
+  }
+
+  int main()
+  {
+      // 1.（固定写法）device/stream初始化，参考acl API手册
+      // 根据自己的实际device填写deviceId
+      int32_t deviceId = 0;
+      aclrtStream stream;
+      auto ret = aclnnQuantMatmulWeightNzTest(deviceId, stream);
+      CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantMatmulWeightNzTest failed. ERROR: %d\n", ret); return ret);
+
+      Finalize(deviceId, stream);
+      return 0;
+  }
+  ```
+
+<!-- end id15 -->

@@ -1,0 +1,133 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file transpose_batch_mat_mul.cpp
+ * \brief
+ */
+#include "../../mat_mul_v3/arch35/mat_mul_tiling_data.h"
+#include "transpose_batch_mat_mul_tiling_key.h"
+#include "transpose_batch_mat_mul_asw_kernel_advanced.h"
+#include "transpose_batch_mat_mul_tiling_key_public.h"
+#include "transpose_batch_mat_mul_asw_block_advanced.h"
+#include "transpose_batch_mat_mul_asw_kernel.h"
+using namespace TransposeBatchMatMulAdvanced;
+
+using namespace AscendC;
+using namespace matmul;
+
+#ifndef DTYPE_BIAS
+#define DTYPE_BIAS DTYPE_X1
+#endif
+
+#ifndef FORMAT_FRACTAL_NZ
+#define FORMAT_FRACTAL_NZ
+#endif
+
+constexpr CubeFormat format_x1 = CubeFormat::ND;
+constexpr CubeFormat format_y = CubeFormat::ND;
+
+#if defined(FORMAT_X2) && FORMAT_X2 == FORMAT_FRACTAL_NZ
+constexpr CubeFormat format_x2 = CubeFormat::NZ;
+#else
+constexpr CubeFormat format_x2 = CubeFormat::ND;
+#endif
+
+#define TBMM_IMPL_CLASS_COMMON_TRANS(transA, transB, Mode, templateClass, ...)           \
+    do {                                                                                 \
+        using cType = MatmulType<AscendC::TPosition::GM, format_y, DTYPE_Y>;             \
+        using biasType = MatmulType<AscendC::TPosition::GM, CubeFormat::ND, DTYPE_BIAS>; \
+        TPipe pipe;                                                                      \
+        using aType = MatmulType<AscendC::TPosition::GM, format_x1, DTYPE_X1, transA>;   \
+        using bType = MatmulType<AscendC::TPosition::GM, format_x2, DTYPE_X2, transB>;   \
+        templateClass<aType, bType, cType, biasType, Mode, __VA_ARGS__> op;              \
+        op.Init(aGM, bGM, cGM, biasGM, scalesGM, user, &tilingData, &pipe);              \
+        op.Process();                                                                    \
+    } while (0)
+
+template <int8_t PERM_X1, int8_t PERM_X2, int8_t BATCH_SPLIT, int8_t API_LEVEL>
+__global__ __aicore__ void transpose_batch_mat_mul(GM_ADDR aGM, GM_ADDR bGM, GM_ADDR biasGM, GM_ADDR scalesGM,
+                                                   GM_ADDR cGM, GM_ADDR workspaceGM, GM_ADDR tilingGM)
+{
+    AscendC::InitSocState();
+    __gm__ uint8_t* user = GetUserWorkspace(workspaceGM);
+
+    constexpr bool aTran = false;
+    constexpr bool bTran = (PERM_X2 == 1);
+    constexpr bool IS_INT_8_OUTPUT = std::is_same_v<DTYPE_Y, signed char>;
+
+#if !__FIXED_POINT_ONLY_CUBE_TO_L0C__
+    using layoutA = AscendC::Std::conditional_t<aTran, AscendC::Te::DNExtLayoutPtn, AscendC::Te::NDExtLayoutPtn>;
+    using layoutB = AscendC::Std::conditional_t<
+        bTran,
+        AscendC::Std::conditional_t<(format_x2 == CubeFormat::NZ), AscendC::Te::ZNLayoutPtn,
+                                    AscendC::Te::DNExtLayoutPtn>,
+        AscendC::Std::conditional_t<(format_x2 == CubeFormat::NZ), AscendC::Te::NZLayoutPtn,
+                                    AscendC::Te::NDExtLayoutPtn>>;
+    // C GM layout
+    using layoutC = AscendC::Te::NDExtLayoutPtn;
+#endif
+
+    REGISTER_TILING_DEFAULT(BatchMatMulV3TilingData);
+    GET_TILING_DATA(tilingData, tilingGM);
+
+    KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIC_ONLY);
+    if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_HIGH_LEVEL &&
+                  BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_FALSE &&
+                  PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_0_1_2) {
+        TBMM_IMPL_CLASS_COMMON_TRANS(aTran, bTran, TBMM_MODE::BMM_TRANS,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswKernel,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswBlock, MM_CFG_NO_PRELOAD);
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_HIGH_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_FALSE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_1_0_2) {
+        TBMM_IMPL_CLASS_COMMON_TRANS(aTran, bTran, TBMM_MODE::TRANS_BMM_TRANS,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswKernel,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswBlock, MM_CFG_NO_PRELOAD);
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_HIGH_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_TRUE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_0_1_2) {
+        TBMM_IMPL_CLASS_COMMON_TRANS(aTran, bTran, TBMM_MODE::BMM_TRANS_TRANS,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswKernel,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswBlock, MM_CFG_NO_PRELOAD);
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_HIGH_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_TRUE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_1_0_2) {
+        TBMM_IMPL_CLASS_COMMON_TRANS(aTran, bTran, TBMM_MODE::TRANS_BMM_TRANS_TRANS,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswKernel,
+                                     TransposeBatchMatMulAdvanced::TransposeBatchMatMulAswBlock, MM_CFG_NO_PRELOAD);
+#if !__FIXED_POINT_ONLY_CUBE_TO_L0C__
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_TENSOR_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_FALSE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_0_1_2) {
+        TransposeBatchMatMulAdvanced::TBMMTensorKernel<DTYPE_X1, DTYPE_X2, DTYPE_Y, DTYPE_BIAS, layoutA, layoutB,
+                                                       layoutC, PERM_X1>(aGM, bGM, biasGM, scalesGM, cGM, nullptr,
+                                                                         tilingData);
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_TENSOR_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_FALSE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_1_0_2) {
+        TransposeBatchMatMulAdvanced::TBMMTensorKernel<DTYPE_X1, DTYPE_X2, DTYPE_Y, DTYPE_BIAS, layoutA, layoutB,
+                                                       layoutC, PERM_X1>(aGM, bGM, biasGM, scalesGM, cGM, nullptr,
+                                                                         tilingData);
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_TENSOR_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_TRUE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_0_1_2) {
+        TransposeBatchMatMulAdvanced::TBMMTensorKernel<DTYPE_X1, DTYPE_X2, DTYPE_Y, DTYPE_BIAS, layoutA, layoutB,
+                                                       layoutC, PERM_X1>(aGM, bGM, biasGM, scalesGM, cGM, nullptr,
+                                                                         tilingData);
+    } else if constexpr (API_LEVEL == TRANSPOSE_BATCH_MAT_MUL_TENSOR_LEVEL &&
+                         BATCH_SPLIT == TRANSPOSE_BATCH_MAT_MUL_BATCH_SPLIT_TRUE &&
+                         PERM_X1 == TRANSPOSE_BATCH_MAT_MUL_PERM_X1_1_0_2) {
+        TransposeBatchMatMulAdvanced::TBMMTensorKernel<DTYPE_X1, DTYPE_X2, DTYPE_Y, DTYPE_BIAS, layoutA, layoutB,
+                                                       layoutC, PERM_X1>(aGM, bGM, biasGM, scalesGM, cGM, nullptr,
+                                                                         tilingData);
+#endif
+    }
+}

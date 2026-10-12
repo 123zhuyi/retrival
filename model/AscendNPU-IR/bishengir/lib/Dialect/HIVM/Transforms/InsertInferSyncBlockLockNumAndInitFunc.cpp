@@ -1,0 +1,189 @@
+//===---------- InsertInferSyncBlockLockSizeAndInitFunc.cpp ---------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+#include "bishengir/Dialect/HACC/IR/HACC.h"
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Utils/StaticValueUtils.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/Visitors.h"
+#include "mlir/Pass/Pass.h"
+#include "mlir/Support/LLVM.h"
+
+#include <memory>
+
+#define DEBUG_TYPE "hivm-insert-infer-sync-block-lock-num-and-init-func"
+
+namespace mlir {
+#define GEN_PASS_DEF_INSERTINFERSYNCBLOCKLOCKNUMANDINITFUNC
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h.inc"
+} // namespace mlir
+
+using namespace mlir;
+using namespace mlir::hivm;
+
+namespace {
+/// Strip _mix_aiv or _mix_aic suffix from func name to get the original kernel
+/// name. This ensures host callback func names are consistent when the kernel
+/// has been split by SplitMixKernel (e.g., kernel ->
+/// kernel_mix_aiv/kernel_mix_aic).
+static std::string getBaseKernelNameForHostFunc(StringRef funcName) {
+  return stripMixFuncSuffix(funcName);
+}
+
+SmallVector<Operation *> collectCreateSyncBlockLockOp(func::FuncOp funcOp) {
+  SmallVector<Operation *> candidate;
+  funcOp.walk([&](hivm::CreateSyncBlockLockOp op) { candidate.push_back(op); });
+
+  return candidate;
+}
+
+func::FuncOp insertInferSyncBlockLockNumFuncImpl(func::FuncOp funcOp,
+                                                 StringRef funcName,
+                                                 int64_t syncBlockLockLayout) {
+  OpBuilder builder(funcOp.getContext());
+  builder.setInsertionPoint(funcOp);
+
+  FunctionType funcType = FunctionType::get(
+      funcOp.getContext(),
+      /*input*/ TypeRange{}, /*result*/ TypeRange{builder.getI64Type()});
+  auto func =
+      builder.create<func::FuncOp>(funcOp.getLoc(),
+                                   /*name*/ funcName, /*type*/ funcType);
+  Block *entryBlock = func.addEntryBlock();
+  builder.setInsertionPointToStart(entryBlock);
+
+  // Pack ordered and unordered lock counts into one i64 to preserve the host
+  // callback ABI. The launcher derives the exact size from blockNum.
+  auto syncBlockLockLayoutVal = builder.create<arith::ConstantIntOp>(
+      funcOp.getLoc(), syncBlockLockLayout, 64);
+  builder.create<func::ReturnOp>(funcOp.getLoc(),
+                                 ValueRange{syncBlockLockLayoutVal.getResult()});
+  return func;
+}
+
+void insertInferSyncBlockLockNumFunc(func::FuncOp funcOp,
+                                     int64_t syncBlockLockLayout) {
+  std::string baseKernelName =
+      getBaseKernelNameForHostFunc(funcOp.getSymName());
+  std::string callbackFuncName = hacc::constructHostFunctionName(
+      baseKernelName, hacc::HostFuncType::kInferSyncBlockLockNumFunction);
+  ModuleOp module = funcOp->getParentOfType<ModuleOp>();
+  if (module.lookupSymbol(
+          StringAttr::get(funcOp.getContext(), callbackFuncName)))
+    return; // Already inserted by sibling (e.g., kernel_mix_aic when processing
+            // kernel_mix_aiv)
+  func::FuncOp callbackFunc = insertInferSyncBlockLockNumFuncImpl(
+      funcOp, callbackFuncName, syncBlockLockLayout);
+  hacc::utils::setHost(callbackFunc);
+  hacc::utils::setHostFuncType(
+      callbackFunc, hacc::HostFuncType::kInferSyncBlockLockNumFunction);
+}
+
+func::FuncOp insertInferSyncBlockLockInitFuncImpl(func::FuncOp funcOp,
+                                                  StringRef funcName,
+                                                  int64_t syncBlockLockInit) {
+  OpBuilder builder(funcOp.getContext());
+  builder.setInsertionPoint(funcOp);
+
+  FunctionType funcType = FunctionType::get(
+      funcOp.getContext(),
+      /*input*/ TypeRange{}, /*result*/ TypeRange{builder.getI64Type()});
+  auto func =
+      builder.create<func::FuncOp>(funcOp.getLoc(),
+                                   /*name*/ funcName, /*type*/ funcType);
+  Block *entryBlock = func.addEntryBlock();
+  builder.setInsertionPointToStart(entryBlock);
+
+  auto lockInitVal = builder.create<arith::ConstantIntOp>(
+      funcOp.getLoc(), syncBlockLockInit, 64);
+  builder.create<func::ReturnOp>(funcOp.getLoc(),
+                                 ValueRange{lockInitVal.getResult()});
+  return func;
+}
+
+void insertInferSyncBlockLockInitFunc(func::FuncOp funcOp,
+                                      int64_t syncBlockLockInit) {
+  std::string baseKernelName =
+      getBaseKernelNameForHostFunc(funcOp.getSymName());
+  std::string callbackFuncName = hacc::constructHostFunctionName(
+      baseKernelName, hacc::HostFuncType::kInferSyncBlockLockInitFunction);
+  ModuleOp module = funcOp->getParentOfType<ModuleOp>();
+  if (module.lookupSymbol(
+          StringAttr::get(funcOp.getContext(), callbackFuncName)))
+    return; // Already inserted by sibling (e.g., kernel_mix_aic when processing
+            // kernel_mix_aiv)
+  func::FuncOp callbackFunc = insertInferSyncBlockLockInitFuncImpl(
+      funcOp, callbackFuncName, syncBlockLockInit);
+  hacc::utils::setHost(callbackFunc);
+  hacc::utils::setHostFuncType(
+      callbackFunc, hacc::HostFuncType::kInferSyncBlockLockInitFunction);
+}
+
+} // anonymous namespace
+
+namespace {
+class InsertInferSyncBlockLockNumAndInitFuncPass
+    : public impl::InsertInferSyncBlockLockNumAndInitFuncBase<
+          InsertInferSyncBlockLockNumAndInitFuncPass> {
+public:
+  using InsertInferSyncBlockLockNumAndInitFuncBase<
+      InsertInferSyncBlockLockNumAndInitFuncPass>::
+      InsertInferSyncBlockLockNumAndInitFuncBase;
+  void runOnOperation() override;
+};
+} // namespace
+
+void InsertInferSyncBlockLockNumAndInitFuncPass::runOnOperation() {
+  func::FuncOp funcOp = getOperation();
+  SmallVector<Operation *> createSyncBlockLockOps =
+      collectCreateSyncBlockLockOp(funcOp);
+  if (createSyncBlockLockOps.empty())
+    return;
+
+  // Calculate total sync block lock num in cache-line units.
+  int64_t orderedLockCount = 0;
+  int64_t unorderedLockCount = 0;
+  for (Operation *op : createSyncBlockLockOps) {
+    if (op->hasAttr(SyncBlockLockUnorderedAttr::name))
+      ++unorderedLockCount;
+    else
+      ++orderedLockCount;
+  }
+
+  // Keep the existing callback ABI while returning both counts. The launcher
+  // computes the exact GM size from launch-time blockNum.
+  constexpr int64_t countBits = 32;
+  int64_t syncBlockLockLayout =
+      (unorderedLockCount << countBits) | (orderedLockCount * 8);
+  insertInferSyncBlockLockNumFunc(funcOp, syncBlockLockLayout);
+
+  // 2. Insert host callback func to return sync block lock init
+  insertInferSyncBlockLockInitFunc(funcOp, 0);
+}
+
+std::unique_ptr<Pass>
+mlir::hivm::createInsertInferSyncBlockLockNumAndInitFuncPass() {
+  return std::make_unique<InsertInferSyncBlockLockNumAndInitFuncPass>();
+}

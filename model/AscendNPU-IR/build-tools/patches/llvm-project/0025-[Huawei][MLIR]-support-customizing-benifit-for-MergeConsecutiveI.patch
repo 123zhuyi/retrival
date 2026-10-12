@@ -1,0 +1,63 @@
+diff --git a/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h b/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h
+index 7f983b8b3cfd..30228b9bce8e 100644
+--- a/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h
++++ b/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h
+@@ -56,7 +56,11 @@ void populateFoldTensorSubsetIntoVectorTransferPatterns(
+ /// bufferization is sensitive to IR structure, particularly those
+ /// tensor.extract_slice and tensor.insert_slice ops for creating the slices.
+ void populateMergeConsecutiveInsertExtractSlicePatterns(
++#if BSPUB_DAVINCI_BISHENGIR
++    RewritePatternSet &patterns, PatternBenefit benefit = 0);
++#else
+     RewritePatternSet &patterns);
++#endif
+ 
+ /// Populates `patterns` with patterns that drop redundant tensor.insert_slice
+ /// rank expansions.
+diff --git a/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp b/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp
+index ff003e486d21..69f6f32179b5 100644
+--- a/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp
++++ b/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp
+@@ -22,6 +22,10 @@ namespace {
+ // TODO: move to FoldTensorSubsetOps and unify APIs with FoldMemRefAliasOps.
+ struct MergeConsecutiveExtractSlice : public OpRewritePattern<ExtractSliceOp> {
+   using OpRewritePattern::OpRewritePattern;
++#if BSPUB_DAVINCI_BISHENGIR
++  MergeConsecutiveExtractSlice(MLIRContext *context, PatternBenefit benefit = 0)
++      : OpRewritePattern<ExtractSliceOp>(context, benefit) {};
++#endif
+ 
+   LogicalResult matchAndRewrite(ExtractSliceOp nextOp,
+                                 PatternRewriter &rewriter) const override {
+@@ -47,6 +51,10 @@ struct MergeConsecutiveExtractSlice : public OpRewritePattern<ExtractSliceOp> {
+ template <typename OpTy>
+ struct MergeConsecutiveInsertSlice : public OpRewritePattern<OpTy> {
+   using OpRewritePattern<OpTy>::OpRewritePattern;
++#if BSPUB_DAVINCI_BISHENGIR
++  MergeConsecutiveInsertSlice(MLIRContext *context, PatternBenefit benefit = 0)
++      : OpRewritePattern<OpTy>(context, benefit) {};
++#endif
+ 
+   LogicalResult matchAndRewrite(OpTy nextOp,
+                                 PatternRewriter &rewriter) const override {
+@@ -228,11 +236,20 @@ struct DropRedundantRankExpansionOnInsertSliceOfExtractSlice final
+ } // namespace
+ 
+ void mlir::tensor::populateMergeConsecutiveInsertExtractSlicePatterns(
++#if BSPUB_DAVINCI_BISHENGIR
++    RewritePatternSet &patterns, PatternBenefit benefit) {
++  patterns.add<MergeConsecutiveExtractSlice>(patterns.getContext(), benefit);
++  patterns.add<MergeConsecutiveInsertSlice<InsertSliceOp>>(
++      patterns.getContext(), benefit);
++  patterns.add<MergeConsecutiveInsertSlice<ParallelInsertSliceOp>>(
++      patterns.getContext(), benefit);
++#else
+     RewritePatternSet &patterns) {
+   patterns.add<MergeConsecutiveExtractSlice,
+                MergeConsecutiveInsertSlice<InsertSliceOp>,
+                MergeConsecutiveInsertSlice<ParallelInsertSliceOp>>(
+       patterns.getContext());
++#endif
+ }
+ 
+ void mlir::tensor::populateDropRedundantInsertSliceRankExpansionPatterns(

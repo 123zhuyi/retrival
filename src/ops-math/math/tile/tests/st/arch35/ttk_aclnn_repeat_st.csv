@@ -1,0 +1,6 @@
+testcase_name,api_name,tensor_view_shapes,tensor_dtypes,attributes,output_tensor_indexes,precision_tolerances
+tile_001,aclnnRepeat,"((2, 128, 1, 1),(2, 128, 28, 28))","('bfloat16','bfloat16')","{'repeats': [1, 1, 28, 28]}","(1,)",
+tile_002,aclnnRepeat,"((2, 128, 1, 1),(2, 128, 28, 28))","('bool','bool')","{'repeats': [1, 1, 28, 28]}","(1,)",
+tile_003,aclnnRepeat,"((1, 1, 32, 1, 1),(1, 43, 32, 1, 1))","('float16','float16')","{'repeats': [1, 43, 1, 1, 1]}","(1,)",
+tile_004,aclnnRepeat,"((2, 128, 28, 1, 1),(2, 128, 28, 28, 1))","('float32','float32')","{'repeats': [1, 1, 1, 28, 1]}","(1,)",
+tile_005,aclnnRepeat,"((2, 128, 1, 1),(2, 128, 28, 28))","('int32','int32')","{'repeats': [1, 1, 28, 28]}","(1,)",

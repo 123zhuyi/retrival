@@ -1,0 +1,216 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+index b20085ae9405..65798b31c1e4 100644
+--- a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
++++ b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+@@ -1635,8 +1635,13 @@ def SplitReductionOp : Op<Transform_Dialect, "structured.split_reduction",
+ //===----------------------------------------------------------------------===//
+ 
+ def TileReductionUsingForOp : Op<Transform_Dialect, "structured.tile_reduction_using_for",
+-       [FunctionalStyleTransformOpTrait, MemoryEffectsOpInterface,
+-        TransformEachOpTrait, TransformOpInterface,
++       [FunctionalStyleTransformOpTrait,
++#ifdef BSPUB_DAVINCI_BISHENGIR
++  DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
++#else
++  MemoryEffectsOpInterface, TransformEachOpTrait,
++#endif
++        TransformOpInterface,
+         ReportTrackingListenerFailuresOpTrait]> {
+   let description = [{
+     Indicates that the given `target` op should be transformed with the
+@@ -1707,6 +1712,56 @@ def TileReductionUsingForOp : Op<Transform_Dialect, "structured.tile_reduction_u
+     ```
+   }];
+ 
++#ifdef BSPUB_DAVINCI_BISHENGIR
++  let arguments = (ins TransformHandleTypeInterface:$target,
++                   Variadic<Transform_AnyHandleOrParamType>:$tile_sizes,
++                   DefaultValuedOptionalAttr<DenseI64ArrayAttr, "{}">:$static_tile_sizes);
++  let results = (outs Variadic<TransformHandleTypeInterface>:$fill_op,
++                      TransformHandleTypeInterface:$split_linalg_op,
++                      TransformHandleTypeInterface:$combining_linalg_op,
++                      TransformHandleTypeInterface:$for_op);
++
++  let builders = [
++    OpBuilder<(ins "Value":$target,
++                   "ArrayRef<int64_t>":$staticTileSizes)>,
++    OpBuilder<(ins "Value":$target,
++                   "ArrayRef<OpFoldResult>":$mixedTileSizes)>,
++    OpBuilder<(ins "TypeRange":$resultTypes,
++                   "Value":$target,
++                   "DenseI64ArrayAttr":$static_tile_sizes), [{
++      build($_builder, $_state, resultTypes, target,
++            /*tile_sizes=*/ValueRange{}, static_tile_sizes);
++    }]>,
++    OpBuilder<(ins "TypeRange":$fill_op,
++                   "Type":$split_linalg_op,
++                   "Type":$combining_linalg_op,
++                   "Type":$for_op,
++                   "Value":$target,
++                   "DenseI64ArrayAttr":$static_tile_sizes), [{
++      build($_builder, $_state, fill_op, split_linalg_op, combining_linalg_op,
++            for_op, target, /*tile_sizes=*/ValueRange{}, static_tile_sizes);
++    }]>,
++  ];
++
++  let assemblyFormat = [{
++    $target
++    `by` `tile_sizes` `=` custom<DynamicIndexList>($tile_sizes,
++                                                   $static_tile_sizes)
++    attr-dict
++    `:` functional-type(operands, results)
++  }];
++
++  let extraClassDeclaration = [{
++    ::mlir::DiagnosedSilenceableFailure apply(
++        ::mlir::transform::TransformRewriter &rewriter,
++        ::mlir::transform::TransformResults &transformResults,
++        ::mlir::transform::TransformState &state);
++
++    /// Returns the list of tile sizes, which may be static (Attribute) or
++    /// dynamic (Value).
++    SmallVector<OpFoldResult> getMixedSizes();
++  }];
++#else
+   // TODO: support mixed static-dynamic (see TileUsingForallOp).
+   let arguments = (ins TransformHandleTypeInterface:$target,
+                    DefaultValuedAttr<DenseI64ArrayAttr, "{}">:$tile_sizes);
+@@ -1734,6 +1789,7 @@ def TileReductionUsingForOp : Op<Transform_Dialect, "structured.tile_reduction_u
+         ::mlir::transform::ApplyToEachResultList &results,
+         ::mlir::transform::TransformState &state);
+   }];
++#endif
+ }
+ 
+ //===----------------------------------------------------------------------===//
+diff --git a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+index 531c2c9ec0ec..e600d414c38f 100644
+--- a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
++++ b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+@@ -10,6 +10,7 @@
+ 
+ #include "mlir/AsmParser/AsmParser.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+@@ -2639,6 +2640,109 @@ void transform::TileReductionUsingForOp::build(
+         /*tile_sizes=*/staticTileSizesAttr);
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++
++void transform::TileReductionUsingForOp::build(
++    OpBuilder &builder, OperationState &result, Value target,
++    ArrayRef<OpFoldResult> mixedSizes) {
++  // Call the default builder.
++  // This is future-proof re mixed static-dynamic and setting up the proper
++  // operands segment sizes attributes for multiple variadic operands.
++  // In the absence of this, horrible bugs ensue.
++  MLIRContext *ctx = builder.getContext();
++  auto opTy = transform::AnyOpType::get(ctx);
++  SmallVector<int64_t> staticTileSizes;
++  SmallVector<Value> dynamicTileSizes;
++  dispatchIndexOpFoldResults(mixedSizes, dynamicTileSizes, staticTileSizes);
++  build(builder, result,
++        /*resultTypes=*/TypeRange{opTy, opTy, opTy, opTy},
++        /*target=*/target, /*tile_sizes=*/dynamicTileSizes,
++        /*static_tile_sizes=*/staticTileSizes);
++}
++
++SmallVector<OpFoldResult> transform::TileReductionUsingForOp::getMixedSizes() {
++  ValueRange dynamic = getTileSizes();
++  ArrayRef<int64_t> tileSizes = getStaticTileSizes();
++  SmallVector<OpFoldResult> results;
++  results.reserve(tileSizes.size());
++  unsigned dynamicPos = 0;
++  Builder builder(getContext());
++  for (int64_t size : tileSizes) {
++    if (size == ShapedType::kDynamic) {
++      results.push_back(dynamic[dynamicPos]);
++      dynamicPos++;
++    } else {
++      results.push_back(builder.getIndexAttr(size));
++    }
++  }
++  return results;
++}
++
++DiagnosedSilenceableFailure transform::TileReductionUsingForOp::apply(
++    transform::TransformRewriter &rewriter, TransformResults &transformResults,
++    TransformState &state) {
++  auto targets = state.getPayloadOps(getTarget());
++  if (targets.empty())
++    return DiagnosedSilenceableFailure::success();
++
++  rewriter.setInsertionPoint(*targets.begin());
++  SmallVector<OpFoldResult> mixedSizes = getMixedSizes();
++  for (OpFoldResult &ofr : mixedSizes) {
++    if (isa<Attribute>(ofr))
++      continue;
++    auto value = ofr.get<Value>();
++    if (isa<transform::AnyValueType>(value.getType())) {
++      auto payloadValues = state.getPayloadValues(value);
++      if (!llvm::hasSingleElement(payloadValues))
++        return DiagnosedSilenceableFailure::definiteFailure();
++      ofr = getValueOrCreateCastToIndexLike(rewriter, getLoc(),
++                                            rewriter.getIndexType(),
++                                            *(payloadValues.begin()));
++    }
++  }
++
++  SmallVector<SmallVector<Operation *>> fillOps;
++  fillOps.resize(getFillOp().size());
++  SmallVector<Operation *> loopOps, splitOps, combiningOps;
++
++  for (auto [idx, target] : llvm::enumerate(targets)) {
++    FailureOr<scf::SCFReductionTilingResult> result =
++        scf::tileReductionUsingScf(
++            rewriter, cast<PartialReductionOpInterface>(target), mixedSizes);
++
++    if (failed(result))
++      return emitDefaultSilenceableFailure(target);
++
++    for (auto [initIdx, initValue] : llvm::enumerate(result->initialValues))
++      fillOps[initIdx].push_back(initValue.getDefiningOp());
++
++    for (auto *parallelTiledOp : result->parallelTiledOps)
++      splitOps.push_back(parallelTiledOp);
++
++    for (auto *mergeOp : result->mergeOps)
++      combiningOps.push_back(mergeOp);
++
++    loopOps.push_back(result->loops.front());
++  }
++
++  for (const auto &en : llvm::enumerate(fillOps))
++    transformResults.set(cast<OpResult>(getFillOp()[en.index()]), en.value());
++  transformResults.set(cast<OpResult>(getSplitLinalgOp()), splitOps);
++  transformResults.set(cast<OpResult>(getCombiningLinalgOp()), combiningOps);
++  transformResults.set(cast<OpResult>(getForOp()), loopOps);
++  return DiagnosedSilenceableFailure::success();
++}
++
++void transform::TileReductionUsingForOp::getEffects(
++    SmallVectorImpl<MemoryEffects::EffectInstance> &effects) {
++  onlyReadsHandle(getTargetMutable(), effects);
++  onlyReadsHandle(getTileSizesMutable(), effects);
++  producesHandle(getOperation()->getOpResults(), effects);
++  modifiesPayload(effects);
++}
++
++#else
++
+ DiagnosedSilenceableFailure transform::TileReductionUsingForOp::applyToOne(
+     transform::TransformRewriter &rewriter, LinalgOp target,
+     transform::ApplyToEachResultList &results,
+@@ -2660,6 +2764,8 @@ DiagnosedSilenceableFailure transform::TileReductionUsingForOp::applyToOne(
+   return DiagnosedSilenceableFailure::success();
+ }
+ 
++#endif
++
+ //===----------------------------------------------------------------------===//
+ // TileReductionUsingForallOp
+ //===----------------------------------------------------------------------===//

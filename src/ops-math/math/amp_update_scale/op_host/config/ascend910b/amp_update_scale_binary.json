@@ -1,0 +1,227 @@
+{
+    "op_type": "AmpUpdateScale",
+    "op_list": [
+        {
+            "bin_filename": "AmpUpdateScale_6993687eb06b70ac5aa102ddd4bef1c4",
+            "inputs": [
+                {
+                    "name": "current_scale",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "growth_tracker",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "found_inf",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "updated_scale",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "updated_growth_tracker",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "growth_factor",
+                    "dtype": "float",
+                    "value": 0.0
+                },
+                {
+                    "name": "backoff_factor",
+                    "dtype": "float",
+                    "value": 0.0
+                },
+                {
+                    "name": "growth_interval",
+                    "dtype": "int",
+                    "value": 0
+                }
+            ]
+        },
+        {
+            "bin_filename": "AmpUpdateScale_float16",
+            "inputs": [
+                {
+                    "name": "current_scale",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "growth_tracker",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "found_inf",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "updated_scale",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "updated_growth_tracker",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "growth_factor",
+                    "dtype": "float",
+                    "value": 0.0
+                },
+                {
+                    "name": "backoff_factor",
+                    "dtype": "float",
+                    "value": 0.0
+                },
+                {
+                    "name": "growth_interval",
+                    "dtype": "int",
+                    "value": 0
+                }
+            ]
+        },
+        {
+            "bin_filename": "AmpUpdateScale_bfloat16",
+            "inputs": [
+                {
+                    "name": "current_scale",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "growth_tracker",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "found_inf",
+                    "index": 2,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "updated_scale",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "updated_growth_tracker",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "growth_factor",
+                    "dtype": "float",
+                    "value": 0.0
+                },
+                {
+                    "name": "backoff_factor",
+                    "dtype": "float",
+                    "value": 0.0
+                },
+                {
+                    "name": "growth_interval",
+                    "dtype": "int",
+                    "value": 0
+                }
+            ]
+        }
+    ]
+}

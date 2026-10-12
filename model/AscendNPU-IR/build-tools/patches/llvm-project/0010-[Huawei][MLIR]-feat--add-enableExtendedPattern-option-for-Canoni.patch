@@ -1,0 +1,41 @@
+diff --git a/mlir/include/mlir/Interfaces/ViewLikeInterface.h b/mlir/include/mlir/Interfaces/ViewLikeInterface.h
+index d6479143a0a5..505d4479631e 100644
+--- a/mlir/include/mlir/Interfaces/ViewLikeInterface.h
++++ b/mlir/include/mlir/Interfaces/ViewLikeInterface.h
+@@ -13,6 +13,7 @@
+ #ifndef MLIR_INTERFACES_VIEWLIKEINTERFACE_H_
+ #define MLIR_INTERFACES_VIEWLIKEINTERFACE_H_
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Utils/StaticValueUtils.h"
+ #include "mlir/IR/Builders.h"
+ #include "mlir/IR/BuiltinAttributes.h"
+@@ -60,6 +61,15 @@ class OpWithOffsetSizesAndStridesConstantArgumentFolder final
+ public:
+   using OpRewritePattern<OpType>::OpRewritePattern;
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  OpWithOffsetSizesAndStridesConstantArgumentFolder(
++      MLIRContext *context, StringRef name = StringRef())
++      : OpRewritePattern<OpType>(context) {
++    if (!name.empty())
++      this->setDebugName(name);
++  }
++#endif
++
+   LogicalResult matchAndRewrite(OpType op,
+                                 PatternRewriter &rewriter) const override {
+     SmallVector<OpFoldResult> mixedOffsets(op.getMixedOffsets());
+diff --git a/mlir/test/Pass/run-reproducer.mlir b/mlir/test/Pass/run-reproducer.mlir
+index bf3ab2dae2ff..275513b7636a 100644
+--- a/mlir/test/Pass/run-reproducer.mlir
++++ b/mlir/test/Pass/run-reproducer.mlir
+@@ -1,6 +1,8 @@
+ // RUN: mlir-opt %s --run-reproducer -dump-pass-pipeline 2>&1 | FileCheck %s
+ // RUN: mlir-opt %s --run-reproducer -mlir-print-ir-before=cse 2>&1 | FileCheck -check-prefix=BEFORE %s
+ 
++// UNSUPPORTED: bspub_davinci_bishengir
++
+ func.func @foo() {
+   %0 = arith.constant 0 : i32
+   return

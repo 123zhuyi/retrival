@@ -1,0 +1,94 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/Passes.td b/mlir/include/mlir/Dialect/Linalg/Passes.td
+index d96ad919b65f..5edcf73c6d5d 100644
+--- a/mlir/include/mlir/Dialect/Linalg/Passes.td
++++ b/mlir/include/mlir/Dialect/Linalg/Passes.td
+@@ -61,6 +61,11 @@ def ConvertLinalgToParallelLoopsPass
+ def LinalgFoldUnitExtentDimsPass : Pass<"linalg-fold-unit-extent-dims", ""> {
+   let summary = "Remove unit-extent dimension in Linalg ops on tensors";
+   let options = [
++#ifdef BSPUB_DAVINCI_BISHENGIR
++    Option<"foldRankReducingSlices", "fold-rank-reducing-slices", "bool",
++           /*default=*/"true",
++           "Include fold rank-reducing slices using reassociative reshapes">,
++#endif
+     Option<"useRankReducingSlices", "use-rank-reducing-slices", "bool",
+            /*default=*/"false",
+            "Generate rank-reducing slices instead of reassociative reshapes">
+diff --git a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+index 0c7a8edff222..2fdca2126b66 100644
+--- a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
++++ b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+@@ -476,6 +476,10 @@ struct ControlDropUnitDims {
+   RankReductionStrategy rankReductionStrategy =
+       RankReductionStrategy::ReassociativeReshape;
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  bool foldRankReducingSlices = true;
++#endif
++
+   using ControlFnTy = std::function<SmallVector<unsigned>(Operation *)>;
+   ControlFnTy controlFn = [](Operation *op) {
+     if (auto genericOp = dyn_cast_or_null<GenericOp>(op)) {
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp b/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp
+index 36f8696bf1b2..cd5698573908 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp
+@@ -14,6 +14,7 @@
+ 
+ #include "mlir/Dialect/Linalg/Passes.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Linalg/IR/Linalg.h"
+@@ -763,6 +764,14 @@ static void
+ populateFoldUnitExtentDimsViaReshapesPatterns(RewritePatternSet &patterns,
+                                               ControlDropUnitDims &options) {
+   auto *context = patterns.getContext();
++#if BSPUB_DAVINCI_BISHENGIR
++  if (options.foldRankReducingSlices) {
++    patterns.add<RankReducedExtractSliceOp,
++                 RankReducedInsertSliceOp<tensor::InsertSliceOp>,
++                 RankReducedInsertSliceOp<tensor::ParallelInsertSliceOp>>(
++        context);
++  }
++#else
+   patterns.add<DropUnitDims>(context, options);
+   patterns.add<DropPadUnitDims>(context, options);
+   // TODO: Patterns unrelated to unit dim folding should be factored out.
+@@ -819,6 +828,12 @@ struct LinalgFoldUnitExtentDimsPass
+           LinalgFoldUnitExtentDimsPass> {
+   using impl::LinalgFoldUnitExtentDimsPassBase<
+       LinalgFoldUnitExtentDimsPass>::LinalgFoldUnitExtentDimsPassBase;
++
++#if BSPUB_DAVINCI_BISHENGIR
++  explicit LinalgFoldUnitExtentDimsPass(
++      const LinalgFoldUnitExtentDimsPassOptions &options)
++      : LinalgFoldUnitExtentDimsPassBase(options) {}
++#endif
+   void runOnOperation() override {
+     Operation *op = getOperation();
+     MLIRContext *context = op->getContext();
+@@ -828,6 +843,9 @@ struct LinalgFoldUnitExtentDimsPass
+       options.rankReductionStrategy = linalg::ControlDropUnitDims::
+           RankReductionStrategy::ExtractInsertSlice;
+     }
++#if BSPUB_DAVINCI_BISHENGIR
++    options.foldRankReducingSlices = foldRankReducingSlices;
++#endif
+     linalg::populateFoldUnitExtentDimsPatterns(patterns, options);
+     populateMoveInitOperandsToInputPattern(patterns);
+     (void)applyPatternsAndFoldGreedily(op, std::move(patterns));
+diff --git a/mlir/test/Dialect/Linalg/drop-unit-extent-dims.mlir b/mlir/test/Dialect/Linalg/drop-unit-extent-dims.mlir
+index 9a00b19aae40..ff563c46bccd 100644
+--- a/mlir/test/Dialect/Linalg/drop-unit-extent-dims.mlir
++++ b/mlir/test/Dialect/Linalg/drop-unit-extent-dims.mlir
+@@ -1,6 +1,8 @@
+ // RUN: mlir-opt %s -linalg-fold-unit-extent-dims -split-input-file | FileCheck %s
+ // RUN: mlir-opt %s -linalg-fold-unit-extent-dims="use-rank-reducing-slices" -cse -split-input-file | FileCheck %s --check-prefix=CHECK-SLICES
+ 
++// UNSUPPORTED: bspub_davinci_bishengir
++
+ #accesses = [
+   affine_map<(i, j, k, l, m) -> (i, k, m)>,
+   affine_map<(i, j, k, l, m) -> ()>,

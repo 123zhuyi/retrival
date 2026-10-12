@@ -1,0 +1,107 @@
+{
+  "op_type": "Sinkhorn",
+  "op_list": [
+    {
+      "bin_filename": "Sinkhorn_float32",
+      "inputs": [
+        {
+          "name": "cost",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "p",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "tol",
+          "dtype": "float",
+          "value": 0.0001
+        }
+      ]
+    },
+    {
+      "bin_filename": "Sinkhorn_float16",
+      "inputs": [
+        {
+          "name": "cost",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "p",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "tol",
+          "dtype": "float",
+          "value": 0.0001
+        }
+      ]
+    },
+    {
+      "bin_filename": "Sinkhorn_bfloat16",
+      "inputs": [
+        {
+          "name": "cost",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "p",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "tol",
+          "dtype": "float",
+          "value": 0.0001
+        }
+      ]
+    }
+  ]
+}

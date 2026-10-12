@@ -1,0 +1,3323 @@
+[
+    {
+        "id": 0,
+        "name": "torch_fused_infer_attention_score_v3",
+        "aclnn_name": "aclnnFusedInferAttentionScoreV3",
+        "triton_name": null,
+        "kernel_name": null,
+        "version": "v2.1",
+        "expected_error_msg": null,
+        "api": "pytorch",
+        "api_type": "executor_fused_infer_attention_score_v3",
+        "aclnn_api_type": "executor_aclnn_fused_infer_attention_score_v3",
+        "triton_api_type": "triton_function",
+        "fusion_api_type": "fusion_function",
+        "fusion_mode": null,
+        "dist_api_type": "dist_function",
+        "kernel_api_type": "kernel_function",
+        "backward": false,
+        "standard": {
+            "acc": {
+                "cv_fused_double_benchmark": {
+                    "max_re_ratio": 2,
+                    "avg_re_ratio": 1.2,
+                    "root_mean_squared_ratio": 1.2
+                }
+            },
+            "perf": "not_key"
+        },
+        "outputs": null,
+        "inputs": [
+            {
+                "name": "query",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "key",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "value",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "pseShiftOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1,
+                    1,
+                    1,
+                    922
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attenMaskOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "bool",
+                "shape": [
+                    1,
+                    922
+                ],
+                "range_values": [
+                    0,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSeqLengthsOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "actualSeqLengthsKvOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "deqScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    16
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "deqScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantOffset2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockTableOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "queryPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    256
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "kvPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    7
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keySharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueSharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSharedPrefixLenOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        "None"
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "queryRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numHeads",
+                "type": "attr",
+                "required": true,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "scaleValue",
+                "type": "attr",
+                "required": false,
+                "dtype": "double",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "preTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "nextTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "inputLayout",
+                "type": "attr",
+                "required": false,
+                "dtype": "string",
+                "shape": null,
+                "range_values": "BSH",
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numKeyValueHeads",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "sparseMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "innerPrecise",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 0,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockSize",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLseFlag",
+                "type": "attr",
+                "required": false,
+                "dtype": "bool",
+                "shape": null,
+                "range_values": [
+                    false
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attentionOut",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLse",
+                "type": "tensor",
+                "required": true,
+                "dtype": "fp16",
+                "shape": [
+                    15,
+                    21,
+                    1,
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            }
+        ],
+        "acl_json": "",
+        "method_inputs": null,
+        "tensor_input": null,
+        "compute_times": null,
+        "save_name": null,
+        "uuid": null,
+        "downloaded": false,
+        "is_boundary": false,
+        "xrun_cs_name": null,
+        "xrun_data": null
+    },
+    {
+        "id": 1,
+        "name": "torch_fused_infer_attention_score_v3",
+        "aclnn_name": "aclnnFusedInferAttentionScoreV3",
+        "triton_name": null,
+        "kernel_name": null,
+        "version": "v2.1",
+        "expected_error_msg": null,
+        "api": "pytorch",
+        "api_type": "executor_fused_infer_attention_score_v3",
+        "aclnn_api_type": "executor_aclnn_fused_infer_attention_score_v3",
+        "triton_api_type": "triton_function",
+        "fusion_api_type": "fusion_function",
+        "fusion_mode": null,
+        "dist_api_type": "dist_function",
+        "kernel_api_type": "kernel_function",
+        "backward": false,
+        "standard": {
+            "acc": {
+                "cv_fused_double_benchmark": {
+                    "max_re_ratio": 2,
+                    "avg_re_ratio": 1.2,
+                    "root_mean_squared_ratio": 1.2
+                }
+            },
+            "perf": "not_key"
+        },
+        "outputs": null,
+        "inputs": [
+            {
+                "name": "query",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "key",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "value",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "pseShiftOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1,
+                    1,
+                    1,
+                    922
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attenMaskOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "bool",
+                "shape": [
+                    1,
+                    922
+                ],
+                "range_values": [
+                    0,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSeqLengthsOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "actualSeqLengthsKvOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "deqScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    7
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    256
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "deqScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantOffset2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    255
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    16
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockTableOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "queryPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "kvPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keySharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueSharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSharedPrefixLenOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        "None"
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "queryRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    255
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numHeads",
+                "type": "attr",
+                "required": true,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "scaleValue",
+                "type": "attr",
+                "required": false,
+                "dtype": "double",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "preTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "nextTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "inputLayout",
+                "type": "attr",
+                "required": false,
+                "dtype": "string",
+                "shape": null,
+                "range_values": "BSH",
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numKeyValueHeads",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "sparseMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0,
+                    1
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "innerPrecise",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 0,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockSize",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLseFlag",
+                "type": "attr",
+                "required": false,
+                "dtype": "bool",
+                "shape": null,
+                "range_values": [
+                    false
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attentionOut",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLse",
+                "type": "tensor",
+                "required": true,
+                "dtype": "fp16",
+                "shape": [
+                    1,
+                    257,
+                    8,
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            }
+        ],
+        "acl_json": "",
+        "method_inputs": null,
+        "tensor_input": null,
+        "compute_times": null,
+        "save_name": null,
+        "uuid": null,
+        "downloaded": false,
+        "is_boundary": false,
+        "xrun_cs_name": null,
+        "xrun_data": null
+    },
+    {
+        "id": 2,
+        "name": "torch_fused_infer_attention_score_v3",
+        "aclnn_name": "aclnnFusedInferAttentionScoreV3",
+        "triton_name": null,
+        "kernel_name": null,
+        "version": "v2.1",
+        "expected_error_msg": null,
+        "api": "pytorch",
+        "api_type": "executor_fused_infer_attention_score_v3",
+        "aclnn_api_type": "executor_aclnn_fused_infer_attention_score_v3",
+        "triton_api_type": "triton_function",
+        "fusion_api_type": "fusion_function",
+        "fusion_mode": null,
+        "dist_api_type": "dist_function",
+        "kernel_api_type": "kernel_function",
+        "backward": false,
+        "standard": {
+            "acc": {
+                "cv_fused_double_benchmark": {
+                    "max_re_ratio": 2,
+                    "avg_re_ratio": 1.2,
+                    "root_mean_squared_ratio": 1.2
+                }
+            },
+            "perf": "not_key"
+        },
+        "outputs": null,
+        "inputs": [
+            {
+                "name": "query",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "key",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "value",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "pseShiftOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1,
+                    1,
+                    1,
+                    922
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attenMaskOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "bool",
+                "shape": [
+                    1,
+                    922
+                ],
+                "range_values": [
+                    0,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSeqLengthsOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "actualSeqLengthsKvOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "deqScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    8
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "deqScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    8
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantOffset2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockTableOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "queryPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    7
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "kvPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    7
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keySharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueSharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    16
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSharedPrefixLenOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        "None"
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "queryRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numHeads",
+                "type": "attr",
+                "required": true,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "scaleValue",
+                "type": "attr",
+                "required": false,
+                "dtype": "double",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "preTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "nextTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "inputLayout",
+                "type": "attr",
+                "required": false,
+                "dtype": "string",
+                "shape": null,
+                "range_values": "BSH",
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numKeyValueHeads",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "sparseMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0,
+                    1
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "innerPrecise",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 0,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockSize",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLseFlag",
+                "type": "attr",
+                "required": false,
+                "dtype": "bool",
+                "shape": null,
+                "range_values": [
+                    false
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attentionOut",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLse",
+                "type": "tensor",
+                "required": true,
+                "dtype": "fp16",
+                "shape": [
+                    8,
+                    16,
+                    8,
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            }
+        ],
+        "acl_json": "",
+        "method_inputs": null,
+        "tensor_input": null,
+        "compute_times": null,
+        "save_name": null,
+        "uuid": null,
+        "downloaded": false,
+        "is_boundary": false,
+        "xrun_cs_name": null,
+        "xrun_data": null
+    },
+    {
+        "id": 3,
+        "name": "torch_fused_infer_attention_score_v3",
+        "aclnn_name": "aclnnFusedInferAttentionScoreV3",
+        "triton_name": null,
+        "kernel_name": null,
+        "version": "v2.1",
+        "expected_error_msg": null,
+        "api": "pytorch",
+        "api_type": "executor_fused_infer_attention_score_v3",
+        "aclnn_api_type": "executor_aclnn_fused_infer_attention_score_v3",
+        "triton_api_type": "triton_function",
+        "fusion_api_type": "fusion_function",
+        "fusion_mode": null,
+        "dist_api_type": "dist_function",
+        "kernel_api_type": "kernel_function",
+        "backward": false,
+        "standard": {
+            "acc": {
+                "cv_fused_double_benchmark": {
+                    "max_re_ratio": 2,
+                    "avg_re_ratio": 1.2,
+                    "root_mean_squared_ratio": 1.2
+                }
+            },
+            "perf": "not_key"
+        },
+        "outputs": null,
+        "inputs": [
+            {
+                "name": "query",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "key",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "value",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "pseShiftOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1,
+                    1,
+                    1,
+                    922
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attenMaskOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "bool",
+                "shape": [
+                    1,
+                    922
+                ],
+                "range_values": [
+                    0,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSeqLengthsOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "actualSeqLengthsKvOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "deqScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    16
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "deqScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantOffset2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    256
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockTableOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "queryPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "kvPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    8
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    7
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    759791
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keySharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    21
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueSharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSharedPrefixLenOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        "None"
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "queryRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    15
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numHeads",
+                "type": "attr",
+                "required": true,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "scaleValue",
+                "type": "attr",
+                "required": false,
+                "dtype": "double",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "preTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "nextTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "inputLayout",
+                "type": "attr",
+                "required": false,
+                "dtype": "string",
+                "shape": null,
+                "range_values": "BSH",
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numKeyValueHeads",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "sparseMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "innerPrecise",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 0,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockSize",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLseFlag",
+                "type": "attr",
+                "required": false,
+                "dtype": "bool",
+                "shape": null,
+                "range_values": [
+                    false
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attentionOut",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLse",
+                "type": "tensor",
+                "required": true,
+                "dtype": "fp16",
+                "shape": [
+                    19,
+                    17,
+                    7,
+                    16
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            }
+        ],
+        "acl_json": "",
+        "method_inputs": null,
+        "tensor_input": null,
+        "compute_times": null,
+        "save_name": null,
+        "uuid": null,
+        "downloaded": false,
+        "is_boundary": false,
+        "xrun_cs_name": null,
+        "xrun_data": null
+    },
+    {
+        "id": 4,
+        "name": "torch_fused_infer_attention_score_v3",
+        "aclnn_name": "aclnnFusedInferAttentionScoreV3",
+        "triton_name": null,
+        "kernel_name": null,
+        "version": "v2.1",
+        "expected_error_msg": null,
+        "api": "pytorch",
+        "api_type": "executor_fused_infer_attention_score_v3",
+        "aclnn_api_type": "executor_aclnn_fused_infer_attention_score_v3",
+        "triton_api_type": "triton_function",
+        "fusion_api_type": "fusion_function",
+        "fusion_mode": null,
+        "dist_api_type": "dist_function",
+        "kernel_api_type": "kernel_function",
+        "backward": false,
+        "standard": {
+            "acc": {
+                "cv_fused_double_benchmark": {
+                    "max_re_ratio": 2,
+                    "avg_re_ratio": 1.2,
+                    "root_mean_squared_ratio": 1.2
+                }
+            },
+            "perf": "not_key"
+        },
+        "outputs": null,
+        "inputs": [
+            {
+                "name": "query",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "key",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "value",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "bf16",
+                    "shape": [
+                        1,
+                        922,
+                        80
+                    ],
+                    "range_values": [
+                        -2,
+                        2
+                    ],
+                    "backward": true,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "pseShiftOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    1,
+                    1,
+                    1,
+                    922
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attenMaskOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "bool",
+                "shape": [
+                    1,
+                    922
+                ],
+                "range_values": [
+                    0,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSeqLengthsOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            [
+                {
+                    "name": "actualSeqLengthsKvOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        922
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "deqScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    256
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale1Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "deqScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    1
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantScale2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "quantOffset2Optional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp32",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    7
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockTableOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    257
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "queryPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    16
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "kvPaddingSizeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    20
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    131073
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    255
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    257
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantOffsetOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    9
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keySharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueSharedPrefixOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            [
+                {
+                    "name": "actualSharedPrefixLenOptional",
+                    "type": "attr_tuple",
+                    "required": true,
+                    "dtype": "int",
+                    "shape": [
+                        1
+                    ],
+                    "range_values": [
+                        "None"
+                    ],
+                    "backward": false,
+                    "align_32B": null,
+                    "outlier_values": null
+                }
+            ],
+            {
+                "name": "queryRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    17
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    8
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyRopeAntiquantScaleOptional",
+                "type": "tensor",
+                "required": false,
+                "dtype": "fp16",
+                "shape": [
+                    257
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numHeads",
+                "type": "attr",
+                "required": true,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "scaleValue",
+                "type": "attr",
+                "required": false,
+                "dtype": "double",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "preTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "nextTokens",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    65536
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "inputLayout",
+                "type": "attr",
+                "required": false,
+                "dtype": "string",
+                "shape": null,
+                "range_values": "BSH",
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "numKeyValueHeads",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "sparseMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 1,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "innerPrecise",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 0,
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "blockSize",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "antiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLseFlag",
+                "type": "attr",
+                "required": false,
+                "dtype": "bool",
+                "shape": null,
+                "range_values": [
+                    false
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "keyAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "valueAntiquantMode",
+                "type": "attr",
+                "required": false,
+                "dtype": "int",
+                "shape": null,
+                "range_values": [
+                    0
+                ],
+                "backward": false,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "attentionOut",
+                "type": "tensor",
+                "required": true,
+                "dtype": "bf16",
+                "shape": [
+                    1,
+                    1,
+                    80
+                ],
+                "range_values": [
+                    -2,
+                    2
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            },
+            {
+                "name": "softmaxLse",
+                "type": "tensor",
+                "required": true,
+                "dtype": "fp16",
+                "shape": [
+                    15,
+                    255,
+                    20,
+                    19
+                ],
+                "range_values": [
+                    "None"
+                ],
+                "backward": true,
+                "align_32B": null,
+                "outlier_values": null
+            }
+        ],
+        "acl_json": "",
+        "method_inputs": null,
+        "tensor_input": null,
+        "compute_times": null,
+        "save_name": null,
+        "uuid": null,
+        "downloaded": false,
+        "is_boundary": false,
+        "xrun_cs_name": null,
+        "xrun_data": null
+    }
+]

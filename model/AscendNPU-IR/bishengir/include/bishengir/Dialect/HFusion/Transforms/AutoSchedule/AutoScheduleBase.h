@@ -1,0 +1,346 @@
+//===- AutoScheduleBase.h -- Auto scheduler basic definitions ---*- C++ -*-===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+#ifndef BISHENGIR_DIALECT_HFUSION_TRANSFORMS_AUTOSCHEDULE_AUTOSCHEDULEBASE_H
+#define BISHENGIR_DIALECT_HFUSION_TRANSFORMS_AUTOSCHEDULE_AUTOSCHEDULEBASE_H
+
+#include "bishengir/Dialect/HFusion/IR/HFusion.h"
+#include "bishengir/Dialect/HFusion/TransformOps/HFusionTransformOps.h"
+#include "bishengir/Dialect/HFusion/Transforms/AutoSchedule/AutoScheduleBuilder.h"
+#include "bishengir/Dialect/HFusion/Transforms/AutoSchedule/FusibleProducerAnalyzer.h"
+#include "bishengir/Dialect/HFusion/Transforms/AutoSchedule/KernelInfo.h"
+#include "bishengir/Dialect/HFusion/Transforms/AutoSchedule/TilingUtils.h"
+#include "bishengir/Dialect/HFusion/Transforms/Passes.h"
+
+#include "mlir/Dialect/SCF/IR/DeviceMappingInterface.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/Rewrite/FrozenRewritePatternSet.h"
+
+#include "llvm/ADT/SetVector.h"
+
+namespace mlir {
+class Location;
+class OpBuilder;
+
+namespace transform {
+class AnyOpType;
+class AnyValueType;
+class OperationType;
+class NamedSequenceOp;
+class TransformHandleTypeInterface;
+} // namespace transform
+
+namespace func {
+class FuncOp;
+} // namespace func
+
+namespace hfusion {
+using namespace mlir::schedule;
+/// Builder type names for unqualified use by derived schedulers.
+using namespace mlir::hfusion::schedule;
+
+//===----------------------------------------------------------------------===//
+// SchedulerBase
+//===----------------------------------------------------------------------===//
+
+/// Base class for auto scheduler.
+/// Work flow:
+///                          +---------------+
+///                          | target kernel |
+///                          |  fusion_kind  |
+///                          +---------------+
+///                                 |           @analyzeAndVerifyKernel
+///  |----------------------------------------------------------------------|
+///  |                            /  \          @calculateTiling            |
+///  |                            ....                                      |
+///  |     +-------------------+        +------------------+                |
+///  |     |  tiling case #0  |         |  tiling case #N  |                |
+///  |     +-------------------+        +------------------+                |
+///  |                 \                        /    @selectTiling          |
+///  |                 |                       |     @createScheduleImpl    |
+///  |          +-------------+           +-------------+                   |
+///  |          | schedule #i |           | schedule #k |                   |
+///  |          +-------------+           +-------------+                   |
+///  |                |                          |      @applyScheduleImpl  |
+///  |     +---------------------+      +---------------------+             |
+///  |     | scheduled kernel #0 |      | scheduled kernel #N |             |
+///  |     +---------------------+      +---------------------+             |
+///  |----------------------------------------------------------------------|
+class SchedulerBase {
+public:
+  explicit SchedulerBase(func::FuncOp f, FusionKind kind);
+
+  explicit SchedulerBase(func::FuncOp f,
+                         std::unique_ptr<KernelInfo> &&kernelInfo,
+                         std::unique_ptr<TilingInfo> &&tilingInfo);
+
+  virtual ~SchedulerBase();
+
+  /// Main entry point to do auto-scheduling.
+  virtual LogicalResult runOnOperation();
+
+  /// Apply schedule to outlineFunc
+  static LogicalResult applySchedule(func::FuncOp &funcOp);
+
+  /// Get and set auto schedule options.
+  static AutoScheduleOptions getAutoScheduleOptions() { return options_; }
+  static void setAutoScheduleOptions(const AutoScheduleOptions &options) {
+    options_ = options;
+  }
+
+protected:
+  /// Get the auto-schedule builder for HFusion-specific primitives. The
+  /// dialect-neutral base primitives are accessible through it as well.
+  AutoScheduleBuilder &builder() { return builder_; }
+
+  /// Get the OpBuilder owned by the auto-schedule builder, used for
+  /// module-level IR engineering (cloning kernels, constructing host tiling
+  /// functions, fixing call sites).
+  OpBuilder &getOpBuilder() { return builder().getOpBuilder(); }
+
+  /// Implementation of kernel analysis and verification.
+  virtual LogicalResult analyzeAndVerifyKernelImpl();
+
+  /// Implementation of host tiling calculation logic.
+  virtual TilingComputeFn calculateTilingImpl() = 0;
+
+  /// Implementation of creating a schedule from the input tiling key.
+  virtual LogicalResult createScheduleImpl(TilingKey key) = 0;
+
+  /// Run pre-schedule procedure (e.g., kernel info collection and
+  /// verification).
+  virtual LogicalResult runPreScheduleProcedure();
+
+  /// Run post-schedule procedure (e.g., tiling pack).
+  virtual LogicalResult runPostScheduleProcedure();
+
+  /// Run schedule procedure (including tiling calculation and schedule
+  /// operation).
+  LogicalResult runScheduleProcedure();
+
+  /// Run analysis on kernel function and verify constraints.
+  LogicalResult analyzeAndVerifyKernel();
+  void analyzeKernelForInterchangeAndDimensions();
+
+  //===--------------------------------------------------------------------===//
+  // APIs to run pre/post process passes.
+  //===--------------------------------------------------------------------===//
+
+  /// Apply target patterns
+  LogicalResult applyPatternSets(Operation *op,
+                                 const FrozenRewritePatternSet &patterns) const;
+
+  /// Apply op flattening pass to \c target.
+  LogicalResult applyOpFlattenPass(Operation *target,
+                                   const FlattenOpsOptions &options = {}) const;
+
+  /// Apply op fusion and outline pass to \c target.
+  FailureOr<SmallVector<func::FuncOp>>
+  applyOpFusionOutline(func::FuncOp target,
+                       const HFusionOpFusionOptions &options = {}) const;
+
+  /// Apply a pass to move the init operands corresponding to the \c target
+  /// function results to the function arguments.
+  /// \note This pass applies to the whole function.
+  LogicalResult applyTensorResultToOutParamsPass(func::FuncOp target);
+
+  /// Apply a pass to re-cache io to \c target.
+  LogicalResult applyReCacheIOPass(func::FuncOp target) const;
+
+  /// Apply a pass to apply symbol analysis to \c target.
+  LogicalResult applySymbolAnalysisPass(func::FuncOp target) const;
+
+  /// Apply a pass to aggressively bubble up extract slice to \c target
+  LogicalResult applyAggressiveBubbleUpExtractSlice(func::FuncOp target) const;
+
+  /// Apply a pass to merge consecutive insert extract slice to \c target
+  LogicalResult
+  applyMergeConsecutiveInsertExtractSlice(func::FuncOp target) const;
+
+  /// Apply a pass to pack tiling data corresponding to the \c target
+  /// function.
+  /// \note This pass applies to the whole function.
+  LogicalResult applyPackTilingDataPass(func::FuncOp target);
+
+  /// Apply a pass to cse && canonicalize corresponding to the \c target
+  /// function
+  LogicalResult applyCSEAndCanonicalizePass(
+      func::FuncOp target, ArrayRef<std::string> disabledPatterns = {}) const;
+
+  //===--------------------------------------------------------------------===//
+  // Getter methods.
+  //===--------------------------------------------------------------------===//
+
+  /// Get the enclosing module of the kernel function.
+  ModuleOp getModule() { return module_; }
+  /// Get a pointer to kernel info.
+  KernelInfo *getKernelInfo() const { return kernelInfo_.get(); }
+  /// Get pointer to the tiling info.
+  TilingInfo *getTilingInfo() const { return tilingInfo_.get(); };
+  /// Get MLIR Context.
+  MLIRContext *getContext() const { return module_->getContext(); };
+  /// Get the original kernel.
+  func::FuncOp getOriginalKernel() {
+    assert(originalKernel_);
+    return originalKernel_;
+  }
+  /// Get the to-be-scheduled kernel.
+  func::FuncOp getToBeScheduledKernel() {
+    assert(toBeScheduledKernel_);
+    return toBeScheduledKernel_;
+  }
+  /// Get the name to the original kernel.
+  std::string getOriginalKernelName() {
+    return getOriginalKernel().getSymName().str();
+  }
+  /// Get the name to the to-be-scheduled kernel.
+  std::string getToBeScheduledKernelName() {
+    return getToBeScheduledKernel().getSymName().str();
+  }
+  /// Getters for pass options.
+  unsigned getBlockDim() { return options_.blockDim; }
+  bool getEnableAutoMultiBuffer() { return options_.enableAutoMultiBuffer; }
+  bool getEnableHostResourceMgmt() {
+    return options_.enableManageHostResources;
+  }
+  int64_t getMaxBufferCntTuning() { return options_.maxBufferCntTuning; }
+  ArrayRef<int64_t> getCubeTilingTuning() { return options_.cubeTilingTuning; }
+
+  /// Getter KernelTilingMap
+  IRMapping *getKernelTilingMap() const { return kernelTilingMap_.get(); }
+
+  //===--------------------------------------------------------------------===//
+  // Setter methods.
+  //===--------------------------------------------------------------------===//
+
+  /// Set the to-be-scheduled kernel.
+  void setToBeScheduledKernel(func::FuncOp f) { toBeScheduledKernel_ = f; }
+  /// Set tiling info.
+  void setTilingInfo(TilingInfo &&info) {
+    tilingInfo_ = std::make_unique<TilingInfo>(std::move(info));
+  }
+  /// Set the original kernel.
+  void setOriginalKernel(func::FuncOp f) { originalKernel_ = f; }
+
+private:
+  using TilingIdx2TilingData = DenseMap<size_t, Value>;
+  using CallSite2TilingIdx2TilingData =
+      DenseMap<func::CallOp, TilingIdx2TilingData>;
+  using CallerInfo = tiling::CallerInfo;
+
+  /// Information needed to construct callee's arguments.
+  struct CallSiteArgBuilderInfo {
+    /// Mapping from tiling index (in ordered present in tiling struct) to the
+    /// tiling data.
+    TilingIdx2TilingData tilingIdx2TilingData{};
+    /// Whether callee is the original kernel.
+    bool calleeIsOriginalKernel{false};
+  };
+
+private:
+  //===--------------------------------------------------------------------===//
+  // Utility functions for Schedule APIs.
+  //===--------------------------------------------------------------------===//
+
+  //===--------------------------------------------------------------------===//
+  // Utility functions for Schedule.
+  //===--------------------------------------------------------------------===//
+
+  /// Check whether the schedule is nop.
+  bool isNopSchedule() const;
+
+  /// Run necessary procedures (such as generating an empty tiling function)
+  /// even if the schedule is nop.
+  LogicalResult runNopScheduleProcedure();
+
+  /// Cache input and output values.
+  LogicalResult cacheIO();
+
+  /// Mark `hacc` input-related attributes to the kernel function.
+  static LogicalResult markHACCInputArgAttr(func::FuncOp func);
+
+  /// Calculate tiling struct for all tiling cases.
+  LogicalResult calculateTiling();
+
+  /// Prune and select tiling cases if possible.
+  LogicalResult selectTiling() const;
+
+  /// Create one or more tiling cases and apply schedules.
+  LogicalResult createAndApplySchedules();
+
+  /// Apply one specific schedule according to the input tiling info.
+  LogicalResult applyScheduleImpl();
+
+  /// Prepare kernel function for scheduling and init schedule sequence.
+  LogicalResult initSchedule(TilingKey key);
+
+  /// Reset things after doing schedule.
+  void cleanUpAfterSchedule();
+
+  /// Create switch cases for entry function to call scheduled functions
+  /// according to tiling key and the callers of device kernels.
+  LogicalResult fixCallSitesAndCaller();
+
+  /// Fix the call sites by replacing arguments.
+  void doFixCallSite(CallerInfo &callerInfo, func::CallOp callSite,
+                     CallSiteArgBuilderInfo &builderInfo,
+                     DenseMap<Operation *, Operation *> &irMap);
+
+  /// Generate callers for scheduled device functions.
+  void generateDeviceCallers(func::CallOp callSite, Value tilingKey,
+                             const SmallVector<Value> &newCallArgs,
+                             DenseMap<Operation *, Operation *> &irMap);
+
+  /// Construct new call site arguments.
+  SmallVector<Value> getNewArgsForCallSite(func::FuncOp caller,
+                                           func::CallOp oldCallSite,
+                                           const CallSiteArgBuilderInfo &info);
+
+  /// Get the tiling data arguments for the call sites.
+  CallSite2TilingIdx2TilingData
+  getTilingDataForCallSite(func::FuncOp caller, TilingInfo *tilingInfo,
+                           const CallerInfo &callerInfo);
+
+  /// Dump current schedule and kernel function for debugging purposes.
+  void dumpKernelAndSchedule();
+
+private:
+  /// Module enclosing the to-be-scheduled kernel.
+  ModuleOp module_{nullptr};
+  /// Original kernel function without scheduling.
+  func::FuncOp originalKernel_{nullptr};
+  /// Kernel function that will be scheduled.
+  func::FuncOp toBeScheduledKernel_{nullptr};
+  /// Information regarding the to-be-scheduled kernel.
+  std::unique_ptr<KernelInfo> kernelInfo_{nullptr};
+  /// Information regarding the tiling.
+  std::unique_ptr<TilingInfo> tilingInfo_{nullptr};
+  /// Builder for schedule IR construction.
+  AutoScheduleBuilder builder_;
+  /// Underlying fusion kind.
+  FusionKind kind_;
+  /// Schedule options.
+  static AutoScheduleOptions options_;
+
+  /// Map between kernel function ops and tiling function ops
+  std::unique_ptr<IRMapping> kernelTilingMap_;
+};
+
+} // namespace hfusion
+} // namespace mlir
+
+#endif // BISHENGIR_DIALECT_HFUSION_TRANSFORMS_AUTOSCHEDULE_AUTOSCHEDULEBASE_H

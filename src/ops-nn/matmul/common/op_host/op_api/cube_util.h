@@ -1,0 +1,80 @@
+/**
+ * Copyright (c) 2025-2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+#pragma once
+
+#include "aclnn/aclnn_base.h"
+#include "op_api/op_api_def_nn.h"
+#include "opdev/common_types.h"
+#include "opdev/platform.h"
+
+namespace Ops {
+namespace NN {
+using namespace op;
+// 路由cubeMathType4到cubeMathType0, 供不支持cubeMathType4的场景使用
+int8_t routeCubeMathType4ToCubeMathType0DAV_2201(int8_t cubeMathType);
+
+// 校验针对cube tensor的dtype，cubeMathType的值是否符合预期
+bool CheckCubeMathType(const op::DataType cubeTensorDtype, int8_t cubeMathType);
+
+// 校验针对mm算子 tensor的dtype，cubeMathType的值是否符合预期
+bool CheckCubeMathTypeForMm(const op::DataType cubeTensorDtype, int8_t cubeMathType);
+
+// 校验Addmm/Baddbmm的bias是否需要相对矩阵乘输出进行广播
+bool CheckAddmmTensorShapeNeedBroadcast(const aclTensor* mat1, const aclTensor* mat2, const aclTensor* self);
+
+// 校验针对Addmm算子的cubeMathType和平台是否符合预期
+bool CheckCubeMathTypeForAddMm(int8_t cubeMathType);
+
+// 返回芯片对应支持的数据类型
+const std::initializer_list<op::DataType>& GetDtypeSupportListBySocVersion();
+const std::initializer_list<op::DataType>& GetDtypeSupportListBySocVersion4ConvBackward(bool transposed);
+
+// 根据promote type + cubemathtype的组合算出最终算子应用的dtype
+op::DataType CalcPromoteTypeCubemathtype(const op::DataType cubeTensorPromoteType, int8_t cubeMathType);
+op::DataType CalcUseFp16PromoteType(const op::DataType cubeTensorPromoteType);
+op::DataType CalcUseHf32PromoteType(const op::DataType cubeTensorPromoteType);
+op::DataType CalcAllowFp32DownPrecisionPromoteType(const op::DataType cubeTensorPromoteType);
+op::DataType CalcKeepDtypePromoteType(const op::DataType cubeTensorPromoteType);
+op::DataType CalcPromoteTypeCubeMathTypeNew(const op::DataType cubeTensorPromoteType, int8_t cubeMathType);
+
+// 根据promoteType + cubeMathType 判断是否要走HF32分支
+bool NeedCubeGoHF32(const op::DataType cubeTensorPromoteType, int8_t cubeMathType);
+
+// 判断当前ARCH是否为DAV_3510或后续兼容版本，后续新增兼容ARCH在此函数内追加
+inline bool IsNpuArch3510Series()
+{
+    auto npuArch = op::GetCurrentPlatformInfo().GetCurNpuArch();
+    return (npuArch == NpuArch::DAV_3510);
+}
+
+// 检查针对x芯片，cube算子是否支持FP32
+inline bool IsCubeSupportFp32()
+{
+    auto npuArch = op::GetCurrentPlatformInfo().GetCurNpuArch();
+    if ((npuArch != NpuArch::DAV_2201) && !IsNpuArch3510Series() && (npuArch != NpuArch::DAV_3002)) {
+        return false;
+    }
+    return true;
+}
+
+// 检查针对x芯片，cube算子是否支持HF32
+inline bool IsCubeSupportHf32()
+{
+    auto npuArch = op::GetCurrentPlatformInfo().GetCurNpuArch();
+    if ((npuArch != NpuArch::DAV_2201) && !IsNpuArch3510Series() && (npuArch != NpuArch::DAV_3002)) {
+        return false;
+    }
+    return true;
+}
+
+bool CheckUnSupportDtype(const aclTensor* input, const aclTensor* weight);
+
+} // namespace NN
+} // namespace Ops

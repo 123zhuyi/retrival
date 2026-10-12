@@ -1,0 +1,491 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+index 06ad52807fdf..7a8bb561630f 100644
+--- a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
++++ b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+@@ -482,9 +482,15 @@ struct ControlDropUnitDims {
+ 
+   using ControlFnTy = std::function<SmallVector<unsigned>(Operation *)>;
+   ControlFnTy controlFn = [](Operation *op) {
++#if BSPUB_DAVINCI_BISHENGIR
++    if (auto linalgOp = dyn_cast_or_null<LinalgOp>(op)) {
++      return llvm::to_vector(llvm::seq<unsigned>(0, linalgOp.getNumLoops()));
++    }
++#else
+     if (auto genericOp = dyn_cast_or_null<GenericOp>(op)) {
+       return llvm::to_vector(llvm::seq<unsigned>(0, genericOp.getNumLoops()));
+     }
++#endif
+     if (auto padOp = dyn_cast_or_null<tensor::PadOp>(op)) {
+       return llvm::to_vector(
+           llvm::seq<unsigned>(0, padOp.getSourceType().getRank()));
+@@ -492,6 +498,15 @@ struct ControlDropUnitDims {
+     return SmallVector<unsigned>{};
+   };
+ };
++#if BSPUB_DAVINCI_BISHENGIR
++struct DropUnitDimsResult {
++  linalg::LinalgOp resultOp;
++  SmallVector<Value> replacements;
++};
++FailureOr<DropUnitDimsResult> dropUnitDims(RewriterBase &rewriter,
++                                           LinalgOp linalgOp,
++                                           const ControlDropUnitDims &options);
++#else
+ struct DropUnitDimsResult {
+   linalg::GenericOp resultOp;
+   SmallVector<Value> replacements;
+@@ -499,6 +514,7 @@ struct DropUnitDimsResult {
+ FailureOr<DropUnitDimsResult> dropUnitDims(RewriterBase &rewriter,
+                                            GenericOp genericOp,
+                                            const ControlDropUnitDims &options);
++#endif
+ 
+ /// Fuse two `linalg.generic` operations that have a producer-consumer
+ /// relationship captured through `fusedOperand`. The method expects
+@@ -1770,10 +1786,12 @@ void populateWinogradConv2DPatterns(RewritePatternSet &patterns, int64_t m,
+ void populateDecomposeWinogradOpsPatterns(RewritePatternSet &patterns);
+ 
+ /// Adds patterns that reduce the rank of named contraction ops that have
+-/// unit dimensions in the operand(s) by converting to a sequence of `collapse_shape`,
+-/// `<corresponding linalg named op>`, `expand_shape` (if on tensors).  For example a
+-/// `linalg.batch_matmul` with unit batch size will convert to `linalg.matmul`
+-/// and a `linalg.matvec` with with unit spatial dim in lhs will convert to a `linalg.dot`.
++/// unit dimensions in the operand(s) by converting to a sequence of
++/// `collapse_shape`,
++/// `<corresponding linalg named op>`, `expand_shape` (if on tensors).  For
++/// example a `linalg.batch_matmul` with unit batch size will convert to
++/// `linalg.matmul` and a `linalg.matvec` with with unit spatial dim in lhs will
++/// convert to a `linalg.dot`.
+ void populateContractionOpRankReducingPatterns(RewritePatternSet &patterns);
+ 
+ } // namespace linalg
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index a5df36602d47..8bf33402993e 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -12,12 +12,14 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/Utils/Utils.h"
+ #include "mlir/Dialect/Linalg/IR/Linalg.h"
+ #include "mlir/Dialect/Linalg/Passes.h"
+ #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+ #include "mlir/Dialect/Linalg/Utils/Utils.h"
++#include "mlir/Dialect/Tensor/Utils/Utils.h"
+ #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+ 
+ using namespace mlir;
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp b/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp
+index 35fb5a4d96de..b032c7270922 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/DropUnitDims.cpp
+@@ -230,12 +230,22 @@ struct MoveInitOperandsToInput : public OpRewritePattern<GenericOp> {
+ /// }
+ 
+ /// Update the index accesses of linalg operations having index semantics.
++#if BSPUB_DAVINCI_BISHENGIR
++template <typename LinalgOpType>
++static void
++replaceUnitDimIndexOps(LinalgOpType linalgOp,
++                       const llvm::SmallDenseSet<unsigned> &unitDims,
++                       RewriterBase &rewriter) {
++  for (IndexOp indexOp : llvm::make_early_inc_range(
++           linalgOp.getBody()->template getOps<IndexOp>())) {
++#else
+ static void
+ replaceUnitDimIndexOps(GenericOp genericOp,
+                        const llvm::SmallDenseSet<unsigned> &unitDims,
+                        RewriterBase &rewriter) {
+   for (IndexOp indexOp :
+        llvm::make_early_inc_range(genericOp.getBody()->getOps<IndexOp>())) {
++#endif
+     OpBuilder::InsertionGuard guard(rewriter);
+     rewriter.setInsertionPoint(indexOp);
+     if (unitDims.count(indexOp.getDim()) != 0) {
+@@ -339,14 +349,23 @@ struct UnitExtentReplacementInfo {
+   SmallVector<int64_t> targetShape;
+ };
+ static UnitExtentReplacementInfo dropUnitExtentFromOperandMetadata(
++#if BSPUB_DAVINCI_BISHENGIR
++    MLIRContext *context, LinalgOp linalgOp, OpOperand *opOperand,
++#else
+     MLIRContext *context, GenericOp genericOp, OpOperand *opOperand,
++#endif
+     llvm::SmallDenseMap<unsigned, unsigned> &oldDimsToNewDimsMap,
+     ArrayRef<AffineExpr> dimReplacements) {
+   UnitExtentReplacementInfo info;
+   ReassociationIndices reassociationGroup;
+   SmallVector<AffineExpr> newIndexExprs;
++#if BSPUB_DAVINCI_BISHENGIR
++  AffineMap indexingMap = linalgOp.getMatchingIndexingMap(opOperand);
++  ArrayRef<int64_t> operandShape = linalgOp.getShape(opOperand);
++#else
+   AffineMap indexingMap = genericOp.getMatchingIndexingMap(opOperand);
+   ArrayRef<int64_t> operandShape = genericOp.getShape(opOperand);
++#endif
+   ArrayRef<AffineExpr> exprs = indexingMap.getResults();
+ 
+   auto isUnitDim = [&](unsigned dim) {
+@@ -387,10 +406,147 @@ static UnitExtentReplacementInfo dropUnitExtentFromOperandMetadata(
+   return info;
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++struct NewOperands {
++  TypeRange resultTypes;
++  SmallVector<Value> inputs;
++  SmallVector<Value> outputs;
++  SmallVector<AffineMap> indexingMaps;
++  SmallVector<utils::IteratorType> iteratorTypes;
++  llvm::SmallDenseSet<unsigned> unitDims;
++};
++
++// Get dimensions for linalg.broadcast/linalg.reduce
++// e.g. affine_map<(d0, d1) -> (d0)>
++//      return [1]
++static SmallVector<int64_t> getDimensions(AffineMap map) {
++  SmallVector<int64_t> position;
++  SmallVector<int64_t> dimensions;
++  for (auto result : map.getResults()) {
++    if (auto expr = dyn_cast<AffineDimExpr>(result))
++      position.push_back(expr.getPosition());
++  }
++  for (int64_t dim : llvm::seq<int64_t>(0, map.getNumDims())) {
++    if (!llvm::is_contained(position, dim))
++      dimensions.push_back(dim);
++  }
++  return dimensions;
++}
++
++// Get permutation for linalg.transpose
++// e.g. affine_map<(d0, d1, d2) -> (d2, d0, d1)>
++//      return [1, 2, 0]
++static SmallVector<int64_t> getPermutation(AffineMap map) {
++  SmallVector<int64_t> permutation(map.getNumDims());
++  for (auto [idx, result] : llvm::enumerate(map.getResults())) {
++    if (auto expr = dyn_cast<AffineDimExpr>(result))
++      permutation[expr.getPosition()] = idx;
++  }
++  return permutation;
++}
++
++template <typename OpTy>
++OpTy cloneToReplaceOp(RewriterBase &rewriter, OpTy origOp,
++                      NewOperands newOperands) {
++  return nullptr;
++}
++
++template <>
++GenericOp cloneToReplaceOp<GenericOp>(RewriterBase &rewriter, GenericOp origOp,
++                                      NewOperands newOperands) {
++  GenericOp replacementOp = rewriter.create<GenericOp>(
++      origOp.getLoc(), newOperands.resultTypes, newOperands.inputs,
++      newOperands.outputs, newOperands.indexingMaps, newOperands.iteratorTypes);
++  rewriter.inlineRegionBefore(origOp.getRegion(), replacementOp.getRegion(),
++                              replacementOp.getRegion().begin());
++  // Replace `linalg.index` operations that refer to the dropped unit
++  // dimensions.
++  replaceUnitDimIndexOps<GenericOp>(replacementOp, newOperands.unitDims,
++                                    rewriter);
++  return replacementOp;
++}
++
++template <>
++BroadcastOp cloneToReplaceOp<BroadcastOp>(RewriterBase &rewriter,
++                                          BroadcastOp origOp,
++                                          NewOperands newOperands) {
++  BroadcastOp replacementOp =
++      cast<BroadcastOp>(clone(rewriter, origOp, newOperands.resultTypes,
++                              llvm::to_vector(llvm::concat<Value>(
++                                  newOperands.inputs, newOperands.outputs))));
++  auto srcMap = newOperands.indexingMaps.front();
++  SmallVector<int64_t> broadcastedDims = getDimensions(srcMap);
++  replacementOp.setDimensions(broadcastedDims);
++  return replacementOp;
++}
++
++template <>
++ReduceOp cloneToReplaceOp<ReduceOp>(RewriterBase &rewriter, ReduceOp origOp,
++                                    NewOperands newOperands) {
++  ReduceOp replacementOp =
++      cast<ReduceOp>(clone(rewriter, origOp, newOperands.resultTypes,
++                           llvm::to_vector(llvm::concat<Value>(
++                               newOperands.inputs, newOperands.outputs))));
++  auto dstMap = newOperands.indexingMaps.back();
++  SmallVector<int64_t> reducedDims = getDimensions(dstMap);
++  replacementOp.setDimensions(reducedDims);
++  replaceUnitDimIndexOps<ReduceOp>(replacementOp, newOperands.unitDims,
++                                   rewriter);
++  return replacementOp;
++}
++
++template <>
++TransposeOp cloneToReplaceOp<TransposeOp>(RewriterBase &rewriter,
++                                          TransposeOp origOp,
++                                          NewOperands newOperands) {
++  TransposeOp replacementOp =
++      cast<TransposeOp>(clone(rewriter, origOp, newOperands.resultTypes,
++                              llvm::to_vector(llvm::concat<Value>(
++                                  newOperands.inputs, newOperands.outputs))));
++  auto srcMap = newOperands.indexingMaps.front();
++  SmallVector<int64_t> newPermutation = getPermutation(srcMap);
++  replacementOp.setPermutation(newPermutation);
++  return replacementOp;
++}
++
++/// Clone any `LinalgOp` that does not require any specialization such as
++/// indexing_maps, iterator_types, etc.
++template <>
++LinalgOp cloneToReplaceOp<LinalgOp>(RewriterBase &rewriter, LinalgOp origOp,
++                                    NewOperands newOperands) {
++  return clone(rewriter, origOp, newOperands.resultTypes,
++               llvm::to_vector(llvm::concat<Value>(newOperands.inputs,
++                                                   newOperands.outputs)));
++}
++
++LinalgOp createReplacementOp(RewriterBase &rewriter, LinalgOp op,
++                             NewOperands newOperands) {
++  if (GenericOp genericOp = dyn_cast<GenericOp>(op.getOperation())) {
++    return cloneToReplaceOp(rewriter, genericOp, newOperands);
++  } else if (BroadcastOp broadcastOp =
++                 dyn_cast<BroadcastOp>(op.getOperation())) {
++    return cloneToReplaceOp(rewriter, broadcastOp, newOperands);
++  } else if (ReduceOp reduceOp = dyn_cast<ReduceOp>(op.getOperation())) {
++    return cloneToReplaceOp(rewriter, reduceOp, newOperands);
++  } else if (TransposeOp transposeOp =
++                 dyn_cast<TransposeOp>(op.getOperation())) {
++    return cloneToReplaceOp(rewriter, transposeOp, newOperands);
++  } else {
++    return cloneToReplaceOp(rewriter, op, newOperands);
++  }
++}
++#endif // BSPUB_DAVINCI_BISHENGIR
++
+ FailureOr<DropUnitDimsResult>
++#if BSPUB_DAVINCI_BISHENGIR
++linalg::dropUnitDims(RewriterBase &rewriter, LinalgOp linalgOp,
++                     const ControlDropUnitDims &options) {
++  SmallVector<AffineMap> indexingMaps = linalgOp.getIndexingMapsArray();
++#else
+ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+                      const ControlDropUnitDims &options) {
+   SmallVector<AffineMap> indexingMaps = genericOp.getIndexingMapsArray();
++#endif
+   if (indexingMaps.empty())
+     return failure();
+ 
+@@ -399,16 +555,32 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+   //    tensor/memref.
+   AffineMap invertedMap = inversePermutation(concatAffineMaps(indexingMaps));
+   if (!invertedMap) {
++#if BSPUB_DAVINCI_BISHENGIR
++    return rewriter.notifyMatchFailure(linalgOp,
++#else
+     return rewriter.notifyMatchFailure(genericOp,
++#endif
+                                        "invalid indexing maps for operation");
+   }
++#if BSPUB_DAVINCI_BISHENGIR
++  SmallVector<int64_t> dims = linalgOp.getStaticShape();
++#else
+   SmallVector<int64_t> dims = genericOp.getStaticShape();
++#endif
+ 
+   // 1a. Get the allowed list of dimensions to drop from the `options`.
++#if BSPUB_DAVINCI_BISHENGIR
++  SmallVector<unsigned> allowedUnitDims = options.controlFn(linalgOp);
++#else
+   SmallVector<unsigned> allowedUnitDims = options.controlFn(genericOp);
++#endif
+   if (allowedUnitDims.empty()) {
+     return rewriter.notifyMatchFailure(
++#if BSPUB_DAVINCI_BISHENGIR
++        linalgOp, "control function returns no allowed unit dims to prune");
++#else
+         genericOp, "control function returns no allowed unit dims to prune");
++#endif
+   }
+   llvm::SmallDenseSet<unsigned> unitDimsFilter(allowedUnitDims.begin(),
+                                                allowedUnitDims.end());
+@@ -427,8 +599,12 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+   llvm::SmallDenseMap<unsigned, unsigned> oldDimToNewDimMap;
+   SmallVector<AffineExpr> dimReplacements;
+   unsigned newDims = 0;
++#if BSPUB_DAVINCI_BISHENGIR
++  for (auto [index, attr] : llvm::enumerate(linalgOp.getIteratorTypesArray())) {
++#else
+   for (auto [index, attr] :
+        llvm::enumerate(genericOp.getIteratorTypesArray())) {
++#endif
+     if (unitDims.count(index)) {
+       dimReplacements.push_back(
+           getAffineConstantExpr(0, rewriter.getContext()));
+@@ -466,9 +642,15 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+     }
+     return false;
+   };
++#if BSPUB_DAVINCI_BISHENGIR
++  for (OpOperand &opOperand : linalgOp->getOpOperands()) {
++    auto indexingMap = linalgOp.getMatchingIndexingMap(&opOperand);
++    ArrayRef<int64_t> shape = linalgOp.getShape(&opOperand);
++#else
+   for (OpOperand &opOperand : genericOp->getOpOperands()) {
+     auto indexingMap = genericOp.getMatchingIndexingMap(&opOperand);
+     ArrayRef<int64_t> shape = genericOp.getShape(&opOperand);
++#endif
+     if (!hasCollapsibleType(opOperand)) {
+       AffineMap newIndexingMap = indexingMap.replaceDimsAndSymbols(
+           dimReplacements, ArrayRef<AffineExpr>{}, oldDimToNewDimMap.size(), 0);
+@@ -479,7 +661,11 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+       continue;
+     }
+     auto replacementInfo = dropUnitExtentFromOperandMetadata(
++#if BSPUB_DAVINCI_BISHENGIR
++        rewriter.getContext(), linalgOp, &opOperand, oldDimToNewDimMap,
++#else
+         rewriter.getContext(), genericOp, &opOperand, oldDimToNewDimMap,
++#endif
+         dimReplacements);
+     reassociations.push_back(replacementInfo.reassociation);
+     newIndexingMaps.push_back(replacementInfo.indexMap);
+@@ -494,13 +680,21 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+       !inversePermutation(concatAffineMaps(newIndexingMaps)))
+     return failure();
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  Location loc = linalgOp.getLoc();
++#else
+   Location loc = genericOp.getLoc();
++#endif
+   // 4. For each of the operands, collapse the operand to convert
+   //    from original shape to shape in the modified operation if needed,
+   //    either through use of reshapes or rank-reducing slices as
+   //    specified in `options`.
+   SmallVector<Value> newOperands;
++#if BSPUB_DAVINCI_BISHENGIR
++  for (OpOperand &opOperand : linalgOp->getOpOperands()) {
++#else
+   for (OpOperand &opOperand : genericOp->getOpOperands()) {
++#endif
+     int64_t idx = opOperand.getOperandNumber();
+     if (!collapsed[idx]) {
+       newOperands.push_back(opOperand.get());
+@@ -511,6 +705,23 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+                                         options.rankReductionStrategy));
+   }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  // 5. Create the replacement operation with the new operands,
++  //    indexing maps, iterator types and result types.
++  SmallVector<Value> newInputs(
++      newOperands.begin(), newOperands.begin() + linalgOp.getNumDpsInputs());
++  SmallVector<Value> newOutputs(newOperands.end() - linalgOp.getNumDpsInits(),
++                                newOperands.end());
++  SmallVector<Type> resultTypes;
++  resultTypes.reserve(linalgOp->getNumResults());
++  for (unsigned i : llvm::seq<unsigned>(0, linalgOp->getNumResults()))
++    resultTypes.push_back(newOutputs[i].getType());
++
++  LinalgOp replacementOp = createReplacementOp(
++      rewriter, linalgOp,
++      NewOperands{resultTypes, newInputs, newOutputs, newIndexingMaps,
++                  newIteratorTypes, unitDims});
++#else
+   // 5. Create the `linalg.generic` operation with the new operands,
+   //    indexing maps, iterator types and result types.
+   ArrayRef<Value> newInputs =
+@@ -529,14 +740,21 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+   // 5a. Replace `linalg.index` operations that refer to the dropped unit
+   // dimensions.
+   replaceUnitDimIndexOps(replacementOp, unitDims, rewriter);
++#endif
+ 
+   // 6. If any result type changes, insert a reshape/slice to convert from the
+   // original
+   //    type to the new type.
+   SmallVector<Value> resultReplacements;
++#if BSPUB_DAVINCI_BISHENGIR
++  for (auto [index, result] : llvm::enumerate(replacementOp->getResults())) {
++    unsigned opOperandIndex = index + replacementOp.getNumDpsInputs();
++    Value origDest = linalgOp.getDpsInitOperand(index)->get();
++#else
+   for (auto [index, result] : llvm::enumerate(replacementOp.getResults())) {
+     unsigned opOperandIndex = index + replacementOp.getNumDpsInputs();
+     Value origDest = genericOp.getDpsInitOperand(index)->get();
++#endif
+     if (!collapsed[opOperandIndex]) {
+       resultReplacements.push_back(result);
+       continue;
+@@ -551,6 +769,24 @@ linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
+ }
+ 
+ namespace {
++#if BSPUB_DAVINCI_BISHENGIR
++template <typename OpTy> struct DropUnitDims : public OpRewritePattern<OpTy> {
++  using OpRewritePattern<OpTy>::OpRewritePattern;
++  DropUnitDims(MLIRContext *context, ControlDropUnitDims options = {},
++               PatternBenefit benefit = 1)
++      : OpRewritePattern<OpTy>(context, benefit), options(std::move(options)) {}
++
++  LogicalResult matchAndRewrite(OpTy linalgOp,
++                                PatternRewriter &rewriter) const override {
++    FailureOr<DropUnitDimsResult> result =
++        dropUnitDims(rewriter, linalgOp, options);
++    if (failed(result)) {
++      return failure();
++    }
++    rewriter.replaceOp(linalgOp, result->replacements);
++    return success();
++  }
++#else
+ struct DropUnitDims : public OpRewritePattern<GenericOp> {
+   DropUnitDims(MLIRContext *context, ControlDropUnitDims options = {},
+                PatternBenefit benefit = 1)
+@@ -566,6 +802,7 @@ struct DropUnitDims : public OpRewritePattern<GenericOp> {
+     rewriter.replaceOp(genericOp, result->replacements);
+     return success();
+   }
++#endif
+ 
+ private:
+   ControlDropUnitDims options;
+@@ -771,6 +1008,10 @@ populateFoldUnitExtentDimsViaReshapesPatterns(RewritePatternSet &patterns,
+                                               ControlDropUnitDims &options) {
+   auto *context = patterns.getContext();
+ #if BSPUB_DAVINCI_BISHENGIR
++  patterns.add<DropUnitDims<GenericOp>>(context, options);
++  patterns.add<DropUnitDims<BroadcastOp>>(context, options);
++  patterns.add<DropUnitDims<ReduceOp>>(context, options);
++  patterns.add<DropUnitDims<TransposeOp>>(context, options);
+   if (options.foldRankReducingSlices) {
+     patterns.add<RankReducedExtractSliceOp,
+                  RankReducedInsertSliceOp<tensor::InsertSliceOp>,
+@@ -785,6 +1026,8 @@ populateFoldUnitExtentDimsViaReshapesPatterns(RewritePatternSet &patterns,
+                RankReducedInsertSliceOp<tensor::InsertSliceOp>,
+                RankReducedInsertSliceOp<tensor::ParallelInsertSliceOp>>(
+       context);
++#endif
++  patterns.add<DropPadUnitDims>(context, options);
+   linalg::FillOp::getCanonicalizationPatterns(patterns, context);
+   tensor::CollapseShapeOp::getCanonicalizationPatterns(patterns, context);
+   tensor::EmptyOp::getCanonicalizationPatterns(patterns, context);
+@@ -798,9 +1041,16 @@ static void
+ populateFoldUnitExtentDimsViaSlicesPatterns(RewritePatternSet &patterns,
+                                             ControlDropUnitDims &options) {
+   auto *context = patterns.getContext();
++#if BSPUB_DAVINCI_BISHENGIR
++  patterns.add<DropUnitDims<GenericOp>>(context, options);
++  patterns.add<DropUnitDims<BroadcastOp>>(context, options);
++  patterns.add<DropUnitDims<ReduceOp>>(context, options);
++  patterns.add<DropUnitDims<TransposeOp>>(context, options);
++#else
+   options.rankReductionStrategy =
+       ControlDropUnitDims::RankReductionStrategy::ExtractInsertSlice;
+   patterns.add<DropUnitDims>(context, options);
++#endif
+   patterns.add<DropPadUnitDims>(context, options);
+   // TODO: Patterns unrelated to unit dim folding should be factored out.
+   linalg::FillOp::getCanonicalizationPatterns(patterns, context);

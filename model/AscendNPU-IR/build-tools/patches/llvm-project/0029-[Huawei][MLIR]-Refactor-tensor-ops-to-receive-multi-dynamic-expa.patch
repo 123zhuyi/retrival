@@ -1,0 +1,44 @@
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+index 11dd0f4c7db7..6ccddb6db6c1 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+@@ -1924,6 +1924,30 @@ struct FoldDimOfExpandShape : public OpRewritePattern<DimOp> {
+     // Find reassociation group that contains this result dimension.
+     int64_t srcDim = expandShapeOp.getCorrespondingSourceDim(*dim);
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    int64_t product = 1;
++    ReassociationIndices grp = expandShapeOp.getReassociationIndices()[srcDim];
++    bool multiDynamicDim = false;
++    for (int64_t d : grp) {
++      if (d != dim) {
++        if (resultType.isDynamicDim(d)) {
++          multiDynamicDim = true;
++          break;
++        }
++        product *= resultType.getDimSize(d);
++      }
++    }
++    int dynIndex = 0;
++    for (int i = 0; i < *dim; i++) {
++      if (ShapedType::isDynamic(expandShapeOp.getStaticOutputShape()[i]))
++        dynIndex++;
++    }
++    if (multiDynamicDim) {
++      // Expand shape wouldn't be ambiguous because there are output shapes
++      rewriter.replaceOp(dimOp, expandShapeOp.getOutputShape()[dynIndex]);
++      return success();
++    }
++#else
+     // `dim` is the only dynamic dimension in `group`. (Otherwise, the
+     // ExpandShapeOp would be ambiguous.)
+     int64_t product = 1;
+@@ -1934,7 +1958,7 @@ struct FoldDimOfExpandShape : public OpRewritePattern<DimOp> {
+         product *= resultType.getDimSize(d);
+       }
+     }
+-
++#endif
+     // result dim size = src dim size / (product(other dims in reassoc group))
+     Value srcDimSz =
+         rewriter.create<DimOp>(dimOp.getLoc(), expandShapeOp.getSrc(), srcDim);

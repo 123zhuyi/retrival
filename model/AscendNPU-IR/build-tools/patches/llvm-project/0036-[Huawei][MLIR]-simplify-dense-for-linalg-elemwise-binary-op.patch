@@ -1,0 +1,48 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+index 1d1323bf4dbc..ddbf0c5e932f 100644
+--- a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
++++ b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+@@ -32,6 +32,43 @@ bool isSplatDense(Value value);
+ std::optional<Value> createConstantFromDenseSplat(Value value,
+                                                   PatternRewriter &rewriter);
+ 
++template <typename OpType>
++struct SimplifySplatDenseForBinary : public OpRewritePattern<OpType> {
++  using OpRewritePattern<OpType>::OpRewritePattern;
++
++  SimplifySplatDenseForBinary(MLIRContext *context)
++      : OpRewritePattern<OpType>(context, /*benefit=*/1) {} // Lower benefit
++
++  LogicalResult matchAndRewrite(OpType op,
++                                PatternRewriter &rewriter) const override {
++    SmallVector<Value> inputs = op.getDpsInputs();
++    if (inputs.size() != 2) {
++      return rewriter.notifyMatchFailure(op, "invalid dps input num");
++    }
++
++    Value lhs = inputs[0];
++    Value rhs = inputs[1];
++    if (!isSplatDense(lhs) && !isSplatDense(rhs)) {
++      return rewriter.notifyMatchFailure(op, "no splat dense operand found");
++    }
++
++    if (lhs.getType().isIntOrIndexOrFloat() ||
++        rhs.getType().isIntOrIndexOrFloat()) {
++      return rewriter.notifyMatchFailure(op, "already has scalar in operand");
++    }
++
++    unsigned int operIdx = (isSplatDense(lhs) ? 0 : 1);
++    OpOperand &oper = op->getOpOperand(operIdx);
++    auto scalarMaybe = createConstantFromDenseSplat(oper.get(), rewriter);
++    if (!scalarMaybe.has_value()) {
++      return rewriter.notifyMatchFailure(op, "failed to get dense constant.");
++    }
++    Value scalar = scalarMaybe.value();
++    oper.set(scalar);
++    return success();
++  }
++};
++
+ } // namespace linalg
+ } // namespace mlir
+ 

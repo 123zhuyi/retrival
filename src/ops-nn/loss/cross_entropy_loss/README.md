@@ -1,0 +1,152 @@
+# CrossEntropyLoss
+
+## 产品支持情况
+
+|产品             |  是否支持  |
+|:-------------------------|:----------:|
+|  <term>Ascend 950PR/Ascend 950DT</term>   |     √    |
+|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
+|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
+|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
+|  <term>Atlas 推理系列产品</term>     |     ×    |
+|  <term>Atlas 训练系列产品</term>    |     ×    |
+
+## 功能说明
+
+- 算子功能：计算输入的交叉熵损失。
+- 计算表达式：
+  
+  reductionOptional = mean时，交叉熵损失loss的计算公式为：
+  $$
+  l_n = -weight_{y_n}*log\frac{exp(x_{n,y_n})}{\sum_{c=1}^Cexp(x_{n,c})}*1\{y_n\ !=\ ignoreIndex \}
+  $$
+  $$
+  loss=\begin{cases}\sum_{n=1}^N\frac{1}{\sum_{n=1}^Nweight_{y_n}*1\{y_n\ !=\ ignoreIndex \}}l_n,&\text{if reductionOptional = ‘mean’} \\\sum_{n=1}^Nl_n,&\text {if reductionOptional = ‘sum’}\\\{l_0,l_1,...,l_n\},&\text{if reductionOptional = ‘None’}\end{cases}
+  $$
+  log\_prob计算公式为：
+  $$
+  lse_n = log*\sum_{c=1}^{C}exp(x_{n,c})
+  $$
+  $$
+  logProb_{n,c} = x_{n,c} - lse_n
+  $$
+  zloss计算公式为：
+  $$
+  zloss_n = lseSquareScaleForZloss *（lse_n）^2 
+  $$
+  其中，N为batch数，C为标签数。
+
+## 参数说明
+
+<table style="undefined;table-layout: fixed; width: 1576px"><colgroup>
+  <col style="width: 170px">
+  <col style="width: 170px">
+  <col style="width: 312px">
+  <col style="width: 213px">
+  <col style="width: 100px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>参数名</th>
+      <th>输入/输出/属性</th>
+      <th>描述</th>
+      <th>数据类型</th>
+      <th>数据格式</th>
+    </tr></thead>
+  <tbody>
+    <tr>
+      <td>x</td>
+      <td>输入</td>
+      <td><ul>公式中的x。</ul></td>
+      <td>FLOAT16、BFLOAT16、FLOAT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>y</td>
+      <td>输入</td>
+      <td><ul>表示标签，公式中的y。</ul></td>
+      <td>INT64，INT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>weight</td>
+      <td>可选输入</td>
+      <td><ul><li>表示为每个类别指定的缩放权重，公式中的weight。</li><li>默认为全1。</li></ul></td>
+      <td>FLOAT</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>reductionOptional</td>
+      <td>可选属性</td>
+      <td><ul><li>表示loss的归约方式。</li><li>默认值为“mean”。</li></ul></td>
+      <td>STRING</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>ignoreIndex</td>
+      <td>可选属性</td>
+      <td><ul><li>指定被忽略的标签值。</li><li>默认值为-100。</li></ul></td>
+      <td>INT64</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>labelSmoothing</td>
+      <td>可选属性</td>
+      <td><ul><li>表示计算loss时的平滑量。</li><li>默认值为0。</li></ul></td>
+      <td>DOUBLE</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>lseSquareScaleForZloss</td>
+      <td>可选属性</td>
+      <td><ul><li>表示zloss计算所需的scale。</li><li>当前暂不支持。</li></ul></td>
+      <td>DOUBLE</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>returnZloss</td>
+      <td>可选属性</td>
+      <td><ul><li>控制是否返回zloss输出。Host侧的布尔值。需要输出zLoss时传入True，否则传入False。</li><li>当前暂不支持。</li></ul></td>
+      <td>BOOL</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>lossOut</td>
+      <td>输出</td>
+      <td><ul>表示输出损失，对应公式中的loss。</ul></td>
+      <td>FLOAT16、BFLOAT16、FLOAT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>logProbOut</td>
+      <td>输出</td>
+      <td><ul>输出给反向计算的输出，对应公式中的logProb。</ul></td>
+      <td>FLOAT16、BFLOAT16、FLOAT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>zlossOut</td>
+      <td>输出</td>
+      <td><ul><li>表示辅助损失，对应公式中的zlossOut。</li><li>当前暂不支持。</li></ul></td>
+      <td>FLOAT16、BFLOAT16、FLOAT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>lseForZlossOut</td>
+      <td>输出</td>
+      <td><ul><li>表示zloss场景输出给反向的Tensor，lseSquareScaleForZloss为0时输出为None，对应公式中的lse。</li><li>当前暂不支持。</li></ul></td>
+      <td>FLOAT16、BFLOAT16、FLOAT32</td>
+      <td>ND</td>
+    </tr>
+  </tbody></table>
+
+## 约束说明
+
+  - target仅支持类标签索引，不支持概率输入。
+  - 当前暂不支持zloss相关功能。传入相关输入，即lseSquareScaleForZloss、returnZloss，不会生效。
+
+## 调用说明
+
+| 调用方式   | 样例代码           | 说明                                         |
+| ---------------- | --------------------------- | --------------------------------------------------- |
+| aclnn接口  | [test_aclnn_cross_entropy_loss](examples/test_aclnn_cross_entropy_loss.cpp) | 通过[aclnnCrossEntropyLoss](docs/aclnnCrossEntropyLoss.md)接口方式调用CrossEntropyLoss算子。 |

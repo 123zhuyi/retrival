@@ -1,0 +1,22 @@
+diff --git a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+index 5019f0ded16d..f5b350d2853f 100644
+--- a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
++++ b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+@@ -18,6 +18,8 @@
+ #include "llvm/ADT/STLExtras.h"
+ 
+ #if BSPUB_DAVINCI_BISHENGIR
++#include "mlir/IR/OpDefinition.h"
++#include "mlir/Interfaces/ControlFlowInterfaces.h"
+ #include "mlir/Dialect/Func/IR/FuncOps.h"
+ #endif
+ 
+@@ -134,7 +136,7 @@ static bool resultIsNotRead(Operation *op, std::vector<Operation *> &uses) {
+     Operation *useOp = use.getOwner();
+     // Handle potentially dangerous operations
+ #if BSPUB_DAVINCI_BISHENGIR
+-    if (isa<func::ReturnOp, func::CallOp>(useOp) ||
++    if (isa<func::CallOp>(useOp) || useOp->hasTrait<OpTrait::ReturnLike>() ||
+         useOp->hasTrait<OpTrait::HasRecursiveMemoryEffects>() ||
+         useOp->hasTrait<OpTrait::AutomaticAllocationScope>() ||
+         useOp->hasTrait<OpTrait::IsIsolatedFromAbove>() ||

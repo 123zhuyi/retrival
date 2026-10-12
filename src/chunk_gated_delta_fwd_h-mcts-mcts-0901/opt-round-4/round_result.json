@@ -1,0 +1,68 @@
+{
+  "round_index": 4,
+  "status": "success",
+  "algorithm": "mcts",
+  "best_speedup": 7.1132,
+  "target_speedup": 5.0,
+  "target_reached": true,
+  "improvement_made": false,
+  "phase4_entered": true,
+  "optimized": false,
+  "effective_metric_source": "kernel",
+  "direction": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset) — R4 MCTS continuation of the R3 champion (0d543b7e)",
+  "hypothesis": "MCTS expands from node opt-round-3 (mean reward 1.9389, visits 1); R4 re-verifies the R3 champion in a fresh work_dir against the freeze-anchored 6402eb golden and probes the one untested launch variable (num_warps) plus re-confirms the exhaustive 31-point scan has no safe lever on the serial chunk recurrence.",
+  "round_strategy": "exploration",
+  "work_dir": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4",
+  "error": null,
+  "direction_yield": "high",
+  "yield_reason": "target_reached_no_improvement",
+  "absolute_gain_vs_baseline": 0.0,
+  "absolute_gain_vs_global_baseline": 6.1132,
+  "baseline_dir": "opt-round-3",
+  "global_baseline_dir": "global_baseline",
+  "global_baseline_speedup": 1.0,
+  "mcts_parent_id": "opt-round-3",
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "visit_count": 3,
+      "mean_reward": 1.8904347472599925,
+      "status": "active",
+      "error_type": "none",
+      "description": "virtual root"
+    },
+    {
+      "node_id": "opt-round-3",
+      "depth": 1,
+      "visit_count": 1,
+      "mean_reward": 1.9388567608659624,
+      "status": "active",
+      "error_type": "none",
+      "description": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset)",
+      "round_dir": "opt-round-3"
+    }
+  ],
+  "mcts_pending_expansion": true,
+  "design_summary": "R4 MCTS continuation of the R3 champion (sha 0d543b7e): re-anchored baseline to the 6402eb golden in a fresh work_dir, verify 8/8, geomean 7.1132x (target 5x reached). One Phase-4 probe (num_warps 4->8) regressed to 6.79x and was reverted; lever re-analysis confirms the serial chunk recurrence is at its per-step bound and the grid is maximal-safe.",
+  "iter_count": 1,
+  "opt_iter_count": 1,
+  "key_fixes": [
+    "Re-anchored baseline to 6402eb golden in R4 work_dir (freeze mode=user, sha check passed)",
+    "num_warps=8 probe: verify 8/8 but benchmark geomean 6.79x < 7.1132x anchor -> reverted to num_warps=4 (confirms R2/R3 experience: nw=4 optimal)",
+    "Re-confirmed R3 exhaustive 31-point scan has no clean hit on the serial recurrence; per-chunk-step cost uniform (~0.43-1.2us) across dense+varlen -> recurrence-bound"
+  ],
+  "bottlenecks_observed": [
+    "weakest shapes cases 3/4 (dense B=1,HV=48,T=8192): 96 programs -> parallel-program-count bound ~4.7-4.9x; T/chunk axis is strict serial recurrence so it cannot be split safely",
+    "varlen heavy shapes (T=32768) impl 8-14 ms dominated by serial chunk count (256-512 chunks/program)",
+    "num_warps=8 adds per-program sync cost on serial-heavy cases (-8.5% to -9.7% on cases 7/8)"
+  ],
+  "artifacts": {
+    "summary_json": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/summary.json",
+    "report_md": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/report.md",
+    "round_journal_md": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/round_journal.md",
+    "final_code": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/chunk_gated_delta_fwd_h_generated.py",
+    "verify_result": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/output/iter_0/verify/verify_result.json",
+    "perf_result": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4/output/iter_0/perf_result.json"
+  }
+}

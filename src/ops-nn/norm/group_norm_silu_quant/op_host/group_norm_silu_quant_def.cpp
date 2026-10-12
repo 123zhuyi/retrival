@@ -1,0 +1,75 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include "register/op_def_registry.h"
+
+namespace ops {
+class GroupNormSiluQuant : public OpDef {
+public:
+    explicit GroupNormSiluQuant(const char* name) : OpDef(name)
+    {
+        this->Input("x")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_BF16, ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND})
+            .AutoContiguous();
+        this->Input("gamma")
+            .ParamType(OPTIONAL)
+            .DataType({ge::DT_BF16, ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND})
+            .AutoContiguous();
+        this->Input("beta")
+            .ParamType(OPTIONAL)
+            .DataType({ge::DT_BF16, ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND})
+            .AutoContiguous();
+        this->Input("quantScale")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_FLOAT, ge::DT_FLOAT})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND})
+            .AutoContiguous();
+        this->Output("yOut")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_INT8, ge::DT_INT8})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
+        this->Output("meanOut")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_BF16, ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
+        this->Output("rstdOut")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_BF16, ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND})
+            .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
+        this->Attr("num_groups").AttrType(REQUIRED).Int();
+        this->Attr("eps").AttrType(OPTIONAL).Float(1e-05);
+        this->Attr("activate_silu").AttrType(OPTIONAL).Bool(true);
+        this->AICore().AddConfig("ascend910b");
+        this->AICore().AddConfig("ascend910_93");
+
+        // arch35(Ascend950) regbase 配置: A5 原型与 A2 完全一致(仅 same-type), 故不重复声明输入输出原型,
+        // 仅覆盖 950 特有项(opFile + dynamic flags), 其余继承 this->(见 opdef-aicoreconfig-partial-override)。
+        OpAICoreConfig config_regbase;
+        config_regbase.DynamicCompileStaticFlag(true)
+            .DynamicRankSupportFlag(true)
+            .DynamicShapeSupportFlag(true)
+            .ExtendCfgInfo("opFile.value", "group_norm_silu_quant");
+        this->AICore().AddConfig("ascend950", config_regbase);
+    }
+};
+
+OP_ADD(GroupNormSiluQuant);
+} // namespace ops

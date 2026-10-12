@@ -1,0 +1,84 @@
+[
+  {
+    "id": 1,
+    "name": "sqrt backward smoke fp32",
+    "aclnn_name": "aclnnSqrtBackward",
+    "version": "v1.0",
+    "expected_error_msg": null,
+    "api": "pytorch",
+    "api_type": "ascend_aclnn_sqrt_backward",
+    "aclnn_api_type": "aclnn_sqrt_backward",
+    "backward": false,
+    "standard": {
+      "acc": "default",
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "y",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [16],
+        "range_values": [0.5, 8.0],
+        "backward": false,
+        "align_32B": null
+      },
+      {
+        "name": "dy",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [16],
+        "range_values": [-8.0, 8.0],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "acl_json": "",
+    "method_inputs": null,
+    "tensor_input": null
+  },
+  {
+    "id": 2,
+    "name": "sqrt backward smoke bf16",
+    "aclnn_name": "aclnnSqrtBackward",
+    "version": "v1.0",
+    "expected_error_msg": null,
+    "api": "pytorch",
+    "api_type": "ascend_aclnn_sqrt_backward",
+    "aclnn_api_type": "aclnn_sqrt_backward",
+    "backward": false,
+    "standard": {
+      "acc": "default",
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "y",
+        "type": "tensor",
+        "required": true,
+        "dtype": "bf16",
+        "shape": [8],
+        "range_values": [0.5, 8.0],
+        "backward": false,
+        "align_32B": null
+      },
+      {
+        "name": "dy",
+        "type": "tensor",
+        "required": true,
+        "dtype": "bf16",
+        "shape": [8],
+        "range_values": [-8.0, 8.0],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "acl_json": "",
+    "method_inputs": null,
+    "tensor_input": null
+  }
+]

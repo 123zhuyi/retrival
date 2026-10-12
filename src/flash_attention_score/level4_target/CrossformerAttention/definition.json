@@ -1,0 +1,44 @@
+{
+  "name": "CrossformerAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input token sequence (B, N, C) or flattened spatial tokens"
+    },
+    "group_size": {
+      "description": "group size (int or [gh, gw])"
+    },
+    "q": {
+      "description": "optional query tokens (B, N, C)"
+    },
+    "k": {
+      "description": "optional key tokens (B, N, C)"
+    },
+    "v": {
+      "description": "optional value tokens (B, N, C)"
+    },
+    "num_heads": {
+      "description": "number of attention heads; default 1"
+    },
+    "mask": {
+      "description": "optional additive attention mask"
+    },
+    "scale": {
+      "description": "optional manual attention scale"
+    },
+    "pos_bias": {
+      "description": "optional positional bias"
+    },
+    "feature_shape": {
+      "description": "optional spatial shape (H, W) to reshape x before grouping"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output (B, N, C)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\n\ndef run(x, group_size, q=None, k=None, v=None, num_heads=1, mask=None, scale=None, pos_bias=None, feature_shape=None):\n    if num_heads is None:\n        num_heads = 1\n    torch.manual_seed(42)\n    B, N, C = x.shape\n\n    if isinstance(group_size, int):\n        gh = gw = group_size\n    else:\n        gh, gw = group_size\n\n    def _attention(x_loc, q_loc, k_loc, v_loc, num_heads, mask, scale, pos_bias):\n        B_loc, N_loc, C_loc = x_loc.shape\n        head_dim = C_loc // num_heads\n\n        def to_heads(t):\n            return t.view(B_loc, N_loc, num_heads, head_dim).permute(0, 2, 1, 3)\n\n        qh = to_heads(q_loc)\n        kh = to_heads(k_loc)\n        vh = to_heads(v_loc)\n\n        scale_val = scale if scale is not None else (head_dim ** -0.5)\n        qh = qh * scale_val\n\n        attn = torch.matmul(qh.float(), kh.transpose(-2, -1).float())\n        if pos_bias is not None:\n            if pos_bias.dim() == 2:\n                attn = attn + pos_bias.unsqueeze(0).unsqueeze(0).float()\n            else:\n                attn = attn + pos_bias.unsqueeze(0).float()\n        if mask is not None:\n            if mask.dim() == 2:\n                attn = attn + mask.unsqueeze(0).unsqueeze(0).float()\n            else:\n                attn = attn + mask.float()\n\n        attn = F.softmax(attn, dim=-1)\n        out_heads = torch.matmul(attn, vh.float()).to(dtype=x.dtype)\n        out = out_heads.permute(0, 2, 1, 3).contiguous().view(B_loc, N_loc, C_loc)\n        return out\n\n    if feature_shape is not None:\n        H, W = feature_shape\n        x_2d = x.view(B, H, W, C)\n        num_h = H // gh\n        num_w = W // gw\n        x_groups = x_2d.view(B, num_h, gh, num_w, gw, C)\n        x_groups = x_groups.permute(0, 1, 3, 2, 4, 5).contiguous()\n        x_groups = x_groups.view(B, num_h * num_w, gh * gw, C)\n        B_flat = B * num_h * num_w\n        x_flat = x_groups.view(B_flat, gh * gw, C)\n\n        if q is not None:\n            q_2d = q.view(B, H, W, C)\n            q_groups = q_2d.view(B, num_h, gh, num_w, gw, C).permute(0, 1, 3, 2, 4, 5).contiguous()\n            q_flat = q_groups.view(B_flat, gh * gw, C)\n        else:\n            q_flat = x_flat\n        if k is not None:\n            k_2d = k.view(B, H, W, C)\n            k_groups = k_2d.view(B, num_h, gh, num_w, gw, C).permute(0, 1, 3, 2, 4, 5).contiguous()\n            k_flat = k_groups.view(B_flat, gh * gw, C)\n        else:\n            k_flat = x_flat\n        if v is not None:\n            v_2d = v.view(B, H, W, C)\n            v_groups = v_2d.view(B, num_h, gh, num_w, gw, C).permute(0, 1, 3, 2, 4, 5).contiguous()\n            v_flat = v_groups.view(B_flat, gh * gw, C)\n        else:\n            v_flat = x_flat\n\n        out_flat = _attention(x_flat, q_flat, k_flat, v_flat, num_heads, mask, scale, pos_bias)\n        out_groups = out_flat.view(B, num_h * num_w, gh * gw, C)\n        out_groups = out_groups.view(B, num_h, num_w, gh, gw, C)\n        out_groups = out_groups.permute(0, 1, 3, 2, 4, 5).contiguous()\n        out = out_groups.view(B, H, W, C)\n        out = out.view(B, H * W, C)\n        return out\n    else:\n        q_in = x if q is None else q\n        k_in = x if k is None else k\n        v_in = x if v is None else v\n        out = _attention(x, q_in, k_in, v_in, num_heads, mask, scale, pos_bias)\n        return out\n",
+  "description": "CrossFormer group attention that applies multi-head self-attention within spatial or token groups."
+}

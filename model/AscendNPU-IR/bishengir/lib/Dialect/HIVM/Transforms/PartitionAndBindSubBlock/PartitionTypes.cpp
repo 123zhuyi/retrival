@@ -1,0 +1,159 @@
+//-----------------------------PartitionTypes.cpp-----------------------------//
+//
+// Shared cube/shared-op classifier and the two {sub_block} scope-discovery
+// predicates.
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/HIVM/Transforms/PartitionAndBindSubBlock/PartitionTypes.h"
+
+#include "bishengir/Dialect/Annotation/IR/Annotation.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/IR/HIVMImpl.h"
+#include "bishengir/Dialect/Scope/IR/Scope.h"
+
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Linalg/IR/LinalgInterfaces.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
+#include "mlir/Interfaces/ViewLikeInterface.h"
+
+#include "llvm/ADT/STLExtras.h"
+
+namespace mlir {
+namespace hivm {
+namespace partition_and_bind {
+
+bool isCubeOrSharedOp(Operation *op) {
+  if (!op)
+    return false;
+
+  if (isa<hivm::MatmulOp, hivm::MmadL1Op, hivm::BatchMmadL1Op, hivm::FixpipeOp,
+          hivm::MixMatmulOp>(op))
+    return true;
+
+  // Anything explicitly tagged to run on the cube.
+  if (FailureOr<TCoreType> ct = hivm::getCoreType(op);
+      succeeded(ct) && *ct == TCoreType::CUBE)
+    return true;
+  return false;
+}
+
+bool writesAnyBuffer(Operation *op) {
+  // `annotation.mark` declares a Write effect but it only tags metadata
+  if (isa<annotation::MarkOp>(op))
+    return false;
+  auto effOp = dyn_cast<MemoryEffectOpInterface>(op);
+  if (!effOp)
+    return false;
+  llvm::SmallVector<MemoryEffects::EffectInstance, 4> effects;
+  effOp.getEffects(effects);
+  for (const MemoryEffects::EffectInstance &eff : effects) {
+    if (!isa<MemoryEffects::Write>(eff.getEffect()))
+      continue;
+    Value v = eff.getValue();
+    if (v && isa<ShapedType>(v.getType()))
+      return true;
+  }
+  return false;
+}
+
+Value traceBufferBase(Value v) {
+  for (;;) {
+    if (auto view = v.getDefiningOp<ViewLikeOpInterface>()) {
+      v = view.getViewSource();
+      continue;
+    }
+    if (auto cast = v.getDefiningOp<memref::MemorySpaceCastOp>()) {
+      v = cast.getSource();
+      continue;
+    }
+    break;
+  }
+  return v;
+}
+
+bool isGuardable(Operation *op) {
+  return !op->getResults().empty() || writesAnyBuffer(op);
+}
+
+Core getSubBlockCoreOf(Operation *op) {
+  auto scopeOp = dyn_cast_or_null<scope::ScopeOp>(op);
+  if (!scopeOp)
+    return Core::Bottom;
+  auto attr = scopeOp->getAttrOfType<IntegerAttr>(kSubBlockAttrName);
+  if (!attr)
+    return Core::Bottom;
+  return coreFromIndex(attr.getInt());
+}
+
+static Operation *traceSubBlockIdxOp(Value v) {
+  if (auto cast = v.getDefiningOp<arith::IndexCastOp>())
+    v = cast.getIn();
+  return v.getDefiningOp<hivm::GetSubBlockIdxOp>();
+}
+
+static bool tracesToSubBlockIdx(Value v) {
+  return traceSubBlockIdxOp(v) != nullptr;
+}
+
+static bool definesConstant(Value v) {
+  return v.getDefiningOp<arith::ConstantOp>() != nullptr;
+}
+
+bool isOperandParallelSubBlockGuard(Operation *op) {
+  auto ifOp = dyn_cast_or_null<scf::IfOp>(op);
+  if (!ifOp)
+    return false;
+  auto cmp = ifOp.getCondition().getDefiningOp<arith::CmpIOp>();
+  if (!cmp || cmp.getPredicate() != arith::CmpIPredicate::eq)
+    return false;
+  return (tracesToSubBlockIdx(cmp.getLhs()) && definesConstant(cmp.getRhs())) ||
+         (tracesToSubBlockIdx(cmp.getRhs()) && definesConstant(cmp.getLhs()));
+}
+
+bool isMarkedOperandParallelSubBlockGuard(Operation *op) {
+  if (!isOperandParallelSubBlockGuard(op))
+    return false;
+  auto cmp = cast<scf::IfOp>(op).getCondition().getDefiningOp<arith::CmpIOp>();
+  Operation *idxOp = traceSubBlockIdxOp(cmp.getLhs());
+  if (!idxOp)
+    idxOp = traceSubBlockIdxOp(cmp.getRhs());
+  return idxOp->hasAttr(kPartitionGuardAttrName);
+}
+
+bool isAtomicSimtScope(Operation *op) {
+  auto scopeOp = dyn_cast_or_null<scope::ScopeOp>(op);
+  if (!scopeOp)
+    return false;
+  auto attr = scopeOp->getAttrOfType<StringAttr>(kVectorTypeAttrName);
+  return attr && attr.getValue() == kSimtVectorType;
+}
+
+bool isInsideAtomicSimtScope(Operation *op) {
+  for (Operation *p = op->getParentOp(); p; p = p->getParentOp())
+    if (isAtomicSimtScope(p))
+      return true;
+  return false;
+}
+
+} // namespace partition_and_bind
+} // namespace hivm
+} // namespace mlir

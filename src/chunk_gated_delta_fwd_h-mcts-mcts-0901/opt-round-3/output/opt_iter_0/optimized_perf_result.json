@@ -1,0 +1,1291 @@
+{
+  "op_name": "chunk_gated_delta_fwd_h",
+  "warmup": 5,
+  "repeats": 50,
+  "max_retries": 3,
+  "total_cases": 8,
+  "passed_cases": 8,
+  "failed_cases": 0,
+  "nan_indices": [],
+  "inf_indices": [],
+  "zero_indices": [],
+  "negative_indices": [],
+  "none_indices": [],
+  "framework": {
+    "avg_latency_ms": 14.5287,
+    "peak_memory_mb": 1785.73,
+    "operators": {
+      "aclnnAdd_AddAiCore_Add": {
+        "avg_us": 1145.1747
+      },
+      "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+        "avg_us": 5894.2915
+      },
+      "aclnnExp_ExpAiCore_Exp": {
+        "avg_us": 378.4079
+      },
+      "aclnnExp_SliceAiCore_Slice": {
+        "avg_us": 488.6719
+      },
+      "aclnnInplaceCopy_CastAiCore_Cast": {
+        "avg_us": 1274.1611
+      },
+      "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+        "avg_us": 17.7974
+      },
+      "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+        "avg_us": 2371.2038
+      },
+      "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+        "avg_us": 183.9931
+      },
+      "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+        "avg_us": 1908.1842
+      },
+      "aclnnMatmul_SliceAiCore_Slice": {
+        "avg_us": 1581.5446
+      },
+      "aclnnMatmul_TransposeAiCore_Transpose": {
+        "avg_us": 1934.7505
+      },
+      "aclnnMul_MulAiCore_Mul": {
+        "avg_us": 3739.893
+      },
+      "aclnnSub_SliceAiCore_Slice": {
+        "avg_us": 1712.006
+      },
+      "aclnnSub_SubAiCore_Sub": {
+        "avg_us": 2334.2723
+      },
+      "aclnnArange_ArangeAiCore_Range": {
+        "avg_us": 1.8933
+      },
+      "aclnnFloorDivides_FloorDivAiCore_FloorDiv": {
+        "avg_us": 1.7415
+      },
+      "aclnnIndexSelect_GatherV3AiCore_GatherV3": {
+        "avg_us": 16.0081
+      },
+      "aclnnAdds_AddAiCore_Add": {
+        "avg_us": 1.3265
+      },
+      "aclnnCat_ConcatD_ConcatD": {
+        "avg_us": 0.5669
+      },
+      "aclnnCumsum_CumsumAiCpu_Cumsum": {
+        "avg_us": 13.5857
+      },
+      "aclnnReduceSum_ReduceSumOpAiCore_ReduceSum": {
+        "avg_us": 0.6727
+      },
+      "aclnnSubs_SubAiCore_Sub": {
+        "avg_us": 1.3224
+      }
+    }
+  },
+  "implementation": {
+    "avg_latency_ms": 2.0902,
+    "peak_memory_mb": 549.89,
+    "operators": {
+      "_gdn_chunk_fwd_h_kernel": {
+        "avg_us": 4310.3129
+      },
+      "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+        "avg_us": 1.0704
+      }
+    }
+  },
+  "speedup_vs_torch": 6.9508,
+  "per_shape_results": [
+    {
+      "case_idx": 1,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 5.9451,
+        "peak_memory_mb": 161.36,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 361.6947,
+            "launch_count": 51
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 1297.4856,
+            "launch_count": 153
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 125.7527,
+            "launch_count": 102
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 97.0453,
+            "launch_count": 51
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 43.9377,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 21.356,
+            "launch_count": 3
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 780.8002,
+            "launch_count": 102
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 44.8082,
+            "launch_count": 6
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 540.5558,
+            "launch_count": 102
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 275.8161,
+            "launch_count": 102
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 602.3907,
+            "launch_count": 51
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 886.0972,
+            "launch_count": 102
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 375.1551,
+            "launch_count": 153
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 492.2483,
+            "launch_count": 102
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 0.4437,
+        "peak_memory_mb": 56.38,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 442.3681,
+            "launch_count": 1
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 1.3724,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 13.3989,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 2,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            3,
+            10,
+            1054
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 128
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 3.606,
+        "peak_memory_mb": 138.67,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 191.5539,
+            "launch_count": 27
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 699.5806,
+            "launch_count": 81
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 67.5993,
+            "launch_count": 54
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 51.2964,
+            "launch_count": 27
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 40.4041,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 21.4792,
+            "launch_count": 3
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 425.2983,
+            "launch_count": 54
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 40.5421,
+            "launch_count": 6
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 307.2007,
+            "launch_count": 54
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 178.2651,
+            "launch_count": 54
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 346.7634,
+            "launch_count": 27
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 576.49,
+            "launch_count": 54
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 207.3982,
+            "launch_count": 81
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 452.1144,
+            "launch_count": 54
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 0.2763,
+        "peak_memory_mb": 55.44,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 274.9039,
+            "launch_count": 1
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 1.396,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 13.051,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 3,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 25.2903,
+        "peak_memory_mb": 1934.02,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 1079.5454,
+            "launch_count": 128
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 6539.2342,
+            "launch_count": 384
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 351.257,
+            "launch_count": 256
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 480.0983,
+            "launch_count": 128
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 1434.9249,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 8.6878,
+            "launch_count": 1
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 2619.2682,
+            "launch_count": 256
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 375.3534,
+            "launch_count": 4
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 1762.0201,
+            "launch_count": 256
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 1512.1309,
+            "launch_count": 256
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 1700.9657,
+            "launch_count": 128
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 3651.5895,
+            "launch_count": 256
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 1655.2758,
+            "launch_count": 384
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 2119.9812,
+            "launch_count": 256
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 5.2842,
+        "peak_memory_mb": 593.01,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 5282.6088,
+            "launch_count": 1
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 1.6244,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 4.786,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 4,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            48,
+            8192
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 128
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 15.1762,
+        "peak_memory_mb": 1648.03,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 557.0745,
+            "launch_count": 64
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 3949.0089,
+            "launch_count": 192
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 199.2733,
+            "launch_count": 128
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 238.1644,
+            "launch_count": 64
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 1170.0895,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 8.1906,
+            "launch_count": 1
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 1393.6009,
+            "launch_count": 128
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 239.7803,
+            "launch_count": 4
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 1313.7215,
+            "launch_count": 128
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 1108.9282,
+            "launch_count": 128
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 978.4635,
+            "launch_count": 64
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 1922.6382,
+            "launch_count": 128
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 996.8899,
+            "launch_count": 192
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 1100.426,
+            "launch_count": 128
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 3.2194,
+        "peak_memory_mb": 506.01,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 3217.8387,
+            "launch_count": 1
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 1.5404,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 4.714,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 5,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            8,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 10.0847,
+        "peak_memory_mb": 470.26,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 487.5267,
+            "launch_count": 64
+          },
+          "aclnnArange_ArangeAiCore_Range": {
+            "avg_us": 7.5497,
+            "launch_count": 1
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 2404.1852,
+            "launch_count": 192
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 161.7947,
+            "launch_count": 128
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 227.7598,
+            "launch_count": 64
+          },
+          "aclnnFloorDivides_FloorDivAiCore_FloorDiv": {
+            "avg_us": 2.8849,
+            "launch_count": 1
+          },
+          "aclnnIndexSelect_GatherV3AiCore_GatherV3": {
+            "avg_us": 67.7525,
+            "launch_count": 1
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 274.3363,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 7.4869,
+            "launch_count": 1
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 984.8737,
+            "launch_count": 128
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 78.386,
+            "launch_count": 4
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 694.0942,
+            "launch_count": 128
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 515.4121,
+            "launch_count": 128
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 847.4436,
+            "launch_count": 64
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 1702.8301,
+            "launch_count": 128
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 683.7927,
+            "launch_count": 192
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 936.623,
+            "launch_count": 128
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 1.5153,
+        "peak_memory_mb": 135.88,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 1514.0521,
+            "launch_count": 1
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 1.2892,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 6.6552,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 6,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            8,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            24,
+            4096
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "scalar",
+          "value": 128
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 5.7374,
+        "peak_memory_mb": 400.77,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 244.9421,
+            "launch_count": 32
+          },
+          "aclnnArange_ArangeAiCore_Range": {
+            "avg_us": 7.5966,
+            "launch_count": 1
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 1491.5274,
+            "launch_count": 96
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 84.8972,
+            "launch_count": 64
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 115.6196,
+            "launch_count": 32
+          },
+          "aclnnFloorDivides_FloorDivAiCore_FloorDiv": {
+            "avg_us": 2.8429,
+            "launch_count": 1
+          },
+          "aclnnIndexSelect_GatherV3AiCore_GatherV3": {
+            "avg_us": 60.312,
+            "launch_count": 1
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 206.0763,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 7.6485,
+            "launch_count": 1
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 505.0299,
+            "launch_count": 64
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 55.7119,
+            "launch_count": 4
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 449.4064,
+            "launch_count": 64
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 334.323,
+            "launch_count": 64
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 439.9721,
+            "launch_count": 32
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 859.3138,
+            "launch_count": 64
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 390.7352,
+            "launch_count": 96
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 481.4833,
+            "launch_count": 64
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 0.9333,
+        "peak_memory_mb": 116.38,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 931.9994,
+            "launch_count": 1
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 1.3404,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 6.1474,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 7,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            5
+          ],
+          "dtype": "torch.int64"
+        },
+        {
+          "type": "scalar",
+          "value": 64
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 85.2642,
+        "peak_memory_mb": 5148.7,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 4213.3915,
+            "launch_count": 515
+          },
+          "aclnnAdds_AddAiCore_Add": {
+            "avg_us": 5.3182,
+            "launch_count": 2
+          },
+          "aclnnCat_ConcatD_ConcatD": {
+            "avg_us": 2.2573,
+            "launch_count": 1
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 19558.2247,
+            "launch_count": 1545
+          },
+          "aclnnCumsum_CumsumAiCpu_Cumsum": {
+            "avg_us": 56.7119,
+            "launch_count": 1
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 1312.6183,
+            "launch_count": 1030
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 1788.9867,
+            "launch_count": 515
+          },
+          "aclnnFloorDivides_FloorDivAiCore_FloorDiv": {
+            "avg_us": 4.1157,
+            "launch_count": 2
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 3855.4506,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 35.8931,
+            "launch_count": 4
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 8108.7637,
+            "launch_count": 1030
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 276.6001,
+            "launch_count": 7
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 6201.2134,
+            "launch_count": 1030
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 5043.483,
+            "launch_count": 1030
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 6938.658,
+            "launch_count": 515
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 13497.3725,
+            "launch_count": 1030
+          },
+          "aclnnReduceSum_ReduceSumOpAiCore_ReduceSum": {
+            "avg_us": 2.8352,
+            "launch_count": 1
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 5872.6548,
+            "launch_count": 1545
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 8484.313,
+            "launch_count": 1031
+          },
+          "aclnnSubs_SubAiCore_Sub": {
+            "avg_us": 5.3572,
+            "launch_count": 2
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 13.9843,
+        "peak_memory_mb": 1584.01,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 13984.3263,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 6.0971,
+      "error_type": null,
+      "error_msg": null
+    },
+    {
+      "case_idx": 8,
+      "input_desc": [
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768,
+            128
+          ],
+          "dtype": "torch.bfloat16"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            1,
+            32,
+            32768
+          ],
+          "dtype": "torch.float32"
+        },
+        {
+          "type": "scalar",
+          "value": "None"
+        },
+        {
+          "type": "tensor",
+          "shape": [
+            5
+          ],
+          "dtype": "torch.int64"
+        },
+        {
+          "type": "scalar",
+          "value": 128
+        },
+        {
+          "type": "scalar",
+          "value": false
+        }
+      ],
+      "status": "pass",
+      "framework": {
+        "avg_latency_ms": 48.9077,
+        "peak_memory_mb": 4384.02,
+        "operators": {
+          "aclnnAdd_AddAiCore_Add": {
+            "avg_us": 2025.669,
+            "launch_count": 259
+          },
+          "aclnnAdds_AddAiCore_Add": {
+            "avg_us": 5.2938,
+            "launch_count": 2
+          },
+          "aclnnCat_ConcatD_ConcatD": {
+            "avg_us": 2.278,
+            "launch_count": 1
+          },
+          "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2": {
+            "avg_us": 11215.0857,
+            "launch_count": 777
+          },
+          "aclnnCumsum_CumsumAiCpu_Cumsum": {
+            "avg_us": 51.9734,
+            "launch_count": 1
+          },
+          "aclnnExp_ExpAiCore_Exp": {
+            "avg_us": 724.071,
+            "launch_count": 518
+          },
+          "aclnnExp_SliceAiCore_Slice": {
+            "avg_us": 910.4052,
+            "launch_count": 259
+          },
+          "aclnnFloorDivides_FloorDivAiCore_FloorDiv": {
+            "avg_us": 4.0888,
+            "launch_count": 2
+          },
+          "aclnnInplaceCopy_CastAiCore_Cast": {
+            "avg_us": 3168.0698,
+            "launch_count": 5
+          },
+          "aclnnInplaceCopy_TensorMoveAiCore_TensorMove": {
+            "avg_us": 31.6371,
+            "launch_count": 4
+          },
+          "aclnnInplaceCopy_ViewCopyAiCore_ViewCopy": {
+            "avg_us": 4151.9954,
+            "launch_count": 518
+          },
+          "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+            "avg_us": 360.7627,
+            "launch_count": 7
+          },
+          "aclnnMatmul_BatchMatMulNd_BatchMatMulV2": {
+            "avg_us": 3997.2616,
+            "launch_count": 518
+          },
+          "aclnnMatmul_SliceAiCore_Slice": {
+            "avg_us": 3683.9986,
+            "launch_count": 518
+          },
+          "aclnnMatmul_TransposeAiCore_Transpose": {
+            "avg_us": 3623.3472,
+            "launch_count": 259
+          },
+          "aclnnMul_MulAiCore_Mul": {
+            "avg_us": 6822.8126,
+            "launch_count": 518
+          },
+          "aclnnReduceSum_ReduceSumOpAiCore_ReduceSum": {
+            "avg_us": 2.5461,
+            "launch_count": 1
+          },
+          "aclnnSub_SliceAiCore_Slice": {
+            "avg_us": 3514.1458,
+            "launch_count": 777
+          },
+          "aclnnSub_SubAiCore_Sub": {
+            "avg_us": 4606.9892,
+            "launch_count": 519
+          },
+          "aclnnSubs_SubAiCore_Sub": {
+            "avg_us": 5.2222,
+            "launch_count": 2
+          }
+        }
+      },
+      "implementation": {
+        "avg_latency_ms": 8.8344,
+        "peak_memory_mb": 1352.01,
+        "operators": {
+          "_gdn_chunk_fwd_h_kernel": {
+            "avg_us": 8834.4057,
+            "launch_count": 1
+          }
+        }
+      },
+      "speedup_vs_torch": 5.5361,
+      "error_type": null,
+      "error_msg": null
+    }
+  ]
+}

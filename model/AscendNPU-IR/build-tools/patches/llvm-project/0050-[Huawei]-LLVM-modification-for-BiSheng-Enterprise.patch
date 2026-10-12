@@ -1,0 +1,1084 @@
+diff --git a/mlir/include/mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h b/mlir/include/mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h
+index 76eb3b5dd11e..c2e575dc8a63 100644
+--- a/mlir/include/mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h
++++ b/mlir/include/mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h
+@@ -14,6 +14,7 @@
+ #ifndef MLIR_CONVERSION_FUNCTOLLVM_CONVERTFUNCTOLLVM_H
+ #define MLIR_CONVERSION_FUNCTOLLVM_CONVERTFUNCTOLLVM_H
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Interfaces/FunctionInterfaces.h"
+ 
+ namespace mlir {
+diff --git a/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt b/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt
+index f0a486df9842..575aeab2e514 100644
+--- a/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt
++++ b/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt
+@@ -2,9 +2,9 @@ add_subdirectory(IR)
+ add_subdirectory(TransformOps)
+ 
+ set(LLVM_TARGET_DEFINITIONS Passes.td)
++
+ mlir_tablegen(Passes.h.inc -gen-pass-decls -name Linalg)
+ mlir_tablegen(Passes.capi.h.inc -gen-pass-capi-header --prefix Linalg)
+ mlir_tablegen(Passes.capi.cpp.inc -gen-pass-capi-impl --prefix Linalg)
+ add_public_tablegen_target(MLIRLinalgPassIncGen)
+-
+ add_mlir_doc(Passes LinalgPasses ./ -gen-pass-doc)
+diff --git a/mlir/include/mlir/Dialect/Linalg/Passes.h b/mlir/include/mlir/Dialect/Linalg/Passes.h
+index f2955d55e59e..f5a931e8b94c 100644
+--- a/mlir/include/mlir/Dialect/Linalg/Passes.h
++++ b/mlir/include/mlir/Dialect/Linalg/Passes.h
+@@ -13,6 +13,7 @@
+ #ifndef MLIR_DIALECT_LINALG_PASSES_H_
+ #define MLIR_DIALECT_LINALG_PASSES_H_
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+ #include "mlir/Dialect/Linalg/Utils/Utils.h"
+ #include "mlir/Pass/Pass.h"
+diff --git a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+index a706f6c708bf..2bf4dabec996 100644
+--- a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
++++ b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+@@ -611,6 +611,8 @@ def MatchOp : Op<Transform_Dialect, "structured.match",
+   // TODO: variadic results when needed.
+   let results = (outs TransformHandleTypeInterface:$results);
+ 
++
++
+   let builders = [
+     OpBuilder<(ins "Value":$target, "ArrayRef<StringRef>":$opNames)>,
+     OpBuilder<(ins "TypeRange":$resultTypes, "Value":$target, "ArrayRef<StringRef>":$opNames)>
+diff --git a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+index 7a8bb561630f..63ec2703b050 100644
+--- a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
++++ b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+@@ -11,6 +11,7 @@
+ 
+ #include <utility>
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Conversion/VectorToSCF/VectorToSCF.h"
+ #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+ #include "mlir/Dialect/Linalg/Utils/Utils.h"
+diff --git a/mlir/include/mlir/Dialect/Tensor/IR/TensorOps.td b/mlir/include/mlir/Dialect/Tensor/IR/TensorOps.td
+index b77439f47224..64021e2e5015 100644
+--- a/mlir/include/mlir/Dialect/Tensor/IR/TensorOps.td
++++ b/mlir/include/mlir/Dialect/Tensor/IR/TensorOps.td
+@@ -1163,6 +1163,9 @@ def Tensor_ExpandShapeOp : Tensor_ReassociativeReshapeOp<"expand_shape"> {
+   let extraClassDeclaration = commonExtraClassDeclaration # [{
+     int64_t getCorrespondingSourceDim(int64_t resultDim);
+ 
++    // Return output shape as mixes static/dynamic shapes.
++    SmallVector<OpFoldResult> getMixedOutputShape();
++
+     // Infer the output shape for a tensor.expand_shape when it is possible
+     // to do so.
+     static FailureOr<SmallVector<OpFoldResult>> inferOutputShape(
+diff --git a/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h b/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h
+index 30228b9bce8e..70899ebde60a 100644
+--- a/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h
++++ b/mlir/include/mlir/Dialect/Tensor/Transforms/Transforms.h
+@@ -9,6 +9,7 @@
+ #ifndef MLIR_DIALECT_TENSOR_TRANSFORMS_TRANSFORMS_H
+ #define MLIR_DIALECT_TENSOR_TRANSFORMS_TRANSFORMS_H
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Tensor/IR/Tensor.h"
+ #include "mlir/IR/PatternMatch.h"
+ #include "mlir/Interfaces/ViewLikeInterface.h"
+diff --git a/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h b/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h
+index 120c67676c93..0e88b4885a80 100644
+--- a/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h
++++ b/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h
+@@ -9,6 +9,7 @@
+ #ifndef MLIR_DIALECT_TENSOR_UTILS_UTILS_H_
+ #define MLIR_DIALECT_TENSOR_UTILS_UTILS_H_
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Tensor/IR/Tensor.h"
+ 
+ namespace mlir {
+diff --git a/mlir/include/mlir/Dialect/Utils/CMakeLists.txt b/mlir/include/mlir/Dialect/Utils/CMakeLists.txt
+index edfb1ca873ab..994216dc2aa0 100644
+--- a/mlir/include/mlir/Dialect/Utils/CMakeLists.txt
++++ b/mlir/include/mlir/Dialect/Utils/CMakeLists.txt
+@@ -1,5 +1,7 @@
+ set(LLVM_TARGET_DEFINITIONS StructuredOpsUtils.td)
++
+ mlir_tablegen(DialectUtilsEnums.h.inc -gen-enum-decls)
+ mlir_tablegen(DialectUtilsEnums.cpp.inc -gen-enum-defs)
++
+ add_public_tablegen_target(MLIRDialectUtilsIncGen)
+ add_dependencies(mlir-headers MLIRDialectUtilsIncGen)
+diff --git a/mlir/include/mlir/Dialect/Utils/ExpandShapeUtils.h b/mlir/include/mlir/Dialect/Utils/ExpandShapeUtils.h
+index 6a41629e8335..00a7272ef87b 100644
+--- a/mlir/include/mlir/Dialect/Utils/ExpandShapeUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/ExpandShapeUtils.h
+@@ -86,4 +86,4 @@ struct FoldConstantDimOfOutputShape : public OpRewritePattern<ExpandShapeOpTy> {
+   }
+ };
+ 
+-} // namespace mlir
+\ No newline at end of file
++} // namespace mlir
+diff --git a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+index e48ad02dab49..199bd44ad8c6 100644
+--- a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+@@ -14,6 +14,7 @@
+ #ifndef MLIR_DIALECT_UTILS_RESHAPEOPSUTILS_H
+ #define MLIR_DIALECT_UTILS_RESHAPEOPSUTILS_H
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Utils/StaticValueUtils.h"
+ #include "mlir/IR/OpImplementation.h"
+ #include "mlir/IR/PatternMatch.h"
+diff --git a/mlir/include/mlir/Dialect/Utils/StaticValueUtils.h b/mlir/include/mlir/Dialect/Utils/StaticValueUtils.h
+index ba4f084d3efd..e7c758c736e1 100644
+--- a/mlir/include/mlir/Dialect/Utils/StaticValueUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/StaticValueUtils.h
+@@ -119,6 +119,9 @@ bool isEqualConstantIntOrValueArray(ArrayRef<OpFoldResult> ofrs1,
+ /// Return a vector of OpFoldResults with the same size a staticValues, but
+ /// all elements for which ShapedType::isDynamic is true, will be replaced by
+ /// dynamicValues.
++SmallVector<OpFoldResult> getMixedValues(ArrayRef<int64_t> staticValues,
++                                         ValueRange dynamicValues,
++                                         MLIRContext *context);
+ SmallVector<OpFoldResult> getMixedValues(ArrayRef<int64_t> staticValues,
+                                          ValueRange dynamicValues, Builder &b);
+ 
+diff --git a/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td b/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td
+index bc6a891c8654..ad256ae47cd3 100644
+--- a/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td
++++ b/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td
+@@ -12,6 +12,7 @@
+ include "mlir/IR/OpBase.td"
+ include "mlir/IR/EnumAttr.td"
+ 
++
+ def IteratorType : I32EnumAttr<"IteratorType", "Iterator type", [
+   I32EnumAttrCase<"parallel", 0>,
+   I32EnumAttrCase<"reduction", 1>
+@@ -25,4 +26,5 @@ def IteratorType : I32EnumAttr<"IteratorType", "Iterator type", [
+     let cppNamespace = "::mlir::utils";
+ }
+ 
++
+ #endif // STRUCTURED_OPS_UTILS
+diff --git a/mlir/lib/Dialect/Arith/IR/ArithOps.cpp b/mlir/lib/Dialect/Arith/IR/ArithOps.cpp
+index aa5eb95a3d22..0a0df8a7e1c2 100644
+--- a/mlir/lib/Dialect/Arith/IR/ArithOps.cpp
++++ b/mlir/lib/Dialect/Arith/IR/ArithOps.cpp
+@@ -1389,6 +1389,7 @@ LogicalResult arith::ExtSIOp::verify() {
+ // ExtFOp
+ //===----------------------------------------------------------------------===//
+ 
++/// Always fold extension of FP constants.
+ /// Fold extension of float constants when there is no information loss due the
+ /// difference in fp semantics.
+ OpFoldResult arith::ExtFOp::fold(FoldAdaptor adaptor) {
+diff --git a/mlir/lib/Dialect/Arith/IR/CMakeLists.txt b/mlir/lib/Dialect/Arith/IR/CMakeLists.txt
+index 4beb99ccfdfb..a9ddc825dfc6 100644
+--- a/mlir/lib/Dialect/Arith/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/Arith/IR/CMakeLists.txt
+@@ -31,6 +31,7 @@ add_mlir_dialect_library(MLIRArithDialect
+   MLIRUBDialect
+   )
+ 
++
+ add_mlir_dialect_library(MLIRArithValueBoundsOpInterfaceImpl
+   ValueBoundsOpInterfaceImpl.cpp
+ 
+diff --git a/mlir/lib/Dialect/Arith/Transforms/CMakeLists.txt b/mlir/lib/Dialect/Arith/Transforms/CMakeLists.txt
+index 6b8bde8dc2aa..c5ec2a35e4a3 100644
+--- a/mlir/lib/Dialect/Arith/Transforms/CMakeLists.txt
++++ b/mlir/lib/Dialect/Arith/Transforms/CMakeLists.txt
+@@ -34,3 +34,4 @@ add_mlir_dialect_library(MLIRArithTransforms
+   MLIRValueBoundsOpInterface
+   MLIRVectorDialect
+   )
++
+diff --git a/mlir/lib/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.cpp b/mlir/lib/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.cpp
+index eea7a6fafd1a..6e91d3b89a7c 100644
+--- a/mlir/lib/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.cpp
+@@ -259,20 +259,23 @@ struct CallOpInterface
+         return failure();
+       Value buffer = *maybeBuffer;
+ 
+-      // Caller / callee type mismatch is handled with a CastOp.
++      // Caller / callee type mismatch is handled with castOrReallocMemRefValue.
+       auto memRefType = funcType.getInput(opOperand.getOperandNumber());
+       // Since we don't yet have a clear layout story, to_memref may
+       // conservatively turn tensors into more dynamic memref than necessary.
+       // If the memref type of the callee fails, introduce an extra memref.cast
+       // that will either canonicalize away or fail compilation until we can do
+-      // something better.
++      // something better. Insert a reallocation + copy if it cannot be
++      // statically guaranteed that a direct cast would be valid.
+       if (buffer.getType() != memRefType) {
+-        assert(
+-            memref::CastOp::areCastCompatible(buffer.getType(), memRefType) &&
+-            "CallOp::bufferize: cast incompatible");
+-        Value castBuffer = rewriter.create<memref::CastOp>(callOp.getLoc(),
+-                                                           memRefType, buffer);
+-        buffer = castBuffer;
++        auto memrefDstType = dyn_cast<MemRefType>(memRefType);
++        assert(memrefDstType &&
++               "buffer layout not supported on unranked tensors");
++        FailureOr<Value> replacement = bufferization::castOrReallocMemRefValue(
++            rewriter, buffer, memrefDstType, options);
++        if (failed(replacement))
++          return failure();
++        buffer = *replacement;
+       }
+       newOperands.push_back(buffer);
+     }
+diff --git a/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt b/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
+index ba8bb5a2cb0b..f82d88ca2467 100644
+--- a/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
+@@ -46,4 +46,5 @@ add_mlir_dialect_library(MLIRLinalgDialect
+   MLIRTilingInterface
+   MLIRValueBoundsOpInterface
+   MLIRViewLikeInterface
+-  )
++  ${BS_FEAT_LINK_LIBS}
++)
+diff --git a/mlir/lib/Dialect/Linalg/IR/LinalgOps.cpp b/mlir/lib/Dialect/Linalg/IR/LinalgOps.cpp
+index 44cc4b09757b..4fb9371c6919 100644
+--- a/mlir/lib/Dialect/Linalg/IR/LinalgOps.cpp
++++ b/mlir/lib/Dialect/Linalg/IR/LinalgOps.cpp
+@@ -10,13 +10,12 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
+-#include "mlir/Dialect/Linalg/IR/Linalg.h"
+-
+ #include "mlir/AsmParser/AsmParser.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Arith/Utils/Utils.h"
+ #include "mlir/Dialect/Complex/IR/Complex.h"
++#include "mlir/Dialect/Linalg/IR/Linalg.h"
+ #include "mlir/Dialect/Math/IR/Math.h"
+ #include "mlir/Dialect/MemRef/IR/MemRef.h"
+ #include "mlir/Dialect/SCF/IR/SCF.h"
+@@ -34,7 +33,6 @@
+ #include "mlir/IR/OperationSupport.h"
+ #include "mlir/IR/PatternMatch.h"
+ #include "mlir/Interfaces/InferTypeOpInterface.h"
+-
+ #include "llvm/ADT/DenseMap.h"
+ #include "llvm/ADT/SmallSet.h"
+ #include "llvm/ADT/StringSet.h"
+@@ -850,6 +848,7 @@ public:
+ struct FoldFillWithCopy : OpRewritePattern<linalg::CopyOp> {
+   using OpRewritePattern<linalg::CopyOp>::OpRewritePattern;
+ 
++
+   LogicalResult matchAndRewrite(linalg::CopyOp copyOp,
+                                 PatternRewriter &rewriter) const override {
+     if (auto fillOp = copyOp.getInputs().front().getDefiningOp<FillOp>()) {
+diff --git a/mlir/lib/Dialect/Linalg/TransformOps/CMakeLists.txt b/mlir/lib/Dialect/Linalg/TransformOps/CMakeLists.txt
+index b15a4704f52a..087d8a883961 100644
+--- a/mlir/lib/Dialect/Linalg/TransformOps/CMakeLists.txt
++++ b/mlir/lib/Dialect/Linalg/TransformOps/CMakeLists.txt
+@@ -31,3 +31,4 @@ add_mlir_dialect_library(MLIRLinalgTransformOps
+   MLIRTransformDialectUtils
+   MLIRVectorTransforms
+   )
++
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index 66d1f88b6b02..4f2f9df187ab 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -313,4 +313,4 @@ void mlir::linalg::populateBubbleUpExtractSliceOpPatterns(
+   auto *context = patterns.getContext();
+   patterns.add<BubbleUpExtractSliceOpPattern>(context);
+ }
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/CMakeLists.txt b/mlir/lib/Dialect/Linalg/Transforms/CMakeLists.txt
+index a7dcc29b5b9b..a0698b009727 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/CMakeLists.txt
++++ b/mlir/lib/Dialect/Linalg/Transforms/CMakeLists.txt
+@@ -90,3 +90,4 @@ add_mlir_dialect_library(MLIRLinalgTransforms
+   MLIRX86VectorTransforms
+   MLIRVectorToSCF
+ )
++
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/MeshShardingInterfaceImpl.cpp b/mlir/lib/Dialect/Linalg/Transforms/MeshShardingInterfaceImpl.cpp
+index 36b6088b83cc..d0a7465ca8fb 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/MeshShardingInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/MeshShardingInterfaceImpl.cpp
+@@ -284,8 +284,8 @@ struct StructuredOpShardingInterface
+     SmallVector<utils::IteratorType> iteratorTypes =
+         linalgOp.getIteratorTypesArray();
+     unsigned reductionItersCount = std::accumulate(
+-        iteratorTypes.begin(), iteratorTypes.end(), 0,
+-        [](unsigned count, utils::IteratorType iter) {
++        iteratorTypes.begin(), iteratorTypes.end(), 0u,
++        [](unsigned count, utils::IteratorType iter) -> unsigned {
+           return count + (iter == utils::IteratorType::reduction);
+         });
+     mesh::ReductionKind reductionKind = getReductionKindOfLinalgOp(linalgOp);
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp b/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp
+index 7379cac5d0a0..1111848c5276 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp
+@@ -9,6 +9,7 @@
+ #include "mlir/Dialect/Linalg/Transforms/TilingInterfaceImpl.h"
+ 
+ #include "mlir/Analysis/SliceAnalysis.h"
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Arith/Utils/Utils.h"
+diff --git a/mlir/lib/Dialect/MemRef/IR/CMakeLists.txt b/mlir/lib/Dialect/MemRef/IR/CMakeLists.txt
+index fd2fed28badd..a6c7cdbcf8dc 100644
+--- a/mlir/lib/Dialect/MemRef/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/MemRef/IR/CMakeLists.txt
+@@ -27,3 +27,4 @@ add_mlir_dialect_library(MLIRMemRefDialect
+   MLIRValueBoundsOpInterface
+   MLIRViewLikeInterface
+ )
++
+diff --git a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+index f5b350d2853f..4879c5cc98ea 100644
+--- a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
++++ b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+@@ -13,6 +13,8 @@
+ #include "mlir/Dialect/MemRef/Utils/MemRefUtils.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/Utils/Utils.h"
++#include "mlir/IR/OpDefinition.h"
++#include "mlir/Interfaces/ControlFlowInterfaces.h"
+ #include "mlir/Dialect/MemRef/IR/MemRef.h"
+ #include "mlir/Dialect/Vector/IR/VectorOps.h"
+ #include "llvm/ADT/STLExtras.h"
+@@ -166,8 +168,9 @@ void eraseDeadAllocAndStores(RewriterBase &rewriter, Operation *parentOp) {
+       opToErase.push_back(op.getOperation());
+     }
+   });
+-  for (Operation *op : opToErase)
++  for (Operation *op : opToErase) {
+     rewriter.eraseOp(op);
++  }
+ }
+ 
+ static SmallVector<OpFoldResult>
+diff --git a/mlir/lib/Dialect/Mesh/Interfaces/ShardingInterface.cpp b/mlir/lib/Dialect/Mesh/Interfaces/ShardingInterface.cpp
+index bcd0e1556132..2a8f3e94a375 100644
+--- a/mlir/lib/Dialect/Mesh/Interfaces/ShardingInterface.cpp
++++ b/mlir/lib/Dialect/Mesh/Interfaces/ShardingInterface.cpp
+@@ -9,6 +9,7 @@
+ #include "mlir/Dialect/Mesh/Interfaces/ShardingInterface.h"
+ #include "mlir/Dialect/Mesh/Interfaces/ShardingInterfaceImpl.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Mesh/IR/MeshOps.h"
+ #include "mlir/IR/AffineMap.h"
+ #include "mlir/IR/IRMapping.h"
+diff --git a/mlir/lib/Dialect/Mesh/Transforms/ShardingPropagation.cpp b/mlir/lib/Dialect/Mesh/Transforms/ShardingPropagation.cpp
+index 511c9102fa30..bf21fa665fb5 100644
+--- a/mlir/lib/Dialect/Mesh/Transforms/ShardingPropagation.cpp
++++ b/mlir/lib/Dialect/Mesh/Transforms/ShardingPropagation.cpp
+@@ -8,6 +8,7 @@
+ 
+ #include "mlir/Dialect/Mesh/Transforms/Passes.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Func/IR/FuncOps.h"
+ #include "mlir/Dialect/Mesh/IR/MeshDialect.h"
+ #include "mlir/Dialect/Mesh/IR/MeshOps.h"
+@@ -23,6 +24,7 @@
+ #include <algorithm>
+ #include <vector>
+ 
++
+ namespace mlir {
+ namespace mesh {
+ #define GEN_PASS_DEF_SHARDINGPROPAGATION
+@@ -288,6 +290,7 @@ static LogicalResult visitOp(Operation *op, OpBuilder &builder) {
+   if (op->hasTrait<OpTrait::IsTerminator>() || llvm::isa<mesh::ShardOp>(op))
+     return success();
+ 
++
+   ShardingInterface shardingOp = llvm::dyn_cast<ShardingInterface>(op);
+   if (!shardingOp) {
+     op->emitOpError() << "sharding interface is not implemented.";
+diff --git a/mlir/lib/Dialect/SCF/IR/CMakeLists.txt b/mlir/lib/Dialect/SCF/IR/CMakeLists.txt
+index 423e1c3e1e04..eadfbe11a2b0 100644
+--- a/mlir/lib/Dialect/SCF/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/SCF/IR/CMakeLists.txt
+@@ -20,4 +20,3 @@ add_mlir_dialect_library(MLIRSCFDialect
+   MLIRTensorDialect
+   MLIRValueBoundsOpInterface
+   )
+-
+diff --git a/mlir/lib/Dialect/SCF/IR/SCF.cpp b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+index 37f34aa0fae8..3c28588c888b 100644
+--- a/mlir/lib/Dialect/SCF/IR/SCF.cpp
++++ b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+@@ -19,11 +19,14 @@
+ #include "mlir/IR/IRMapping.h"
+ #include "mlir/IR/Matchers.h"
+ #include "mlir/IR/PatternMatch.h"
++#include "mlir/IR/Value.h"
+ #include "mlir/Interfaces/FunctionInterfaces.h"
+ #include "mlir/Interfaces/ValueBoundsOpInterface.h"
+ #include "mlir/Transforms/InliningUtils.h"
+ #include "llvm/ADT/MapVector.h"
++#include "llvm/ADT/STLExtras.h"
+ #include "llvm/ADT/SmallPtrSet.h"
++#include "llvm/ADT/SmallVector.h"
+ #include "llvm/ADT/TypeSwitch.h"
+ 
+ using namespace mlir;
+diff --git a/mlir/lib/Dialect/Tensor/IR/CMakeLists.txt b/mlir/lib/Dialect/Tensor/IR/CMakeLists.txt
+index 549b9f10388b..220e432fc481 100644
+--- a/mlir/lib/Dialect/Tensor/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/Tensor/IR/CMakeLists.txt
+@@ -36,6 +36,7 @@ add_mlir_dialect_library(MLIRTensorDialect
+   MLIRSupport
+   MLIRValueBoundsOpInterface
+   MLIRViewLikeInterface
++  ${BS_FEAT_LIBS}
+   )
+ 
+ add_mlir_dialect_library(MLIRTensorInferTypeOpInterfaceImpl
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorDialect.cpp b/mlir/lib/Dialect/Tensor/IR/TensorDialect.cpp
+index 002077753b13..00ad6553e513 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorDialect.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorDialect.cpp
+@@ -6,6 +6,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
+@@ -15,6 +16,7 @@
+ #include "mlir/Interfaces/SubsetOpInterface.h"
+ #include "mlir/Transforms/InliningUtils.h"
+ 
++
+ using namespace mlir;
+ using namespace mlir::tensor;
+ 
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorInferTypeOpInterfaceImpl.cpp b/mlir/lib/Dialect/Tensor/IR/TensorInferTypeOpInterfaceImpl.cpp
+index 7ff435a03398..f6fea08e2e71 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorInferTypeOpInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorInferTypeOpInterfaceImpl.cpp
+@@ -16,24 +16,6 @@
+ using namespace mlir;
+ using namespace mlir::tensor;
+ 
+-/// Compute a map that for a given dimension of the expanded type gives the
+-/// dimension in the collapsed type it maps to. Essentially its the inverse of
+-/// the `reassocation` maps.
+-static llvm::DenseMap<int64_t, int64_t>
+-getExpandedDimToCollapsedDimMap(ArrayRef<AffineMap> reassociation) {
+-  llvm::DenseMap<int64_t, int64_t> expandedDimToCollapsedDim;
+-  for (const auto &map : enumerate(reassociation)) {
+-    unsigned startPos =
+-        cast<AffineDimExpr>(map.value().getResults().front()).getPosition();
+-    unsigned endPos =
+-        cast<AffineDimExpr>(map.value().getResults().back()).getPosition();
+-    for (auto dim : llvm::seq_inclusive(startPos, endPos)) {
+-      expandedDimToCollapsedDim[dim] = map.index();
+-    }
+-  }
+-  return expandedDimToCollapsedDim;
+-}
+-
+ /// For reshape op compute the shape at dimension `dimIndex` of the output in
+ /// terms of shape of the `src`, when the reshape op is a collapsing
+ /// operation. It is the product of the shape of the collapsed dimensions of the
+@@ -76,84 +58,15 @@ static SmallVector<OpFoldResult, 4> getCollapsedOutputShapeFromInputShape(
+       }));
+ }
+ 
+-/// For an expanding reshape op, compute the value for a dimension of the output
+-/// from the shape of the input.
+-static OpFoldResult getExpandedOutputDimFromInputShape(
+-    OpBuilder &builder, Location loc, int64_t dimIndex, Value src,
+-    ArrayRef<int64_t> dstStaticShape, ArrayRef<AffineMap> reassociation,
+-    llvm::DenseMap<int64_t, int64_t> &expandedDimToCollapsedDim) {
+-  if (!ShapedType::isDynamic(dstStaticShape[dimIndex])) {
+-    // Static dimension: return Attribute.
+-    return builder.getIndexAttr(dstStaticShape[dimIndex]);
+-  }
+-  unsigned sourceDimPos = expandedDimToCollapsedDim[dimIndex];
+-  unsigned startPos =
+-      cast<AffineDimExpr>(reassociation[sourceDimPos].getResults().front())
+-          .getPosition();
+-  unsigned endPos =
+-      cast<AffineDimExpr>(reassociation[sourceDimPos].getResults().back())
+-          .getPosition();
+-  int64_t linearizedStaticDim = 1;
+-  for (auto d :
+-       llvm::enumerate(dstStaticShape.slice(startPos, endPos - startPos + 1))) {
+-    if (d.index() + startPos == static_cast<unsigned>(dimIndex))
+-      continue;
+-    assert(!ShapedType::isDynamic(d.value()) &&
+-           "single dimension cannot be expanded into multiple dynamic "
+-           "dimensions");
+-    linearizedStaticDim *= d.value();
+-  }
+-  OpFoldResult sourceDim =
+-      builder.create<tensor::DimOp>(loc, src, sourceDimPos).getResult();
+-
+-  // Dynamic dimension: return Value.
+-  return affine::makeComposedAffineApply(
+-             builder, loc,
+-             AffineMap::get(
+-                 0, 1,
+-                 builder.getAffineSymbolExpr(0).floorDiv(linearizedStaticDim)),
+-             sourceDim)
+-      ->getResult(0);
+-}
+-
+-/// Given the `src` of an expanding reshape op, the reassociation maps and the
+-/// result type, compute the shape of the result of the reshape.
+-static SmallVector<OpFoldResult, 4> getExpandedOutputShapeFromInputShape(
+-    OpBuilder &builder, Location loc, Value src,
+-    ArrayRef<int64_t> dstStaticShape, ArrayRef<AffineMap> reassociation) {
+-  llvm::DenseMap<int64_t, int64_t> expandedDimToCollapsedDim =
+-      getExpandedDimToCollapsedDimMap(reassociation);
+-  return llvm::to_vector<4>(llvm::map_range(
+-      llvm::seq<int64_t>(0, dstStaticShape.size()), [&](int64_t dim) {
+-        return getExpandedOutputDimFromInputShape(builder, loc, dim, src,
+-                                                  dstStaticShape, reassociation,
+-                                                  expandedDimToCollapsedDim);
+-      }));
+-}
+-
+-static SmallVector<OpFoldResult, 4>
+-getReshapeOutputShapeFromInputShape(OpBuilder &builder, Location loc, Value src,
+-                                    ArrayRef<int64_t> dstStaticShape,
+-                                    ArrayRef<AffineMap> reassocation) {
+-  return dstStaticShape.size() >
+-                 static_cast<size_t>(
+-                     llvm::cast<ShapedType>(src.getType()).getRank())
+-             ? getExpandedOutputShapeFromInputShape(
+-                   builder, loc, src, dstStaticShape, reassocation)
+-             : getCollapsedOutputShapeFromInputShape(
+-                   builder, loc, src, dstStaticShape, reassocation);
+-}
+-
+-template <typename OpTy>
+-struct ReifyExpandOrCollapseShapeOp
++struct ReifyCollapseShapeOp
+     : public ReifyRankedShapedTypeOpInterface::ExternalModel<
+-          ReifyExpandOrCollapseShapeOp<OpTy>, OpTy> {
++          ReifyCollapseShapeOp, CollapseShapeOp> {
+   LogicalResult
+   reifyResultShapes(Operation *op, OpBuilder &b,
+                     ReifiedRankedShapedTypeDims &reifiedReturnShapes) const {
+     auto loc = op->getLoc();
+-    auto reshapeOp = cast<OpTy>(op);
+-    reifiedReturnShapes.push_back(getReshapeOutputShapeFromInputShape(
++    auto reshapeOp = cast<tensor::CollapseShapeOp>(op);
++    reifiedReturnShapes.push_back(getCollapsedOutputShapeFromInputShape(
+         b, loc, reshapeOp.getSrc(), reshapeOp.getResultType().getShape(),
+         reshapeOp.getReassociationMaps()));
+     return success();
+@@ -162,6 +75,20 @@ struct ReifyExpandOrCollapseShapeOp
+ 
+ namespace {
+ 
++struct ReifyExpandShapeOp
++    : public ReifyRankedShapedTypeOpInterface::ExternalModel<ReifyExpandShapeOp,
++                                                             ExpandShapeOp> {
++  LogicalResult
++  reifyResultShapes(Operation *op, OpBuilder &b,
++                    ReifiedRankedShapedTypeDims &reifyResultShapes) const {
++    auto expandShapeOp = cast<tensor::ExpandShapeOp>(op);
++    SmallVector<OpFoldResult> resultShapes =
++        expandShapeOp.getMixedOutputShape();
++    reifyResultShapes.emplace_back(std::move(resultShapes));
++    return success();
++  }
++};
++
+ struct ReifyPadOp
+     : public ReifyRankedShapedTypeOpInterface::ExternalModel<ReifyPadOp,
+                                                              PadOp> {
+@@ -202,10 +129,8 @@ struct ReifyPadOp
+ void mlir::tensor::registerInferTypeOpInterfaceExternalModels(
+     DialectRegistry &registry) {
+   registry.addExtension(+[](MLIRContext *ctx, TensorDialect *dialect) {
+-    ExpandShapeOp::attachInterface<
+-        ReifyExpandOrCollapseShapeOp<tensor::ExpandShapeOp>>(*ctx);
+-    CollapseShapeOp::attachInterface<
+-        ReifyExpandOrCollapseShapeOp<tensor::CollapseShapeOp>>(*ctx);
++    ExpandShapeOp::attachInterface<ReifyExpandShapeOp>(*ctx);
++    CollapseShapeOp::attachInterface<ReifyCollapseShapeOp>(*ctx);
+     PadOp::attachInterface<ReifyPadOp>(*ctx);
+   });
+ }
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+index 30f74b5c395c..ed62b1c2e712 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorOps.cpp
+@@ -6,6 +6,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Arith/Utils/Utils.h"
+@@ -1725,6 +1726,10 @@ ExpandShapeOp::inferOutputShape(OpBuilder &b, Location loc,
+   return *outputShape;
+ }
+ 
++SmallVector<OpFoldResult> ExpandShapeOp::getMixedOutputShape() {
++  return getMixedValues(getStaticOutputShape(), getOutputShape(), getContext());
++}
++
+ void ExpandShapeOp::build(OpBuilder &builder, OperationState &result,
+                           Type resultType, Value src,
+                           ArrayRef<ReassociationIndices> reassociation,
+diff --git a/mlir/lib/Dialect/Tensor/IR/TensorTilingInterfaceImpl.cpp b/mlir/lib/Dialect/Tensor/IR/TensorTilingInterfaceImpl.cpp
+index ddfe8cefcc97..70fa001e9f7f 100644
+--- a/mlir/lib/Dialect/Tensor/IR/TensorTilingInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Tensor/IR/TensorTilingInterfaceImpl.cpp
+@@ -681,7 +681,13 @@ FailureOr<TilingResult> tensor::bubbleUpPadSlice(OpBuilder &b,
+     // the source tensor. (Similar to newOffset.)
+     // srcSize - newOffset represents how much length we have available
+     // and length - newLow represents how much length we want at most.
+-    // Note that there are many ways to order this indexing math to compute newLength, but we want to make sure that the final affine.min ops in the sequence are bounding the index to as small a value as possible. If ValueBoundsOpInterface is used, this calcuation will get upper bounds from the affine.min ops, so we want to use the smallest known value to set the bound at the end of the computation sequence. In this case, the index will be upper bounded by length - newLow.
++    // Note that there are many ways to order this indexing math to compute
++    // newLength, but we want to make sure that the final affine.min ops in the
++    // sequence are bounding the index to as small a value as possible. If
++    // ValueBoundsOpInterface is used, this calcuation will get upper bounds
++    // from the affine.min ops, so we want to use the smallest known value to
++    // set the bound at the end of the computation sequence. In this case, the
++    // index will be upper bounded by length - newLow.
+     OpFoldResult newLength = min(sub(srcSize, newOffset), sub(length, newLow));
+     // Optimization: If low = 0, then newLow = 0. then newLength >= 0 assuming
+     // length >= 0.
+diff --git a/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp b/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp
+index 22c414186f3e..d97a90157b55 100644
+--- a/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp
+@@ -8,6 +8,7 @@
+ 
+ #include "mlir/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
+diff --git a/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp b/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp
+index 69f6f32179b5..96fc127a10cc 100644
+--- a/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp
++++ b/mlir/lib/Dialect/Tensor/Transforms/MergeConsecutiveInsertExtractSlicePatterns.cpp
+@@ -6,6 +6,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Affine/ViewLikeInterfaceUtils.h"
+ #include "mlir/Dialect/Tensor/IR/Tensor.h"
+ #include "mlir/Dialect/Tensor/Transforms/Transforms.h"
+diff --git a/mlir/lib/Dialect/Tensor/Utils/Utils.cpp b/mlir/lib/Dialect/Tensor/Utils/Utils.cpp
+index d5a2cea00ca0..5a8621b8e1d7 100644
+--- a/mlir/lib/Dialect/Tensor/Utils/Utils.cpp
++++ b/mlir/lib/Dialect/Tensor/Utils/Utils.cpp
+@@ -232,4 +232,4 @@ bool mlir::tensor::isOffsetBytesAligned(tensor::ExtractSliceOp sliceOp,
+   }
+   return true;
+ }
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/mlir/lib/Dialect/Transform/IR/TransformOps.cpp b/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
+index 6bb26af3e29d..37e4d22815c8 100644
+--- a/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
++++ b/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
+@@ -407,6 +407,13 @@ DiagnosedSilenceableFailure transform::ApplyPatternsOp::applyToOne(
+   FrozenRewritePatternSet frozenPatterns(std::move(patterns));
+ #endif
+ 
++  config.maxIterations = getMaxIterations() == static_cast<uint64_t>(-1)
++                             ? GreedyRewriteConfig::kNoLimit
++                             : getMaxIterations();
++  config.maxNumRewrites = getMaxNumRewrites() == static_cast<uint64_t>(-1)
++                              ? GreedyRewriteConfig::kNoLimit
++                              : getMaxNumRewrites();
++
+   config.maxIterations = getMaxIterations() == static_cast<uint64_t>(-1)
+                              ? GreedyRewriteConfig::kNoLimit
+                              : getMaxIterations();
+diff --git a/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp b/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp
+index 289b10fb9ae2..baa41237fe2f 100644
+--- a/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp
++++ b/mlir/lib/Dialect/Utils/ReshapeOpsUtils.cpp
+@@ -10,6 +10,7 @@
+ 
+ #include "mlir/IR/AffineMap.h"
+ #include "mlir/IR/Builders.h"
++#include "llvm/ADT/STLExtras.h"
+ 
+ #include <numeric>
+ #include <optional>
+@@ -555,4 +556,4 @@ bool mlir::areLooseReassociationsCompatible(
+   }
+   return true;
+ }
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/mlir/lib/Dialect/Utils/StaticValueUtils.cpp b/mlir/lib/Dialect/Utils/StaticValueUtils.cpp
+index b01d3183af13..35b24205a929 100644
+--- a/mlir/lib/Dialect/Utils/StaticValueUtils.cpp
++++ b/mlir/lib/Dialect/Utils/StaticValueUtils.cpp
+@@ -164,7 +164,8 @@ bool isEqualConstantIntOrValueArray(ArrayRef<OpFoldResult> ofrs1,
+ /// elements for which ShapedType::isDynamic is true, will be replaced by
+ /// dynamicValues.
+ SmallVector<OpFoldResult> getMixedValues(ArrayRef<int64_t> staticValues,
+-                                         ValueRange dynamicValues, Builder &b) {
++                                         ValueRange dynamicValues,
++                                         MLIRContext *context) {
+   SmallVector<OpFoldResult> res;
+   res.reserve(staticValues.size());
+   unsigned numDynamic = 0;
+@@ -173,10 +174,15 @@ SmallVector<OpFoldResult> getMixedValues(ArrayRef<int64_t> staticValues,
+     int64_t value = staticValues[idx];
+     res.push_back(ShapedType::isDynamic(value)
+                       ? OpFoldResult{dynamicValues[numDynamic++]}
+-                      : OpFoldResult{b.getI64IntegerAttr(staticValues[idx])});
++                      : OpFoldResult{IntegerAttr::get(
++                            IntegerType::get(context, 64), staticValues[idx])});
+   }
+   return res;
+ }
++SmallVector<OpFoldResult> getMixedValues(ArrayRef<int64_t> staticValues,
++                                         ValueRange dynamicValues, Builder &b) {
++  return getMixedValues(staticValues, dynamicValues, b.getContext());
++}
+ 
+ /// Decompose a vector of mixed static or dynamic values into the corresponding
+ /// pair of arrays. This is the inverse function of `getMixedValues`.
+diff --git a/mlir/lib/IR/AffineExpr.cpp b/mlir/lib/IR/AffineExpr.cpp
+index 7978b35e7147..f045ddc6af97 100644
+--- a/mlir/lib/IR/AffineExpr.cpp
++++ b/mlir/lib/IR/AffineExpr.cpp
+@@ -1158,11 +1158,16 @@ static AffineExpr getSemiAffineExprFromFlatForm(ArrayRef<int64_t> flatExprs,
+   // the indices in `coefficients` map, and affine expression corresponding to
+   // in indices in `indexToExprMap` map.
+   for (const auto &it : llvm::enumerate(localExprs)) {
+-    AffineExpr expr = it.value();
+     if (flatExprs[numDims + numSymbols + it.index()] == 0)
+       continue;
+-    AffineExpr lhs = cast<AffineBinaryOpExpr>(expr).getLHS();
+-    AffineExpr rhs = cast<AffineBinaryOpExpr>(expr).getRHS();
++
++    AffineExpr expr = it.value();
++    auto binaryExpr = dyn_cast<AffineBinaryOpExpr>(expr);
++    if (!binaryExpr)
++      continue;
++
++    AffineExpr lhs = binaryExpr.getLHS();
++    AffineExpr rhs = binaryExpr.getRHS();
+     if (!((isa<AffineDimExpr>(lhs) || isa<AffineSymbolExpr>(lhs)) &&
+           (isa<AffineDimExpr>(rhs) || isa<AffineSymbolExpr>(rhs) ||
+            isa<AffineConstantExpr>(rhs)))) {
+diff --git a/mlir/lib/Interfaces/InferTypeOpInterface.cpp b/mlir/lib/Interfaces/InferTypeOpInterface.cpp
+index e52d0e17cda2..132da7d00014 100644
+--- a/mlir/lib/Interfaces/InferTypeOpInterface.cpp
++++ b/mlir/lib/Interfaces/InferTypeOpInterface.cpp
+@@ -48,14 +48,6 @@ mlir::reifyResultShapes(OpBuilder &b, Operation *op,
+     assert(shapedType.getRank() ==
+                static_cast<int64_t>(reifiedReturnShapes[resultIdx].size()) &&
+            "incorrect implementation of ReifyRankedShapedTypeOpInterface");
+-    for (int64_t dim = 0; dim < shapedType.getRank(); ++dim) {
+-      // reifyResultShapes must return:
+-      // * Attribute for static dimensions
+-      // * Value for dynamic dimensions
+-      assert(shapedType.isDynamicDim(dim) ==
+-                 reifiedReturnShapes[resultIdx][dim].is<Value>() &&
+-             "incorrect implementation of ReifyRankedShapedTypeOpInterface");
+-    }
+     ++resultIdx;
+   }
+   // Assert that every shaped value result was reified.
+diff --git a/mlir/lib/Target/Cpp/TranslateToCpp.cpp b/mlir/lib/Target/Cpp/TranslateToCpp.cpp
+index b1372c40ddd0..bdfb7237ac8e 100644
+--- a/mlir/lib/Target/Cpp/TranslateToCpp.cpp
++++ b/mlir/lib/Target/Cpp/TranslateToCpp.cpp
+@@ -781,7 +781,7 @@ static LogicalResult printOperation(CppEmitter &emitter, emitc::ForOp forOp) {
+   // Utility function to determine whether a value is an expression that will be
+   // inlined, and as such should be wrapped in parentheses in order to guarantee
+   // its precedence and associativity.
+-  auto requiresParentheses = [&](Value value) {
++  auto requiresParentheses = [](Value value) {
+     auto expressionOp =
+         dyn_cast_if_present<ExpressionOp>(value.getDefiningOp());
+     if (!expressionOp)
+@@ -1196,7 +1196,7 @@ bool CppEmitter::hasBlockLabel(Block &block) {
+ }
+ 
+ LogicalResult CppEmitter::emitAttribute(Location loc, Attribute attr) {
+-  auto printInt = [&](const APInt &val, bool isUnsigned) {
++  auto printInt = [this](const APInt &val, bool isUnsigned) {
+     if (val.getBitWidth() == 1) {
+       if (val.getBoolValue())
+         os << "true";
+@@ -1209,7 +1209,7 @@ LogicalResult CppEmitter::emitAttribute(Location loc, Attribute attr) {
+     }
+   };
+ 
+-  auto printFloat = [&](const APFloat &val) {
++  auto printFloat = [this](const APFloat &val) {
+     if (val.isFinite()) {
+       SmallString<128> strValue;
+       // Use default values of toString except don't truncate zeros.
+diff --git a/mlir/lib/Target/LLVMIR/DebugTranslation.cpp b/mlir/lib/Target/LLVMIR/DebugTranslation.cpp
+index 35800e993d89..5b7b3f239f0c 100644
+--- a/mlir/lib/Target/LLVMIR/DebugTranslation.cpp
++++ b/mlir/lib/Target/LLVMIR/DebugTranslation.cpp
+@@ -239,7 +239,12 @@ DebugTranslation::translateImpl(DIGlobalVariableAttr attr) {
+       llvmCtx, translate(attr.getScope()), getMDStringOrNull(attr.getName()),
+       getMDStringOrNull(attr.getLinkageName()), translate(attr.getFile()),
+       attr.getLine(), translate(attr.getType()), attr.getIsLocalToUnit(),
++#if defined(ENABLE_CLASSIC_FLANG)
++      attr.getIsDefined(), nullptr, nullptr, llvm::DINode::FlagZero,
++      attr.getAlignInBits(), nullptr);
++#else
+       attr.getIsDefined(), nullptr, nullptr, attr.getAlignInBits(), nullptr);
++#endif
+ }
+ 
+ llvm::DIType *
+diff --git a/mlir/lib/Transforms/Canonicalizer.cpp b/mlir/lib/Transforms/Canonicalizer.cpp
+index 73be7d3c2004..08823a5129c9 100644
+--- a/mlir/lib/Transforms/Canonicalizer.cpp
++++ b/mlir/lib/Transforms/Canonicalizer.cpp
+@@ -13,6 +13,7 @@
+ 
+ #include "mlir/Transforms/Passes.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Pass/Pass.h"
+ #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+ 
+diff --git a/mlir/test/Dialect/Arith/bufferize.mlir b/mlir/test/Dialect/Arith/bufferize.mlir
+index a3b1454fb68f..de171236fb36 100644
+--- a/mlir/test/Dialect/Arith/bufferize.mlir
++++ b/mlir/test/Dialect/Arith/bufferize.mlir
+@@ -100,4 +100,4 @@ func.func @elementwise_select(%arg0: tensor<5xi1>, %arg1: tensor<5xi32>, %arg2:
+   // expected-error @below{{failed to bufferize op}}
+   %0 = arith.select %arg0, %arg1, %arg2 : tensor<5xi1>, tensor<5xi32>
+   return %0 : tensor<5xi32>
+-}
++}
+\ No newline at end of file
+diff --git a/mlir/test/Dialect/Bufferization/Transforms/one-shot-module-bufferize.mlir b/mlir/test/Dialect/Bufferization/Transforms/one-shot-module-bufferize.mlir
+index 4c62cc046508..d31b43477beb 100644
+--- a/mlir/test/Dialect/Bufferization/Transforms/one-shot-module-bufferize.mlir
++++ b/mlir/test/Dialect/Bufferization/Transforms/one-shot-module-bufferize.mlir
+@@ -86,6 +86,30 @@ func.func @return_extract_slice(%idx: index, %sz: index) -> (tensor<2x?xf32>)
+ 
+ // -----
+ 
++// CHECK-NO-LAYOUT-MAP-LABEL:   func.func @foo(
++// CHECK-NO-LAYOUT-MAP-SAME:                   %[[VAL_0:.*]]: memref<3x8xf16>) -> memref<3x8xf16> {
++// CHECK-NO-LAYOUT-MAP:           return %[[VAL_0]] : memref<3x8xf16>
++// CHECK-NO-LAYOUT-MAP:         }
++func.func @foo(%arg0: tensor<3x8xf16>) -> tensor<3x8xf16> {
++  return %arg0 : tensor<3x8xf16>
++}
++
++// CHECK-NO-LAYOUT-MAP-LABEL:   func.func @call_extract_slice(
++// CHECK-NO-LAYOUT-MAP-SAME:                                  %[[VAL_0:.*]]: memref<4x8xf16>) -> memref<3x8xf16> {
++// CHECK-NO-LAYOUT-MAP:           %[[VAL_1:.*]] = memref.subview %[[VAL_0]][1, 0] [3, 8] [1, 1] : memref<4x8xf16> to memref<3x8xf16, strided<[8, 1], offset: 8>>
++// CHECK-NO-LAYOUT-MAP:           %[[VAL_2:.*]] = memref.alloc() {alignment = 64 : i64} : memref<3x8xf16>
++// CHECK-NO-LAYOUT-MAP:           memref.copy %[[VAL_1]], %[[VAL_2]] : memref<3x8xf16, strided<[8, 1], offset: 8>> to memref<3x8xf16>
++// CHECK-NO-LAYOUT-MAP:           %[[VAL_3:.*]] = call @foo(%[[VAL_2]]) : (memref<3x8xf16>) -> memref<3x8xf16>
++// CHECK-NO-LAYOUT-MAP:           return %[[VAL_3]] : memref<3x8xf16>
++// CHECK-NO-LAYOUT-MAP:         }
++func.func @call_extract_slice(%arg0: tensor<4x8xf16>) -> (tensor<3x8xf16>) {
++  %0 = tensor.extract_slice %arg0[1, 0] [3, 8] [1, 1] : tensor<4x8xf16> to tensor<3x8xf16>
++  %1 = call @foo(%0) : (tensor<3x8xf16>) -> tensor<3x8xf16>
++  return %1 : tensor<3x8xf16>
++}
++
++// -----
++
+ // CHECK-LABEL: func private @private_func
+ // CHECK-NO-LAYOUT-MAP-LABEL: func private @private_func(memref<?xf32>) -> f32
+ func.func private @private_func(tensor<?xf32>) -> (f32)
+diff --git a/mlir/test/Dialect/Linalg/bubble-up-extract-slice-op.mlir b/mlir/test/Dialect/Linalg/bubble-up-extract-slice-op.mlir
+index 4bf81820f0e8..400150d27a32 100644
+--- a/mlir/test/Dialect/Linalg/bubble-up-extract-slice-op.mlir
++++ b/mlir/test/Dialect/Linalg/bubble-up-extract-slice-op.mlir
+@@ -1,4 +1,4 @@
+-//RUN: mlir-opt -test-linalg-transform-patterns=test-bubble-up-extract-slice-op-pattern -split-input-file %s | FileCheck %s
++//RUN: mlir-opt -test-linalg-transform-patterns=test-hfusion-bubble-up-extract-slice-op-pattern -split-input-file %s | FileCheck %s
+ 
+ func.func @dynamic(%arg0: tensor<?x?xf32>, %arg1: tensor<?xf32>, %arg2: index, %arg3: index, %arg4: index, %arg5:index) -> tensor<?x?xf32> {
+   %0 = linalg.generic {
+diff --git a/mlir/test/Dialect/Linalg/resolve-shaped-type-result-dims.mlir b/mlir/test/Dialect/Linalg/resolve-shaped-type-result-dims.mlir
+index 8fb84248c961..3bc1f56d816d 100644
+--- a/mlir/test/Dialect/Linalg/resolve-shaped-type-result-dims.mlir
++++ b/mlir/test/Dialect/Linalg/resolve-shaped-type-result-dims.mlir
+@@ -210,15 +210,12 @@ func.func @dim_reshape_expansion(%arg0 : tensor<6x5x?xf32>, %sz0: index) -> (ind
+   %3 = tensor.dim %0, %c4 : tensor<2x3x5x4x?x7xf32>
+   return %1, %2, %3 : index, index, index
+ }
+-//      CHECK: #[[MAP:.+]] = affine_map<()[s0] -> (s0 floordiv 28)>
+ //      CHECK: func @dim_reshape_expansion
+ // CHECK-SAME:   %[[ARG0:[a-zA-Z0-9_]+]]: tensor<6x5x?xf32>
+-//  CHECK-DAG:   %[[C2:.+]] = arith.constant 2 : index
++// CHECK-SAME:   %[[ARG1:.+]]: index
+ //  CHECK-DAG:   %[[C3:.+]] = arith.constant 3 : index
+ //  CHECK-DAG:   %[[C4:.+]] = arith.constant 4 : index
+-//      CHECK:   %[[D0:.+]] = tensor.dim %[[ARG0]], %[[C2]]
+-//      CHECK:   %[[D1:.+]] = affine.apply #[[MAP]]()[%[[D0]]]
+-//      CHECK:   return %[[C3]], %[[C4]], %[[D1]]
++//      CHECK:   return %[[C3]], %[[C4]], %[[ARG1]]
+ 
+ // -----
+ 
+diff --git a/mlir/test/Dialect/Tensor/fold-empty-op.mlir b/mlir/test/Dialect/Tensor/fold-empty-op.mlir
+index 5beb8c250aa1..7611d709b35c 100644
+--- a/mlir/test/Dialect/Tensor/fold-empty-op.mlir
++++ b/mlir/test/Dialect/Tensor/fold-empty-op.mlir
+@@ -10,7 +10,6 @@ module attributes {transform.with_named_sequence} {
+   }
+ }
+ 
+-// CHECK: #[[$MAP:.+]] = affine_map<()[s0] -> (s0 floordiv 28)>
+ // CHECK: #[[$MAP2:.+]] = affine_map<()[s0] -> (s0 * 28)>
+ 
+ func.func @empty_reshape_expansion(%arg0 : index, %sz0: index) -> tensor<2x3x5x4x?x7xf32> {
+@@ -19,11 +18,9 @@ func.func @empty_reshape_expansion(%arg0 : index, %sz0: index) -> tensor<2x3x5x4
+   return %1 : tensor<2x3x5x4x?x7xf32>
+ }
+ // CHECK-LABEL: func @empty_reshape_expansion
+-// CHECK-SAME:     %[[ARG0:.+]]: index
+-// CHECK:        %[[OLD_INIT:.+]] = tensor.empty(%{{.*}}) : tensor<6x5x?xf32>
+-// CHECK-NEXT:   %[[DIM:.*]] = tensor.dim %[[OLD_INIT]]
+-// CHECK-NEXT:   %[[D:.+]] = affine.apply #[[$MAP]]()[%[[DIM]]]
+-// CHECK-NEXT:   %[[INIT:.+]] = tensor.empty(%[[D]])
++// CHECK-SAME:     %[[ARG0:[a-zA-Z0-9]+]]: index,
++// CHECK-SAME:     %[[ARG1:[a-zA-Z0-9]+]]: index
++// CHECK-NEXT:   %[[INIT:.+]] = tensor.empty(%[[ARG1]])
+ // CHECK-NEXT:   return %[[INIT]]
+ 
+ func.func @empty_reshape_collapse(%arg0 : index) -> tensor<6x5x?xf32> {
+diff --git a/mlir/test/lib/Dialect/Linalg/CMakeLists.txt b/mlir/test/lib/Dialect/Linalg/CMakeLists.txt
+index 283e426b4e59..da6161af74a3 100644
+--- a/mlir/test/lib/Dialect/Linalg/CMakeLists.txt
++++ b/mlir/test/lib/Dialect/Linalg/CMakeLists.txt
+@@ -33,3 +33,4 @@ add_mlir_library(MLIRLinalgTestPasses
+   MLIRVectorToSCF
+   MLIRVectorTransforms
+   )
++
+diff --git a/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp b/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp
+index 5899f56da734..6315e4623a16 100644
+--- a/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp
++++ b/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp
+@@ -106,7 +106,7 @@ struct TestLinalgTransforms
+                      "tiled_loop"),
+       llvm::cl::init("for")};
+   Option<bool> testBubbleUpExtractSliceOpPattern{
+-      *this, "test-bubble-up-extract-slice-op-pattern",
++      *this, "test-hfusion-bubble-up-extract-slice-op-pattern",
+       llvm::cl::desc("Test rewrite of linalgOp + extract_slice into "
+                      "extract_slice + linalgOp"),
+       llvm::cl::init(false)};
+diff --git a/mlir/test/lit.site.cfg.py.in b/mlir/test/lit.site.cfg.py.in
+index a781cd16cf00..27beed3b25aa 100644
+--- a/mlir/test/lit.site.cfg.py.in
++++ b/mlir/test/lit.site.cfg.py.in
+@@ -44,7 +44,7 @@ config.mlir_run_amx_tests = @MLIR_RUN_AMX_TESTS@
+ config.mlir_run_arm_sve_tests = @MLIR_RUN_ARM_SVE_TESTS@
+ # This is a workaround for the fact that LIT's:
+ #   %if <cond>
+-# requires <cond> to be in the set of available features. 
++# requires <cond> to be in the set of available features.
+ # TODO: Update LIT's TestRunner so that this is not required.
+ if config.mlir_run_arm_sve_tests:
+     config.available_features.add("mlir_arm_sve_tests")
+diff --git a/mlir/test/mlir-cpu-runner/async-error.mlir b/mlir/test/mlir-cpu-runner/async-error.mlir
+index 76557395c892..e2622bf18b1b 100644
+--- a/mlir/test/mlir-cpu-runner/async-error.mlir
++++ b/mlir/test/mlir-cpu-runner/async-error.mlir
+@@ -6,6 +6,7 @@
+ // RUN:     -shared-libs=%mlir_async_runtime   \
+ // RUN: | FileCheck %s --dump-input=always
+ 
++// REQUIRES: upstream-llvm-project-issues-57231
+ // FIXME: https://github.com/llvm/llvm-project/issues/57231
+ // UNSUPPORTED: hwasan
+ // FIXME: Windows does not have aligned_alloc
+diff --git a/mlir/test/mlir-cpu-runner/async-func.mlir b/mlir/test/mlir-cpu-runner/async-func.mlir
+index 7c65baf14459..fdc9037b287f 100644
+--- a/mlir/test/mlir-cpu-runner/async-func.mlir
++++ b/mlir/test/mlir-cpu-runner/async-func.mlir
+@@ -6,6 +6,7 @@
+ // RUN:     -shared-libs=%mlir_async_runtime   \
+ // RUN: | FileCheck %s --dump-input=always
+ 
++// REQUIRES: upstream-llvm-project-issues-57231
+ // FIXME: https://github.com/llvm/llvm-project/issues/57231
+ // UNSUPPORTED: hwasan
+ // FIXME: Windows does not have aligned_alloc
+diff --git a/mlir/test/mlir-cpu-runner/async-group.mlir b/mlir/test/mlir-cpu-runner/async-group.mlir
+index 9735a5d330ee..5b634dfa35f3 100644
+--- a/mlir/test/mlir-cpu-runner/async-group.mlir
++++ b/mlir/test/mlir-cpu-runner/async-group.mlir
+@@ -13,6 +13,7 @@
+ // RUN:     -shared-libs=%mlir_async_runtime   \
+ // RUN: | FileCheck %s
+ 
++// REQUIRES: upstream-llvm-project-issues-57231
+ // FIXME: https://github.com/llvm/llvm-project/issues/57231
+ // UNSUPPORTED: hwasan
+ // FIXME: Windows does not have aligned_alloc
+diff --git a/mlir/test/mlir-cpu-runner/async-value.mlir b/mlir/test/mlir-cpu-runner/async-value.mlir
+index 836b40a222a9..3705e40f9f80 100644
+--- a/mlir/test/mlir-cpu-runner/async-value.mlir
++++ b/mlir/test/mlir-cpu-runner/async-value.mlir
+@@ -6,6 +6,7 @@
+ // RUN:     -shared-libs=%mlir_async_runtime   \
+ // RUN: | FileCheck %s --dump-input=always
+ 
++// REQUIRES: upstream-llvm-project-issues-57231
+ // FIXME: https://github.com/llvm/llvm-project/issues/57231
+ // UNSUPPORTED: hwasan
+ // FIXME: Windows does not have aligned_alloc
+diff --git a/mlir/test/mlir-cpu-runner/async.mlir b/mlir/test/mlir-cpu-runner/async.mlir
+index 678564b3767d..aec8fa4dab4a 100644
+--- a/mlir/test/mlir-cpu-runner/async.mlir
++++ b/mlir/test/mlir-cpu-runner/async.mlir
+@@ -6,6 +6,7 @@
+ // RUN:     -shared-libs=%mlir_async_runtime   \
+ // RUN: | FileCheck %s
+ 
++// REQUIRES: upstream-llvm-project-issues-57231
+ // FIXME: https://github.com/llvm/llvm-project/issues/57231
+ // UNSUPPORTED: asan
+ // UNSUPPORTED: hwasan
+diff --git a/mlir/test/python/execution_engine.py b/mlir/test/python/execution_engine.py
+index e8b47007a890..c0a1886d7829 100644
+--- a/mlir/test/python/execution_engine.py
++++ b/mlir/test/python/execution_engine.py
+@@ -1,5 +1,5 @@
+ # RUN: %PYTHON %s 2>&1 | FileCheck %s
+-# REQUIRES: host-supports-jit
++# REQUIRES: host-supports-jit, bisheng-kernel-issue-1660
+ import gc, sys, os, tempfile
+ from mlir.ir import *
+ from mlir.passmanager import *

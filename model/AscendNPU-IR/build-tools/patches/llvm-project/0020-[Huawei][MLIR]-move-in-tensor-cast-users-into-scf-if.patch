@@ -1,0 +1,119 @@
+diff --git a/mlir/lib/Dialect/SCF/IR/SCF.cpp b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+index b34faa19750f..a4aadfb17ecc 100644
+--- a/mlir/lib/Dialect/SCF/IR/SCF.cpp
++++ b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+@@ -2791,6 +2791,104 @@ struct CombineNestedIfs : public OpRewritePattern<IfOp> {
+   }
+ };
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++// Pattern to move in tensor cast operation.
++// Example of possible optimization after moving in:
++// ```mlir
++//   %0 = if {
++//     ...
++//     %1 = tensor.cast ... to tensor<?x?xf32>
++//     scf.yield %1 : tensor<?x?xf32>
++//   } else {
++//     ...
++//     %1 = tensor.cast ... to tensor<?x?xf32>
++//     scf.yield %1 : tensor<?x?xf32>
++//   }
++//   ...
++//   tensor.cast %0 ... tensor<?x?xf32> to tensor<2x2xf32>
++// ```
++//
++// to
++// ```mlir
++//   %0 = if {
++//     ...
++//     %1 = tensor.cast ... to tensor<?x?xf32>
++//     %2 = tensor.cast %1 ... tensor<?x?xf32> to tensor<2x2xf32>
++//     scf.yield %2 : tensor<2x2xf32>
++//   } else {
++//     ...
++//     %1 = tensor.cast ... to tensor<?x?xf32>
++//     %2 = tensor.cast %0 ... tensor<?x?xf32> to tensor<2x2xf32>
++//     scf.yield %2 : tensor<2x2xf32>
++//   }
++// ```
++// then, tensor.cast can be folded
++struct MoveInTensorCast : public OpRewritePattern<IfOp> {
++  using OpRewritePattern<IfOp>::OpRewritePattern;
++
++  LogicalResult matchAndRewrite(IfOp ifOp,
++                                PatternRewriter &rewriter) const override {
++    bool matched = false;
++    SmallVector<OpResult> ifOpResults(ifOp->getResults());
++
++    for (size_t i = 0; i < ifOpResults.size(); ++i) {
++      OpResult &result = ifOpResults[i];
++
++      SmallVector<Operation *> users(result.getUsers());
++      if (users.empty()) {
++        continue;
++      }
++
++      // can only move in type of cast with the same result type
++      auto pivotCastOp = dyn_cast<tensor::CastOp>(users[0]);
++      if (llvm::any_of(users, [&](Operation *op) {
++            return !isa<tensor::CastOp>(op) ||
++                   op->getResultTypes() != pivotCastOp->getResultTypes();
++          })) {
++        continue;
++      }
++
++      auto pivotCastOpResultType = pivotCastOp.getResult().getType();
++
++      auto castYieldOperandAt = [&](YieldOp yieldOp) {
++        rewriter.modifyOpInPlace(yieldOp, [&]() {
++          rewriter.setInsertionPoint(yieldOp);
++          auto newCastOp = rewriter.create<tensor::CastOp>(
++              yieldOp->getLoc(), pivotCastOpResultType, yieldOp->getOperand(i));
++
++          yieldOp->setOperand(i, newCastOp.getResult());
++        });
++      };
++
++      // insertion for thenBlock
++      auto thenYieldOp = ifOp.thenYield();
++      castYieldOperandAt(thenYieldOp);
++
++      // insertion for elseBlock
++      if (ifOp.elseBlock()) {
++        castYieldOperandAt(ifOp.elseYield());
++      }
++
++      // replace all uses
++      for (Operation *user : users) {
++        auto userCastOp = cast<tensor::CastOp>(user);
++        rewriter.replaceAllUsesWith(userCastOp.getResult(), ifOp.getResult(i));
++        rewriter.eraseOp(userCastOp);
++      }
++
++      rewriter.modifyOpInPlace(
++          ifOp, [&]() { result.setType(thenYieldOp.getOperand(i).getType()); });
++      matched = true;
++    }
++
++    if (!matched)
++      return failure();
++
++    return success();
++  }
++};
++#endif // BSPUB_DAVINCI_BISHENGIR
++
+ } // namespace
+ 
+ void IfOp::getCanonicalizationPatterns(RewritePatternSet &results,
+@@ -2799,6 +2897,9 @@ void IfOp::getCanonicalizationPatterns(RewritePatternSet &results,
+               ConvertTrivialIfToSelect, RemoveEmptyElseBranch,
+               RemoveStaticCondition, RemoveUnusedResults,
+               ReplaceIfYieldWithConditionOrValue>(context);
++#if BSPUB_DAVINCI_BISHENGIR
++  results.add<MoveInTensorCast>(context);
++#endif // BSPUB_DAVINCI_BISHENGIR
+ }
+ 
+ Block *IfOp::thenBlock() { return &getThenRegion().back(); }

@@ -1,0 +1,79 @@
+# ForeachNeg
+
+## 产品支持情况
+
+|产品             |  是否支持  |
+|:-------------------------|:----------:|
+|  <term>Ascend 950PR/Ascend 950DT</term>   |     √    |
+|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     √    |
+|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
+|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
+|  <term>Atlas 推理系列产品</term>    |     ×    |
+|  <term>Atlas 训练系列产品</term>    |     ×    |
+|  <term>Kirin X90 处理器系列产品</term> | √ |
+|  <term>Kirin 9030 处理器系列产品</term> | √ |
+
+## 功能说明
+
+- 算子功能：计算输入张量列表中每个张量的相反数。
+
+- 计算公式：
+
+  $$
+  x = [{x_0}, {x_1}, ... {x_{n-1}}]\\
+  y = [{y_0}, {y_1}, ... {y_{n-1}}]\\
+  $$
+
+  $$
+  y_i = -x_i (i=0,1,...n-1)
+  $$
+
+  当输入数据类型为整数类型时，算子结果与`torch._foreach_neg`保持一致，按输出数据类型的位宽进行回绕。例如`INT16`输入`-32768`时输出仍为`-32768`，`INT8`输入`-128`时输出仍为`-128`。对于`UINT8`，取负按8位无符号整数模`256`回绕计算，即`y = (256 - x) % 256`，例如输入`1`时输出为`255`，输入`0`时输出仍为`0`。
+
+## 参数说明
+
+<table style="undefined;table-layout: fixed; width: 1005px"><colgroup>
+  <col style="width: 170px">
+  <col style="width: 170px">
+  <col style="width: 352px">
+  <col style="width: 213px">
+  <col style="width: 100px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>参数名</th>
+      <th>输入/输出/属性</th>
+      <th>描述</th>
+      <th>数据类型</th>
+      <th>数据格式</th>
+    </tr></thead>
+  <tbody>
+    <tr>
+      <td>x</td>
+      <td>输入</td>
+      <td>表示进行相反数计算的输入张量列表，对应公式中的`x`。该参数中所有Tensor的数据类型保持一致。</td>
+      <td>FLOAT32、FLOAT16、INT32、BFLOAT16、INT16、INT8、UINT8</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>y</td>
+      <td>输出</td>
+      <td>表示进行相反数计算的输出张量列表，对应公式中的`y`。数据类型和数据格式与入参`x`的数据类型和数据格式一致，shape size大于等于入参`x`的shape size。该参数中所有Tensor的数据类型保持一致。</td>
+      <td>FLOAT32、FLOAT16、INT32、BFLOAT16、INT16、INT8、UINT8</td>
+      <td>ND</td>
+    </tr>
+  </tbody></table>
+
+- Ascend 950PR/Ascend 950DT：不支持INT16、INT8、UINT8。
+- Kirin X90/Kirin 9030处理器系列产品：不支持BFLOAT16、INT16、INT8、UINT8。
+
+## 约束说明
+
+- 输出不支持非连续Tensor。
+
+## 调用说明
+
+| 调用方式   | 样例代码           | 说明                                         |
+| ---------------- | --------------------------- | --------------------------------------------------- |
+| aclnn接口  | [test_aclnn_foreach_neg](examples/test_aclnn_foreach_neg.cpp) | 通过[aclnnForeachNeg](docs/aclnnForeachNeg.md)接口方式调用ForeachNeg算子。 |
+| 图模式 | -  | 通过[算子IR](op_graph/foreach_neg_proto.h)构图方式调用ForeachNeg算子。         |

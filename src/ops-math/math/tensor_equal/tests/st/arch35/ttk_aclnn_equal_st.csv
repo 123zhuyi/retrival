@@ -1,0 +1,6 @@
+testcase_name,api_name,tensor_view_shapes,tensor_formats,tensor_dtypes,input_data_ranges,is_enabled
+aclnnEqual_test000001,aclnnEqual,"((229,3751),(229,3751),(1,),)","('ND',)","('float16', 'float16', 'bool' )","((2, 10), (-1, 0))",TRUE
+aclnnEqual_test000002,aclnnEqual,"((5743,746,6),(5743,746,6),(1,),)","('ND',)","('int8', 'int8', 'bool' )","((-2, -1), (-10, -2))",TRUE
+aclnnEqual_test000003,aclnnEqual,"((3,52,5,3591),(3,52,5,3591),(1,),)","('ND',)","('int16', 'int16', 'bool' )","((-1, 1), (-100, 100))",TRUE
+aclnnEqual_test000004,aclnnEqual,"((12,7,14,7,21),(12,7,14,7,21),(1,),)","('ND',)","('uint8', 'uint8', 'bool' )","((-10, 10), (0, 0))",TRUE
+aclnnEqual_test000005,aclnnEqual,"((6,4,15,1,7,18),(6,4,15,1,7,18),(1,),)","('ND',)","('uint16', 'uint16', 'bool' )","((0, 127), (127, 127))",TRUE

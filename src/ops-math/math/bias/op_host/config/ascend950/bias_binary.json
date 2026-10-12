@@ -1,0 +1,95 @@
+{
+  "op_type": "Bias",
+  "op_list": [
+    {
+      "bin_filename": "Bias_FLOAT16_ND",
+      "inputs": [
+        {"name": "x", "index": 0, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"},
+        {"name": "bias", "index": 1, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "outputs": [
+        {"name": "y", "index": 0, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "attrs": [
+        {"name": "axis", "dtype": "int", "value": null},
+        {"name": "num_axes", "dtype": "int", "value": null},
+        {"name": "bias_from_blob", "dtype": "bool", "value": null}
+      ]
+    },
+    {
+      "bin_filename": "Bias_FLOAT32_ND",
+      "inputs": [
+        {"name": "x", "index": 0, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"},
+        {"name": "bias", "index": 1, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "outputs": [
+        {"name": "y", "index": 0, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "attrs": [
+        {"name": "axis", "dtype": "int", "value": null},
+        {"name": "num_axes", "dtype": "int", "value": null},
+        {"name": "bias_from_blob", "dtype": "bool", "value": null}
+      ]
+    },
+    {
+      "bin_filename": "Bias_BFLOAT16_ND",
+      "inputs": [
+        {"name": "x", "index": 0, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"},
+        {"name": "bias", "index": 1, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "outputs": [
+        {"name": "y", "index": 0, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "attrs": [
+        {"name": "axis", "dtype": "int", "value": null},
+        {"name": "num_axes", "dtype": "int", "value": null},
+        {"name": "bias_from_blob", "dtype": "bool", "value": null}
+      ]
+    },
+    {
+      "bin_filename": "Bias_FLOAT16_NC1HWC0",
+      "inputs": [
+        {"name": "x", "index": 0, "dtype": "float16", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"},
+        {"name": "bias", "index": 1, "dtype": "float16", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "outputs": [
+        {"name": "y", "index": 0, "dtype": "float16", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "attrs": [
+        {"name": "axis", "dtype": "int", "value": null},
+        {"name": "num_axes", "dtype": "int", "value": null},
+        {"name": "bias_from_blob", "dtype": "bool", "value": null}
+      ]
+    },
+    {
+      "bin_filename": "Bias_FLOAT32_NC1HWC0",
+      "inputs": [
+        {"name": "x", "index": 0, "dtype": "float32", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"},
+        {"name": "bias", "index": 1, "dtype": "float32", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "outputs": [
+        {"name": "y", "index": 0, "dtype": "float32", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "attrs": [
+        {"name": "axis", "dtype": "int", "value": null},
+        {"name": "num_axes", "dtype": "int", "value": null},
+        {"name": "bias_from_blob", "dtype": "bool", "value": null}
+      ]
+    },
+    {
+      "bin_filename": "Bias_BFLOAT16_NC1HWC0",
+      "inputs": [
+        {"name": "x", "index": 0, "dtype": "bfloat16", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"},
+        {"name": "bias", "index": 1, "dtype": "bfloat16", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "outputs": [
+        {"name": "y", "index": 0, "dtype": "bfloat16", "format": "NC1HWC0", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic"}
+      ],
+      "attrs": [
+        {"name": "axis", "dtype": "int", "value": null},
+        {"name": "num_axes", "dtype": "int", "value": null},
+        {"name": "bias_from_blob", "dtype": "bool", "value": null}
+      ]
+    }
+  ]
+}

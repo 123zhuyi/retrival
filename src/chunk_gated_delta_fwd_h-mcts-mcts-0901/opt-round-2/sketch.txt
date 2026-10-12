@@ -1,0 +1,27 @@
+# @architecture_decision("bv-tile-correction-cs128", reason="MCTS round 2 expands opt-round-1. Parent fused chunk-recurrence kernel is correct and reaches 5.70x geomean, but hand-tuned BV heuristic (BV=64 if BT<=64 else BV=32) is suboptimal. Offline sweep of the ACTUAL parent kernel across all 8 task shapes shows BV=64 fastest on every shape incl. all four cs=128 (BV=32) cases: 1.46-1.72x kernel-time win. Weakest per-shape speedups (2.9-3.5x) are exactly the cs=128 cases. Fix is purely the host-side BV selection; kernel body, state-store semantics, fp32 recursion, multibuffer/unit_flag (D7) all unchanged.")
+
+# @architecture_decision("no-warp-autotune", reason="Triton-Ascend does not support num_warps/num_stages (references/autotune.md); advanced auto-gen autotune is Vector-only, not Cube/dot. Manual triton.Config autotune over BV DOES run on this dot kernel (validated offline, ~7s for 2 configs) but would pick BV=64 on every shape => same result as hand-tuned BV=64 with zero per-shape autotune overhead and no risk of noisy online selection. D7 forbids multibuffer=False, so BV is the only safe free lever and its optimum is uniform.")
+
+sketch chunk_gated_delta_fwd_h_bv_fix {
+  # Delta over opt-round-1 sketch: no algorithmic change to the fused recurrence.
+  # Host prologue change only:
+  #   BV = 64 if BT <= 64 else 32     (parent, suboptimal on cs=128)
+  #   BV = 64                         (this round: universal optimum)
+  #   BV = min(BV, V)                 (D6 guard, unchanged)
+  #   assert V % BV == 0              (unchanged; all shapes V=128 -> BV=64)
+
+  inherit: chunk_gated_delta_fwd_h fused chunk-recurrence skeleton (opt-round-1):
+    - grid = (n_bh * NVT,) dense | (n_seq * HV * NVT,) varlen; NVT = V / BV
+    - per-(b,h,V-tile) program: S[K,BV] fp32 register-resident full serial chunk loop
+    - BLOCK_L = chunk_size (=BT); tail masked with other=0
+    - per chunk: vn = clamp(u - w@S); store vn(bf16); S = clamp(S*exp(g_last) + k^T@(vn*decay)); store S(bf16) POST-update
+    - launch: multibuffer=True, unit_flag=True
+
+  constexpr: BT=chunk_size, K=128, V=128, BV=64 (universal), NVT=V/BV, IS_VARLEN
+
+  # Phase 4 knobs to explore after BV fix lands (in priority order):
+  #   P1: keep BV=64; confirm full 8/8 verify + benchmark geomean.
+  #   P2: latency-optimizer point 7/21 memory / 13 autotune re-check on the 4 cs=128
+  #       shapes only if BV-fix geomean still below expectation.
+  #   No kernel-body rewrite unless a bottleneck_analysis signals it.
+}

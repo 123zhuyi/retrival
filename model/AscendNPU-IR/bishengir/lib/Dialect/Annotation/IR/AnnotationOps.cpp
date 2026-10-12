@@ -1,0 +1,264 @@
+//===- AnnotationOps.cpp - Implementation of Annotation Dialect Ops -------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/Annotation/IR/Annotation.h"
+#include "bishengir/Dialect/Utils/Util.h"
+
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/PatternMatch.h"
+
+using namespace mlir;
+using namespace mlir::annotation;
+
+namespace {
+static constexpr llvm::StringLiteral kBufferSizeInByteAttr =
+    "buffer_size_in_byte";
+static constexpr llvm::StringLiteral kMayImplicitTransposeWithLastAxis =
+    "MayImplicitTransposeWithLastAxis";
+} // namespace
+
+//===----------------------------------------------------------------------===//
+// MarkOp
+//===----------------------------------------------------------------------===//
+
+void MarkOp::build(OpBuilder &odsBuilder, OperationState &odsState, Value src) {
+  build(odsBuilder, odsState, src,
+        odsBuilder.getStrArrayAttr(
+            llvm::ArrayRef<StringRef>{stringifyEffectMode(EffectMode::Write)}),
+        /*values=*/ValueRange{},
+        /*keys=*/nullptr);
+}
+
+void MarkOp::build(OpBuilder &odsBuilder, OperationState &odsState, Value src,
+                   ValueRange values, ArrayAttr keys) {
+  build(odsBuilder, odsState, src,
+        odsBuilder.getStrArrayAttr(
+            llvm::ArrayRef<StringRef>{stringifyEffectMode(EffectMode::Write)}),
+        values, keys);
+}
+
+/// Fold buffer size annotation to mark the root alloc.
+LogicalResult foldBufferSizeAnnotationToAlloc(MarkOp markOp) {
+  if (!markOp.isAnnotatedByStaticAttr(kBufferSizeInByteAttr))
+    return failure();
+
+  // find the root alloc and move upwards
+  auto markedVal = markOp.getSrc();
+  if (utils::isAllocLikeOp(markedVal))
+    return failure();
+
+  auto maybeAllocOp = utils::tracebackMemRefToAlloc(markedVal);
+  if (!maybeAllocOp.has_value())
+    return failure();
+
+  markOp.getSrcMutable().assign((maybeAllocOp.value()).getMemref());
+  return success();
+}
+
+LogicalResult MarkOp::fold(FoldAdaptor adaptor,
+                           SmallVectorImpl<OpFoldResult> &results) {
+  return foldBufferSizeAnnotationToAlloc(*this);
+}
+
+struct FoldUselessBufferSizeMarkOp
+    : public OpRewritePattern<annotation::MarkOp> {
+  using OpRewritePattern<annotation::MarkOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(annotation::MarkOp markOp,
+                                PatternRewriter &rewriter) const override {
+    if (!markOp.isAnnotatedByStaticAttr(kBufferSizeInByteAttr))
+      return failure();
+
+    if (markOp.getAttrNum() != 1)
+      return failure();
+
+    auto srcVal = markOp.getSrc();
+    // If the alloc is a static one, we can ignore the buffer size.
+    if (isa<MemRefType>(srcVal.getType())) {
+      auto maybeAlloc = utils::tracebackMemRefToAlloc(srcVal);
+      if (maybeAlloc.has_value() && (*maybeAlloc).getType().hasStaticShape()) {
+        rewriter.eraseOp(markOp);
+        return success();
+      }
+    }
+
+    auto users = srcVal.getUses();
+    if (!llvm::hasSingleElement(users))
+      return failure();
+
+    // if the value marked by annotation only have one user...
+
+    // and that the source op is a tensor/memref cast,
+    // propagate the annotation mark to its source
+    auto *srcDefiningOp = srcVal.getDefiningOp();
+    if (isa_and_present<tensor::CastOp, memref::CastOp, tensor::CollapseShapeOp,
+                        tensor::ExpandShapeOp, memref::CollapseShapeOp,
+                        memref::ExpandShapeOp>(srcDefiningOp)) {
+      rewriter.modifyOpInPlace(markOp, [&]() {
+        markOp.setOperand(0, srcDefiningOp->getOperand(0));
+      });
+      return success();
+    }
+
+    // otherwise, directly remote it
+    rewriter.eraseOp(markOp);
+    return success();
+  }
+};
+
+struct EraseDeadTransposeMarkAndSrc
+    : public OpRewritePattern<annotation::MarkOp> {
+  using OpRewritePattern<annotation::MarkOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(annotation::MarkOp markOp,
+                                PatternRewriter &rewriter) const override {
+    if (!markOp.isAnnotatedByStaticAttr(
+            kMayImplicitTransposeWithLastAxis))
+      return failure();
+
+    auto srcVal = markOp.getSrc();
+    if (!llvm::hasSingleElement(srcVal.getUses()))
+      return failure();
+
+    auto *definingOp = srcVal.getDefiningOp();
+    rewriter.eraseOp(markOp);
+    if (definingOp && definingOp->use_empty())
+      rewriter.eraseOp(definingOp);
+    return success();
+  }
+};
+
+// TODO: Temporarily disabled because of SplitMixKernel not migrated.
+struct FoldRedundantMarkOp : public OpRewritePattern<annotation::MarkOp> {
+  using OpRewritePattern<annotation::MarkOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(annotation::MarkOp markOp,
+                                PatternRewriter &rewriter) const override {
+    // Condition 1: The MarkOp does not have any attributes
+    if (markOp.getAttrNum() != 0) {
+      return failure();
+    }
+
+    // Condition 2: The Source of MarkOp has other users
+    // Find the source of MarkOp
+    bool hasOtherUsers = false;
+    auto srcVal = markOp.getSrc();
+    for (Operation *user : srcVal.getUsers()) {
+      if (user != markOp) {
+        hasOtherUsers = true;
+        break;
+      }
+    }
+    if (!hasOtherUsers) { // If it does not have other users, cannot erase
+      return failure();
+    }
+
+    rewriter.eraseOp(markOp);
+    return success();
+  }
+};
+
+void MarkOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                         MLIRContext *context) {
+  results.add<FoldUselessBufferSizeMarkOp>(context);
+  results.add<EraseDeadTransposeMarkAndSrc>(context);
+}
+
+bool MarkOp::isAnnotatedBy(StringRef key) {
+  return isAnnotatedByStaticAttr(key) || isAnnotatedByDynamicAttr(key);
+}
+
+bool MarkOp::isAnnotatedByStaticAttr(StringRef key) {
+  return (*this)->hasAttr(key);
+}
+
+bool MarkOp::isAnnotatedByDynamicAttr(StringRef key) {
+  if (!getKeys())
+    return false;
+
+  return llvm::any_of(getKeysAttr().getValue(), [&](Attribute attr) {
+    return cast<StringAttr>(attr).getValue() == key;
+  });
+}
+
+OpFoldResult MarkOp::getMixedAttrValue(StringRef key) {
+  if (isAnnotatedByStaticAttr(key))
+    return OpFoldResult{getStaticAttrValue(key)};
+
+  return OpFoldResult{getDynamicAttrValue(key)};
+}
+
+Attribute MarkOp::getStaticAttrValue(StringRef key) {
+  return (*this)->getAttr(key);
+}
+
+Value MarkOp::getDynamicAttrValue(StringRef key) {
+  for (auto [storedKey, value] :
+       llvm::zip_equal(getKeysAttr().getValue(), getValues())) {
+    if (cast<StringAttr>(storedKey).getValue() == key)
+      return value;
+  }
+  return Value();
+}
+
+void MarkOp::getEffects(
+    SmallVectorImpl<SideEffects::EffectInstance<MemoryEffects::Effect>>
+        &effects) {
+  for (auto effect : getEffectsAttr()) {
+    auto stringEffect = mlir::cast<StringAttr>(effect).getValue();
+    if (stringEffect == stringifyEffectMode(EffectMode::Write))
+      effects.emplace_back(MemoryEffects::Write::get(), &getSrcMutable(),
+                           SideEffects::DefaultResource::get());
+    if (stringEffect == stringifyEffectMode(EffectMode::Read))
+      effects.emplace_back(MemoryEffects::Read::get(), &getSrcMutable(),
+                           SideEffects::DefaultResource::get());
+  }
+}
+
+bool MarkOp::isAttrEmpty() { return (*this).getAttrNum() == 0; }
+
+static bool isIgnoredStringAttr(NamedAttribute attr, StringAttr stringAttr) {
+  return attr.getName() == stringAttr;
+}
+
+template <typename Container>
+static Container filterNonIgnoredAttr(const Container &container,
+                                      StringAttr stringAttr) {
+  auto filteredRange =
+      llvm::make_filter_range(container, [&stringAttr](NamedAttribute attr) {
+        return !isIgnoredStringAttr(attr, stringAttr);
+      });
+  return Container(filteredRange.begin(), filteredRange.end());
+}
+
+int64_t MarkOp::getAttrNum() {
+  // if the annotation only has the default attribute, it can be ignored.
+  int64_t attrNum = 0;
+  for (auto effect : getEffectsAttr()) {
+    auto stringEffect = mlir::cast<StringAttr>(effect).getValue();
+    if (stringEffect == stringifyEffectMode(EffectMode::Read)) {
+      attrNum += 1;
+    }
+  }
+  attrNum += (int64_t)filterNonIgnoredAttr(
+                 DenseSet<NamedAttribute>((*this)->getAttrs().begin(),
+                                          (*this)->getAttrs().end()),
+                 (*this).getEffectsAttrName())
+                 .size();
+  return attrNum;
+}

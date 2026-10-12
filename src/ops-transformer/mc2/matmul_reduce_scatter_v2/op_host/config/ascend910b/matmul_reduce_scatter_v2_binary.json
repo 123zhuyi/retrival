@@ -1,0 +1,1525 @@
+{
+    "op_type": "MatmulReduceScatterV2",
+    "op_list": [
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_ND_FP16_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          }, 
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_NZ_FP16_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "float16",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_ND_BF16_BF16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_NZ_BF16_BF16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_ND_INT8_INT8_SCALE_INT64_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_NZ_INT8_INT8_SCALE_INT64_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "int8",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_ND_INT8_INT8_SCALE_FLOAT32_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_NZ_INT8_INT8_SCALE_FLOAT32_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "int8",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_ND_INT8_INT8_SCALE_BF16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatterV2_AIV_MODE_ND_NZ_INT8_INT8_SCALE_BF16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "int8",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x1_scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2_scale",
+            "index": 4,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "quant_scale",
+            "index": 5,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "amax_out",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "block_axis",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "is_amax_out",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "y_dtype",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "comm_mode",
+            "dtype": "string",
+            "value": ""
+          }
+        ]
+      }
+    ]
+  }

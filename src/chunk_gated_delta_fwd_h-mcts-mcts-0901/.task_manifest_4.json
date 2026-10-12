@@ -1,0 +1,137 @@
+{
+  "op_name": "chunk_gated_delta_fwd_h",
+  "round_index": 4,
+  "work_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-4",
+  "baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-3",
+  "algorithm": "mcts",
+  "algorithm_reference": ".claude/references/algorithms/mcts/round.md",
+  "algorithm_params": {
+    "c_uct": 1.414,
+    "c_pw": 2.0,
+    "alpha": 0.5,
+    "failure_threshold": 3,
+    "reward_output_error": -2,
+    "reward_compile_error": -3
+  },
+  "round_strategy": "exploration",
+  "analysis_policy": "pattern_entry",
+  "hypothesis": "MCTS selects to expand from node opt-round-3 (mean reward 1.9389, visits 1); selection path depth 2.",
+  "direction": "",
+  "evidence_sources": [
+    "mcts_tree"
+  ],
+  "mode": "A",
+  "arch": "ascend910b1",
+  "input_files": {
+    "task_desc": "/home/l30083907/cannbot-skills_5171_old/plugins-community/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.py",
+    "task_json": "/home/l30083907/cannbot-skills_5171_old/plugins-community/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.json",
+    "gpu_kernel_ref": null,
+    "gpu_perf_csv": null
+  },
+  "config": {
+    "target_speedup": 5,
+    "max_rounds": 10,
+    "initial_worker_timeout": 7200,
+    "max_worker_timeout": 28800,
+    "npu_device_id": null,
+    "npu_idle": {
+      "aicore": 1.0,
+      "aivector": 1.0,
+      "npu_util": 1.0,
+      "hbm": 10.0
+    },
+    "algorithms": {
+      "naive": {
+        "enabled": true,
+        "params": {}
+      },
+      "mcts": {
+        "enabled": true,
+        "params": {
+          "c_uct": 1.414,
+          "c_pw": 2.0,
+          "alpha": 0.5,
+          "failure_threshold": 3,
+          "reward_output_error": -2,
+          "reward_compile_error": -3
+        }
+      },
+      "fusion-search": {
+        "enabled": true,
+        "params": {
+          "max_routes": 3,
+          "min_expected_benefit": 0.05,
+          "enable_math_transforms": true,
+          "route_timeout": 3600,
+          "crossover_rate": 0.7,
+          "mutation_rate": 0.15,
+          "elite_count": 1,
+          "exploration_count": 1
+        }
+      }
+    }
+  },
+  "is_recovery": false,
+  "worker_reference": ".claude/references/algorithms/mcts/round.md",
+  "lineage_summary": [
+    {
+      "round_index": 3,
+      "round_dir": "opt-round-3",
+      "direction": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset)",
+      "best_speedup": 6.9508,
+      "direction_yield": "high",
+      "hypothesis": "MCTS virtual-root pending expansion: independently reconstruct the proven fused chunk-recurrence GDN fwd-H kernel (matching freeze-anchored 6402eb golden semantics, NOT the broken 0c4c01 global baseline), then optimize toward 5x.",
+      "parent_round_dir": "global_baseline",
+      "design_summary": "Independent reconstruction of the fused chunk-recurrence GDN fwd-H kernel against the 6402eb golden: S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split (num_seq*HV, 2), GQA head-group select, in-kernel varlen seq-prefix chunk offsets, multibuffer/unit_flag launch, fp32-ieee dots. Verify 8/8; geomean 6.95x (target 5x reached).",
+      "iter_count": 1,
+      "opt_iter_count": 1,
+      "key_fixes": [
+        "Re-anchored baseline golden to sha 6402eb (working); global_baseline 0c4c01 torch golden is broken on varlen crash / dense NaN",
+        "In-kernel serial prefix over cu_seqlens for varlen chunk offsets (removed host python for-loop + list.append to satisfy AST Type-3 gate)",
+        "SAFE_CLAMP passed as tl.constexpr (python global not accessible inside @jit)",
+        "int32 scalar loop accumulator for varlen boh (avoid int32->int64 loop-carried type error)",
+        "opt point 1: K,V declared tl.constexpr to fold inner-dim masks (6.87x -> 6.95x)"
+      ],
+      "bottlenecks_observed": [
+        "weakest shapes cases 3/4 (dense B=1,HV=48,T=8192): only 96 programs -> parallel-program-count bound ~4.7x (not addressable without breaking serial recurrence)",
+        "varlen heavy shapes (T=32768) impl 8-14 ms dominated by serial chunk count (256-512 chunks/program)"
+      ]
+    },
+    {
+      "round_index": 4,
+      "round_dir": "opt-round-4",
+      "direction": "",
+      "best_speedup": 0.0,
+      "direction_yield": null,
+      "hypothesis": "MCTS selects to expand from node opt-round-3 (mean reward 1.9389, visits 1); selection path depth 2.",
+      "parent_round_dir": "opt-round-3"
+    }
+  ],
+  "experience_file": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/operator_experience.md",
+  "global_baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/global_baseline",
+  "global_baseline_speedup": 1.0,
+  "parent_round_journal": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-3/round_journal.md",
+  "mcts_parent_id": "opt-round-3",
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "visit_count": 3,
+      "mean_reward": 1.8904347472599925,
+      "status": "active",
+      "error_type": "none",
+      "description": "virtual root"
+    },
+    {
+      "node_id": "opt-round-3",
+      "depth": 1,
+      "visit_count": 1,
+      "mean_reward": 1.9388567608659624,
+      "status": "active",
+      "error_type": "none",
+      "description": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset)",
+      "round_dir": "opt-round-3"
+    }
+  ],
+  "mcts_pending_expansion": true
+}

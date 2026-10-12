@@ -1,0 +1,691 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file rms_norm_dynamic_mx_quant_common.h
+ * \brief Common utilities for RmsNormDynamicMxQuant kernel (arch35)
+ */
+
+#ifndef RMS_NORM_DYNAMIC_MX_QUANT_COMMON_H
+#define RMS_NORM_DYNAMIC_MX_QUANT_COMMON_H
+
+#include "kernel_operator.h"
+#include "op_kernel/platform_util.h"
+#include "../inc/kernel_utils.h"
+#include "rms_norm_dynamic_mx_quant_tiling_data.h"
+#include "../../norm_common/reduce_common_regbase.h"
+#include "../../norm_common/mx_quant_cast_traits.h"
+
+namespace RmsNormDynamicMxQuantNs {
+
+using namespace AscendC;
+using namespace AscendC::Reg;
+using namespace MxQuantCastTraits;
+
+#define FLOAT_OVERFLOW_MODE_CTRL 60
+
+constexpr uint16_t VECTOR_LENGTH = static_cast<int64_t>(Ops::Base::GetVRegSize());
+constexpr uint32_t VL_FP32 = VECTOR_LENGTH / sizeof(float);
+constexpr uint32_t VL_B16 = VECTOR_LENGTH / sizeof(half);
+constexpr int64_t UB_BLOCK_SIZE = static_cast<int64_t>(Ops::Base::GetUbBlockSize());
+constexpr int64_t UB_BLOCK_SIZE_FP32 = UB_BLOCK_SIZE / sizeof(float);
+constexpr uint16_t VL_BLOCK_NUM = VECTOR_LENGTH / UB_BLOCK_SIZE;
+
+constexpr int64_t DOUBLE_BUFFER = 2;
+
+constexpr float RMS_POS_INF = 3.40282366920938E+38;
+constexpr float RMS_ZERO = 0.0f;
+constexpr int32_t NUM_ONE = 1;
+constexpr int32_t NUM_TWO = 2;
+constexpr int32_t NUM_FOUR = 4;
+// FP4 output of one step is stored in two halves, each packing VL_B16 4-bit elements into bytes.
+constexpr int64_t OUT_ELE_NUM_ONE_BLK = static_cast<int64_t>(VL_B16) / NUM_TWO;
+constexpr int64_t OUT_ALL = VECTOR_LENGTH;
+constexpr uint16_t NAN_CUSTOMIZATION = 0x7f81;
+constexpr uint16_t MAX_EXP_FOR_BF16 = 0x7f80;
+constexpr uint32_t MAX_EXP_FOR_FP32 = 0x7f800000;
+constexpr uint16_t MAX_EXP_FOR_FP8 = 0x00ff;
+constexpr uint32_t MAX_EXP_FOR_FP8_IN_FP32 = 0x000000ff;
+constexpr uint16_t SPECIAL_VALUE_E2M1 = 0x00ff;
+constexpr uint16_t SPECIAL_VALUE_E1M2 = 0x007f;
+constexpr uint16_t NEW_MANTISSA = 0x0008;
+constexpr uint16_t SPECIAL_EXP_THRESHOLD = 0x0040;
+constexpr int16_t SHR_NUM_FOR_BF16 = 7;
+constexpr int16_t SHR_NUM_FOR_FP32 = 23;
+constexpr uint16_t FP4_E2M1_BF16_MAX_EXP = 0x0100;
+constexpr uint16_t BF16_EXP_BIAS = 0x7f00;
+constexpr int64_t MODE_ROUND = 0;
+constexpr int64_t MODE_FLOOR = 1;
+constexpr int64_t MODE_RINT = 4;
+constexpr uint16_t FP4_E1M2_MAX_EXP = 0x0000;
+constexpr uint16_t FP8_E4M3_MAX_EXP = 0x0400; // elem_emax右移7位(BF16E8M7)
+constexpr uint16_t FP8_E5M2_MAX_EXP = 0x0780;
+constexpr int32_t FP32_BIAS = 127;
+constexpr int32_t FP32_BIAS_NEG = -127;
+constexpr int32_t NEG_ONE = -1;
+constexpr float FOUR = 4.0;
+constexpr float ONE_FOURTH = 0.25;
+constexpr int32_t NEG_ZERO = 0x80000000;
+constexpr uint16_t NAN_CUSTOMIZATION_PACK = 0x00007f81;
+constexpr uint16_t ABS_MASK_FOR_16BIT = 0x7fff;
+constexpr uint32_t MAN_MASK_FLOAT = 0x007fffff;
+constexpr uint32_t FP32_EXP_BIAS_CUBLAS = 0x00007f00;
+constexpr uint32_t FP8_E5M2_MAX = 0x37924925; // 1/57344的float32表示 57334是E5M2所能表示的最大值
+constexpr uint32_t FP8_E4M3_MAX = 0x3b124925; // 1/448的float32表示 448是E4M3所能表示的最大值
+constexpr uint16_t INVALID_FLOAT16 = 0x7c00;
+
+template <typename T>
+__aicore__ inline void LoadTensorForDtypeT(__ubuf__ T* src, RegTensor<float>& dst, MaskReg& preg, uint32_t offset)
+{
+    if constexpr (IsSameType<T, float>::value) {
+        LoadAlign<float, LoadDist::DIST_NORM>(dst, (__ubuf__ float*)src + offset);
+    } else { // fp16、bf16
+        RegTensor<T> xFp16;
+        LoadAlign<T, LoadDist::DIST_UNPACK_B16>(xFp16, ((__ubuf__ T*)src + offset));
+        Cast<float, T, castTraitB162B32>(dst, xFp16, preg);
+    }
+}
+
+template <typename T>
+__aicore__ inline void StoreTensorForDtypeT(__ubuf__ T* dst, RegTensor<float>& src, MaskReg& preg, uint32_t offset)
+{
+    if constexpr (IsSameType<T, float>::value) {
+        StoreAlign<T, StoreDist::DIST_NORM>(dst + offset, src, preg);
+    } else {
+        RegTensor<T> xOut;
+        Cast<T, float, castTraitB322B16>(xOut, src, preg);
+        StoreAlign<T, StoreDist::DIST_PACK_B32>(dst + offset, xOut, preg);
+    }
+}
+
+template <AscendC::RoundMode toBf16RoundMode, AscendC::RoundMode roundMode, typename T1, typename T2>
+__aicore__ inline void ComputeData(__ubuf__ T1* srcAddr, __ubuf__ uint16_t* halfScaleLocalAddr,
+                                   __ubuf__ int8_t* outLocalAddr, uint32_t totalCountInUB, uint16_t loopNum)
+{
+    uint32_t totalCountInUB2 = totalCountInUB * NUM_TWO;
+    uint16_t elementAfterReduce = VL_BLOCK_NUM;
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::MaskReg dataMask1;
+        AscendC::Reg::MaskReg dataMask2;
+        AscendC::Reg::MaskReg dataMask3;
+        AscendC::Reg::MaskReg dataMask4;
+        AscendC::Reg::MaskReg dataMask5;
+        AscendC::Reg::MaskReg maskAll = AscendC::Reg::CreateMask<uint16_t, AscendC::Reg::MaskPattern::ALL>();
+        AscendC::Reg::RegTensor<uint16_t> halfScaleForMul;
+        AscendC::Reg::RegTensor<float> floatScaleForMul;
+        AscendC::Reg::RegTensor<T1> vdExp0;
+        AscendC::Reg::RegTensor<T1> vdExp1;
+        AscendC::Reg::RegTensor<float> vdExp0FP32Zero;
+        AscendC::Reg::RegTensor<float> vdExp0FP32One;
+        AscendC::Reg::RegTensor<float> vdExp1FP32Zero;
+        AscendC::Reg::RegTensor<float> vdExp1FP32One;
+        AscendC::Reg::RegTensor<T2> vdExp0FP8Zero;
+        AscendC::Reg::RegTensor<T2> vdExp0FP8One;
+        AscendC::Reg::RegTensor<T2> vdExp1FP8Zero;
+        AscendC::Reg::RegTensor<T2> vdExp1FP8One;
+        dataMask1 = AscendC::Reg::CreateMask<T1>();
+        dataMask2 = AscendC::Reg::CreateMask<T1>();
+        dataMask3 = AscendC::Reg::CreateMask<T1>();
+        dataMask4 = AscendC::Reg::CreateMask<T1>();
+        dataMask5 = AscendC::Reg::CreateMask<T2>();
+        for (uint16_t i = 0; i < loopNum; i++) {
+            AscendC::Reg::LoadAlign<T1, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_DINTLV_B16>(vdExp0, vdExp1, srcAddr, VL_B16 * NUM_TWO);
+            AscendC::Reg::LoadAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_E2B_B16>(halfScaleForMul, halfScaleLocalAddr,
+                                                                          elementAfterReduce);
+            if constexpr (IsSameType<T1, half>::value) {
+                AscendC::Reg::Cast<float, T1, castTraitZero>(vdExp0FP32Zero, vdExp0, dataMask1);
+                AscendC::Reg::Cast<float, T1, castTraitOne>(vdExp0FP32One, vdExp0, dataMask1);
+                AscendC::Reg::Cast<float, bfloat16_t, castTraitZero>(
+                    floatScaleForMul, (AscendC::Reg::RegTensor<bfloat16_t>&)halfScaleForMul, maskAll);
+                AscendC::Reg::Mul(vdExp0FP32Zero, vdExp0FP32Zero, floatScaleForMul, dataMask3);
+                AscendC::Reg::Mul(vdExp0FP32One, vdExp0FP32One, floatScaleForMul, dataMask4);
+
+                AscendC::Reg::Cast<float, T1, castTraitZero>(vdExp1FP32Zero, vdExp1, dataMask1);
+                AscendC::Reg::Cast<float, T1, castTraitOne>(vdExp1FP32One, vdExp1, dataMask1);
+                AscendC::Reg::Mul(vdExp1FP32Zero, vdExp1FP32Zero, floatScaleForMul, dataMask3);
+                AscendC::Reg::Mul(vdExp1FP32One, vdExp1FP32One, floatScaleForMul, dataMask4);
+
+            } else {
+                AscendC::Reg::Mul(vdExp0, vdExp0, (AscendC::Reg::RegTensor<T1>&)halfScaleForMul, dataMask1);
+                AscendC::Reg::Mul(vdExp1, vdExp1, (AscendC::Reg::RegTensor<T1>&)halfScaleForMul, dataMask1);
+
+                AscendC::Reg::Cast<float, T1, castTraitZero>(vdExp0FP32Zero, vdExp0, dataMask1);
+                AscendC::Reg::Cast<float, T1, castTraitOne>(vdExp0FP32One, vdExp0, dataMask1);
+                AscendC::Reg::Cast<float, T1, castTraitZero>(vdExp1FP32Zero, vdExp1, dataMask2);
+                AscendC::Reg::Cast<float, T1, castTraitOne>(vdExp1FP32One, vdExp1, dataMask2);
+            }
+            AscendC::Reg::Cast<T2, float, castTrait32to80>(vdExp0FP8Zero, vdExp0FP32Zero, dataMask3);
+            AscendC::Reg::Cast<T2, float, castTrait32to82>(vdExp0FP8One, vdExp0FP32One, dataMask3);
+            AscendC::Reg::Cast<T2, float, castTrait32to81>(vdExp1FP8Zero, vdExp1FP32Zero, dataMask4);
+            AscendC::Reg::Cast<T2, float, castTrait32to83>(vdExp1FP8One, vdExp1FP32One, dataMask4);
+
+            AscendC::Reg::Add((AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8Zero,
+                              (AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8Zero,
+                              (AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8One, dataMask5);
+            AscendC::Reg::Add((AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8Zero,
+                              (AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8Zero,
+                              (AscendC::Reg::RegTensor<uint8_t>&)vdExp1FP8Zero, dataMask5);
+            AscendC::Reg::Add((AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8Zero,
+                              (AscendC::Reg::RegTensor<uint8_t>&)vdExp0FP8Zero,
+                              (AscendC::Reg::RegTensor<uint8_t>&)vdExp1FP8One, dataMask5);
+
+            AscendC::Reg::StoreAlign<int8_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                     AscendC::Reg::StoreDist::DIST_NORM_B8>(
+                outLocalAddr, (AscendC::Reg::RegTensor<int8_t>&)vdExp0FP8Zero, OUT_ALL, dataMask5);
+        }
+    }
+    return;
+}
+
+template <typename T>
+
+__aicore__ inline void ComputeMaxExpOCP(__ubuf__ T* srcAddr, __ubuf__ uint16_t* maxExpAddr, uint32_t totalCountInUB,
+                                        uint16_t loopNum)
+{
+    uint16_t elementAfterReduce = VL_BLOCK_NUM;
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::RegTensor<T> vdExp0;
+        AscendC::Reg::RegTensor<T> vdExp1;
+        AscendC::Reg::RegTensor<bfloat16_t> vdExp0BF16;
+        AscendC::Reg::RegTensor<bfloat16_t> vdExp1BF16;
+        AscendC::Reg::RegTensor<uint16_t> vdExpSelect0;
+        AscendC::Reg::RegTensor<uint16_t> vdExpSelect1;
+        AscendC::Reg::RegTensor<uint16_t> vdExpExtract0;
+        AscendC::Reg::RegTensor<uint16_t> vdExpExtract1;
+
+        AscendC::Reg::RegTensor<uint16_t> expMaskBF16;
+        AscendC::Reg::Duplicate(expMaskBF16, MAX_EXP_FOR_BF16);
+
+        AscendC::Reg::RegTensor<uint16_t> invalidMaskFP16;
+        AscendC::Reg::Duplicate(invalidMaskFP16, INVALID_FLOAT16);
+        AscendC::Reg::RegTensor<uint16_t> vdMaxExp;
+        AscendC::Reg::MaskReg scaleMask1;
+        AscendC::Reg::MaskReg scaleMask2;
+        AscendC::Reg::MaskReg invalidDataMask0;
+        AscendC::Reg::MaskReg invalidDataMask1;
+        AscendC::Reg::UnalignRegForStore u1;
+        for (uint16_t i = 0; i < loopNum; i++) {
+            scaleMask1 = AscendC::Reg::UpdateMask<T>(totalCountInUB);
+            scaleMask2 = AscendC::Reg::UpdateMask<T>(totalCountInUB);
+            AscendC::Reg::LoadAlign<T, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_DINTLV_B16>(vdExp0, vdExp1, srcAddr, VL_B16 * NUM_TWO);
+            if constexpr (IsSameType<T, half>::value) {
+                AscendC::Reg::And(vdExpSelect0, (AscendC::Reg::RegTensor<uint16_t>&)vdExp0, invalidMaskFP16,
+                                  scaleMask1);
+                AscendC::Reg::And(vdExpSelect1, (AscendC::Reg::RegTensor<uint16_t>&)vdExp1, invalidMaskFP16,
+                                  scaleMask1);
+                AscendC::Reg::Compare<uint16_t, CMPMODE::NE>(invalidDataMask0, vdExpSelect0, invalidMaskFP16,
+                                                             scaleMask1);
+                AscendC::Reg::Compare<uint16_t, CMPMODE::NE>(invalidDataMask1, vdExpSelect1, invalidMaskFP16,
+                                                             scaleMask1);
+                AscendC::Reg::Cast<bfloat16_t, T, castTraitHalf2Bf16>(vdExp0BF16, vdExp0, scaleMask1);
+                AscendC::Reg::Cast<bfloat16_t, T, castTraitHalf2Bf16>(vdExp1BF16, vdExp1, scaleMask1);
+                AscendC::Reg::And(vdExpExtract0, (AscendC::Reg::RegTensor<uint16_t>&)vdExp0BF16, expMaskBF16,
+                                  scaleMask1);
+                AscendC::Reg::And(vdExpExtract1, (AscendC::Reg::RegTensor<uint16_t>&)vdExp1BF16, expMaskBF16,
+                                  scaleMask1);
+                AscendC::Reg::Select<uint16_t>(vdExpExtract0, vdExpExtract0, expMaskBF16, invalidDataMask0);
+                AscendC::Reg::Select<uint16_t>(vdExpExtract1, vdExpExtract1, expMaskBF16, invalidDataMask1);
+            } else {
+                AscendC::Reg::And(vdExpExtract0, (AscendC::Reg::RegTensor<uint16_t>&)vdExp0, expMaskBF16, scaleMask1);
+                AscendC::Reg::And(vdExpExtract1, (AscendC::Reg::RegTensor<uint16_t>&)vdExp1, expMaskBF16, scaleMask1);
+            }
+
+            AscendC::Reg::Max(vdMaxExp, vdExpExtract0, vdExpExtract1, scaleMask1);
+            AscendC::Reg::ReduceDataBlock<AscendC::Reg::ReduceType::MAX>(vdMaxExp, vdMaxExp, scaleMask1);
+
+            AscendC::Reg::StoreUnAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE>(maxExpAddr, vdMaxExp, u1,
+                                                                                              elementAfterReduce);
+        }
+        AscendC::Reg::StoreUnAlignPost(maxExpAddr, u1, 0);
+    }
+    return;
+}
+
+template <typename T1, typename T2>
+__aicore__ inline void ComputeScaleOCP(__ubuf__ uint16_t* maxExpAddr, __ubuf__ uint16_t* mxScaleLocalAddr,
+                                       __ubuf__ uint16_t* halfScaleLocalAddr, uint32_t totalScaleInUB,
+                                       uint16_t loopNumScale)
+{
+    uint16_t dtypeEmax = 0;
+    if constexpr (IsSameType<T2, fp8_e4m3fn_t>::value) {
+        dtypeEmax = FP8_E4M3_MAX_EXP;
+    } else if constexpr (IsSameType<T2, fp8_e5m2_t>::value) {
+        dtypeEmax = FP8_E5M2_MAX_EXP;
+    } else if constexpr (IsSameType<T2, fp4x2_e2m1_t>::value) {
+        dtypeEmax = FP4_E2M1_BF16_MAX_EXP;
+    } else {
+        dtypeEmax = FP4_E1M2_MAX_EXP;
+    }
+
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::RegTensor<uint16_t> vdMaxExp;
+        AscendC::Reg::MaskReg cmpResult;
+        AscendC::Reg::RegTensor<uint16_t> expMask;
+        AscendC::Reg::MaskReg zeroMask;
+        AscendC::Reg::MaskReg preMaskScale;
+        AscendC::Reg::Duplicate(expMask, MAX_EXP_FOR_BF16);
+        AscendC::Reg::RegTensor<uint16_t> maxExpValue;
+        AscendC::Reg::Duplicate(maxExpValue, dtypeEmax);
+        AscendC::Reg::RegTensor<uint16_t> sharedExp;
+        AscendC::Reg::RegTensor<uint16_t> scaleValue;
+        AscendC::Reg::RegTensor<uint16_t> scaleBias;
+        AscendC::Reg::Duplicate(scaleBias, BF16_EXP_BIAS);
+        AscendC::Reg::RegTensor<uint16_t> halfScale;
+        AscendC::Reg::RegTensor<uint16_t> fp8NanRegTensor;
+        AscendC::Reg::Duplicate(fp8NanRegTensor, MAX_EXP_FOR_FP8);
+        AscendC::Reg::RegTensor<uint16_t> zeroRegTensor;
+        AscendC::Reg::Duplicate(zeroRegTensor, 0);
+        AscendC::Reg::RegTensor<uint16_t> nanRegTensor;
+        AscendC::Reg::Duplicate(nanRegTensor, NAN_CUSTOMIZATION);
+        AscendC::Reg::MaskReg invalidDataMask;
+        AscendC::Reg::MaskReg specialDataMask;
+        AscendC::Reg::RegTensor<uint16_t> specialExpRegTensor;
+        AscendC::Reg::Duplicate(specialExpRegTensor, SPECIAL_EXP_THRESHOLD);
+        for (uint16_t i = 0; i < loopNumScale; i++) {
+            preMaskScale = AscendC::Reg::UpdateMask<uint16_t>(totalScaleInUB);
+            AscendC::Reg::LoadAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE>(vdMaxExp, maxExpAddr,
+                                                                                           VL_B16);
+            AscendC::Reg::Compare<uint16_t, CMPMODE::NE>(cmpResult, vdMaxExp, expMask, preMaskScale); // INF/NAN
+            AscendC::Reg::Compare<uint16_t, CMPMODE::LE>(invalidDataMask, vdMaxExp, maxExpValue, preMaskScale);
+
+            AscendC::Reg::Select<uint16_t>(vdMaxExp, maxExpValue, vdMaxExp, invalidDataMask);
+
+            AscendC::Reg::Sub(sharedExp, vdMaxExp, maxExpValue, preMaskScale);
+            AscendC::Reg::ShiftRights(scaleValue, sharedExp, SHR_NUM_FOR_BF16, preMaskScale);
+
+            AscendC::Reg::Select<uint16_t>(scaleValue, scaleValue, fp8NanRegTensor, cmpResult);
+
+            AscendC::Reg::StoreAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                     AscendC::Reg::StoreDist::DIST_PACK_B16>(mxScaleLocalAddr, scaleValue,
+                                                                             VL_B16 / NUM_TWO, preMaskScale);
+
+            AscendC::Reg::Compare<uint16_t, CMPMODE::NE>(zeroMask, sharedExp, zeroRegTensor, preMaskScale);
+            AscendC::Reg::Compare<uint16_t, CMPMODE::EQ>(specialDataMask, sharedExp, scaleBias, preMaskScale);
+            AscendC::Reg::Sub(halfScale, scaleBias, sharedExp, preMaskScale);
+            AscendC::Reg::Select<uint16_t>(halfScale, halfScale, nanRegTensor, cmpResult);
+            AscendC::Reg::Select<uint16_t>(halfScale, halfScale, zeroRegTensor, zeroMask);
+            AscendC::Reg::Select<uint16_t>(halfScale, specialExpRegTensor, halfScale, specialDataMask);
+
+            AscendC::Reg::StoreAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE>(
+                halfScaleLocalAddr, halfScale, VL_B16, preMaskScale);
+        }
+    }
+    return;
+}
+
+template <typename T>
+__aicore__ inline void ComputeMaxExpcuBLAS(__ubuf__ T* srcAddr, __ubuf__ uint16_t* maxExpAddr, uint32_t totalCountInUB,
+                                           uint16_t loopNum)
+{
+    uint16_t elementAfterReduce = VL_BLOCK_NUM;
+
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::RegTensor<T> vdExp0;
+        AscendC::Reg::RegTensor<T> vdExp1;
+        AscendC::Reg::RegTensor<uint16_t> absMask16Bit;
+        AscendC::Reg::Duplicate(absMask16Bit, ABS_MASK_FOR_16BIT);
+        AscendC::Reg::RegTensor<uint16_t> vdMaxExp;
+        AscendC::Reg::MaskReg scaleMask1;
+        AscendC::Reg::UnalignRegForStore u1;
+        for (uint16_t i = 0; i < loopNum; i++) {
+            scaleMask1 = AscendC::Reg::UpdateMask<T>(totalCountInUB);
+            AscendC::Reg::LoadAlign<T, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_DINTLV_B16>(vdExp0, vdExp1, srcAddr, VL_B16 * NUM_TWO);
+            AscendC::Reg::And((AscendC::Reg::RegTensor<uint16_t>&)vdExp0, (AscendC::Reg::RegTensor<uint16_t>&)vdExp0,
+                              absMask16Bit, scaleMask1);
+            AscendC::Reg::And((AscendC::Reg::RegTensor<uint16_t>&)vdExp1, (AscendC::Reg::RegTensor<uint16_t>&)vdExp1,
+                              absMask16Bit, scaleMask1);
+            AscendC::Reg::Max(vdMaxExp, (AscendC::Reg::RegTensor<uint16_t>&)vdExp0,
+                              (AscendC::Reg::RegTensor<uint16_t>&)vdExp1, scaleMask1);
+            AscendC::Reg::ReduceDataBlock<AscendC::Reg::ReduceType::MAX>(vdMaxExp, vdMaxExp, scaleMask1);
+            AscendC::Reg::StoreUnAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE>(maxExpAddr, vdMaxExp, u1,
+                                                                                              elementAfterReduce);
+        }
+        AscendC::Reg::StoreUnAlignPost(maxExpAddr, u1, 0);
+    }
+    return;
+}
+template <typename T1, typename T2>
+__aicore__ inline void ComputeScalecuBLAS(__ubuf__ uint16_t* maxExpAddr, __ubuf__ uint16_t* mxScaleLocalAddr,
+                                          __ubuf__ uint16_t* halfScaleLocalAddr, uint32_t totalScaleInUB,
+                                          uint16_t loopNumScale4NV)
+{
+    static constexpr uint32_t zeroForAll = 0x00000000;
+    static constexpr uint32_t Exp254 = 0x000000fe;
+    static constexpr uint32_t halfForMan = 0x00400000;
+
+    uint32_t dtypeMax = 0; // 算法暂不支持fp4量化
+    if constexpr (IsSameType<T2, fp8_e4m3fn_t>::value) {
+        dtypeMax = FP8_E4M3_MAX;
+    } else if constexpr (IsSameType<T2, fp8_e5m2_t>::value) {
+        dtypeMax = FP8_E5M2_MAX;
+    }
+
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::RegTensor<uint16_t> max16;
+        AscendC::Reg::RegTensor<uint16_t> expOut;
+        AscendC::Reg::RegTensor<uint16_t> recExpOut;
+        AscendC::Reg::RegTensor<uint32_t> max32;
+        AscendC::Reg::RegTensor<uint32_t> exp32;
+        AscendC::Reg::RegTensor<uint32_t> man32;
+        AscendC::Reg::RegTensor<uint32_t> expAddOne32;
+        AscendC::Reg::RegTensor<uint32_t> extractExp;
+        AscendC::Reg::RegTensor<uint32_t> halfScale;
+        AscendC::Reg::RegTensor<uint32_t> invMax;
+        AscendC::Reg::RegTensor<uint32_t> manMaskFP32;
+        AscendC::Reg::RegTensor<uint32_t> expMask;
+        AscendC::Reg::RegTensor<uint32_t> zeroRegTensor32;
+        AscendC::Reg::RegTensor<uint32_t> scaleBias;
+        AscendC::Reg::RegTensor<uint32_t> nanRegTensor;
+        AscendC::Reg::RegTensor<uint32_t> fp8NanRegTensor;
+
+        AscendC::Reg::MaskReg cmpResult;
+        AscendC::Reg::MaskReg zeroMask;
+        AscendC::Reg::MaskReg p0;
+        AscendC::Reg::MaskReg p1;
+        AscendC::Reg::MaskReg p2;
+        AscendC::Reg::MaskReg preMaskScale;
+        AscendC::Reg::MaskReg maskHalf;
+        AscendC::Reg::Duplicate(invMax, dtypeMax);
+        AscendC::Reg::Duplicate(manMaskFP32, MAN_MASK_FLOAT);
+        AscendC::Reg::Duplicate(expMask, MAX_EXP_FOR_FP32);
+        AscendC::Reg::Duplicate(zeroRegTensor32, 0);
+        AscendC::Reg::Duplicate(scaleBias, FP32_EXP_BIAS_CUBLAS);
+        AscendC::Reg::Duplicate(nanRegTensor, NAN_CUSTOMIZATION_PACK);
+        AscendC::Reg::Duplicate(fp8NanRegTensor, MAX_EXP_FOR_FP8_IN_FP32);
+        preMaskScale = AscendC::Reg::CreateMask<uint32_t>();
+        maskHalf = AscendC::Reg::CreateMask<uint16_t>();
+        for (uint16_t i = 0; i < loopNumScale4NV; i++) {
+            AscendC::Reg::LoadAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_UNPACK_B16>(max16, maxExpAddr, VL_FP32);
+
+            AscendC::Reg::Cast<float, T1, castTraitHalf2Float>((AscendC::Reg::RegTensor<float>&)max32,
+                                                               (AscendC::Reg::RegTensor<T1>&)max16, preMaskScale);
+            AscendC::Reg::Compare<uint32_t, CMPMODE::LT>(cmpResult, max32, expMask, preMaskScale);
+            AscendC::Reg::Compare<uint32_t, CMPMODE::NE>(zeroMask, max32, zeroRegTensor32, preMaskScale);
+
+            AscendC::Reg::Mul((AscendC::Reg::RegTensor<float>&)max32, (AscendC::Reg::RegTensor<float>&)max32,
+                              (AscendC::Reg::RegTensor<float>&)invMax, preMaskScale);
+            AscendC::Reg::ShiftRights(exp32, max32, SHR_NUM_FOR_FP32, preMaskScale);
+            AscendC::Reg::And(man32, max32, manMaskFP32, preMaskScale);
+
+            AscendC::Reg::Compares<uint32_t, CMPMODE::GT>(p0, exp32, zeroForAll, preMaskScale);
+            AscendC::Reg::Compares<uint32_t, CMPMODE::LT>(p1, exp32, Exp254, preMaskScale);
+            AscendC::Reg::Compares<uint32_t, CMPMODE::GT>(p2, man32, zeroForAll, preMaskScale);
+            AscendC::Reg::And(p0, p0, p1, preMaskScale);
+            AscendC::Reg::And(p0, p0, p2, preMaskScale);
+
+            AscendC::Reg::Compares<uint32_t, CMPMODE::EQ>(p1, exp32, zeroForAll, preMaskScale);
+            AscendC::Reg::Compares<uint32_t, CMPMODE::GT>(p2, man32, halfForMan, preMaskScale);
+            AscendC::Reg::And(p1, p1, p2, preMaskScale);
+            AscendC::Reg::Or(p0, p0, p1, preMaskScale);
+
+            AscendC::Reg::Adds(expAddOne32, exp32, 1, preMaskScale);
+            AscendC::Reg::Select(extractExp, expAddOne32, exp32, p0);
+            AscendC::Reg::Select<uint32_t>(extractExp, extractExp, fp8NanRegTensor, cmpResult);
+            AscendC::Reg::Select<uint32_t>(extractExp, extractExp, zeroRegTensor32, zeroMask);
+            AscendC::Reg::Pack<uint16_t, uint32_t, AscendC::Reg::HighLowPart::LOWEST>(expOut, extractExp);
+
+            AscendC::Reg::StoreAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                     AscendC::Reg::StoreDist::DIST_PACK_B16>(mxScaleLocalAddr, expOut,
+                                                                             VL_FP32 / NUM_TWO, maskHalf);
+
+            AscendC::Reg::ShiftLefts(extractExp, extractExp, SHR_NUM_FOR_BF16, preMaskScale);
+            AscendC::Reg::Sub(halfScale, scaleBias, extractExp, preMaskScale);
+            AscendC::Reg::Select<uint32_t>(halfScale, halfScale, nanRegTensor, cmpResult);
+            AscendC::Reg::Select<uint32_t>(halfScale, halfScale, zeroRegTensor32, zeroMask);
+            AscendC::Reg::Pack<uint16_t, uint32_t, AscendC::Reg::HighLowPart::LOWEST>(recExpOut, halfScale);
+
+            AscendC::Reg::StoreAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE>(
+                halfScaleLocalAddr, recExpOut, VL_FP32, maskHalf);
+        }
+    }
+    return;
+}
+
+template <AscendC::RoundMode toBf16RoundMode, AscendC::RoundMode roundMode, typename T2>
+__aicore__ inline void ComputeFP4FromHalf(Reg::RegTensor<float>& Reg)
+{
+    Reg::MaskReg pregAll32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+    Reg::MaskReg zeroMask;
+    Reg::MaskReg specialMask;
+    Reg::MaskReg negInfMask;
+
+    Reg::RegTensor<int32_t> negZero;
+    Reg::RegTensor<int32_t> maxExpFP32;
+    Reg::RegTensor<int32_t> exp0FP32;
+    Reg::RegTensor<int32_t> exp1FP32;
+
+    Reg::Duplicate(negZero, NEG_ZERO);
+    Reg::Compare<int32_t, CMPMODE::EQ>(negInfMask, (Reg::RegTensor<int32_t>&)Reg, negZero, pregAll32);
+    if constexpr (IsSameType<T2, fp4x2_e1m2_t>::value) {
+        Reg::Muls(Reg, Reg, FOUR, pregAll32);
+        Reg::Compares<float, CMPMODE::LT>(specialMask, Reg, 0, pregAll32);
+        Reg::Truncate<float, roundMode>(Reg, Reg, pregAll32);
+        Reg::Muls(Reg, Reg, ONE_FOURTH, pregAll32);
+    } else {
+        Reg::Duplicate(maxExpFP32, MAX_EXP_FOR_FP32);
+        Reg::And(exp0FP32, (Reg::RegTensor<int32_t>&)Reg, maxExpFP32, pregAll32);
+        Reg::ShiftRights(exp0FP32, exp0FP32, SHR_NUM_FOR_FP32, pregAll32);
+        Reg::Adds(exp0FP32, exp0FP32, FP32_BIAS_NEG, pregAll32);
+        Reg::Maxs(exp0FP32, exp0FP32, 0, pregAll32);
+        Reg::Adds(exp0FP32, exp0FP32, NEG_ONE, pregAll32);
+        Reg::Muls(exp1FP32, exp0FP32, NEG_ONE, pregAll32);
+        Reg::Adds(exp1FP32, exp1FP32, FP32_BIAS, pregAll32);
+        Reg::ShiftLefts(exp1FP32, exp1FP32, SHR_NUM_FOR_FP32, pregAll32);
+
+        Reg::Mul(Reg, Reg, (Reg::RegTensor<float>&)exp1FP32, pregAll32);
+        Reg::Adds(exp0FP32, exp0FP32, FP32_BIAS, pregAll32);
+        Reg::ShiftLefts(exp0FP32, exp0FP32, SHR_NUM_FOR_FP32, pregAll32);
+        Reg::Compares<float, CMPMODE::LT>(specialMask, Reg, 0, pregAll32);
+        Reg::Truncate<float, roundMode>(Reg, Reg, pregAll32);
+        Reg::Mul(Reg, Reg, (Reg::RegTensor<float>&)exp0FP32, pregAll32);
+    }
+    Reg::Compares<float, CMPMODE::EQ>(zeroMask, Reg, 0, pregAll32);
+    Reg::And(zeroMask, specialMask, zeroMask, pregAll32);
+    Reg::Or(zeroMask, negInfMask, zeroMask, pregAll32);
+    Reg::Select<int32_t>((Reg::RegTensor<int32_t>&)Reg, negZero, (Reg::RegTensor<int32_t>&)Reg, zeroMask);
+}
+
+template <typename T2>
+__aicore__ inline void FP16Convert(AscendC::Reg::RegTensor<half>& output, AscendC::Reg::RegTensor<half>& input,
+                                   AscendC::Reg::MaskReg& mask)
+{
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::RegTensor<uint16_t> specialValueTensor;
+        AscendC::Reg::RegTensor<uint16_t> newMantissa;
+        AscendC::Reg::RegTensor<uint16_t> andResult;
+        AscendC::Reg::RegTensor<uint16_t> newValue;
+        AscendC::Reg::MaskReg specialMask;
+        AscendC::Reg::MaskReg nonzeroMask;
+        uint16_t specialValue = SPECIAL_VALUE_E1M2;
+        if constexpr (IsSameType<T2, fp4x2_e2m1_t>::value) {
+            specialValue = SPECIAL_VALUE_E2M1;
+        }
+        AscendC::Reg::Duplicate(specialValueTensor, specialValue);
+        AscendC::Reg::Duplicate(newMantissa, NEW_MANTISSA);
+        AscendC::Reg::And(andResult, (AscendC::Reg::RegTensor<uint16_t>&)input, specialValueTensor, mask);
+        AscendC::Reg::Compares<uint16_t, CMPMODE::GT>(nonzeroMask, andResult, 0, mask);
+        AscendC::Reg::Compares<uint16_t, CMPMODE::LT>(specialMask, andResult, NEW_MANTISSA, mask);
+        AscendC::Reg::And(specialMask, specialMask, nonzeroMask, mask);
+        AscendC::Reg::Or(newValue, (AscendC::Reg::RegTensor<uint16_t>&)input, newMantissa, mask);
+        AscendC::Reg::Select<uint16_t>((AscendC::Reg::RegTensor<uint16_t>&)output, newValue,
+                                       (AscendC::Reg::RegTensor<uint16_t>&)input, specialMask);
+    }
+    return;
+}
+
+template <typename T1, typename T2, AscendC::RoundMode toBf16RoundMode, AscendC::RoundMode roundMode>
+__aicore__ inline void ComputeDataMxfp4General(__ubuf__ T1* srcAddr, __ubuf__ uint16_t* halfScaleLocalAddr,
+                                               __ubuf__ int8_t* outLocalAddr, uint32_t totalCountInUB, uint16_t loopNum)
+{
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::MaskReg dataMask1;
+        AscendC::Reg::RegTensor<uint16_t> halfScaleForMul;
+        AscendC::Reg::RegTensor<T1> vdExp0;
+        AscendC::Reg::RegTensor<T1> vdExp1;
+
+        AscendC::Reg::RegTensor<bfloat16_t> vdExp0BF16;
+        AscendC::Reg::RegTensor<bfloat16_t> vdExp1BF16;
+
+        AscendC::Reg::RegTensor<T2> vdExp0FP4;
+        AscendC::Reg::RegTensor<T2> vdExp1FP4;
+
+        for (uint16_t i = 0; i < loopNum; i++) {
+            dataMask1 = AscendC::Reg::UpdateMask<T1>(totalCountInUB);
+            AscendC::Reg::LoadAlign<T1, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_DINTLV_B16>(vdExp0, vdExp1, srcAddr, VL_B16 * NUM_TWO);
+            AscendC::Reg::LoadAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_E2B_B16>(halfScaleForMul, halfScaleLocalAddr,
+                                                                          VL_BLOCK_NUM);
+
+            if constexpr (IsSameType<T1, half>::value) {
+                if constexpr (roundMode == RoundMode::CAST_RINT) {
+                    FP16Convert<T2>(vdExp0, vdExp0, dataMask1);
+                    FP16Convert<T2>(vdExp1, vdExp1, dataMask1);
+                }
+                AscendC::Reg::Cast<bfloat16_t, T1, castTraitHalf2Bf16RM<toBf16RoundMode>>(vdExp0BF16, vdExp0,
+                                                                                          dataMask1);
+                AscendC::Reg::Cast<bfloat16_t, T1, castTraitHalf2Bf16RM<toBf16RoundMode>>(vdExp1BF16, vdExp1,
+                                                                                          dataMask1);
+                AscendC::Reg::Mul(vdExp0BF16, vdExp0BF16, (AscendC::Reg::RegTensor<bfloat16_t>&)halfScaleForMul,
+                                  dataMask1);
+                AscendC::Reg::Mul(vdExp1BF16, vdExp1BF16, (AscendC::Reg::RegTensor<bfloat16_t>&)halfScaleForMul,
+                                  dataMask1);
+                AscendC::Reg::Interleave(vdExp0BF16, vdExp1BF16, vdExp0BF16, vdExp1BF16);
+                AscendC::Reg::Cast<T2, bfloat16_t, castTraitRM<roundMode>>(vdExp0FP4, vdExp0BF16, dataMask1);
+                AscendC::Reg::Cast<T2, bfloat16_t, castTraitRM<roundMode>>(vdExp1FP4, vdExp1BF16, dataMask1);
+            } else {
+                AscendC::Reg::Mul(vdExp0, vdExp0, (AscendC::Reg::RegTensor<T1>&)halfScaleForMul, dataMask1);
+                AscendC::Reg::Mul(vdExp1, vdExp1, (AscendC::Reg::RegTensor<T1>&)halfScaleForMul, dataMask1);
+                AscendC::Reg::Interleave(vdExp0, vdExp1, vdExp0, vdExp1);
+                AscendC::Reg::Cast<T2, T1, castTraitRM<roundMode>>(vdExp0FP4, vdExp0, dataMask1);
+                AscendC::Reg::Cast<T2, T1, castTraitRM<roundMode>>(vdExp1FP4, vdExp1, dataMask1);
+            }
+
+            Reg::StoreAlign<int8_t, Reg::PostLiteral::POST_MODE_UPDATE, Reg::StoreDist::DIST_PACK4_B32>(
+                outLocalAddr, (Reg::RegTensor<int8_t>&)vdExp0FP4, OUT_ELE_NUM_ONE_BLK, dataMask1);
+            Reg::StoreAlign<int8_t, Reg::PostLiteral::POST_MODE_UPDATE, Reg::StoreDist::DIST_PACK4_B32>(
+                outLocalAddr, (Reg::RegTensor<int8_t>&)vdExp1FP4, OUT_ELE_NUM_ONE_BLK, dataMask1);
+        }
+    }
+    return;
+}
+
+template <typename T1, typename T2, AscendC::RoundMode toBf16RoundMode, AscendC::RoundMode roundMode>
+__aicore__ inline void ComputeDataMxfp4Optimize(__ubuf__ T1* srcAddr, __ubuf__ uint16_t* halfScaleLocalAddr,
+                                                __ubuf__ int8_t* outLocalAddr, uint32_t totalCountInUB,
+                                                uint16_t loopNum)
+{
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::MaskReg dataMask1;
+        AscendC::Reg::RegTensor<uint16_t> halfScaleForMul;
+        AscendC::Reg::RegTensor<T1> vdExp0;
+        AscendC::Reg::RegTensor<T1> vdExp1;
+        Reg::RegTensor<float> halfScaleForMulFP32;
+        Reg::RegTensor<float> vdExp0ZeroFP32;
+        Reg::RegTensor<float> vdExp0OneFP32;
+        Reg::RegTensor<float> vdExp1ZeroFP32;
+        Reg::RegTensor<float> vdExp1OneFP32;
+        Reg::RegTensor<bfloat16_t> vdExp0ZeroBF16;
+        Reg::RegTensor<bfloat16_t> vdExp0OneBF16;
+        Reg::RegTensor<bfloat16_t> vdExp1ZeroBF16;
+        Reg::RegTensor<bfloat16_t> vdExp1OneBF16;
+
+        AscendC::Reg::RegTensor<T2> vdExp0FP4;
+        AscendC::Reg::RegTensor<T2> vdExp1FP4;
+
+        Reg::MaskReg dataMaskB16 = Reg::CreateMask<half>();
+        Reg::MaskReg dataMaskB32 = Reg::CreateMask<float>();
+
+        for (uint16_t i = 0; i < loopNum; i++) {
+            dataMask1 = AscendC::Reg::UpdateMask<T1>(totalCountInUB);
+            AscendC::Reg::LoadAlign<T1, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_DINTLV_B16>(vdExp0, vdExp1, srcAddr, VL_B16 * NUM_TWO);
+            AscendC::Reg::LoadAlign<uint16_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                    AscendC::Reg::LoadDist::DIST_E2B_B16>(halfScaleForMul, halfScaleLocalAddr,
+                                                                          VL_BLOCK_NUM);
+
+            if constexpr (IsSameType<T1, half>::value) {
+                Reg::Cast<float, bfloat16_t, castTraitF16toFp32Zero>(
+                    halfScaleForMulFP32, (Reg::RegTensor<bfloat16_t>&)halfScaleForMul, dataMaskB16);
+
+                // vdExp0
+                Reg::Cast<float, T1, castTraitF16toFp32Zero>(vdExp0ZeroFP32, vdExp0, dataMaskB16);
+                Reg::Cast<float, T1, castTraitF16toFp32One>(vdExp0OneFP32, vdExp0, dataMaskB16);
+
+                Reg::Mul(vdExp0ZeroFP32, vdExp0ZeroFP32, halfScaleForMulFP32, dataMaskB32);
+                Reg::Mul(vdExp0OneFP32, vdExp0OneFP32, halfScaleForMulFP32, dataMaskB32);
+                ComputeFP4FromHalf<toBf16RoundMode, roundMode, T2>(vdExp0ZeroFP32);
+                ComputeFP4FromHalf<toBf16RoundMode, roundMode, T2>(vdExp0OneFP32);
+                AscendC::Reg::Cast<bfloat16_t, float, castTraitFp32toBF16RM<roundMode>>(vdExp0ZeroBF16, vdExp0ZeroFP32,
+                                                                                        dataMaskB32);
+                AscendC::Reg::Cast<bfloat16_t, float, castTraitFp32toBF16RM<roundMode>>(vdExp0OneBF16, vdExp0OneFP32,
+                                                                                        dataMaskB32);
+                Reg::Pack<uint16_t, uint32_t, Reg::HighLowPart::LOWEST>((Reg::RegTensor<uint16_t>&)vdExp0ZeroBF16,
+                                                                        (Reg::RegTensor<uint32_t>&)vdExp0ZeroBF16);
+                Reg::Pack<uint16_t, uint32_t, Reg::HighLowPart::LOWEST>((Reg::RegTensor<uint16_t>&)vdExp0OneBF16,
+                                                                        (Reg::RegTensor<uint32_t>&)vdExp0OneBF16);
+                Reg::Interleave(vdExp0ZeroBF16, vdExp0OneBF16, vdExp0ZeroBF16, vdExp0OneBF16);
+
+                // vdExp1
+                Reg::Cast<float, T1, castTraitF16toFp32Zero>(vdExp1ZeroFP32, vdExp1, dataMaskB16);
+                Reg::Cast<float, T1, castTraitF16toFp32One>(vdExp1OneFP32, vdExp1, dataMaskB16);
+
+                Reg::Mul(vdExp1ZeroFP32, vdExp1ZeroFP32, halfScaleForMulFP32, dataMaskB32);
+                Reg::Mul(vdExp1OneFP32, vdExp1OneFP32, halfScaleForMulFP32, dataMaskB32);
+                ComputeFP4FromHalf<toBf16RoundMode, roundMode, T2>(vdExp1ZeroFP32);
+                ComputeFP4FromHalf<toBf16RoundMode, roundMode, T2>(vdExp1OneFP32);
+                AscendC::Reg::Cast<bfloat16_t, float, castTraitFp32toBF16RM<roundMode>>(vdExp1ZeroBF16, vdExp1ZeroFP32,
+                                                                                        dataMaskB32);
+                AscendC::Reg::Cast<bfloat16_t, float, castTraitFp32toBF16RM<roundMode>>(vdExp1OneBF16, vdExp1OneFP32,
+                                                                                        dataMaskB32);
+                Reg::Pack<uint16_t, uint32_t, Reg::HighLowPart::LOWEST>((Reg::RegTensor<uint16_t>&)vdExp1ZeroBF16,
+                                                                        (Reg::RegTensor<uint32_t>&)vdExp1ZeroBF16);
+                Reg::Pack<uint16_t, uint32_t, Reg::HighLowPart::LOWEST>((Reg::RegTensor<uint16_t>&)vdExp1OneBF16,
+                                                                        (Reg::RegTensor<uint32_t>&)vdExp1OneBF16);
+                Reg::Interleave(vdExp1ZeroBF16, vdExp1OneBF16, vdExp1ZeroBF16, vdExp1OneBF16);
+
+                AscendC::Reg::Interleave(vdExp0ZeroBF16, vdExp1ZeroBF16, vdExp0ZeroBF16, vdExp1ZeroBF16);
+                AscendC::Reg::Cast<T2, bfloat16_t, castTraitRM<roundMode>>(vdExp0FP4, vdExp0ZeroBF16, dataMask1);
+                AscendC::Reg::Cast<T2, bfloat16_t, castTraitRM<roundMode>>(vdExp1FP4, vdExp1ZeroBF16, dataMask1);
+            } else {
+                AscendC::Reg::Mul(vdExp0, vdExp0, (AscendC::Reg::RegTensor<T1>&)halfScaleForMul, dataMask1);
+                AscendC::Reg::Mul(vdExp1, vdExp1, (AscendC::Reg::RegTensor<T1>&)halfScaleForMul, dataMask1);
+                AscendC::Reg::Interleave(vdExp0, vdExp1, vdExp0, vdExp1);
+                AscendC::Reg::Cast<T2, T1, castTraitRM<roundMode>>(vdExp0FP4, vdExp0, dataMask1);
+                AscendC::Reg::Cast<T2, T1, castTraitRM<roundMode>>(vdExp1FP4, vdExp1, dataMask1);
+            }
+
+            AscendC::Reg::StoreAlign<int8_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                     AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                outLocalAddr, (AscendC::Reg::RegTensor<int8_t>&)vdExp0FP4, OUT_ELE_NUM_ONE_BLK, dataMask1);
+            AscendC::Reg::StoreAlign<int8_t, AscendC::Reg::PostLiteral::POST_MODE_UPDATE,
+                                     AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                outLocalAddr, (AscendC::Reg::RegTensor<int8_t>&)vdExp1FP4, OUT_ELE_NUM_ONE_BLK, dataMask1);
+        }
+    }
+    return;
+}
+
+} // namespace RmsNormDynamicMxQuantNs
+
+#endif // RMS_NORM_DYNAMIC_MX_QUANT_COMMON_H

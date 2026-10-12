@@ -1,0 +1,51 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file flat_quant_tiling.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_TILING_RUNTIME_FLAT_QUANT_TILING_H
+#define OPS_BUILT_IN_OP_TILING_RUNTIME_FLAT_QUANT_TILING_H
+
+#include "register/tilingdata_base.h"
+#include "tiling/tiling_api.h"
+#include "tiling/platform/platform_ascendc.h"
+
+namespace optiling {
+
+struct FlatQuantCompileInfo {
+    int64_t aicNum;
+    int64_t aivNum;
+    NpuArch npuArch = NpuArch::DAV_2201;
+};
+
+BEGIN_TILING_DATA_DEF(FlatQuantTilingData)
+TILING_DATA_FIELD_DEF(uint8_t, dataType);
+TILING_DATA_FIELD_DEF(uint8_t, hasP2);
+TILING_DATA_FIELD_DEF(int64_t, K);
+TILING_DATA_FIELD_DEF(int64_t, M);
+TILING_DATA_FIELD_DEF(int64_t, N);
+TILING_DATA_FIELD_DEF(int64_t, iterBatch);
+TILING_DATA_FIELD_DEF(float, clipRatio);
+TILING_DATA_FIELD_DEF(float, dstTypeMax);
+TILING_DATA_FIELD_DEF(float, invDstTypeMax);
+
+TILING_DATA_FIELD_DEF_STRUCT(TCubeTiling, matmulTilingR);
+TILING_DATA_FIELD_DEF_STRUCT(TCubeTiling, matmulTilingL);
+
+TILING_DATA_FIELD_DEF(int64_t, groupNum); // group_list第一维的长度，为0表示group_list为空
+TILING_DATA_FIELD_DEF(int64_t, groupListType);
+END_TILING_DATA_DEF;
+
+REGISTER_TILING_DATA_CLASS(FlatQuant, FlatQuantTilingData)
+} // namespace optiling
+
+#endif // OPS_BUILT_IN_OP_TILING_RUNTIME_FLAT_QUANT_TILING_H

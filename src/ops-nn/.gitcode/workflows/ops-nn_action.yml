@@ -1,0 +1,387 @@
+name: PR-pipeline_ops-nn
+
+concurrency:
+    max: 15
+    exceed-action: QUEUE
+    enable: true
+    preemption:
+      enable: true
+      events: [mr_id]
+
+on:
+  pull_request_comment:
+    types: [created]
+    branches: [ '**' ]
+    comments: [ '^(?:\/)?compile*' ]
+  pr_comment:
+      types: [ created ]
+      keyword: '^(?:\/)?compile*'
+
+env:
+  org_name: "${{ vars.ORG_NAME }}"
+  repo_name: ${{atomgit.event.repository.name}}
+  MERGE_ID: ${{atomgit.event.pull_request.number}}
+  obs_path: "${{ env.org_name }}/${{ env.repo_name }}/ci/package/${{ env.MERGE_ID }}"
+  TARGET_BRANCH: ${{atomgit.ref_name}}
+  SOURCE_BRANCH: ${{atomgit.head_ref}}
+  obs_smoke_path: "${{ env.obs_path }}/presmoke/2"
+  online: ${{ vars.APPLY_LABEL }}
+  run_package_name: "cann-ops-nn-custom_linux-x86_64_950.run"
+
+stages:
+  stage1:
+    name: PreBuild
+    jobs:
+      JOB_image:
+        name: Test_image
+        steps:
+          - name: revise_image
+            identifier: revise_image
+            uses: cann/.gitcode/actions/revise-img@master
+            with:
+              repo_name: "ops-nn"
+              target_branch: ${{ env.TARGET_BRANCH }}
+              repo_url: ${{ vars.CI_PATH }}
+              comment: ${{ atomgit.event.comment.body }}
+              token: ${{ secrets.TESTTOKEN }}
+          -
+            name: show_output
+            run: |
+              echo "image: ${{ steps.revise_image.outputs.Compile_Ascend_X86  }}"
+        if: "${{ default() }}"
+        runs-on: ["self-hosted", "arch=x64", "spec=small"]
+      JOB_pre:
+        name: Test_PreBuild
+        uses: cann/.gitcode/.gitcode/workflows/pre_action.yml@master
+    pre:
+    - type: auto
+    fail-fast: true
+  stage2:
+    name: Compile
+    jobs:
+      JOB_codecheck:
+        name: CodeCheck
+        uses: cann/.gitcode/.gitcode/workflows/codecheck_action.yml@master
+        with:
+          precommit_image_version: ${{ jobs.JOB_image.outputs.precommit }}
+          codecheck_image_version: ${{ jobs.JOB_image.outputs.codecheck }}
+      JOB_x86_compile:
+        name: Compile_X86
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'x86_compile'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn_9.1.0_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86 }}
+      JOB_x86_compile_ubuntu24:
+        name: Compile_X86_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'x86_compile_ubuntu24'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn_9.1.0_linux-x86_64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_ubuntu24 }}
+      JOB_X86_monitor_910b:
+        name: Compile_X86_monitor_910b
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'X86_monitor_910b'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn-monitor-910b_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_X86_monitor }}
+      JOB_X86_monitor_910c:
+        name: Compile_X86_monitor_910c
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'X86_monitor_910c'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn-monitor-910c_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_X86_monitor }}
+      JOB_X86_monitor_950:
+        name: Compile_X86_monitor_950
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'X86_monitor_950'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn-monitor-950_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_X86_monitor_9_0_0 }}
+      JOB_Compile_Ascend_X86_950_ubuntu24:
+        name: Compile_Ascend_X86_950_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_950_ubuntu24'
+          arch: 'x64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn-custom_linux-x86_64_950_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_950_ubuntu24 }}
+      JOB_Compile_Ascend_X86_mobile_station:
+        name: Compile_Ascend_X86_mobile_station
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_mobile_station'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn-kirinx90_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_mobile_station }}
+      JOB_Compile_Ascend_X86_mobile_station_ubuntu24:
+        name: Compile_Ascend_X86_mobile_station_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_mobile_station_ubuntu24'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn-kirinx90_linux-x86_64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_mobile_station_ubuntu24 }}
+      JOB_Compile_Ascend_X86_950:
+        name: Compile_Ascend_X86_950
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_950'
+          arch: 'x64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn-custom_linux-x86_64_950.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_950 }}
+      JOB_Pre_compile:
+        name: Compile_Pre
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Pre_compile'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn-fatrelu_mul_linux-aarch64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Pre_Compile }}
+      JOB_compile_single:
+        name: Compile_single
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'compile_single'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'single.tar.gz'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_single }}
+      JOB_arm_compile:
+        name: Compile_arm
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'arm_compile'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn_linux-aarch64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM }}
+      JOB_arm_compile_ubuntu24:
+        name: Compile_arm_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'arm_compile_ubuntu24'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn_linux-aarch64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_ubuntu24 }}
+      JOB_compile_single_ubuntu24:
+        name: Compile_single_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'compile_single_ubuntu24'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'single_ubuntu24.tar.gz'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_single_ubuntu24 }}
+      JOB_Compile_Ascend_experimental:
+        name: Compile_Ascend_experimental
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_experimental'
+          arch: 'arm64'
+          size: 'large'
+          package_name: 'cann-ops-nn-experimental_linux-aarch64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_experimental }}
+      JOB_Compile_Ascend_experimental_ubuntu24:
+        name: Compile_Ascend_experimental_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_experimental_ubuntu24'
+          arch: 'arm64'
+          size: 'large'
+          package_name: 'cann-ops-nn-experimental_linux-aarch64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_experimental_ubuntu24 }}
+      JOB_Compile_Ascend_ARM_950_ubuntu24:
+        name: Compile_Ascend_ARM_950_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_ARM_950_ubuntu24'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn-950_linux-aarch64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_950_ubuntu24 }}
+      JOB_Compile_Ascend_ARM_950:
+        name: Compile_Ascend_ARM_950
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_ARM_950'
+          arch: 'arm64'
+          size: 'xlarge'
+          package_name: 'cann-ops-nn-950_linux-aarch64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_950 }}
+      JOB_Compile_Ascend_X86_mobile_station_9030_ubuntu24:
+        name: Compile_Ascend_X86_mobile_station_9030_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_mobile_station_9030_ubuntu24'
+          arch: 'x64'
+          size: 'large'
+          package_name: 'cann-ops-nn-kirin9030_linux-x86_64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_mobile_station_ubuntu24 }}
+      JOB_staticcheck_md_check:
+        name: staticcheck_md_check
+        uses: .gitcode/workflows/staticcheck_action.yml
+        with:
+          check_type: 'md_check'
+          image_version: ${{ jobs.JOB_image.outputs.staticcheck }}
+    pre:
+    - type: auto
+    fail-fast: true
+  stage3:
+    name: UT
+    jobs:
+      JOB_api_check:
+        name: API_Check
+        steps:
+          -
+            name: api-check
+            identifier: api-check
+            uses: cann/.gitcode/actions/api-check@master
+            with:
+              org_name: ${{ env.org_name }}
+              mode: check
+              repo_name: ${{ env.repo_name }}
+              merge_id: ${{ env.MERGE_ID }}
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: ["self-hosted", "arch=x64", "spec=small"]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/${{ jobs.JOB_image.outputs.API_Check }}
+      JOB_UT_Test_ophost:
+        name: UT_Test_ophost
+        uses: .gitcode/workflows/ut_action.yml
+        with:
+          ut_type: 'ophost'
+          ut_package: 'coverage_*.info'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test_ophost }}
+      JOB_UT_Test_opapi:
+        name: UT_Test_opapi
+        uses: .gitcode/workflows/ut_action.yml
+        with:
+          ut_type: 'opapi'
+          ut_package: 'coverage_*.info'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test_opapi }}
+      JOB_UT_Test_kernel:
+        name: UT_Test_kernel
+        uses: .gitcode/workflows/ut_action.yml
+        with:
+          ut_type: 'opkernel'
+          ut_package: 'coverage_*.info'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test_kernel }}
+      JOB_UT_Test_opgraph:
+        name: UT_Test_opgraph
+        uses: .gitcode/workflows/ut_action.yml
+        with:
+          ut_type: 'opgraph'
+          ut_package: 'coverage_*.info'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test_opgraph }}
+    pre:
+    - type: auto
+    fail-fast: true
+  stage4:
+    name: PreSmoke
+    jobs:
+      A2_smoke:
+        name: PreSmoke_A2
+        steps:
+          -
+            name: Checkout
+            identifier: process_checkout
+            uses: checkout
+            with:
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+          -
+            name: download
+            uses: obs-download
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{ secrets.AK }}
+              secret-key: ${{ secrets.SK }}
+              key: |
+                ${{ env.obs_path }}/pr_filelist.txt
+                ${{ env.obs_path }}/pr_filelist_mod.txt
+                ${{ env.obs_path }}/update_file_detail.txt
+                ${{ env.obs_path }}/pre_smoke.sh
+              path: ${{ steps.process_checkout.outputs.path }}
+          -
+            name: smoke executor
+            timeout-minutes: 30
+            run: |
+                set -e
+                # set env
+                export WORKSPACE=${{ steps.process_checkout.outputs.path }}
+                export single_tar_url=${{jobs.JOB_compile_single.outputs.arm_run_url}}
+                export experimental_run_url=${{jobs.JOB_Compile_Ascend_experimental_ubuntu24.outputs.arm_run_url}}
+                export fatrelu_run_url=${{jobs.JOB_Pre_compile.outputs.arm_run_url}}
+                export repo_name=${{env.repo_name}}
+                export pr_id=${{ env.MERGE_ID }}
+                export AK=${{secrets.AK}}
+                export SK=${{secrets.SK}}
+                bash ${{ steps.process_checkout.outputs.path }}/pre_smoke.sh
+          - name: upload
+            uses: obs-upload
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{ secrets.AK }}
+              secret-key: ${{ secrets.SK }}
+              artifact-path: "${{ steps.process_checkout.outputs.path }}/slog*.tar.gz"
+              object-prefix: ${obs_smoke_path}/plog/
+        if: "${{ default() }}"
+        runs-on: ['self-hosted','npu=1','smoke=204']
+        container:
+          image: swr.cn-south-1.myhuaweicloud.com/pre_smoke/${{ jobs.JOB_image.outputs.PreSmoke_A900 }}
+      JOB_st_test_950:
+        name: ST_test_950
+        uses: .gitcode/workflows/st_test_action.yml
+      PreSmoke_harmony-infer-chs-nn:
+        name: PreSmoke_harmony-infer-chs-nn
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: [self-hosted, arch=x64, os=ubuntu, type=chs_phone]
+        steps:
+          - name: Checkout
+            identifier: process_checkout
+            uses: checkout
+            with:
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+          - name: 执行 Kirin PreSmoke_harmony-infer-chs-nn 测试
+            run: bash .gitcode/scripts/kirin_smoke_chs.sh
+      PreSmoke_harmony-infer-cpro-nn:
+        name: PreSmoke_harmony-infer-cpro-nn
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: [self-hosted, arch=x64, os=ubuntu, type=kirinx90]
+        steps:
+          - name: Checkout
+            identifier: process_checkout
+            uses: checkout
+            with:
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+          - name: 执行 Kirin PreSmoke_harmony-infer-cpro-nn 测试
+            run: bash .gitcode/scripts/kirin_smoke_cpro.sh
+    pre:
+    - type: auto
+    fail-fast: true
+
+post:
+  jobs:
+    job_post:
+      name: Test_post
+      uses: cann/.gitcode/.gitcode/workflows/post_action.yml@master

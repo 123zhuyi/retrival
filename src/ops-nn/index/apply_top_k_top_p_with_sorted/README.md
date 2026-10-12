@@ -1,0 +1,129 @@
+# ApplyTopKTopPWithSorted
+
+## 产品支持情况
+
+| 产品                                                         | 是否支持 |
+| :----------------------------------------------------------- | :------: |
+| <term>Ascend 950PR/Ascend 950DT</term>                          |    √  |
+| <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>     |    √     |
+| <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |    √     |
+| <term>Atlas 200I/500 A2 推理产品</term>                      |    ×     |
+| <term>Atlas 推理系列产品</term>                             |    √    |
+| <term>Atlas 训练系列产品</term>                              |    ×   |
+|  <term>Kirin X90 处理器系列产品</term> | √ |
+|  <term>Kirin 9030 处理器系列产品</term> | √ |
+
+## 功能说明
+
+- 算子功能：对输入sorted_value和sorted_indices进行top-k和top-p采样过滤。p和k为可选输入，二者至少传入一个，支持仅top-k过滤、仅top-p过滤、top-k与top-p联合过滤三种模式。
+- 计算公式：
+  - 计算保留的阈值（第k大的值）。
+  $$topKValue[b][v] = sortedValue[b][sortedValue.size(1) - k[b]]$$
+  - 生成top-k需要过滤的mask。
+  $$topKMask = sortedValue < topKValue$$
+  - 通过topKMask将小于阈值的部分置为-Inf。
+
+  $$
+  sortedValue[b][v] =
+  \begin{cases}
+  -Inf & \text{topKMask[b][v]=true}\\
+  sortedValue[b][v] & \text{topKMask[b][v]=false}
+  \end{cases}
+  $$
+
+  - 通过softmax将经过top-k过滤后的数据按最后一轴转换为概率分布。
+  $$probsValue = softmax(sortedValue, dim=-1)$$
+  - 按最后一轴计算累计概率（从最小的概率开始累加）。
+  $$probsSum = cumsum(probsValue, dim=-1)$$
+  - 生成top-p的mask，累计概率小于等于1-p的位置需要过滤掉，并保证每个batch至少保留一个元素。
+  $$topPMask[b][v] = probsSum[b][v] <= 1-p[b]$$
+  $$topPMask[b][-1] = false$$
+  - 通过topPMask将小于阈值的部分置为-Inf。
+
+  $$
+  sortedValue[b][v] =
+  \begin{cases}
+  -Inf & \text{topPMask[b][v]=true}\\
+  sortedValue[b][v] & \text{topPMask[b][v]=false}
+  \end{cases}
+  $$
+
+  - 将过滤后的结果按sortedIndices还原到原始顺序。
+  $$out[b][v] = sortedValue[b][sortedIndices[b][v]]$$
+  其中$0 \le b \lt logits.size(0), 0 \le v \lt logits.size(1)$。
+
+## 参数说明
+
+<table style="undefined;table-layout: fixed; width: 1150px"><colgroup>
+  <col style="width: 150px">
+  <col style="width: 150px">
+  <col style="width: 500px">
+  <col style="width: 250px">
+  <col style="width: 100px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>参数名</th>
+      <th>输入/输出/属性</th>
+      <th>描述</th>
+      <th>数据类型</th>
+      <th>数据格式</th>
+    </tr></thead>
+  <tbody>
+    <tr>
+      <td>sorted_value</td>
+      <td>输入</td>
+      <td>表示需要处理的数据的值，公式中的`sortedValue`。需要升序顺序。</td>
+      <td>FLOAT、FLOAT16、BFLOAT16</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>sorted_indices</td>
+      <td>输入</td>
+      <td>表示需要处理的数据的索引，公式中的`sortedIndices`。</td>
+      <td>INT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>p</td>
+      <td>输入</td>
+      <td>表示top-p的阈值，公式中的p。可选输入，与k至少传入一个。数据类型需要与`sorted_value`一致，shape需要与`sorted_value.size(0)`一致。</td>
+      <td>FLOAT、FLOAT16、BFLOAT16</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>k</td>
+      <td>输入</td>
+      <td>表示top-k的阈值，公式中的k。可选输入，与p至少传入一个。shape需要与`sorted_value.size(0)`一致。</td>
+      <td>INT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>logits</td>
+      <td>输入</td>
+      <td>表示排序前的原始数据，公式中的logits。可选输入，数据类型需要与`sorted_value`一致，shape需要与`sorted_value`一致。传入时算子将基于该输入完成过滤还原计算。</td>
+      <td>FLOAT、FLOAT16、BFLOAT16</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>out</td>
+      <td>输出</td>
+      <td>表示过滤后的数据，公式中的out。数据类型、shape需要与`sorted_value`一致。</td>
+      <td>FLOAT、FLOAT16、BFLOAT16</td>
+      <td>ND</td>
+    </tr>
+  </tbody></table>
+
+- <term>Atlas 推理系列产品</term>：参数`sorted_value`、`p`、`out`的数据类型不支持BFLOAT16。
+
+- Kirin X90/Kirin 9030 处理器系列产品：不支持BFLOAT16。
+
+## 约束说明
+
+- p和k为可选输入，二者不能同时为空，至少传入一个。
+
+## 调用说明
+
+| 调用方式   | 样例代码           | 说明                                         |
+| ---------------- | --------------------------- | --------------------------------------------------- |
+| aclnn接口  | [test_aclnn_apply_top_k_top_p.cpp](examples/test_aclnn_apply_top_k_top_p.cpp) | 通过[aclnnApplyTopKTopP](docs/aclnnApplyTopKTopP.md)接口方式调用ApplyTopKTopPWithSorted算子。 |

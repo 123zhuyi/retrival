@@ -1,0 +1,30 @@
+{
+  "round_index": 3,
+  "algorithm": "mcts",
+  "op_name": "chunk_gated_delta_fwd_h",
+  "category": "gated-delta-net",
+  "template_exists": true,
+  "template_hits": ["chunked-recurrence.md", "gated-delta-net.md"],
+  "matched_patterns": [
+    "D1: per-(batch,head) full-K column, V-tile split grid",
+    "D2: serial in-kernel chunk loop (chunk_size outer)",
+    "D3: fp32 register-resident state accumulator",
+    "D5: V-tile area constraint BLOCK_K*BLOCK_V <= ~1024",
+    "D7: multibuffer=True / unit_flag=True launch options",
+    "D9: per-chunk post-update state store"
+  ],
+  "analysis_policy": "pattern_entry",
+  "direction": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, host pre-flattened [BH,T,D], in-kernel varlen seq-prefix chunk offset)",
+  "mcts_context": {
+    "mcts_parent_id": "root",
+    "selection_path_depth": 1,
+    "parent_mean_reward": 1.8662237404570077,
+    "parent_visit_count": 2,
+    "mcts_pending_expansion": true,
+    "rationale": "Virtual-root pending expansion; no reusable Triton parent code in view, so independently reconstruct the proven fused chunk-recurrence recipe against the freeze-anchored 6402eb golden semantics (which differ from the broken 0c4c01 global baseline)."
+  },
+  "analysis_reasoning": "All 8 cases are bf16 K=V=128, no initial_state, no output_final_state, chunk_size 64/128, dense + varlen (incl. GQA HK=8/HV=24). The recurrence S_new = clamp(S*exp(g_last) + k_c^T @ clamp((u_c - w_c@S)*exp(g_last-g_c))) must run serially per sequence chunk. Proven recipe: BLOCK_K=128 full column, BLOCK_V=64 universal V-tile, fp32-ieee dots, multibuffer/unit_flag launch. In-kernel varlen prefix scan over cu_seqlens avoids host loops.",
+  "evidence_sources": ["mcts_tree", "model_knowledge", "direction_history", "experience_file"],
+  "target_speedup": 5.0,
+  "status": "active"
+}

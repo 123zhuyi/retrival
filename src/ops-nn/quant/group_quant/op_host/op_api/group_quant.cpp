@@ -1,0 +1,70 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include "group_quant.h"
+#include "opdev/data_type_utils.h"
+#include "opdev/aicpu/aicpu_task.h"
+#include "opdev/format_utils.h"
+#include "opdev/make_op_executor.h"
+#include "opdev/op_def.h"
+#include "opdev/op_dfx.h"
+#include "opdev/op_executor.h"
+#include "opdev/op_log.h"
+#include "opdev/shape_utils.h"
+#include "op_api/aclnn_util.h"
+#include "aclnn_kernels/common/op_error_check.h"
+
+using namespace op;
+
+namespace l0op {
+
+OP_TYPE_REGISTER(GroupQuant);
+
+static const std::initializer_list<op::DataType> AICORE_DTYPE_SUPPORT_LIST = {
+    op::DataType::DT_FLOAT16, op::DataType::DT_FLOAT, op::DataType::DT_BF16};
+
+static inline const std::initializer_list<op::DataType>& GetDtypeSupportListBySocVersion()
+{
+    const std::map<NpuArch, const std::initializer_list<op::DataType>*> socSupportDtypes = {
+        {NpuArch::DAV_2201, &AICORE_DTYPE_SUPPORT_LIST}, {NpuArch::DAV_3510, &AICORE_DTYPE_SUPPORT_LIST}};
+    auto curArch = GetCurrentPlatformInfo().GetCurNpuArch();
+    auto found = socSupportDtypes.find(curArch);
+    if (found != socSupportDtypes.end()) {
+        return *(found->second);
+    }
+    return AICORE_DTYPE_SUPPORT_LIST;
+}
+
+const aclTensor* GroupQuantAiCore(const aclTensor* x, const aclTensor* scale, const aclTensor* groupIndex,
+                                  const aclTensor* offsetOptional, int32_t dstType, aclTensor* out,
+                                  aclOpExecutor* executor)
+{
+    L0_DFX(GroupQuantAiCore, x, scale, groupIndex, offsetOptional, dstType, out);
+    auto ret = ADD_TO_LAUNCHER_LIST_AICORE(GroupQuant, OP_INPUT(x, scale, groupIndex, offsetOptional), OP_OUTPUT(out),
+                                           OP_ATTR(dstType));
+    OP_CHECK_ADD_TO_LAUNCHER_LIST_AICORE(ret != ACLNN_SUCCESS, return nullptr,
+                                         "GroupQuant ADD_TO_LAUNCHER_LIST_AICORE failed.");
+    return out;
+}
+
+const aclTensor* GroupQuant(const aclTensor* x, const aclTensor* scale, const aclTensor* groupIndex,
+                            const aclTensor* offsetOptional, int32_t dstType, aclOpExecutor* executor)
+{
+    op::Shape outShape = x->GetViewShape();
+    auto out = executor->AllocTensor(outShape, op::DataType(dstType));
+
+    if (!CheckType(x->GetDataType(), GetDtypeSupportListBySocVersion())) {
+        OP_LOGE(ACL_ERROR_INVALID_PARAM, "dtype of input x is not supported");
+        return nullptr;
+    }
+
+    return GroupQuantAiCore(x, scale, groupIndex, offsetOptional, dstType, out, executor);
+}
+} // namespace l0op

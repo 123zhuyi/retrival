@@ -1,0 +1,18 @@
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp b/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp
+index 2133458efe74..7379cac5d0a0 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/TilingInterfaceImpl.cpp
+@@ -492,8 +492,11 @@ struct LinalgOpPartialReductionInterface
+ template <typename OpType>
+ static void registerOne(MLIRContext *ctx) {
+   OpType::template attachInterface<LinalgOpTilingInterface<OpType>>(*ctx);
+-  OpType::template attachInterface<LinalgOpPartialReductionInterface<OpType>>(
+-      *ctx);
++#if BSPUB_DAVINCI_BISHENGIR
++  if constexpr (!std::is_same_v<OpType, ReduceOp>)
++#endif
++    OpType::template attachInterface<LinalgOpPartialReductionInterface<OpType>>(
++        *ctx);
+ }
+ 
+ /// Variadic helper function.

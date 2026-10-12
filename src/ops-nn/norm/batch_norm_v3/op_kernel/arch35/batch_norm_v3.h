@@ -1,0 +1,713 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file batch_norm_v3.h
+ * \brief
+ */
+#ifndef BATCH_NORM_V3_H
+#define BATCH_NORM_V3_H
+
+#include "kernel_tiling/kernel_tiling.h"
+#include "kernel_operator.h"
+#include "../../norm_common/reduce_common_regbase.h"
+#include "batch_norm_v3_regbase_common.h"
+
+namespace BatchNormV3Ops {
+using namespace AscendC;
+using AscendC::Reg::CreateMask;
+using AscendC::Reg::LoadDist;
+using AscendC::Reg::LocalMemBar;
+using AscendC::Reg::MaskPattern;
+using AscendC::Reg::MaskReg;
+using AscendC::Reg::MemType;
+using AscendC::Reg::RegTensor;
+using AscendC::Reg::StoreDist;
+using AscendC::Reg::UpdateMask;
+
+constexpr static int64_t BLOCK_SIZE = 32;
+constexpr static uint32_t FLOAT_BYTES = 4;
+constexpr static int64_t MAX_STRIDE = 65535;
+constexpr static int64_t DOUBLE_BUFFER = 2;
+constexpr static int64_t SINGLE_BUFFER = 1;
+constexpr static int64_t LOOP_HIGH_SHIFT = 21;
+constexpr static int64_t LOOP_STRIDE_HIGH_SHIFT = 40;
+constexpr static float POS_INF = 3.40282366920938E+38;
+constexpr static float ZERO = 0.0f;
+constexpr static int64_t NDDMA_THRESHOLD = 32;
+constexpr static int64_t NDDMA_SECOND_DIM = 1;
+constexpr static int64_t NDDMA_THIRD_DIM = 2;
+constexpr static int64_t NDDMA_DIM_NUM = 3;
+constexpr static int64_t DICHOTOMY_ADD_COEFF = 2;
+
+__aicore__ inline constexpr uint32_t GetUbBlockSize() { return 32U; }
+
+__aicore__ inline constexpr uint32_t GetVRegSize() { return AscendC::VECTOR_REG_WIDTH; }
+
+template <typename T>
+__aicore__ inline T FloorDiv(T a, T b)
+{
+    return a / b;
+}
+
+template <typename T>
+__aicore__ inline T CeilDiv(T a, T b)
+{
+    using type = typename std::conditional<sizeof(T) == sizeof(uint8_t) || sizeof(T) == sizeof(uint16_t), uint32_t,
+                                           uint64_t>::type;
+    type res = (static_cast<type>(a) + static_cast<type>(b) - 1) / static_cast<type>(b);
+    return static_cast<T>(res);
+}
+
+template <typename T, typename T_BETA, typename T_RUNNING_MEAN>
+class BatchNormV3FullReduce {
+public:
+    __aicore__ inline uint32_t CEIL_DIV(uint32_t x, uint32_t y)
+    {
+        if (y > 0) {
+            return (x + y - 1) / y;
+        }
+        return 0;
+    }
+
+    __aicore__ inline uint32_t CEIL_ALIGN(uint32_t x, uint32_t y) { return CEIL_DIV(x, y) * y; }
+
+    __aicore__ inline BatchNormV3FullReduce(const BatchNormV3FullReduceRegbaseTilingData* tilingData)
+    {
+        this->r1 = tilingData->r1;
+        this->aFactor = tilingData->aFactor;
+        this->a = tilingData->a;
+        this->r0 = tilingData->r0;
+        this->blockNum = tilingData->blockNum;
+        this->aBlockFactor = tilingData->aBlockFactor;
+        this->r1r0LoopCount = tilingData->r1r0LoopCount;
+        this->epsilon = tilingData->epsilon;
+        this->momentum = tilingData->momentum;
+
+        float one = 1.0;
+        this->oneSubMomentum = one - this->momentum;
+        int64_t reduceNum = this->r1 * this->r0;
+        this->besselCorrectionFactor = (static_cast<float>(reduceNum) / static_cast<float>(reduceNum - 1));
+
+        this->powerOfTwoForR = tilingData->powerOfTwoForR;
+        this->binaryAddQuotient = tilingData->binaryAddQuotient;
+        this->binaryAddK = tilingData->binaryAddK;
+        this->binaryAddLastNum = tilingData->binaryAddLastNum;
+    }
+
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR beta, GM_ADDR gamma, GM_ADDR mean, GM_ADDR var, GM_ADDR y,
+                                GM_ADDR mean_out, GM_ADDR var_out, GM_ADDR batch_mean, GM_ADDR batch_rstd)
+    {
+        auto blockIdx = GetBlockIdx();
+
+        this->r1r0Align = (((this->r1 * this->r0 * sizeof(T) + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE) / sizeof(T);
+        this->singleA = (blockIdx == this->blockNum - 1) ? (this->a - this->aBlockFactor * (this->blockNum - 1)) :
+                                                           this->aBlockFactor;
+
+        int64_t aGmOffset = this->aBlockFactor * blockIdx;
+        int64_t arGmOffset = aGmOffset * this->r0;
+        xGm.SetGlobalBuffer((__gm__ T*)x + arGmOffset);
+        betaGm.SetGlobalBuffer((__gm__ T_BETA*)beta + aGmOffset);
+        gammaGm.SetGlobalBuffer((__gm__ T_BETA*)gamma + aGmOffset);
+        runningMeanGm.SetGlobalBuffer((__gm__ T_RUNNING_MEAN*)mean + aGmOffset);
+        runningVarGm.SetGlobalBuffer((__gm__ T_RUNNING_MEAN*)var + aGmOffset);
+
+        yGm.SetGlobalBuffer((__gm__ T*)y + arGmOffset);
+        batchMeanGm.SetGlobalBuffer((__gm__ float*)batch_mean + aGmOffset);
+        batchRstdGm.SetGlobalBuffer((__gm__ float*)batch_rstd + aGmOffset);
+        runningMeanOutGm.SetGlobalBuffer((__gm__ T_RUNNING_MEAN*)mean_out + aGmOffset);
+        runningVarOutGm.SetGlobalBuffer((__gm__ T_RUNNING_MEAN*)var_out + aGmOffset);
+
+        // 同生命周期的成对 que 合并:各按自身 dtype 的 block 对齐算 half,保证第二段起点 32B 对齐。
+        this->betaGammaHalf = CEIL_ALIGN(static_cast<uint32_t>(this->aFactor), BLOCK_SIZE / sizeof(T_BETA));
+        pipe.InitBuffer(betaGammaQueue, SINGLE_BUFFER, MERGED_QUE_NODE_NUM * this->betaGammaHalf * sizeof(T_BETA));
+
+        this->batchMeanRstdHalf = CEIL_ALIGN(static_cast<uint32_t>(this->aFactor), BLOCK_SIZE / FLOAT_BYTES);
+        pipe.InitBuffer(batchMeanRstdQueue, SINGLE_BUFFER,
+                        MERGED_QUE_NODE_NUM * this->batchMeanRstdHalf * sizeof(float));
+
+        this->runningHalf = CEIL_ALIGN(static_cast<uint32_t>(this->aFactor), BLOCK_SIZE / sizeof(T_RUNNING_MEAN));
+        pipe.InitBuffer(runningMeanVarInQueue, SINGLE_BUFFER,
+                        MERGED_QUE_NODE_NUM * this->runningHalf * sizeof(T_RUNNING_MEAN));
+        pipe.InitBuffer(runningMeanVarOutQueue, SINGLE_BUFFER,
+                        MERGED_QUE_NODE_NUM * this->runningHalf * sizeof(T_RUNNING_MEAN));
+
+        int64_t xBufferSize = this->aFactor * this->r1r0Align;
+        pipe.InitBuffer(xQueue, DOUBLE_BUFFER, xBufferSize * sizeof(T));
+        pipe.InitBuffer(yQueue, DOUBLE_BUFFER, xBufferSize * sizeof(T));
+
+        int64_t binaryAddBufSize = (((binaryAddQuotient / VL_F32) * FLOAT_BYTES + BLOCK_SIZE - 1) / BLOCK_SIZE) *
+                                   BLOCK_SIZE;
+        if (binaryAddBufSize > 0) {
+            pipe.InitBuffer(binaryAddBuf, binaryAddBufSize);
+        }
+    }
+
+    __aicore__ inline void Process()
+    {
+        int64_t quotient = (this->singleA + this->aFactor - 1) / this->aFactor;
+        for (int64_t ubLoopIdx = 0; ubLoopIdx < quotient; ubLoopIdx++) {
+            int64_t offset = ubLoopIdx * this->aFactor * this->r0;
+            int64_t aOffset = ubLoopIdx * this->aFactor;
+            int64_t currentA = (ubLoopIdx == (quotient - 1)) ? (this->singleA - (quotient - 1) * this->aFactor) :
+                                                               this->aFactor;
+            ProcessUB(offset, aOffset, currentA);
+        }
+    }
+
+private:
+    __aicore__ inline void ProcessUB(int64_t raOffset, int64_t aOffset, int64_t currentANum)
+    {
+        CopyInX(raOffset, currentANum);
+
+        LocalTensor<T> xInUb = xQueue.template DeQue<T>();
+        __ubuf__ T* xInUbAddr = (__ubuf__ T*)xInUb.GetPhyAddr();
+        // batchMean + batchRstd 同生命周期,合并为一个 que:一次 alloc,rstd 在 mean 之上按 half 偏移
+        LocalTensor<float> batchMeanRstdUb = batchMeanRstdQueue.AllocTensor<float>();
+        LocalTensor<float> batchMeanOutUb = batchMeanRstdUb;
+        LocalTensor<float> batchRstdOutUb = batchMeanRstdUb[this->batchMeanRstdHalf];
+        __ubuf__ float* batchMeanInUbAddr = (__ubuf__ float*)batchMeanOutUb.GetPhyAddr();
+        __ubuf__ float* batchRstdInUbAddr = (__ubuf__ float*)batchRstdOutUb.GetPhyAddr();
+        if (this->r1 * this->r0 <= VL_F32) {
+            CalculateMeanVarRLessThanVL64VF(xInUbAddr, batchMeanInUbAddr, batchRstdInUbAddr, currentANum);
+        } else {
+            CalculateMeanVarVF(xInUbAddr, batchMeanInUbAddr, batchRstdInUbAddr, currentANum);
+        }
+
+        CopyInBetaGammaMerged(aOffset, currentANum);
+        CopyInRunningMeanVarMerged(aOffset, currentANum);
+
+        LocalTensor<T_BETA> betaGammaInUb = betaGammaQueue.template DeQue<T_BETA>();
+        LocalTensor<T_BETA> betaInUb = betaGammaInUb;
+        LocalTensor<T_BETA> gammaInUb = betaGammaInUb[this->betaGammaHalf];
+        LocalTensor<T_RUNNING_MEAN> runningMeanVarInUb = runningMeanVarInQueue.template DeQue<T_RUNNING_MEAN>();
+        LocalTensor<T_RUNNING_MEAN> runningMeanInUb = runningMeanVarInUb;
+        LocalTensor<T_RUNNING_MEAN> runningVarInUb = runningMeanVarInUb[this->runningHalf];
+
+        LocalTensor<T> yInUb = yQueue.AllocTensor<T>();
+        LocalTensor<T_RUNNING_MEAN> runningMeanVarOutUb = runningMeanVarOutQueue.AllocTensor<T_RUNNING_MEAN>();
+        LocalTensor<T_RUNNING_MEAN> runningMeanOutUb = runningMeanVarOutUb;
+        LocalTensor<T_RUNNING_MEAN> runningVarOutUb = runningMeanVarOutUb[this->runningHalf];
+        __ubuf__ T* yInUbAddr = (__ubuf__ T*)yInUb.GetPhyAddr();
+        __ubuf__ T_BETA* betaInUbAddr = (__ubuf__ T_BETA*)betaInUb.GetPhyAddr();
+        __ubuf__ T_BETA* gammaInUbAddr = (__ubuf__ T_BETA*)gammaInUb.GetPhyAddr();
+
+        __ubuf__ T_RUNNING_MEAN* runningMeanInUbAddr = (__ubuf__ T_RUNNING_MEAN*)runningMeanInUb.GetPhyAddr();
+        __ubuf__ T_RUNNING_MEAN* runningVarInUbAddr = (__ubuf__ T_RUNNING_MEAN*)runningVarInUb.GetPhyAddr();
+        __ubuf__ T_RUNNING_MEAN* runningMeanOutUbAddr = (__ubuf__ T_RUNNING_MEAN*)runningMeanOutUb.GetPhyAddr();
+        __ubuf__ T_RUNNING_MEAN* runningVarOutUbAddr = (__ubuf__ T_RUNNING_MEAN*)runningVarOutUb.GetPhyAddr();
+        uint16_t aLoop = static_cast<uint16_t>(CEIL_DIV(currentANum, VL_F32));
+        CalculateRunningMeanVarWithRstdVF<T_RUNNING_MEAN>(batchMeanInUbAddr, batchRstdInUbAddr, runningMeanInUbAddr,
+                                                          runningVarInUbAddr, runningMeanOutUbAddr, runningVarOutUbAddr,
+                                                          currentANum, aLoop, VL_F32, this->besselCorrectionFactor,
+                                                          this->momentum, this->oneSubMomentum, this->epsilon);
+
+        runningMeanVarInQueue.FreeTensor(runningMeanVarInUb);
+        batchMeanRstdQueue.EnQue(batchMeanRstdUb);
+        runningMeanVarOutQueue.EnQue(runningMeanVarOutUb);
+
+        CopyOutBatchMeanRstdMerged(aOffset, currentANum);
+        CopyOutRunningMeanVar(aOffset, currentANum);
+
+        CalculateNormalizeVF(xInUbAddr, yInUbAddr, betaInUbAddr, gammaInUbAddr, batchMeanInUbAddr, batchRstdInUbAddr,
+                             currentANum);
+
+        xQueue.FreeTensor(xInUb);
+        betaGammaQueue.FreeTensor(betaGammaInUb);
+        yQueue.EnQue(yInUb);
+
+        CopyOutY(raOffset, currentANum);
+    }
+
+    __aicore__ inline void CopyInX(int64_t offset, int64_t currentANum)
+    {
+        LocalTensor<T> xInUb = xQueue.AllocTensor<T>();
+        if (this->r0 * sizeof(T) <= NDDMA_THRESHOLD) {
+            T constValue = 0;
+            static constexpr NdDmaConfig config = {false};
+
+            NdDmaLoopInfo<NDDMA_DIM_NUM> loopInfo;
+            loopInfo.loopSize[0] = this->r0;
+            loopInfo.loopSrcStride[0] = 1;
+            loopInfo.loopDstStride[0] = 1;
+            loopInfo.loopLpSize[0] = 0;
+            loopInfo.loopRpSize[0] = 0;
+
+            loopInfo.loopSize[NDDMA_SECOND_DIM] = currentANum;
+            loopInfo.loopSrcStride[NDDMA_SECOND_DIM] = this->r0;
+            loopInfo.loopDstStride[NDDMA_SECOND_DIM] = this->r1r0Align;
+            loopInfo.loopLpSize[NDDMA_SECOND_DIM] = 0;
+            loopInfo.loopRpSize[NDDMA_SECOND_DIM] = 0;
+
+            loopInfo.loopSize[NDDMA_THIRD_DIM] = this->r1;
+            loopInfo.loopSrcStride[NDDMA_THIRD_DIM] = this->a * this->r0;
+            loopInfo.loopDstStride[NDDMA_THIRD_DIM] = this->r0;
+            loopInfo.loopLpSize[NDDMA_THIRD_DIM] = 0;
+            loopInfo.loopRpSize[NDDMA_THIRD_DIM] = 0;
+            NdDmaParams<T, NDDMA_DIM_NUM> paramsMain = {loopInfo, constValue};
+            DataCopy<T, NDDMA_DIM_NUM, config>(xInUb, xGm[offset], paramsMain);
+        } else {
+            uint64_t r1LoopSrcStride = this->r0 * sizeof(T);
+            uint64_t r1LoopDstStride = this->r1r0Align * sizeof(T);
+            LoopModeParams loopParams;
+            loopParams.loop2Size = 1;
+            loopParams.loop1Size = currentANum;
+            loopParams.loop2SrcStride = 0;
+            loopParams.loop2DstStride = 0;
+            loopParams.loop1SrcStride = r1LoopSrcStride;
+            loopParams.loop1DstStride = r1LoopDstStride;
+            SetLoopModePara(loopParams, DataCopyMVType::OUT_TO_UB);
+            DataCopyPadExtParams<T> dataCopyPadExtParams;
+            dataCopyPadExtParams.isPad = false;
+            dataCopyPadExtParams.leftPadding = 0;
+            dataCopyPadExtParams.rightPadding = 0;
+            dataCopyPadExtParams.paddingValue = 0;
+            DataCopyExtParams copyInParams;
+            copyInParams.blockCount = this->r1;
+            copyInParams.blockLen = this->r0 * sizeof(T);
+            copyInParams.srcStride = (this->a - 1) * this->r0 * sizeof(T);
+            copyInParams.dstStride = 0;
+            DataCopyPad<T, PaddingMode::Compact>(xInUb, xGm[offset], copyInParams, dataCopyPadExtParams);
+            ResetLoopModePara(DataCopyMVType::OUT_TO_UB);
+        }
+        xQueue.EnQue(xInUb);
+    }
+
+    __aicore__ inline void CopyOutY(int64_t offset, int64_t currentANum)
+    {
+        LocalTensor<T> yOutUb = yQueue.template DeQue<T>();
+
+        uint64_t r1LoopSrcStride = this->r1r0Align * sizeof(T);
+        uint64_t r1LoopDstStride = this->r0 * sizeof(T);
+        LoopModeParams loopParams;
+        loopParams.loop2Size = 1;
+        loopParams.loop1Size = currentANum;
+        loopParams.loop2SrcStride = 0;
+        loopParams.loop2DstStride = 0;
+        loopParams.loop1SrcStride = r1LoopSrcStride;
+        loopParams.loop1DstStride = r1LoopDstStride;
+        SetLoopModePara(loopParams, DataCopyMVType::UB_TO_OUT);
+        DataCopyExtParams copyInParams;
+        copyInParams.blockCount = this->r1;
+        copyInParams.blockLen = this->r0 * sizeof(T);
+        copyInParams.srcStride = 0;
+        copyInParams.dstStride = (this->a - 1) * this->r0 * sizeof(T);
+        DataCopyPad<T, PaddingMode::Compact>(yGm[offset], yOutUb, copyInParams);
+        ResetLoopModePara(DataCopyMVType::UB_TO_OUT);
+        yQueue.FreeTensor(yOutUb);
+    }
+
+    // beta + gamma 同生命周期,合并 que:一次 alloc,gamma 在 beta 之上按 betaGammaHalf 偏移
+    __aicore__ inline void CopyInBetaGammaMerged(int64_t gmOffset, int64_t currentANum)
+    {
+        LocalTensor<T_BETA> betaGammaInUb = betaGammaQueue.template AllocTensor<T_BETA>();
+        LocalTensor<T_BETA> betaInUb = betaGammaInUb;
+        LocalTensor<T_BETA> gammaInUb = betaGammaInUb[this->betaGammaHalf];
+        CopyInGammaBetaPad(gammaInUb, betaInUb, gammaGm, betaGm, gmOffset, static_cast<uint32_t>(currentANum));
+        betaGammaQueue.EnQue(betaGammaInUb);
+    }
+
+    // running mean + var 同生命周期,合并 que:一次 alloc,var 在 mean 之上按 runningHalf 偏移
+    __aicore__ inline void CopyInRunningMeanVarMerged(int64_t gmOffset, int64_t currentANum)
+    {
+        LocalTensor<T_RUNNING_MEAN> runningMeanVarInUb = runningMeanVarInQueue.template AllocTensor<T_RUNNING_MEAN>();
+        LocalTensor<T_RUNNING_MEAN> runningMeanInUb = runningMeanVarInUb;
+        LocalTensor<T_RUNNING_MEAN> runningVarInUb = runningMeanVarInUb[this->runningHalf];
+        CopyInRunningMeanVarPad(runningMeanInUb, runningVarInUb, runningMeanGm, runningVarGm, gmOffset,
+                                static_cast<uint32_t>(currentANum));
+        runningMeanVarInQueue.EnQue(runningMeanVarInUb);
+    }
+
+    __aicore__ inline void CopyOutBatchMeanRstdMerged(int64_t gmOffset, int64_t currentANum)
+    {
+        LocalTensor<float> batchMeanRstdUb = batchMeanRstdQueue.template DeQue<float>();
+        LocalTensor<float> batchMeanInUb = batchMeanRstdUb;
+        LocalTensor<float> batchRstdInUb = batchMeanRstdUb[this->batchMeanRstdHalf];
+        CopyOutBatchMeanRstdPad(batchMeanInUb, batchRstdInUb, batchMeanGm, batchRstdGm, gmOffset,
+                                static_cast<uint32_t>(currentANum));
+        batchMeanRstdQueue.FreeTensor(batchMeanRstdUb);
+    }
+
+    __aicore__ inline void CopyOutRunningMeanVar(int64_t offset, int64_t currentANum)
+    {
+        LocalTensor<T_RUNNING_MEAN> runningMeanVarOutUb = runningMeanVarOutQueue.template DeQue<T_RUNNING_MEAN>();
+        LocalTensor<T_RUNNING_MEAN> runningMeanOutUb = runningMeanVarOutUb;
+        LocalTensor<T_RUNNING_MEAN> runningVarOutUb = runningMeanVarOutUb[this->runningHalf];
+        DataCopyExtParams copyInParams;
+        copyInParams.blockCount = 1;
+        copyInParams.srcStride = 0;
+        copyInParams.blockLen = currentANum * sizeof(T_RUNNING_MEAN);
+        copyInParams.dstStride = 0;
+        DataCopyPad(runningMeanOutGm[offset], runningMeanOutUb, copyInParams);
+        DataCopyPad(runningVarOutGm[offset], runningVarOutUb, copyInParams);
+        runningMeanVarOutQueue.FreeTensor(runningMeanVarOutUb);
+    }
+
+    __aicore__ inline void LoadTwoTensorForDtypeT(__ubuf__ T* src1, __ubuf__ T* src2, RegTensor<float>& dst1,
+                                                  RegTensor<float>& dst2, MaskReg& dst1Preg, MaskReg& dst2Preg,
+                                                  uint32_t src1Offset, uint32_t src2Offset)
+    {
+        if constexpr (IsSameType<T, half>::value) {
+            RegTensor<half> xFp16Q;
+            RegTensor<half> xFp16R;
+            LoadAlign<half, LoadDist::DIST_UNPACK_B16>(xFp16Q, ((__ubuf__ half*)(src1) + (src1Offset)));
+            LoadAlign<half, LoadDist::DIST_UNPACK_B16>(xFp16R, ((__ubuf__ half*)(src2) + (src2Offset)));
+            Cast<float, half, NormCommon::castTraitB162B32>(dst1, xFp16Q, dst1Preg);
+            Cast<float, half, NormCommon::castTraitB162B32>(dst2, xFp16R, dst2Preg);
+        } else if constexpr (IsSameType<T, bfloat16_t>::value) {
+            RegTensor<bfloat16_t> xFp16Q;
+            RegTensor<bfloat16_t> xFp16R;
+            LoadAlign<bfloat16_t, LoadDist::DIST_UNPACK_B16>(xFp16Q, ((__ubuf__ bfloat16_t*)(src1) + (src1Offset)));
+            LoadAlign<bfloat16_t, LoadDist::DIST_UNPACK_B16>(xFp16R, ((__ubuf__ bfloat16_t*)(src2) + (src2Offset)));
+            Cast<float, bfloat16_t, NormCommon::castTraitB162B32>(dst1, xFp16Q, dst1Preg);
+            Cast<float, bfloat16_t, NormCommon::castTraitB162B32>(dst2, xFp16R, dst2Preg);
+        } else {
+            LoadAlign(dst1, ((__ubuf__ float*)(src1) + (src1Offset)));
+            LoadAlign(dst2, ((__ubuf__ float*)(src2) + (src2Offset)));
+        }
+    }
+
+    __aicore__ inline void CalculateMeanVarRLessThanVL64VF(__ubuf__ T* xInUb, __ubuf__ float* batchMeanInUb,
+                                                           __ubuf__ float* batchRstdInUb, uint16_t currentANum)
+    {
+        int64_t calcNum = this->r1 * this->r0;
+        float n = static_cast<float>(1) / static_cast<float>(this->powerOfTwoForR);
+        float nCorrectionFactor = static_cast<float>(this->powerOfTwoForR) / static_cast<float>(calcNum);
+        uint32_t xyUbOffset = this->r1r0Align;
+        __VEC_SCOPE__
+        {
+            RegTensor<float> var_sum;
+            RegTensor<float> var;
+
+            RegTensor<float> x;
+            RegTensor<float> mean_sum;
+            RegTensor<float> mean;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> y1Pow;
+
+            MaskReg pregMain = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregMerge = CreateMask<float, MaskPattern::VL1>();
+            uint32_t sreg0 = calcNum;
+            MaskReg pregLoop = UpdateMask<float>(sreg0);
+            for (uint16_t k = 0; k < currentANum; k++) {
+                LoadOneTensorForDtypeT(xInUb, x, pregLoop, (k * xyUbOffset));
+                Muls(mean_sum, x, n, pregLoop);
+                Reduce<AscendC::Reg::ReduceType::SUM>(mean, mean_sum, pregLoop);
+                Muls(mean, mean, nCorrectionFactor, pregMerge);
+
+                // save mean
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)batchMeanInUb + k), mean,
+                                                                     pregMerge);
+                Duplicate(mean, mean, pregMain);
+                Muls(mean, mean, (float)-1.0, pregMain);
+
+                LoadOneTensorForDtypeT(xInUb, x1, pregLoop, (k * xyUbOffset));
+                Add(y1, x1, mean, pregLoop);
+                Mul(y1Pow, y1, y1, pregLoop);
+                Muls(var_sum, y1Pow, n, pregLoop);
+                Reduce<AscendC::Reg::ReduceType::SUM>(var, var_sum, pregLoop);
+                Muls(var, var, nCorrectionFactor, pregMerge);
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)batchRstdInUb + k), var,
+                                                                     pregMerge);
+            }
+        }
+    }
+
+    __aicore__ inline void CalculateMeanVarVF(__ubuf__ T* xInUb, __ubuf__ float* batchMeanInUb,
+                                              __ubuf__ float* batchRstdInUb, uint16_t currentANum)
+    {
+        int64_t reduceNum = this->r1 * this->r0;
+        float n = static_cast<float>(1) / static_cast<float>(this->powerOfTwoForR);
+        float nCorrectionFactor = static_cast<float>(this->powerOfTwoForR) / static_cast<float>(reduceNum);
+        uint32_t xyUbOffset = this->r1r0Align;
+
+        uint32_t binaryAddQuotientOffset = this->binaryAddQuotient;
+        int64_t binaryAddRemainder = reduceNum - this->binaryAddQuotient;
+        uint16_t binaryAddRemainderLoop = CEIL_DIV(binaryAddRemainder, VL_F32);
+        uint16_t binaryAddQuotientLoop = CEIL_DIV(this->binaryAddQuotient, VL_F32);
+
+        uint16_t binaryAddKLoop = this->binaryAddK;
+        uint16_t binaryAddLoopMean = ((this->binaryAddQuotient / VL_F32) / VL_F32);
+        uint16_t binaryAddLoopVar = binaryAddLoopMean;
+        LocalTensor<float> binaryAddTensor = binaryAddBuf.Get<float>();
+        __ubuf__ float* binaryAddTensorAddr = (__ubuf__ float*)binaryAddTensor.GetPhyAddr();
+        __VEC_SCOPE__
+        {
+            RegTensor<float> var_sum;
+            RegTensor<float> var;
+
+            RegTensor<float> x;
+            RegTensor<float> mean_sum;
+            RegTensor<float> mean;
+
+            RegTensor<float> x1;
+            RegTensor<float> y1;
+            RegTensor<float> y1Pow;
+
+            RegTensor<float> vlMean;
+            RegTensor<float> vlVar;
+
+            RegTensor<float> binaryAddQ;
+            RegTensor<float> binaryAddR;
+
+            RegTensor<float> binaryAddQPow;
+            RegTensor<float> binaryAddRPow;
+
+            MaskReg pregMain = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregMerge = CreateMask<float, MaskPattern::VL1>();
+            MaskReg pregLoop;
+
+            for (uint16_t k = 0; k < currentANum; k++) {
+                uint32_t sreg0 = binaryAddRemainder;
+                for (uint16_t i = 0; i < static_cast<uint16_t>(binaryAddRemainderLoop - 1); i++) {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    LoadTwoTensorForDtypeT(xInUb, xInUb, binaryAddQ, binaryAddR, pregLoop, pregLoop,
+                                           (i * VL_F32 + k * xyUbOffset),
+                                           (i * VL_F32 + k * xyUbOffset + binaryAddQuotientOffset));
+                    Muls(binaryAddQ, binaryAddQ, n, pregLoop);
+                    Muls(binaryAddR, binaryAddR, n, pregLoop);
+                    Add(binaryAddQ, binaryAddQ, binaryAddR, pregLoop);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(vlMean, binaryAddQ, pregLoop);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)binaryAddTensorAddr + i),
+                                                                         vlMean, pregMerge);
+                }
+                {
+                    pregLoop = UpdateMask<float>(sreg0);
+                    LoadTwoTensorForDtypeT(
+                        xInUb, xInUb, binaryAddQ, binaryAddR, pregMain, pregLoop,
+                        ((binaryAddRemainderLoop - 1) * VL_F32 + k * xyUbOffset),
+                        ((binaryAddRemainderLoop - 1) * VL_F32 + k * xyUbOffset + binaryAddQuotientOffset));
+                    Muls(binaryAddQ, binaryAddQ, n, pregMain);
+                    Muls(binaryAddR, binaryAddR, n, pregLoop);
+                    Add(binaryAddQ, binaryAddQ, binaryAddR, pregMain);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(vlMean, binaryAddQ, pregMain);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        ((__ubuf__ float*)binaryAddTensorAddr + binaryAddRemainderLoop - 1), vlMean, pregMerge);
+                }
+                for (uint16_t i = 0; i < static_cast<uint16_t>(binaryAddQuotientLoop - binaryAddRemainderLoop); i++) {
+                    LoadOneTensorForDtypeT(xInUb, x, pregMain,
+                                           ((i + binaryAddRemainderLoop) * VL_F32 + k * xyUbOffset));
+                    Muls(x, x, n, pregMain);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(vlMean, x, pregMain);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        ((__ubuf__ float*)binaryAddTensorAddr + binaryAddRemainderLoop + i), vlMean, pregMerge);
+                }
+                LocalMemBar<MemType::VEC_STORE, MemType::VEC_LOAD>();
+                uint16_t curBinaryAddLoopMean = binaryAddLoopMean;
+                for (uint16_t i = 0; i < binaryAddKLoop; i++) {
+                    curBinaryAddLoopMean = curBinaryAddLoopMean / DICHOTOMY_ADD_COEFF;
+                    for (uint16_t j = 0; j < curBinaryAddLoopMean; j++) {
+                        LoadAlign(binaryAddQ, ((__ubuf__ float*)binaryAddTensorAddr + j * VL_F32));
+                        LoadAlign(binaryAddR,
+                                  ((__ubuf__ float*)binaryAddTensorAddr + (j + curBinaryAddLoopMean) * VL_F32));
+                        Add(binaryAddQ, binaryAddQ, binaryAddR, pregMain);
+                        StoreAlign(((__ubuf__ float*)binaryAddTensorAddr + j * VL_F32), binaryAddQ, pregMain);
+                    }
+                    LocalMemBar<MemType::VEC_STORE, MemType::VEC_LOAD>();
+                }
+                {
+                    uint32_t binaryAddLastNum = this->binaryAddLastNum;
+                    pregLoop = UpdateMask<float>(binaryAddLastNum);
+                    LoadAlign(mean_sum, ((__ubuf__ float*)binaryAddTensorAddr));
+                    Reduce<AscendC::Reg::ReduceType::SUM>(mean, mean_sum, pregLoop);
+                    Muls(mean, mean, nCorrectionFactor, pregMerge);
+                }
+
+                // batch mean
+                StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)batchMeanInUb + k), mean,
+                                                                     pregMerge);
+                Duplicate(mean, mean, pregMain);
+                LocalMemBar<MemType::VEC_LOAD, MemType::VEC_STORE>();
+
+                uint32_t sreg1 = binaryAddRemainder;
+                for (uint16_t i = 0; i < static_cast<uint16_t>(binaryAddRemainderLoop - 1); i++) {
+                    pregLoop = UpdateMask<float>(sreg1);
+                    LoadTwoTensorForDtypeT(xInUb, xInUb, binaryAddQ, binaryAddR, pregLoop, pregLoop,
+                                           (i * VL_F32 + k * xyUbOffset),
+                                           (i * VL_F32 + k * xyUbOffset + binaryAddQuotientOffset));
+                    Sub(binaryAddQ, binaryAddQ, mean, pregLoop);
+                    Sub(binaryAddR, binaryAddR, mean, pregLoop);
+                    Mul(binaryAddQPow, binaryAddQ, binaryAddQ, pregLoop);
+                    Mul(binaryAddRPow, binaryAddR, binaryAddR, pregLoop);
+                    Muls(binaryAddQPow, binaryAddQPow, n, pregLoop);
+                    Muls(binaryAddRPow, binaryAddRPow, n, pregLoop);
+                    Add(binaryAddQPow, binaryAddQPow, binaryAddRPow, pregLoop);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(vlVar, binaryAddQPow, pregLoop);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)binaryAddTensorAddr + i),
+                                                                         vlVar, pregMerge);
+                }
+                {
+                    pregLoop = UpdateMask<float>(sreg1);
+                    LoadTwoTensorForDtypeT(
+                        xInUb, xInUb, binaryAddQ, binaryAddR, pregMain, pregLoop,
+                        ((binaryAddRemainderLoop - 1) * VL_F32 + k * xyUbOffset),
+                        ((binaryAddRemainderLoop - 1) * VL_F32 + k * xyUbOffset + binaryAddQuotientOffset));
+                    Sub(binaryAddQ, binaryAddQ, mean, pregMain);
+                    Sub(binaryAddR, binaryAddR, mean, pregLoop);
+                    Mul(binaryAddQPow, binaryAddQ, binaryAddQ, pregMain);
+                    Mul(binaryAddRPow, binaryAddR, binaryAddR, pregLoop);
+                    Muls(binaryAddQPow, binaryAddQPow, n, pregMain);
+                    Muls(binaryAddRPow, binaryAddRPow, n, pregLoop);
+                    Add(binaryAddQPow, binaryAddQPow, binaryAddRPow, pregMain);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(vlVar, binaryAddQPow, pregMain);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        ((__ubuf__ float*)binaryAddTensorAddr + binaryAddRemainderLoop - 1), vlVar, pregMerge);
+                }
+                for (uint16_t i = 0; i < static_cast<uint16_t>(binaryAddQuotientLoop - binaryAddRemainderLoop); i++) {
+                    LoadOneTensorForDtypeT(xInUb, x1, pregMain,
+                                           ((i + binaryAddRemainderLoop) * VL_F32 + k * xyUbOffset));
+                    Sub(y1, x1, mean, pregMain);
+                    Mul(y1Pow, y1, y1, pregMain);
+                    Muls(y1Pow, y1Pow, n, pregMain);
+                    Reduce<AscendC::Reg::ReduceType::SUM>(vlVar, y1Pow, pregMain);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(
+                        ((__ubuf__ float*)binaryAddTensorAddr + binaryAddRemainderLoop + i), vlVar, pregMerge);
+                }
+                LocalMemBar<MemType::VEC_STORE, MemType::VEC_LOAD>();
+                uint16_t curBinaryAddLoopVar = binaryAddLoopVar;
+                for (uint16_t i = 0; i < binaryAddKLoop; i++) {
+                    curBinaryAddLoopVar = curBinaryAddLoopVar / DICHOTOMY_ADD_COEFF;
+                    for (uint16_t j = 0; j < curBinaryAddLoopVar; j++) {
+                        LoadAlign(binaryAddQ, ((__ubuf__ float*)binaryAddTensorAddr + j * VL_F32));
+                        LoadAlign(binaryAddR,
+                                  ((__ubuf__ float*)binaryAddTensorAddr + (j + curBinaryAddLoopVar) * VL_F32));
+                        Add(binaryAddQ, binaryAddQ, binaryAddR, pregMain);
+                        StoreAlign(((__ubuf__ float*)binaryAddTensorAddr + j * VL_F32), binaryAddQ, pregMain);
+                    }
+                    LocalMemBar<MemType::VEC_STORE, MemType::VEC_LOAD>();
+                }
+                {
+                    uint32_t sreg2 = this->binaryAddLastNum;
+                    pregLoop = UpdateMask<float>(sreg2);
+                    LoadAlign(var_sum, ((__ubuf__ float*)binaryAddTensorAddr));
+                    Reduce<AscendC::Reg::ReduceType::SUM>(var, var_sum, pregLoop);
+                    Muls(var, var, nCorrectionFactor, pregMerge);
+                    StoreAlign<float, StoreDist::DIST_FIRST_ELEMENT_B32>(((__ubuf__ float*)batchRstdInUb + k), var,
+                                                                         pregMerge);
+                }
+                LocalMemBar<MemType::VEC_LOAD, MemType::VEC_STORE>();
+            }
+        }
+    }
+
+    __aicore__ inline void CalculateNormalizeVF(__ubuf__ T* xInUb, __ubuf__ T* yInUb, __ubuf__ T_BETA* betaInUb,
+                                                __ubuf__ T_BETA* gammaInUb, __ubuf__ float* batchMeanInUb,
+                                                __ubuf__ float* batchRstdInUb, uint16_t currentANum)
+    {
+        int64_t calcNum = this->r1 * this->r0;
+        uint32_t xyUbOffset = this->r1r0Align;
+        uint16_t loopCount = this->r1r0LoopCount;
+        __VEC_SCOPE__
+        {
+            RegTensor<float> mean;
+
+            RegTensor<float> x2;
+            RegTensor<float> y2;
+            RegTensor<float> rsqrtVar;
+
+            RegTensor<float> beta;
+            RegTensor<float> gamma;
+
+            MaskReg pregMain = CreateMask<float, MaskPattern::ALL>();
+            MaskReg pregLoop;
+
+            for (uint16_t k = 0; k < currentANum; k++) {
+                LoadTwoTensorForDtypeTBrc(betaInUb, gammaInUb, beta, gamma, pregMain, pregMain, k, k);
+                uint32_t sreg3 = calcNum;
+                for (uint16_t i = 0; i < loopCount; i++) {
+                    pregLoop = UpdateMask<float>(sreg3);
+                    LoadOneTensorForDtypeT(xInUb, x2, pregLoop, (i * VL_F32 + k * xyUbOffset));
+                    LoadAlign<float, LoadDist::DIST_BRC_B32>(mean, ((__ubuf__ float*)batchMeanInUb + k));
+                    Sub(x2, x2, mean, pregLoop);
+                    LoadAlign<float, LoadDist::DIST_BRC_B32>(rsqrtVar, ((__ubuf__ float*)batchRstdInUb + k));
+                    Mul(y2, x2, rsqrtVar, pregLoop);
+                    Mul(y2, y2, beta, pregLoop);
+                    Add(y2, y2, gamma, pregLoop);
+                    if constexpr (IsSameType<T, half>::value) {
+                        RegTensor<half> yFp16;
+                        Cast<half, float, NormCommon::castTraitB322B16>(yFp16, y2, pregLoop);
+                        StoreAlign<half, StoreDist::DIST_PACK_B32>(
+                            ((__ubuf__ half*)yInUb + i * VL_F32 + k * xyUbOffset), yFp16, pregLoop);
+                    } else if constexpr (IsSameType<T, bfloat16_t>::value) {
+                        RegTensor<bfloat16_t> xBf16;
+                        Cast<bfloat16_t, float, NormCommon::castTraitB322B16>(xBf16, y2, pregLoop);
+                        StoreAlign<bfloat16_t, StoreDist::DIST_PACK_B32>(
+                            ((__ubuf__ bfloat16_t*)yInUb + i * VL_F32 + k * xyUbOffset), xBf16, pregLoop);
+                    } else {
+                        StoreAlign(((__ubuf__ float*)yInUb + i * VL_F32 + k * xyUbOffset), y2, pregLoop);
+                    }
+                }
+            }
+        }
+    }
+
+    /* global memory address */
+    GlobalTensor<T> xGm;
+    GlobalTensor<T_BETA> betaGm;
+    GlobalTensor<T_BETA> gammaGm;
+    GlobalTensor<T_RUNNING_MEAN> runningMeanGm;
+    GlobalTensor<T_RUNNING_MEAN> runningVarGm;
+
+    GlobalTensor<T> yGm;
+    GlobalTensor<float> batchMeanGm;
+    GlobalTensor<float> batchRstdGm;
+    GlobalTensor<T_RUNNING_MEAN> runningMeanOutGm;
+    GlobalTensor<T_RUNNING_MEAN> runningVarOutGm;
+
+    /* variable */
+    int64_t powerOfTwoForR;
+    int64_t r1;
+    int64_t aFactor;
+    int64_t a;
+    int64_t r0;
+    int64_t r1r0Align;
+
+    int64_t blockNum;
+    int64_t aBlockFactor;
+    int64_t singleA;
+
+    int64_t r1r0LoopCount;
+
+    int64_t binaryAddQuotient;
+    int64_t binaryAddK;
+    int64_t binaryAddLastNum;
+
+    static constexpr uint32_t VL_F32 = VECTOR_REG_WIDTH / sizeof(float);
+
+    float epsilon = 1e-5;
+    float momentum = 0.1;
+    float besselCorrectionFactor;
+    float oneSubMomentum;
+
+    // 合并 que 中第二个张量相对第一个的对齐偏移(元素数),各按自身 dtype 对齐保证 32B 边界
+    int64_t betaGammaHalf = 0;
+    int64_t batchMeanRstdHalf = 0;
+    int64_t runningHalf = 0;
+
+    /* ascendc variable */
+    TPipe pipe;
+    // x/y 跨 ubLoop 搬运大块数据,保留双缓冲做 MTE2/VEC 流水重叠。
+    TQue<QuePosition::VECIN, 1> xQueue;
+    TQue<QuePosition::VECOUT, 1> yQueue;
+
+    // 以下 A 轴小量 que:同生命周期的成对合并(一次 alloc,第二个按 half 偏移);
+    // 每轮 ProcessUB 内是 alloc→copyIn→enque→立即 deque 的串行结构,无重叠可言,故单缓冲。
+    TQue<QuePosition::VECIN, 1> betaGammaQueue;
+    TQue<QuePosition::VECIN, 1> runningMeanVarInQueue;
+    TQue<QuePosition::VECOUT, 1> batchMeanRstdQueue;
+    TQue<QuePosition::VECOUT, 1> runningMeanVarOutQueue;
+
+    TBuf<TPosition::VECCALC> binaryAddBuf;
+};
+} // namespace BatchNormV3Ops
+
+#endif

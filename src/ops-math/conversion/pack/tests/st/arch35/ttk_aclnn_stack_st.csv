@@ -1,0 +1,6 @@
+testcase_name,api_name,tensor_view_shapes,tensor_dtypes,attributes,output_tensor_indexes,input_data_ranges,precision_tolerances,absolute_precision
+aclnnStack_float,aclnnStack,"(((3, 3), (3, 3)), (3, 3, 2))","(('float32', 'float32'), 'float32')",{'dim': -1},"(1,)",,,
+aclnnStack_bf16,aclnnStack,"(((4, 5), (4, 5)), (4, 5, 2))","(('bfloat16', 'bfloat16'), 'bfloat16')",{'dim': -1},"(1,)",,,
+aclnnStack_int8,aclnnStack,"(((13, 20), (13, 20)), (2, 13, 20))","(('int8', 'int8'), 'int8')",{'dim': 0},"(1,)",,,
+aclnnStack_int64,aclnnStack,"(((30, 30), (30, 30)), (30, 30, 2))","(('int64', 'int64'), 'int64')",{'dim': -1},"(1,)",,,
+aclnnStack_float16,aclnnStack,"(((3, 4), (3, 4)), (3, 4, 2))","(('float16', 'float16'), 'float16')",{'dim': -1},"(1,)",,,

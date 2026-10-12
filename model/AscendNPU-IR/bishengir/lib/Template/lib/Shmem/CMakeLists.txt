@@ -1,0 +1,12 @@
+file(GLOB cpp_list CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+
+foreach (cpp_with_path ${cpp_list})
+    compile_shmem_to_bc(${cpp_with_path} "aic" "Ascend910B")
+    compile_shmem_to_bc(${cpp_with_path} "aiv" "Ascend910B")
+    compile_shmem_to_bc(${cpp_with_path} "mix_aiv" "Ascend910B")
+    compile_shmem_to_bc(${cpp_with_path} "mix_aic" "Ascend910B")
+    compile_shmem_to_bc(${cpp_with_path} "aic" "Ascend910D")
+    compile_shmem_to_bc(${cpp_with_path} "aiv" "Ascend910D")
+    compile_shmem_to_bc(${cpp_with_path} "mix_aiv" "Ascend910D")
+    compile_shmem_to_bc(${cpp_with_path} "mix_aic" "Ascend910D")
+endforeach()

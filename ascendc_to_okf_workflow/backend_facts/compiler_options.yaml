@@ -1,0 +1,212 @@
+# Triton-Ascend NPU 编译选项事实表（17 项）
+# 用途：P2 语义转化时按算子类别筛选相关编译选项；P3 卡片「编译选项与后端契约」节的数据源。
+# 证据：[DOC] model/zh/environment_variable_and_compiler_options_reference.md 编译选项参考表
+#       [DOC] model/zh/architecture_design_and_core_features.md §3.2.1
+#       [SRC] AscendNPU-IR 选项定义 include/bishengir/Tools/bishengir-compile/Options.td（默认值权威来源）
+#       [SRC] 选项接线 lib/Tools/bishengir-compile/PassPipeline.cpp（含 regbase 变体）
+# 版本：2026-09-11 抽取，2026-09-14 补 bishengir 侧默认值（Options.td 全量解析，快照 @9c51a351）。
+# 传入方式（全部选项）：triton.Config / autotune 参数 / kernel launch meta-parameter，
+# 例：kernel[grid](..., BLOCK_SIZE=1024, multibuffer=True)
+#
+# ⚠️ 默认值发现（2026-09-14，[SRC] 优先于 [DOC]）：
+#   - multibuffer：bishengir EnableAutoMultiBuffer 默认 **true**——与 zh 文档「910_95 编译场景默认
+#     关闭」表述冲突。可能 950 场景在更上层（triton backend/管线）覆盖为 false；引用时写
+#     「bishengir 默认 true，950 场景待确认」。
+#   - enable_auto_bind_sub_block / sync_solver 实际默认 **true**（zh 表写 None 是不准确的，
+#     None 只是"用户未设置"，编译器实际按 true 行为执行）。
+#   - tile_mix_vector_loop / tile_mix_cube_loop 实际默认 **2**（zh 表写 None 同理）。
+
+options:
+
+  - name: multibuffer
+    category: 通用流水
+    values: [true, false]
+    default: "bishengir EnableAutoMultiBuffer=true [SRC]；zh 称 910_95 场景默认关闭 [DOC]（冲突待解，见文件头注）"
+    bishengir_option: EnableAutoMultiBuffer
+    description: 启用或禁用 ping-pong / double buffer 流水（搬入/计算/搬出并行）。
+    applies_to: 全部算子
+    preconditions:
+      - UB 需有富余（multi-buffer 增加 UB 占用，不足则无法使能）
+      - 算子内需有多次数据加载或 tiling 循环（单次顺序执行无并行空间）
+      - 搬运与计算间无阻塞性数据依赖（否则 MTE 等 Vector，并行度低）
+    related_bishengir_options:
+      - DisableMultiBufferOnUB=false      # UB(Vector) 多缓冲开关
+      - DisableMultiBufferOnL0C=false     # L0C(Cube 累加器) 多缓冲开关
+      - DisableMultiBufferOnL1=false      # L1 多缓冲开关
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/EnableMultiBuffer.cpp
+    evidence: [DOC, SRC]
+
+  - name: enable_auto_bind_sub_block
+    category: CV 融合
+    values: [null, true, false]
+    default: "bishengir EnableAutoBindSubBlock=true [SRC]"
+    bishengir_option: EnableAutoBindSubBlock
+    description: 启用或禁用自动绑定 sub-block。
+    applies_to: 仅 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/PartitionAndBindSubBlock/
+    evidence: [DOC, SRC]
+
+  - name: enable_hivm_auto_cv_balance
+    category: CV 融合
+    values: [null, true, false]
+    default: "bishengir EnableHIVMAutoCVBalance=false [SRC]"
+    bishengir_option: EnableHIVMAutoCVBalance
+    description: 启用或禁用自动 CV balance（Cube/Vector 负载均衡，作用于 cv-pipelining）。
+    applies_to: 仅 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/CVPipelining.cpp
+    evidence: [DOC, SRC]
+
+  - name: sync_solver
+    category: CV 融合/同步
+    values: [null, true, false]
+    default: "bishengir EnableHIVMGraphSyncSolver=true [SRC]（另有 HIVMSyncSolverVersion 可选版本）"
+    bishengir_option: EnableHIVMGraphSyncSolver
+    description: 启用或禁用 HIVM 同步求解器（自动插入同步）。
+    applies_to: 主要 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/GraphSyncSolver/
+    evidence: [DOC, SRC]
+
+  - name: unit_flag
+    category: 同步
+    values: [null, true, false]
+    default: "bishengir EnableHIVMUnitFlagSync=false [SRC]"
+    bishengir_option: EnableHIVMUnitFlagSync
+    description: Cube 搬出相关同步优化项（inject sync 使用 unit-flag 模式）。
+    applies_to: CV 融合算子（Cube 搬出路径）
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/UnitFlagInfoBase.cpp
+    evidence: [DOC, SRC]
+
+  - name: inject_barrier_all
+    category: 同步
+    values: [null, true, false]
+    default: "bishengir EnableHIVMInjectBarrierAllSync=false [SRC]"
+    bishengir_option: EnableHIVMInjectBarrierAllSync
+    description: 启用或禁用自动为所有操作注入 barrier 同步。
+    applies_to: 全部算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/InjectSync/
+    evidence: [DOC, SRC]
+
+  - name: inject_block_all
+    category: 同步
+    values: [null, true, false]
+    default: "bishengir EnableHIVMInjectBlockAllSync=false [SRC]"
+    bishengir_option: EnableHIVMInjectBlockAllSync
+    description: 启用或禁用自动为所有操作注入 block 同步。
+    applies_to: 全部算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/InjectBlockSync.cpp
+    evidence: [DOC, SRC]
+
+  - name: limit_auto_multi_buffer_only_for_local_buffer
+    category: 多缓冲范围
+    values: [null, true, false]
+    default: "bishengir LimitAutoMultiBufferOnlyForLocalBuffer=false [SRC]"
+    bishengir_option: LimitAutoMultiBufferOnlyForLocalBuffer
+    description: 限制自动 multi-buffer 只作用于 local buffer。
+    applies_to: 全部算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/EnableMultiBuffer.cpp
+    evidence: [DOC, SRC]
+
+  - name: limit_auto_multi_buffer_of_local_buffer
+    category: 多缓冲范围
+    values: [null, no-limit, no-l0c]
+    default: "bishengir LimitAutoMultiBufferOfLocalBuffer=CUBE_NO_L0C（即 no-l0c）[SRC]；合法值另有 no-limit/only-cube/only-vector（PassPipeline.cpp:199-203）"
+    bishengir_option: LimitAutoMultiBufferOfLocalBuffer
+    description: 配置 local buffer 自动 multi-buffer 的 scope。
+    applies_to: 全部算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/EnableMultiBuffer.cpp
+    evidence: [DOC, SRC]
+
+  - name: set_workspace_multibuffer
+    category: Workspace
+    values: [null, 2, 4]
+    default: "zh 表未给默认；bishengir Options.td 未见同名选项（疑似 triton 侧映射到 workspace 多缓冲档位的组合选项，待 triton backend 源码确认 [UNVERIFIED]）"
+    bishengir_option: null
+    description: 配置 workspace multi-buffer 档位。
+    applies_to: 使用 workspace 的算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/EnableMultiBuffer.cpp
+    evidence: [DOC]
+
+  - name: tile_mix_vector_loop
+    category: CV 融合 tiling
+    values: [null, 2, 4, 8]
+    default: "bishengir TileMixVectorLoop=2 [SRC]"
+    bishengir_option: TileMixVectorLoop
+    description: 配置 Vector loop 的切分份数。
+    applies_to: 仅 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/TileCubeVectorLoop.cpp
+    evidence: [DOC, SRC]
+
+  - name: tile_mix_cube_loop
+    category: CV 融合 tiling
+    values: [null, 2, 4, 8]
+    default: "bishengir TileMixCubeLoop=2 [SRC]"
+    bishengir_option: TileMixCubeLoop
+    description: 配置 Cube loop 的切分份数。
+    applies_to: 仅 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/TileCubeVectorLoop.cpp
+    evidence: [DOC, SRC]
+
+  - name: disable_auto_inject_block_sync
+    category: CV 融合/同步
+    values: [null, true, false]
+    default: "bishengir DisableAutoInjectBlockSync=false [SRC]（即默认注入 block sync）"
+    bishengir_option: DisableAutoInjectBlockSync
+    description: 启用或禁用自动 block sync 注入（与 inject_block_all 反向）。
+    applies_to: 仅 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/InjectBlockSync.cpp
+    evidence: [DOC, SRC]
+
+  - name: stream
+    category: 运行流
+    values: [null, "<NPU stream 标识>"]
+    default: null
+    bishengir_option: null
+    description: 告知编译器使用哪个 NPU stream（运行时概念，非编译 pass 选项）。
+    applies_to: 全部算子
+    pass_anchor: null
+    evidence: [DOC]
+
+  - name: enable_linearize
+    category: 编译 Pass
+    values: [null, true, false]
+    default: "版本相关 [DOC]；bishengir Options.td 未见同名选项（linearize 属 triton-to-structured 阶段，开关在 triton backend 侧 [UNVERIFIED]）"
+    bishengir_option: null
+    description: 启用或禁用 linearization pass（对应 triton-to-structured 的 linearize）。
+    applies_to: 全部算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/（linearize 相关 pass）
+    evidence: [DOC]
+
+  - name: enable_nd2nz_on_vector
+    category: CV 融合/layout
+    values: [null, true, false]
+    default: "bishengir EnableHivmNd2nzOnVector=false [SRC]"
+    bishengir_option: EnableHivmNd2nzOnVector
+    description: 启用或禁用 Vector 路径上的 ND→NZ 布局转换。
+    applies_to: 仅 CV 融合算子
+    pass_anchor: bishengir/lib/Dialect/HIVM/Pipelines/HIVMPipelines.cpp
+    evidence: [DOC, SRC]
+
+  - name: auto_blockify_size
+    category: 大 grid 优化
+    values: [null, 1, ...]
+    default: "bishengir EnableAutoBlockifyLoop=false [SRC]（zh 表写默认 1，指 triton 侧默认开启传参；底层 pass 默认关，须显式开启+TRITON_ALL_BLOCKS_PARALLEL）"
+    bishengir_option: EnableAutoBlockifyLoop
+    description: 启用或禁用 AutoBlockify pass。
+    applies_to: 全部算子（grid 大于物理核数时收益最大）
+    preconditions:
+      - 未设置环境变量 TRITON_ALL_BLOCKS_PARALLEL 时该选项被忽略
+      - kernel 逻辑必须对执行顺序不敏感，否则有死锁风险（见 backend_contracts.md C-004）
+    pass_anchor: bishengir/lib/Dialect/HIVM/Transforms/AutoBlockifyParallelLoop.cpp
+    evidence: [DOC, SRC]
+
+# 速查：按算子类别筛选项（默认值见各条 default 字段）
+by_operator_class:
+  vector 纯向量算子:
+    常用: [multibuffer, auto_blockify_size, enable_linearize]
+    可选: [limit_auto_multi_buffer_only_for_local_buffer, limit_auto_multi_buffer_of_local_buffer, stream]
+  cube 算子:
+    常用: [multibuffer, set_workspace_multibuffer]
+    可选: [unit_flag, stream]
+  cv_fusion 算子:
+    常用: [enable_auto_bind_sub_block, enable_hivm_auto_cv_balance, sync_solver, tile_mix_vector_loop, tile_mix_cube_loop]
+    可选: [unit_flag, disable_auto_inject_block_sync, enable_nd2nz_on_vector, inject_barrier_all, inject_block_all]

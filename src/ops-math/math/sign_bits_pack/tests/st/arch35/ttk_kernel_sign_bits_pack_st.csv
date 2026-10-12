@@ -1,0 +1,20 @@
+testcase_name,op_name,input_shapes,input_dtypes,input_formats,output_shapes,output_dtypes,output_formats,attributes,input_data_ranges,precision_tolerances,absolute_precision
+SignBitsPack_L1_001_N8_fp32_size1,sign_bits_pack,"((8,),)","('float32',)","('ND',)","((1, 1),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_002_N8_fp16_size1,sign_bits_pack,"((8,),)","('float16',)","('ND',)","((1, 1),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_003_N16_fp32_size1,sign_bits_pack,"((16,),)","('float32',)","('ND',)","((1, 2),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_004_N16_fp16_size2,sign_bits_pack,"((16,),)","('float16',)","('ND',)","((2, 1),)","('uint8',)","('ND',)",{'size': 2},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_005_N32_fp32_size1,sign_bits_pack,"((32,),)","('float32',)","('ND',)","((1, 4),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_006_N32_fp16_size2,sign_bits_pack,"((32,),)","('float16',)","('ND',)","((2, 2),)","('uint8',)","('ND',)",{'size': 2},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_007_N32_fp32_size4_alt,sign_bits_pack,"((32,),)","('float32',)","('ND',)","((4, 1),)","('uint8',)","('ND',)",{'size': 4},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_008_N64_fp32_size1,sign_bits_pack,"((64,),)","('float32',)","('ND',)","((1, 8),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_009_N64_fp16_size2,sign_bits_pack,"((64,),)","('float16',)","('ND',)","((2, 4),)","('uint8',)","('ND',)",{'size': 2},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_010_N64_fp32_size4,sign_bits_pack,"((64,),)","('float32',)","('ND',)","((4, 2),)","('uint8',)","('ND',)",{'size': 4},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_011_N64_fp16_size8,sign_bits_pack,"((64,),)","('float16',)","('ND',)","((8, 1),)","('uint8',)","('ND',)",{'size': 8},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_012_N128_fp32_size1,sign_bits_pack,"((128,),)","('float32',)","('ND',)","((1, 16),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_013_N128_fp16_size4,sign_bits_pack,"((128,),)","('float16',)","('ND',)","((4, 4),)","('uint8',)","('ND',)",{'size': 4},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_014_N128_fp32_size8,sign_bits_pack,"((128,),)","('float32',)","('ND',)","((8, 2),)","('uint8',)","('ND',)",{'size': 8},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_015_N128_fp16_size16,sign_bits_pack,"((128,),)","('float16',)","('ND',)","((16, 1),)","('uint8',)","('ND',)",{'size': 16},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_016_N256_fp32_size1,sign_bits_pack,"((256,),)","('float32',)","('ND',)","((1, 32),)","('uint8',)","('ND',)",{'size': 1},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_017_N256_fp16_size8,sign_bits_pack,"((256,),)","('float16',)","('ND',)","((8, 4),)","('uint8',)","('ND',)",{'size': 8},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_018_N256_fp32_size16,sign_bits_pack,"((256,),)","('float32',)","('ND',)","((16, 2),)","('uint8',)","('ND',)",{'size': 16},"((-1.0, 1.0),)","((0, 0),)",1
+SignBitsPack_L1_019_N256_fp16_size32,sign_bits_pack,"((256,),)","('float16',)","('ND',)","((32, 1),)","('uint8',)","('ND',)",{'size': 32},"((-1.0, 1.0),)","((0, 0),)",1

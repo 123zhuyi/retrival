@@ -1,0 +1,54 @@
+diff --git a/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp b/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
+index ce80d32e..0c7ae330 100644
+--- a/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
++++ b/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
+@@ -7,9 +7,15 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
++#include "mlir/Config/mlir-config.h"
++
+ #include "torch-mlir/Dialect/TorchConversion/Transforms/BackendTypeConversion.h"
+ #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionOps.h"
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++#include "mlir/Dialect/Arith/IR/Arith.h"
++#endif
++
+ using namespace mlir;
+ using namespace mlir::torch;
+ using namespace mlir::torch::TorchConversion;
+@@ -100,11 +106,33 @@ static void setupTorchIntToI64Conversion(ConversionTarget &target,
+     assert(inputs.size() == 1);
+     return builder.createOrFold<ToI64Op>(loc, inputs[0]);
+   });
++#if BSPUB_DAVINCI_BISHENGIR
++  typeConverter.addTargetMaterialization(
++      [](OpBuilder &builder, IndexType type, ValueRange inputs,
++         Location loc) -> Value {
++        assert(inputs.size() == 1);
++        if (!isa<Torch::IntType>(inputs[0].getType()))
++          return Value();
++        // materialize torch.int to index by castTo(castTo(x, i64), index)
++        auto i64Value = builder.createOrFold<ToI64Op>(loc, inputs[0]);
++        return builder.create<mlir::arith::IndexCastOp>(
++            i64Value.getLoc(), builder.getIndexType(), i64Value);
++      });
++#endif
+   auto sourceMaterialization = [](OpBuilder &builder, Torch::IntType type,
+                                   ValueRange inputs, Location loc) -> Value {
+     assert(inputs.size() == 1);
++#if BSPUB_DAVINCI_BISHENGIR
++    // materialize index to torch.int by castTo(castTo(x, i64), torch.int)
++    Value input = inputs[0];
++    if (isa<IndexType>(input.getType()))
++      input = builder.create<mlir::arith::IndexCastOp>(
++          input.getLoc(), builder.getI64Type(), input);
++    return builder.create<FromI64Op>(loc, input);
++#else
+     assert(isa<IntegerType>(inputs[0].getType()));
+     return builder.create<FromI64Op>(loc, inputs[0]);
++#endif
+   };
+   typeConverter.addSourceMaterialization(sourceMaterialization);
+ #if BSPUB_DAVINCI_BISHENGIR

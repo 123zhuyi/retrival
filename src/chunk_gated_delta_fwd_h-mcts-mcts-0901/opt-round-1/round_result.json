@@ -1,0 +1,20 @@
+{
+  "round_index": 1,
+  "status": "success",
+  "best_speedup": 5.6991,
+  "target_reached": true,
+  "improvement_made": true,
+  "phase4_entered": true,
+  "optimized": true,
+  "effective_metric_source": "kernel",
+  "direction": "pattern: custom (fused chunk-recurrence: per-(b,h) flat serial chunk loop, S[K,V] fp32 register-resident, V-tile grid split, seq-in-grid varlen)",
+  "hypothesis": "MCTS expands virtual root. Global baseline is pure-PyTorch triple-nested-loop golden with massive headroom. Leverage proven Triton-Ascend chunk-recurrence architecture: host pre-transposes to flat [BH,T,D], one core per (b,hv,V-tile), serial in-kernel chunk loop with S[K,V] fp32 register-resident, BLOCK_L=chunk_size. Dense and varlen may need distinct numerical recipes (dense double-reduce outer product vs varlen matmul).",
+  "round_strategy": "exploration",
+  "work_dir": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1",
+  "error": null,
+  "artifacts": {
+    "summary_json": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/summary.json",
+    "report_md": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/report.md",
+    "final_code": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1/chunk_gated_delta_fwd_h_generated.py"
+  }
+}

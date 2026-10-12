@@ -1,0 +1,271 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include <string>
+#include <vector>
+
+#include "error_util.h"
+#include "log/log.h"
+#include "register/op_impl_registry.h"
+#include "runtime/infer_shape_context.h"
+#include "runtime/storage_shape.h"
+#include "util/const_util.h"
+#include "util/shape_util.h"
+
+using namespace ge;
+using namespace Ops::Base;
+namespace ops {
+
+static constexpr size_t kInputIndex0 = 0U;
+static constexpr size_t kInputIndex1 = 1U;
+static constexpr size_t kInputIndex2 = 2U;
+static constexpr size_t kOutputIndex0 = 0U;
+static constexpr int64_t kRank1 = 1;
+static constexpr int64_t kNum1 = 1;
+static constexpr int64_t kUnknownDim = -1;
+
+static inline bool IsConstTensor(const gert::Tensor* inputTensor)
+{
+    if (inputTensor != nullptr) {
+        if (inputTensor->GetAddr() == nullptr) {
+            // empty tensor
+            return inputTensor->GetShapeSize() == 0;
+        }
+        return true;
+    }
+    return false;
+}
+
+template <typename T>
+static bool GetConstIntToShape(T* context, const int64_t constIdx, gert::Shape& constShape)
+{
+    const gert::Tensor* constTensor = context->GetInputTensor(constIdx);
+    if (constTensor == nullptr) {
+        OP_LOGE(context->GetNodeName(), "input[%ld] is null.", constIdx);
+        return false;
+    }
+    if (!IsConstTensor(constTensor)) {
+        OP_LOGW(context->GetNodeName(), "the input[%ld] is not const tensor, will return failed.", constIdx);
+        return false;
+    }
+    return Ops::Base::GetConstIntToShape(context, constIdx, constShape);
+}
+
+namespace {
+struct SubShapePara {
+    SubShapePara(int64_t startInput, int64_t endInput, int64_t strideInput)
+        : start(startInput), end(endInput), stride(strideInput)
+    {}
+    int64_t start;
+    int64_t end;
+    int64_t stride;
+};
+} // namespace
+
+static ge::graphStatus WithRankAtLeast(const gert::Shape* tensor, int64_t rank, gert::Shape* outShape,
+                                       const std::string& opName)
+{
+    int64_t size = static_cast<int64_t>(tensor->GetDimNum());
+    if ((!IsUnknownRank(*tensor)) && size < rank) {
+        OP_LOGE(opName, "rank[%ld] must be at least [%ld]", size, rank);
+        return GRAPH_FAILED;
+    }
+    *outShape = *tensor;
+    return GRAPH_SUCCESS;
+}
+
+static ge::graphStatus WithRank(const gert::Shape* tensor, int64_t rank, gert::Shape* outShape,
+                                const std::string& opName)
+{
+    int64_t existing = static_cast<int64_t>(tensor->GetDimNum());
+    if (IsUnknownRank(*tensor)) {
+        outShape->SetDimNum(rank);
+        for (int64_t i = 0; i < rank; ++i) {
+            outShape->SetDim(i, kUnknownDim);
+        }
+        return GRAPH_SUCCESS;
+    }
+    if (existing != rank) {
+        OP_LOGE(opName, "rank[%ld] must be [%ld]", existing, rank);
+        return GRAPH_FAILED;
+    }
+    *outShape = *tensor;
+    return GRAPH_SUCCESS;
+}
+
+static ge::graphStatus Merge(int64_t dim1, int64_t dim2, int64_t& out)
+{
+    if (dim1 == dim2) {
+        out = dim1;
+        return GRAPH_SUCCESS;
+    }
+    if (dim2 == kUnknownDim) {
+        out = dim1;
+        return GRAPH_SUCCESS;
+    }
+    if (dim1 == kUnknownDim) {
+        out = dim2;
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+static ge::graphStatus Merge(const gert::Shape* s0, const gert::Shape* s1, gert::Shape* out, const std::string& opName)
+{
+    if (s0 == nullptr || s1 == nullptr || out == nullptr) {
+        OP_LOGE(opName, "s0 or s1 or out is nullptr, please check!");
+        return GRAPH_FAILED;
+    }
+
+    if (IsUnknownRank(*s1)) {
+        *out = *s0;
+        return GRAPH_SUCCESS;
+    }
+    if (IsUnknownRank(*s0)) {
+        *out = *s1;
+        return GRAPH_SUCCESS;
+    }
+    if (s0->GetDimNum() != s1->GetDimNum()) {
+        OP_LOGE(opName, "different rank of first shape %zu and the second shape rank %zu", s0->GetDimNum(),
+                s1->GetDimNum());
+        return GRAPH_FAILED;
+    }
+
+    const size_t rank = s0->GetDimNum();
+    out->SetDimNum(rank);
+    for (size_t i = 0; i < rank; ++i) {
+        int64_t dim = 0;
+        if (Merge(s0->GetDim(i), s1->GetDim(i), dim) != GRAPH_SUCCESS) {
+            OP_LOGE(opName, "merge %zu th dim failed, first dim value%ld and the second dim value %ld", i,
+                    s0->GetDim(i), s1->GetDim(i));
+            return GRAPH_FAILED;
+        }
+        out->SetDim(i, dim);
+    }
+    return GRAPH_SUCCESS;
+}
+
+static ge::graphStatus SubShape(const gert::Shape* s, SubShapePara& para, gert::Shape* out, const std::string& opName)
+{
+    int64_t start = para.start;
+    int64_t end = para.end;
+    int64_t stride = para.stride;
+    int64_t sRank = static_cast<int64_t>(s->GetDimNum());
+    if (start > sRank) {
+        start = sRank;
+    }
+    if (end > sRank) {
+        end = sRank;
+    }
+    if (start < 0 || end < 0 || stride <= 0 || start > end) {
+        OP_LOGE(opName, "invalid sub shape para start[%ld], end[%ld], stride[%ld]", start, end, stride);
+        return GRAPH_FAILED;
+    }
+
+    out->SetDimNum(0);
+    for (int64_t i = start; i < end; i += stride) {
+        out->AppendDim(s->GetDim(i));
+    }
+    return GRAPH_SUCCESS;
+}
+
+static ge::graphStatus Concatenate(const gert::Shape* s1, const gert::Shape* s2, gert::Shape* out)
+{
+    if (s1 == nullptr || s2 == nullptr || out == nullptr) {
+        return GRAPH_FAILED;
+    }
+
+    size_t s1Rank = s1->GetDimNum();
+    size_t s2Rank = s2->GetDimNum();
+    size_t rank = s1Rank + s2Rank;
+
+    out->SetDimNum(rank);
+    for (size_t i = 0; i < s1Rank; ++i) {
+        out->SetDim(i, s1->GetDim(i));
+    }
+    for (size_t i = 0; i < s2Rank; ++i) {
+        out->SetDim(s1Rank + i, s2->GetDim(i));
+    }
+    return GRAPH_SUCCESS;
+}
+
+static ge::graphStatus SegmentSumCheck(gert::InferShapeContext* context)
+{
+    OP_LOGI(context->GetNodeName(), "Begin to do InferShapeForSparseSegmentSum check");
+    gert::Shape output_unused;
+    const gert::Shape* x_shape = context->GetInputShape(kInputIndex0);
+    OPS_CHECK_NULL_WITH_CONTEXT(context, x_shape);
+    OP_LOGE_IF(WithRankAtLeast(x_shape, kRank1, &output_unused, context->GetNodeName()) != GRAPH_SUCCESS,
+               ge::GRAPH_FAILED, context->GetNodeName(), "Input x should be at least 1-D.");
+    const gert::Shape* indices_shape = context->GetInputShape(kInputIndex1);
+    OPS_CHECK_NULL_WITH_CONTEXT(context, indices_shape);
+    OP_LOGE_IF(WithRank(indices_shape, kRank1, &output_unused, context->GetNodeName()) != GRAPH_SUCCESS,
+               ge::GRAPH_FAILED, context->GetNodeName(), "Input indices must be 1-D.");
+    const gert::Shape* segment_ids_shape = context->GetInputShape(kInputIndex2);
+    OPS_CHECK_NULL_WITH_CONTEXT(context, segment_ids_shape);
+    OP_LOGE_IF(WithRank(segment_ids_shape, kRank1, &output_unused, context->GetNodeName()) != GRAPH_SUCCESS,
+               ge::GRAPH_FAILED, context->GetNodeName(), "Input segment_ids must be 1-D.");
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus InferShapeForSparseSegmentSum(gert::InferShapeContext* context)
+{
+    OP_LOGI(context->GetNodeName(), "Begin to do InferShapeForSparseSegmentSum");
+    OP_LOGE_IF(SegmentSumCheck(context) != GRAPH_SUCCESS, ge::GRAPH_FAILED, context->GetNodeName(), "Check failed.");
+    const gert::Shape* x_shape = context->GetInputShape(kInputIndex0);
+    const gert::Shape* indices_shape = context->GetInputShape(kInputIndex1);
+    const gert::Shape* segment_ids_shape = context->GetInputShape(kInputIndex2);
+    gert::Shape unused_out;
+    OP_LOGE_IF(Merge(indices_shape, segment_ids_shape, &unused_out, context->GetNodeName()) != GRAPH_SUCCESS,
+               ge::GRAPH_FAILED, context->GetNodeName(), "call merge function failed.");
+    int64_t start = 1;
+    int64_t stride = 1;
+    gert::Shape sub_shape_out;
+    struct SubShapePara para(start, static_cast<int64_t>(x_shape->GetDimNum()), stride);
+    OP_LOGE_IF(SubShape(x_shape, para, &sub_shape_out, context->GetNodeName()) != GRAPH_SUCCESS, ge::GRAPH_FAILED,
+               context->GetNodeName(), "call SubShape function failed.");
+    std::vector<int64_t> dims_0 = {};
+    gert::Shape const_shape;
+    bool can_get_segment_ids = GetConstIntToShape<gert::InferShapeContext>(context, kInputIndex2, const_shape);
+    gert::Shape dims_0_shape;
+    dims_0_shape.SetDimNum(kNum1);
+    if (can_get_segment_ids) {
+        int64_t segment_ShapeSize = segment_ids_shape->GetShapeSize();
+        const gert::Tensor* segment_ids_tensor = context->GetInputTensor(kInputIndex2);
+        OPS_CHECK_NULL_WITH_CONTEXT(context, segment_ids_tensor);
+        if (segment_ids_tensor->GetDataType() == DT_INT32) {
+            auto max_segment_id = (segment_ids_tensor->GetData<int32_t>())[segment_ShapeSize - 1];
+            dims_0_shape.SetDim(kOutputIndex0, (max_segment_id + 1));
+        } else {
+            auto max_segment_id = (segment_ids_tensor->GetData<int64_t>())[segment_ShapeSize - 1];
+            dims_0_shape.SetDim(kOutputIndex0, (max_segment_id + 1));
+        }
+    } else {
+        dims_0_shape.SetDim(kOutputIndex0, (ge::UNKNOWN_DIM));
+    }
+    gert::Shape* y_shape = context->GetOutputShape(kOutputIndex0);
+    OPS_CHECK_NULL_WITH_CONTEXT(context, y_shape);
+    OP_LOGE_IF(Concatenate(&dims_0_shape, &sub_shape_out, y_shape) != GRAPH_SUCCESS, ge::GRAPH_FAILED,
+               context->GetNodeName(), "call Concatenate function failed.");
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus InferDtypeForSparseSegmentSum(gert::InferDataTypeContext* context)
+{
+    OP_LOGI(context->GetNodeName(), "Begin to do InferDtypeForSparseSegmentSum");
+    DataType x_data_type = context->GetInputDataType(kInputIndex0);
+    return context->SetOutputDataType(kOutputIndex0, x_data_type);
+}
+
+IMPL_OP_INFERSHAPE(SparseSegmentSum)
+    .InputsDataDependency({kInputIndex2})
+    .InferShape(InferShapeForSparseSegmentSum)
+    .InferDataType(InferDtypeForSparseSegmentSum);
+} // namespace ops

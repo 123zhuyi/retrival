@@ -1,0 +1,133 @@
+{
+  "op_type": "SliceLastDim",
+  "op_list": [
+    {
+      "bin_filename": "SliceLastDim_1B",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        { "name": "start", "dtype": "int", "value": null },
+        { "name": "end", "dtype": "int", "value": null },
+        { "name": "stride", "dtype": "int", "value": null }
+      ]
+    },
+    {
+      "bin_filename": "SliceLastDim_2B",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        { "name": "start", "dtype": "int", "value": null },
+        { "name": "end", "dtype": "int", "value": null },
+        { "name": "stride", "dtype": "int", "value": null }
+      ]
+    },
+    {
+      "bin_filename": "SliceLastDim_4B",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        { "name": "start", "dtype": "int", "value": null },
+        { "name": "end", "dtype": "int", "value": null },
+        { "name": "stride", "dtype": "int", "value": null }
+      ]
+    },
+    {
+      "bin_filename": "SliceLastDim_8B",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic",
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        { "name": "start", "dtype": "int", "value": null },
+        { "name": "end", "dtype": "int", "value": null },
+        { "name": "stride", "dtype": "int", "value": null }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,423 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include "aclnn_multi_scale_deformable_attn_function.h"
+#include "aclnn_kernels/cast.h"
+#include "aclnn_kernels/transpose.h"
+#include "aclnn_kernels/contiguous.h"
+#include "multi_scale_deformable_attn_function.h"
+#include "aclnn_kernels/common/op_error_check.h"
+#include "aclnn/aclnn_base.h"
+#include "opdev/common_types.h"
+#include "opdev/data_type_utils.h"
+#include "opdev/format_utils.h"
+#include "opdev/op_dfx.h"
+#include "opdev/op_executor.h"
+#include "opdev/op_log.h"
+#include "opdev/tensor_view_utils.h"
+
+using namespace op;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+static const size_t FIRST_DIM = 0;
+static const size_t SECOND_DIM = 1;
+static const size_t THIRD_DIM = 2;
+static const size_t FOURTH_DIM = 3;
+static const size_t FIFTH_DIM = 4;
+static const size_t SIXTH_DIM = 5;
+
+static const size_t VALUE_SIZE = 4;
+static const size_t SPATIAL_SHAPES_SIZE = 2;
+static const size_t LEVEL_START_INDEX_SIZE = 1;
+static const size_t LOCATION_SIZE = 6;
+static const size_t ATTN_WEIGHT_SIZE = 5;
+static const size_t GRAD_OUT_SIZE = 4;
+static const size_t GRAD_VALUE_SIZE = 4;
+static const size_t GRAD_LOCATION_SIZE = 6;
+static const size_t GRAD_ATTN_SIZE = 5;
+
+static const int64_t NUM_KEYS = 1;
+static const int64_t NUM_HEADS = 2;
+static const int64_t NUM_LEVELS = 4;
+static const int64_t NUM_POINTS = 5;
+static const int64_t VALUE_DIM_LIMIT = 4;
+static const int64_t SPATIAL_SHAPES_DIM_LIMIT = 2;
+static const int64_t LEVEL_START_DIM_LIMIT = 1;
+static const int64_t LOCATION_DIM_LIMIT = 6;
+static const int64_t ATTN_WEIGHT_DIM_LIMIT = 5;
+static const int64_t OUTPUT_DIM_LIMIT = 3;
+static const int64_t DIM_ONE = 1;
+static const int64_t DIM_FIVE = 5;
+
+static const std::initializer_list<DataType> VALUE_DTYPE_SUPPORT_LIST = {
+    op::DataType::DT_FLOAT, op::DataType::DT_FLOAT16, op::DataType::DT_BF16};
+static const std::initializer_list<DataType> VALUE_DTYPE_SUPPORT_LIST_310P = {op::DataType::DT_FLOAT,
+                                                                              op::DataType::DT_FLOAT16};
+static const std::initializer_list<DataType> INDEX_DTYPE_SUPPORT_LIST = {op::DataType::DT_INT32,
+                                                                         op::DataType::DT_INT64};
+static const std::initializer_list<DataType> OUT_DTYPE_SUPPORT_LIST = {op::DataType::DT_FLOAT, op::DataType::DT_FLOAT16,
+                                                                       op::DataType::DT_BF16};
+
+static bool CheckNotNull(const aclTensor* value, const aclTensor* spatialShape, const aclTensor* levelStartIndex,
+                         const aclTensor* location, const aclTensor* attnWeight, const aclTensor* output,
+                         uint64_t* workspaceSize, aclOpExecutor** executor)
+{
+    OP_CHECK_NULL(value, return false);
+    OP_CHECK_NULL(spatialShape, return false);
+    OP_CHECK_NULL(levelStartIndex, return false);
+    OP_CHECK_NULL(location, return false);
+    OP_CHECK_NULL(attnWeight, return false);
+    OP_CHECK_NULL(output, return false);
+    if (workspaceSize == nullptr) {
+        return false;
+    }
+    if (executor == nullptr) {
+        return false;
+    }
+    return true;
+}
+
+static bool CheckDtypeValid(const aclTensor* value, const aclTensor* spatialShape, const aclTensor* levelStartIndex,
+                            const aclTensor* location, const aclTensor* attnWeight, const aclTensor* output)
+{
+    // 检查value的数据类型是否在支持列表内
+    OP_CHECK_DTYPE_NOT_SUPPORT(value, VALUE_DTYPE_SUPPORT_LIST, return false);
+
+    // 检查spatialShape的数据类型是否在支持列表内
+    OP_CHECK_DTYPE_NOT_SUPPORT(spatialShape, INDEX_DTYPE_SUPPORT_LIST, return false);
+
+    // 检查levelStartIndex的数据类型是否在支持列表内
+    OP_CHECK_DTYPE_NOT_SUPPORT(levelStartIndex, INDEX_DTYPE_SUPPORT_LIST, return false);
+
+    // 检查location的数据类型是否在支持列表内
+    OP_CHECK_DTYPE_NOT_SUPPORT(location, VALUE_DTYPE_SUPPORT_LIST, return false);
+
+    // 检查attnWeight的数据类型是否在支持列表内
+    OP_CHECK_DTYPE_NOT_SUPPORT(attnWeight, VALUE_DTYPE_SUPPORT_LIST, return false);
+
+    // 检查output的数据类型是否在支持列表内
+    OP_CHECK_DTYPE_NOT_SUPPORT(output, VALUE_DTYPE_SUPPORT_LIST, return false);
+
+    // 检查value和location的数据类型是否一致
+    OP_CHECK_DTYPE_NOT_MATCH(value, location->GetDataType(), return false);
+
+    // 检查value和attnWeight的数据类型是否一致
+    OP_CHECK_DTYPE_NOT_MATCH(value, attnWeight->GetDataType(), return false);
+
+    // 检查value和output的数据类型是否一致
+    OP_CHECK_DTYPE_NOT_MATCH(value, output->GetDataType(), return false);
+
+    if (GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND310P) {
+        OP_CHECK_DTYPE_NOT_SUPPORT(value, VALUE_DTYPE_SUPPORT_LIST_310P, return false);
+        OP_CHECK_DTYPE_NOT_SUPPORT(location, VALUE_DTYPE_SUPPORT_LIST_310P, return false);
+        OP_CHECK_DTYPE_NOT_SUPPORT(attnWeight, VALUE_DTYPE_SUPPORT_LIST_310P, return false);
+        OP_CHECK_DTYPE_NOT_SUPPORT(output, VALUE_DTYPE_SUPPORT_LIST_310P, return false);
+    }
+
+    return true;
+}
+
+static bool CheckTensorDimCount(const aclTensor* value, const aclTensor* spatialShape, const aclTensor* levelStartIndex,
+                                const aclTensor* location, const aclTensor* attnWeight, const aclTensor* output)
+{
+    OP_CHECK_WRONG_DIMENSION(value, VALUE_DIM_LIMIT, return false);
+    OP_CHECK_WRONG_DIMENSION(spatialShape, SPATIAL_SHAPES_DIM_LIMIT, return false);
+    OP_CHECK_WRONG_DIMENSION(levelStartIndex, LEVEL_START_DIM_LIMIT, return false);
+    OP_CHECK_WRONG_DIMENSION(location, LOCATION_DIM_LIMIT, return false);
+    OP_CHECK_WRONG_DIMENSION(attnWeight, ATTN_WEIGHT_DIM_LIMIT, return false);
+    OP_CHECK_WRONG_DIMENSION(output, OUTPUT_DIM_LIMIT, return false);
+    return true;
+}
+
+static bool CheckDimValueRange(const op::Shape& locationShape, const op::Shape& valueShape)
+{
+    int64_t numQueries = locationShape.GetDim(1);
+    OP_CHECK(numQueries >= 32,
+             OP_LOGE(ACLNN_ERR_PARAM_INVALID, "numQueries must be greater than or equal to 32, bug got input %ld",
+                     numQueries),
+             return false);
+
+    int64_t numHeads = locationShape.GetDim(2);
+    OP_CHECK(numHeads <= 16,
+             OP_LOGE(ACLNN_ERR_PARAM_INVALID, "numHeads must be less than or equal to 16, bug got input %ld", numHeads),
+             return false);
+
+    int64_t numLevels = locationShape.GetDim(3);
+    OP_CHECK(
+        numLevels <= 16,
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "numLevels must be less than or equal to 16, bug got input %ld", numLevels),
+        return false);
+
+    int64_t numPoints = locationShape.GetDim(4);
+    OP_CHECK(
+        numPoints <= 16,
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "numPoints must be less than or equal to 16, bug got input %ld", numPoints),
+        return false);
+
+    int64_t embedDims = valueShape.GetDim(3);
+    OP_CHECK(((embedDims % 8 == 0) && (embedDims <= 256)),
+             OP_LOGE(ACLNN_ERR_PARAM_INVALID, "embedDims must be divisible by 8 and less than or equal to 256"),
+             return false);
+    return true;
+}
+
+static bool CheckShape(const aclTensor* value, const aclTensor* spatialShape, const aclTensor* levelStartIndex,
+                       const aclTensor* location, const aclTensor* attnWeight, const aclTensor* output)
+{
+    CHECK_RET(CheckTensorDimCount(value, spatialShape, levelStartIndex, location, attnWeight, output), false);
+
+    auto spatialShapeShape = spatialShape->GetViewShape();
+    int64_t spatialLastDim = spatialShapeShape.GetDim(DIM_ONE);
+    OP_CHECK(spatialLastDim == 2,
+             OP_LOGE(ACLNN_ERR_PARAM_INVALID, "The last axis of spatialShape should be 2, bug got input %ld",
+                     spatialLastDim),
+             return false);
+
+    auto locationShape = location->GetViewShape();
+    int64_t locationLastDim = locationShape.GetDim(DIM_FIVE);
+    OP_CHECK(
+        locationLastDim == 2,
+        OP_LOGE(ACLNN_ERR_PARAM_INVALID, "The last axis of location should be 2, bug got input %ld", locationLastDim),
+        return false);
+
+    auto valueShape = value->GetViewShape();
+    CHECK_RET(CheckDimValueRange(locationShape, valueShape), false);
+
+    auto attnWeightShape = attnWeight->GetViewShape();
+    int64_t spatialShapeNumLevels = spatialShapeShape.GetDim(0);
+    int64_t locationNumLevels = locationShape.GetDim(3);
+    int64_t attnWeightNumLevels = attnWeightShape.GetDim(3);
+    OP_CHECK(spatialShapeNumLevels == locationNumLevels && locationNumLevels == attnWeightNumLevels,
+             OP_LOGE(ACLNN_ERR_PARAM_INVALID,
+                     "numLevels dimensions must be equal: spatialShape[0]=%ld, location[3]=%ld, attnWeight[3]=%ld",
+                     spatialShapeNumLevels, locationNumLevels, attnWeightNumLevels),
+             return false);
+
+    return true;
+}
+
+static aclnnStatus CheckParams(const aclTensor* value, const aclTensor* spatialShape, const aclTensor* levelStartIndex,
+                               const aclTensor* location, const aclTensor* attnWeight, aclTensor* output,
+                               uint64_t* workspaceSize, aclOpExecutor** executor)
+{
+    // 1. 检查参数是否为空指针
+    CHECK_RET(CheckNotNull(value, spatialShape, levelStartIndex, location, attnWeight, output, workspaceSize, executor),
+              ACLNN_ERR_PARAM_NULLPTR);
+
+    // 2. 检查输入的数据类型是否在API支持的数据类型范围之内，需要根据api定义校验
+    CHECK_RET(CheckDtypeValid(value, spatialShape, levelStartIndex, location, attnWeight, output),
+              ACLNN_ERR_PARAM_INVALID);
+
+    // 3. 检查输入的shape
+    CHECK_RET(CheckShape(value, spatialShape, levelStartIndex, location, attnWeight, output), ACLNN_ERR_PARAM_INVALID);
+    return ACLNN_SUCCESS;
+}
+
+aclnnStatus aclnnMultiScaleDeformableAttnFunctionGetWorkspaceSize(const aclTensor* value, const aclTensor* spatialShape,
+                                                                  const aclTensor* levelStartIndex,
+                                                                  const aclTensor* location,
+                                                                  const aclTensor* attnWeight, aclTensor* output,
+                                                                  uint64_t* workspaceSize, aclOpExecutor** executor)
+{
+    L2_DFX_PHASE_1(aclnnMultiScaleDeformableAttnFunction,
+                   DFX_IN(value, spatialShape, levelStartIndex, location, attnWeight), DFX_OUT(output));
+    // 固定写法，创建OpExecutor
+
+    auto uniqueExecutor = CREATE_EXECUTOR();
+    CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
+
+    // 固定写法，参数检查
+    auto ret = CheckParams(value, spatialShape, levelStartIndex, location, attnWeight, output, workspaceSize, executor);
+    CHECK_RET(ret == ACLNN_SUCCESS, ret);
+
+    // 空Tensor处理
+    if (value->IsEmpty() || spatialShape->IsEmpty() || levelStartIndex->IsEmpty() || location->IsEmpty() ||
+        attnWeight->IsEmpty()) {
+        *workspaceSize = 0;
+        uniqueExecutor.ReleaseTo(executor);
+        return ACLNN_SUCCESS;
+    }
+
+    // 将输入转为连续tensor
+    auto valueContiguous = l0op::Contiguous(value, uniqueExecutor.get());
+    CHECK_RET(valueContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    auto spatialShapeContiguous = l0op::Contiguous(spatialShape, uniqueExecutor.get());
+    CHECK_RET(spatialShapeContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    auto levelStartIndexContiguous = l0op::Contiguous(levelStartIndex, uniqueExecutor.get());
+    CHECK_RET(levelStartIndexContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    auto locationContiguous = l0op::Contiguous(location, uniqueExecutor.get());
+    CHECK_RET(locationContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    auto attnWeightContiguous = l0op::Contiguous(attnWeight, uniqueExecutor.get());
+    CHECK_RET(attnWeightContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    auto valueShape = value->GetViewShape();
+    auto locationShape = location->GetViewShape();
+    uint64_t numHeads = locationShape.GetDim(2);
+    uint64_t numLevels = locationShape.GetDim(3);
+    uint64_t numPoints = locationShape.GetDim(4);
+    uint64_t embedDims = valueShape.GetDim(3);
+    uint64_t noTranspose = numLevels <= 8 && numHeads <= 8 && (embedDims == 16 || embedDims == 32) &&
+                           (numPoints % 2 == 0);
+
+    bool is310PSocVersion = GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND310P;
+    bool is910SocVersion = GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND910B ||
+                           GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND910_93;
+    bool is950SocVersion = GetCurrentPlatformInfo().GetSocVersion() == SocVersion::ASCEND950;
+    bool is950SimdShape = false;
+
+    // 输入如果是float16/bfloat16，需要cast为float32
+    // 950 路由策略（仅基于 channels/embedDims，不区分 dtype）：
+    //   - channels (embedDims) >= 64 -> SIMD (Generic kernel)
+    //   - channels < 64             -> SIMT (SIMT kernel 原生支持 fp16/bf16/fp32)
+    // 950 Cast 策略：
+    //   - channels >= 64 且非 fp32 -> Cast 到 fp32（Generic kernel 硬编码 DTYPE_VALUE=float，
+    //     bisheng 不支持 Cast<int32, half/bfloat16_t>）
+    //   - channels >= 64 且 fp32   -> 不 Cast
+    //   - channels < 64            -> 不 Cast，走 SIMT
+    // 950 SIMD path: channels (embedDims) >= 64
+    if (is950SocVersion) {
+        is950SimdShape = (embedDims >= 64);
+    }
+    auto inputValueDtype = valueContiguous->GetDataType();
+    // 950 上需要 Cast 到 fp32 的场景：channels >= 64 且输入非 fp32（走 Generic/SIMD）。
+    bool needCastOn950 = is950SocVersion && is950SimdShape &&
+                         (inputValueDtype == op::DataType::DT_FLOAT16 || inputValueDtype == op::DataType::DT_BF16);
+
+    if (is310PSocVersion) {
+        // value transpose
+        const int64_t permuteValueList[] = {0, 2, 1, 3};
+        int64_t valueDimNum = static_cast<int64_t>(valueContiguous->GetViewShape().GetDimNum());
+        auto valueAxes = uniqueExecutor.get()->AllocIntArray(permuteValueList, valueDimNum);
+        CHECK_RET(valueAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        valueContiguous = l0op::Transpose(valueContiguous, valueAxes, uniqueExecutor.get());
+        CHECK_RET(valueContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+        // loc transpose
+        const int64_t permuteLocList[] = {3, 0, 2, 1, 4, 5};
+        int64_t locDimNum = static_cast<int64_t>(locationContiguous->GetViewShape().GetDimNum());
+        auto locAxes = uniqueExecutor.get()->AllocIntArray(permuteLocList, locDimNum);
+        CHECK_RET(locAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        locationContiguous = l0op::Transpose(locationContiguous, locAxes, uniqueExecutor.get());
+        CHECK_RET(locationContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+        // attnWeight transpose
+        const int64_t permuteAttnList[] = {3, 0, 2, 1, 4};
+        int64_t attnDimNum = static_cast<int64_t>(attnWeightContiguous->GetViewShape().GetDimNum());
+        auto attnAxes = uniqueExecutor.get()->AllocIntArray(permuteAttnList, attnDimNum);
+        CHECK_RET(attnAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        attnWeightContiguous = l0op::Transpose(attnWeightContiguous, attnAxes, uniqueExecutor.get());
+        CHECK_RET(attnWeightContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    }
+
+    if (noTranspose == 0 && (is910SocVersion || is950SimdShape)) {
+        // value transpose
+        const int64_t permuteValueList[] = {0, 2, 1, 3};
+        int64_t valueDimNum = static_cast<int64_t>(valueContiguous->GetViewShape().GetDimNum());
+        auto valueAxes = uniqueExecutor.get()->AllocIntArray(permuteValueList, valueDimNum);
+        CHECK_RET(valueAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        valueContiguous = l0op::Transpose(valueContiguous, valueAxes, uniqueExecutor.get());
+        CHECK_RET(valueContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+        // loc transpose
+        const int64_t permuteLocList[] = {0, 2, 3, 4, 5, 1};
+        int64_t locDimNum = static_cast<int64_t>(locationContiguous->GetViewShape().GetDimNum());
+        auto locAxes = uniqueExecutor.get()->AllocIntArray(permuteLocList, locDimNum);
+        CHECK_RET(locAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        locationContiguous = l0op::Transpose(locationContiguous, locAxes, uniqueExecutor.get());
+        CHECK_RET(locationContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+        // attnWeight transpose
+        const int64_t permuteAttnList[] = {0, 2, 3, 4, 1};
+        int64_t attnDimNum = static_cast<int64_t>(attnWeightContiguous->GetViewShape().GetDimNum());
+        auto attnAxes = uniqueExecutor.get()->AllocIntArray(permuteAttnList, attnDimNum);
+        CHECK_RET(attnAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        attnWeightContiguous = l0op::Transpose(attnWeightContiguous, attnAxes, uniqueExecutor.get());
+        CHECK_RET(attnWeightContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    }
+
+    const aclTensor* valueInput = nullptr;
+    const aclTensor* locationInput = nullptr;
+    const aclTensor* attnWeightInput = nullptr;
+    if (is950SocVersion && !needCastOn950) {
+        // 950 不需要 Cast 的场景：channels < 64（走 SIMT），或 channels >= 64 且 fp32（走 SIMD）
+        valueInput = valueContiguous;
+        locationInput = locationContiguous;
+        attnWeightInput = attnWeightContiguous;
+    } else {
+        // 910b/310p: always cast to fp32 或 950 channels >= 64
+        valueInput = l0op::Cast(valueContiguous, op::DataType::DT_FLOAT, uniqueExecutor.get());
+        CHECK_RET(valueInput != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+        locationInput = l0op::Cast(locationContiguous, op::DataType::DT_FLOAT, uniqueExecutor.get());
+        CHECK_RET(locationInput != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+        attnWeightInput = l0op::Cast(attnWeightContiguous, op::DataType::DT_FLOAT, uniqueExecutor.get());
+        CHECK_RET(attnWeightInput != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    }
+
+    // 索引和spatialShape如果非int32类型，需要强转
+    auto spatialShapeCasted = l0op::Cast(spatialShapeContiguous, DataType::DT_INT32, uniqueExecutor.get());
+    CHECK_RET(spatialShapeCasted != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    auto levelStartIndexCasted = l0op::Cast(levelStartIndexContiguous, DataType::DT_INT32, uniqueExecutor.get());
+    CHECK_RET(levelStartIndexCasted != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    // 调用l0算子MultiScaleDeformableAttnFunction进行计算
+    auto multiScaleDeformableAttnFunctionResult = l0op::MultiScaleDeformableAttnFunction(
+        valueInput, spatialShapeCasted, levelStartIndexCasted, locationInput, attnWeightInput, uniqueExecutor.get());
+    auto outputTensor = std::get<0>(multiScaleDeformableAttnFunctionResult);
+    CHECK_RET(outputTensor != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    const aclTensor* msdaOutTensor = nullptr;
+
+    if (is310PSocVersion) {
+        const int64_t permuteOutList[] = {0, 2, 1}; // (bs, nq, nh*ed)
+        int64_t outDimNum = static_cast<int64_t>(outputTensor->GetViewShape().GetDimNum());
+        auto outAxes = uniqueExecutor.get()->AllocIntArray(permuteOutList, outDimNum);
+        CHECK_RET(outAxes != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        auto resOut = l0op::Transpose(outputTensor, outAxes, uniqueExecutor.get());
+        CHECK_RET(resOut != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        // 固定写法，将计算结果转换成输出out的数据类型
+        auto outputCast = l0op::Cast(resOut, output->GetDataType(), uniqueExecutor.get());
+        CHECK_RET(outputCast != nullptr, ACLNN_ERR_INNER_NULLPTR);
+        msdaOutTensor = outputCast;
+    } else {
+        // 固定写法，将计算结果转换成输出out的数据类型
+        msdaOutTensor = l0op::Cast(outputTensor, output->GetDataType(), uniqueExecutor.get());
+        CHECK_RET(msdaOutTensor != nullptr, ACLNN_ERR_INNER_NULLPTR);
+    }
+
+    // 如果出参out是非连续Tensor，需要把计算完的连续Tensor转非连续
+    auto viewCopyOutput = l0op::ViewCopy(msdaOutTensor, output, uniqueExecutor.get());
+    CHECK_RET(viewCopyOutput != nullptr, ACLNN_ERR_INNER_NULLPTR);
+
+    // 固定写法，获取计算过程中需要使用的workspace大小
+    *workspaceSize = uniqueExecutor->GetWorkspaceSize();
+    uniqueExecutor.ReleaseTo(executor);
+    return ACLNN_SUCCESS;
+}
+
+aclnnStatus aclnnMultiScaleDeformableAttnFunction(void* workspace, uint64_t workspaceSize, aclOpExecutor* executor,
+                                                  aclrtStream stream)
+{
+    L2_DFX_PHASE_2(aclnnMultiScaleDeformableAttnFunction);
+    // 固定写法，调用框架能力，完成计算
+    return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
+}
+
+#ifdef __cplusplus
+}
+#endif

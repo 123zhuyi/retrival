@@ -1,0 +1,195 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv_base_utils.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_TILING_RUNTIME_CONV_BASE_UTILS_H
+#define OPS_BUILT_IN_OP_TILING_RUNTIME_CONV_BASE_UTILS_H
+#include "../cube_tiling.h"
+#include "conv_template_utils.h"
+#include "../../conv_npu_arch_resolver.h"
+#include "platform/platform_infos_def.h"
+namespace optiling {
+namespace conv_ops_tiling {
+
+inline bool IsCubeVectorFuseSoc(fe::PlatFormInfos& platformInfo)
+{
+    return conv_arch::IsCubeVectorFuseSoc(platformInfo);
+}
+
+const std::string NPU_ARCH_KEY_3510 = "3510";
+const std::string NPU_ARCH_KEY_FUSE = "FUSE";
+
+inline const std::string& GetNpuArchKey(fe::PlatFormInfos& platformInfo)
+{
+    return conv_arch::GetNpuArchKey(platformInfo);
+}
+
+enum class QuantMode : std::uint8_t { NO_QUANT = 0, SCALAR_QUANT, VECTOR_QUANT, UNDEFINED };
+
+enum class ReluMode : std::uint8_t { NORELU = 0, NORMALRELU = 1, SCALARRELU = 2, VECTORRELU = 3, UNDEFINED };
+
+enum class ClipMode : std::uint8_t { NOCLIPRELU = 0, SCALARCLIPRELU = 1, UNDEFINED };
+
+struct ConvTilingParseInfo : CubeTilingCommonParseInfo {
+    uint32_t aicoreNum = 0;
+    uint64_t l2Size = 0;
+    uint64_t l1Size = 0;
+    uint64_t l0aSize = 0;
+    uint64_t l0bSize = 0;
+    uint64_t l0cSize = 0;
+    uint64_t ubSize = 0;
+    uint64_t btSize = 0;
+    uint64_t l2Rate = 0;
+    std::string socVersion = "";
+    std::string shortSocVersion = "";
+    NpuArch npuArch = NpuArch::DAV_RESV;
+    uint32_t aivNum = 0;
+    uint64_t fbSize = 0;
+    bool isCubeVectorFuse = false;
+    ConvTilingParseInfo& operator=(const ConvTilingParseInfo* other)
+    {
+        if (this != other) { // 防止自赋值
+            // 复制所有的成员变量
+            aicoreNum = other->aicoreNum;
+            aivNum = other->aivNum;
+            l2Size = other->l2Size;
+            l1Size = other->l1Size;
+            l0aSize = other->l0aSize;
+            l0bSize = other->l0bSize;
+            l0cSize = other->l0cSize;
+            ubSize = other->ubSize;
+            btSize = other->btSize;
+            fbSize = other->fbSize;
+            l2Rate = other->l2Rate;
+            socVersion = other->socVersion;
+            shortSocVersion = other->shortSocVersion;
+            npuArch = other->npuArch;
+            isCubeVectorFuse = other->isCubeVectorFuse;
+        }
+        return *this;
+    }
+};
+
+struct ConvAscendcOriginShapeAttrInfo {
+    int64_t oriFmapN = 1;
+    int64_t oriFmapC = 1;
+    int64_t oriFmapD = 1;
+    int64_t oriFmapH = 1;
+    int64_t oriFmapW = 1;
+    int64_t oriWeightN = 1;
+    int64_t oriWeightC = 1;
+    int64_t oriWeightD = 1;
+    int64_t oriWeightH = 1;
+    int64_t oriWeightW = 1;
+    int64_t oriOutputN = 1;
+    int64_t oriOutputC = 1;
+    int64_t oriOutputD = 1;
+    int64_t oriOutputH = 1;
+    int64_t oriOutputW = 1;
+    int64_t oriOutput1N = 1;
+    int64_t oriOutput1C = 1;
+    int64_t oriOutput1D = 1;
+    int64_t oriOutput1H = 1;
+    int64_t oriOutput1W = 1;
+    int64_t oriStrideN = 1;
+    int64_t oriStrideC = 1;
+    int64_t oriStrideD = 1;
+    int64_t oriStrideH = 1;
+    int64_t oriStrideW = 1;
+    int64_t oriDilationN = 1;
+    int64_t oriDilationC = 1;
+    int64_t oriDilationD = 1;
+    int64_t oriDilationH = 1;
+    int64_t oriDilationW = 1;
+    int64_t oriPadHead = 1;
+    int64_t oriPadTail = 1;
+    int64_t oriPadTop = 1;
+    int64_t oriPadBottom = 1;
+    int64_t oriPadLeft = 1;
+    int64_t oriPadRight = 1;
+    int64_t oriGroups = 1;
+    int64_t oriOffsetX = 1;
+    int64_t fixedShiftValue = 0;
+};
+
+const std::map<std::string, int8_t> STR_TO_ROUNDMODE = {
+    {"rint", ROUND_MODE_RINT}, {"round", ROUND_MODE_ROUND}, {"hybrid", ROUND_MODE_HYBRID}};
+
+// fmap, weight, output
+const std::vector<std::vector<ge::Format>> SUPPORT_CONV2D_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NHWC}};
+
+const std::vector<std::vector<ge::Format>> SUPPORT_CONV2D_FORMAT_LIST_FUSE = {
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NCHW}};
+
+const std::vector<std::vector<ge::Format>> SUPPORT_QUANT_CONV2D_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW}};
+
+const std::vector<std::vector<ge::Format>> SUPPORT_CONV3D_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW},
+    {ge::Format::FORMAT_NDHWC, ge::Format::FORMAT_DHWCN, ge::Format::FORMAT_NDHWC},
+    {ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NDHWC}};
+
+const std::vector<std::vector<ge::Format>> SUPPORT_QUANT_CONV3D_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW}};
+
+const std::vector<std::vector<ge::Format>> SUPPORT_CONV2D_DEFAULT_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW}};
+
+const std::vector<std::vector<ge::Format>> SUPPORT_CONV3D_DEFAULT_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW, ge::Format::FORMAT_NCDHW}};
+
+// ExtendConv2D fmap, weight, output supprot format list
+const std::vector<std::vector<ge::Format>> EXTENDCONV2D_SUPPORT_FORMAT_LIST = {
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NHWC}};
+
+// ExtendConv2D fmap, weight, output supprot format list
+const std::vector<std::vector<ge::Format>> EXTENDCONV2D_SUPPORT_FORMAT_LIST_FUSE = {
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NCHW, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NHWC},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NCHW},
+    {ge::Format::FORMAT_NHWC, ge::Format::FORMAT_HWCN, ge::Format::FORMAT_NCHW}};
+
+// arch-keyed format support list maps (extend by adding new arch keys)
+const std::map<std::string, std::vector<std::vector<ge::Format>>> SUPPORT_CONV2D_FORMAT_LIST_MAP = {
+    {NPU_ARCH_KEY_3510, SUPPORT_CONV2D_FORMAT_LIST}, {NPU_ARCH_KEY_FUSE, SUPPORT_CONV2D_FORMAT_LIST_FUSE}};
+
+const std::map<std::string, std::vector<std::vector<ge::Format>>> EXTENDCONV2D_SUPPORT_FORMAT_LIST_MAP = {
+    {NPU_ARCH_KEY_3510, EXTENDCONV2D_SUPPORT_FORMAT_LIST}, {NPU_ARCH_KEY_FUSE, EXTENDCONV2D_SUPPORT_FORMAT_LIST_FUSE}};
+
+struct ConvParamInfo {
+    // Fmap, Weight, Output, FmapOri(for attr) param info
+    std::vector<ge::Format> paramsFormat = {ge::Format::FORMAT_MAX, ge::Format::FORMAT_MAX, ge::Format::FORMAT_MAX};
+    // index: N C D H W
+    std::vector<std::vector<size_t>> paramsIdxVec = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+    static constexpr size_t FMAP_PARAM_IDX = 0;
+    static constexpr size_t WEIGHT_PARAM_IDX = 1;
+    static constexpr size_t OUT_PARAM_IDX = 2;
+    std::string nodeType = "";
+};
+} // namespace conv_ops_tiling
+} // namespace optiling
+#endif

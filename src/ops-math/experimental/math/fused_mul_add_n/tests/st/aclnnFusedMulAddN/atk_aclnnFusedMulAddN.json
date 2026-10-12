@@ -1,0 +1,1040 @@
+[
+ {
+  "id": 0,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "basic rank2"
+ },
+ {
+  "id": 1,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp16",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp16",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp16",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "basic rank2"
+ },
+ {
+  "id": 2,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "bf16",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "bf16",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "bf16",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "basic rank2"
+ },
+ {
+  "id": 3,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "basic rank2"
+ },
+ {
+  "id": 4,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int16",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int16",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int16",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "basic rank2"
+ },
+ {
+  "id": 5,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     8
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     8
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "1d"
+ },
+ {
+  "id": 6,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "single element"
+ },
+ {
+  "id": 7,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3,
+     4
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3,
+     4
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "rank3"
+ },
+ {
+  "id": 8,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     4096,
+     1024
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     4096,
+     1024
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "big shape, multi-core"
+ },
+ {
+  "id": 9,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1,
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "x3 form [1,1]"
+ },
+ {
+  "id": 10,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     0,
+     0
+    ],
+    "backward": false
+   }
+  ],
+  "note": "x3=0 => y==x2"
+ },
+ {
+  "id": 11,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     1,
+     1
+    ],
+    "backward": false
+   }
+  ],
+  "note": "x3=1 => y==x1+x2"
+ },
+ {
+  "id": 12,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     2,
+     3
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     0,
+     0
+    ],
+    "backward": false
+   }
+  ],
+  "note": "int x3=0 => y==x2"
+ },
+ {
+  "id": 13,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp16",
+    "shape": [
+     4096,
+     1024
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp16",
+    "shape": [
+     4096,
+     1024
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "fp16",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "fp16 cast path, big"
+ },
+ {
+  "id": 14,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "bf16",
+    "shape": [
+     2,
+     3,
+     4
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "bf16",
+    "shape": [
+     2,
+     3,
+     4
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "bf16",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "bf16 cast path, rank3"
+ },
+ {
+  "id": 15,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     1024
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     1024
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int32",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "int32 1d"
+ },
+ {
+  "id": 16,
+  "name": "fused_mul_add_n",
+  "api_type": "aclnn_fused_mul_add_n",
+  "aclnn_name": "FusedMulAddN",
+  "standard": {
+   "acc": {
+    "single_bm": {
+     "type": "high_performance"
+    }
+   },
+   "perf": "not_key"
+  },
+  "inputs": [
+   {
+    "name": "x1",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int16",
+    "shape": [
+     2,
+     3,
+     4
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x2",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int16",
+    "shape": [
+     2,
+     3,
+     4
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   },
+   {
+    "name": "x3",
+    "type": "tensor",
+    "required": true,
+    "dtype": "int16",
+    "shape": [
+     1
+    ],
+    "range_values": [
+     -5,
+     5
+    ],
+    "backward": false
+   }
+  ],
+  "note": "int16 rank3"
+ }
+]

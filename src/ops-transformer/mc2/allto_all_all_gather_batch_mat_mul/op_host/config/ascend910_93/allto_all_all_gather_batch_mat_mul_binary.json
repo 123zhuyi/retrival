@@ -1,0 +1,245 @@
+{
+    "op_type": "AlltoAllAllGatherBatchMatMul",
+    "op_list": [
+      {
+        "bin_filename": "AlltoAllAllGatherBatchMatMul_ND_ND_FP16_FP16",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "weight",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y1",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "y2",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "y3",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group_ep",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "group_tp",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "ep_world_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "tp_world_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "x_shard_type",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "act_type",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "transpose_weight",
+            "dtype": "bool",
+            "value": false
+          },
+          {
+            "name": "output_y2_flag",
+            "dtype": "bool",
+            "value": false
+          },
+          {
+            "name": "output_y3_flag",
+            "dtype": "bool",
+            "value": false
+          }
+        ]
+      },
+      {
+        "bin_filename": "AlltoAllAllGatherBatchMatMul_ND_ND_BF16_FP32",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "weight",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y1",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "y2",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "y3",
+            "index": 2,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group_ep",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "group_tp",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "ep_world_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "tp_world_size",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "x_shard_type",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "act_type",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "transpose_weight",
+            "dtype": "bool",
+            "value": false
+          },
+          {
+            "name": "output_y2_flag",
+            "dtype": "bool",
+            "value": false
+          },
+          {
+            "name": "output_y3_flag",
+            "dtype": "bool",
+            "value": false
+          }
+        ]
+      }
+    ]
+  }

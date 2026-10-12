@@ -1,0 +1,93 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv3d_backprop_input_v2_arch35.h
+ * \brief
+ */
+#ifndef CONV3D_BACKPROP_INPUT_V2_ARCH_35_H
+#define CONV3D_BACKPROP_INPUT_V2_ARCH_35_H
+#include "conv3d_backprop_input_v2/conv3d_dx_rowc_block.h"
+#include "conv3d_backprop_input_v2/conv3d_dx_kernel_split_block.h"
+#include "conv3d_backprop_input_v2/conv3d_backprop_input_v2_init_output_arch35.h"
+#include "conv3d_backprop_input_v2/conv3d_backprop_input_v2_vec_transpose.h"
+#include "conv3d_backprop_input_v2/conv3d_dx_small_kernel.h"
+
+using namespace AscendC;
+
+#define CONV3D_DX_INPUT_RUN_OP(...)                           \
+    do {                                                      \
+        __VA_ARGS__ op;                                       \
+        op.Init(filter, out_backprop, y, usrWsp, tilingData); \
+        op.Process();                                         \
+    } while (0)
+
+template <uint8_t loadB2Condition, uint8_t kernelSplitMode, uint8_t groupConvMode, bool isBasicBlockTiling,
+          uint8_t loadB1Condition>
+__global__ __aicore__ void conv3d_backprop_input_v2_arch35(GM_ADDR input_size, GM_ADDR filter, GM_ADDR out_backprop,
+                                                           GM_ADDR y, GM_ADDR workSpace, GM_ADDR tiling)
+{
+    if (workSpace == nullptr) {
+        return;
+    }
+
+    GM_ADDR usrWsp = GetUserWorkspace(workSpace);
+    if (usrWsp == nullptr) {
+        return;
+    }
+    GET_TILING_DATA(tilingData, tiling);
+
+    if constexpr (kernelSplitMode == TPL_NO_SPLIT_KERNEL && groupConvMode == TPL_GROUP_MODE_ORIGIN &&
+                  isBasicBlockTiling && loadB1Condition == TPL_SMALL_KERNEL) {
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510)
+        KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2);
+#endif
+        CONV3D_DX_INPUT_RUN_OP(Conv3dDxSmallKernel<DTYPE_FILTER, FORMAT_FILTER, DTYPE_OUT_BACKPROP, FORMAT_OUT_BACKPROP,
+                                                   DTYPE_Y, FORMAT_Y, DTYPE_BIAS, FORMAT_BIAS, loadB2Condition,
+                                                   kernelSplitMode, groupConvMode, loadB1Condition>);
+        return;
+    }
+
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510)
+    KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2);
+#endif
+
+    if (tilingData.initOutputFlag == static_cast<int32_t>(InitOutputFlag::L0_INIT)) {
+        Conv3dDxInitOutput<DTYPE_Y> opInitOutput;
+        opInitOutput.Init(y, tilingData);
+        opInitOutput.Process(y);
+        opInitOutput.Destroy();
+    }
+
+    if ASCEND_IS_AIV_SCALAR {
+        if (tilingData.enableVecTrans) {
+            // VecTranspose
+            DxVecTranspose::Conv3dDxVecTranspose<DTYPE_FILTER> opVecTranspose;
+            opVecTranspose.Init(filter, workSpace, tilingData);
+            opVecTranspose.Process();
+            opVecTranspose.Destroy();
+        }
+    }
+
+    if constexpr (kernelSplitMode != TPL_NO_SPLIT_KERNEL) {
+        CONV3D_DX_INPUT_RUN_OP(
+            Conv3dDxKsBlock<DTYPE_FILTER, FORMAT_FILTER, DTYPE_OUT_BACKPROP, FORMAT_OUT_BACKPROP, DTYPE_Y, FORMAT_Y,
+                            DTYPE_BIAS, FORMAT_BIAS, loadB2Condition, kernelSplitMode, groupConvMode>);
+    } else if constexpr ((isBasicBlockTiling == true) && (loadB1Condition == TPL_VEC_TO_L1_C04)) {
+        CONV3D_DX_INPUT_RUN_OP(Conv3dDxOswBlock<DTYPE_FILTER, FORMAT_FILTER, DTYPE_OUT_BACKPROP, FORMAT_OUT_BACKPROP,
+                                                DTYPE_Y, FORMAT_Y, DTYPE_BIAS, FORMAT_BIAS, loadB2Condition,
+                                                kernelSplitMode, groupConvMode, TPL_GM_TO_L1, true>);
+    } else {
+        CONV3D_DX_INPUT_RUN_OP(Conv3dDxOswBlock<DTYPE_FILTER, FORMAT_FILTER, DTYPE_OUT_BACKPROP, FORMAT_OUT_BACKPROP,
+                                                DTYPE_Y, FORMAT_Y, DTYPE_BIAS, FORMAT_BIAS, loadB2Condition,
+                                                kernelSplitMode, groupConvMode, loadB1Condition>);
+    }
+}
+#endif // CONV3D_BACKPROP_INPUT_V2_ARCH_35_H

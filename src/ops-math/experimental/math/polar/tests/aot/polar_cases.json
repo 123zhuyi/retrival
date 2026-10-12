@@ -1,0 +1,86 @@
+[
+  {
+    "case_name": "Test_same_small",
+    "op_name": "Polar",
+    "case_path": "",
+    "expect_func": "/home/ma-user/work/case_910b/Polar/aot/polar_golden.py:polar",
+    "input_desc": [
+      { "name": "input", "format": "ND", "data_type": "float", "param_type": "required", "shape": [2, 6, 10], "data_path": "", "value_range": [-10, 10] },
+      { "name": "angle", "format": "ND", "data_type": "float", "param_type": "required", "shape": [2, 6, 10], "data_path": "", "value_range": [-3.14, 3.14] }
+    ],
+    "output_desc": [
+      { "name": "out", "format": "ND", "data_type": "complex64", "param_type": "required", "shape": [2, 6, 10], "data_path": "", "golden_path": "", "err_threshold": [0.0001, 0.0001] }
+    ],
+    "attr_desc": []
+  },
+  {
+    "case_name": "Test_same_16M",
+    "op_name": "Polar",
+    "case_path": "",
+    "expect_func": "/home/ma-user/work/case_910b/Polar/aot/polar_golden.py:polar",
+    "input_desc": [
+      { "name": "input", "format": "ND", "data_type": "float", "param_type": "required", "shape": [4096, 4096], "data_path": "", "value_range": [-10, 10] },
+      { "name": "angle", "format": "ND", "data_type": "float", "param_type": "required", "shape": [4096, 4096], "data_path": "", "value_range": [-3.14, 3.14] }
+    ],
+    "output_desc": [
+      { "name": "out", "format": "ND", "data_type": "complex64", "param_type": "required", "shape": [4096, 4096], "data_path": "", "golden_path": "", "err_threshold": [0.0001, 0.0001] }
+    ],
+    "attr_desc": []
+  },
+  {
+    "case_name": "Test_bcast_lowhigh",
+    "op_name": "Polar",
+    "case_path": "",
+    "expect_func": "/home/ma-user/work/case_910b/Polar/aot/polar_golden.py:polar",
+    "input_desc": [
+      { "name": "input", "format": "ND", "data_type": "float", "param_type": "required", "shape": [4, 1, 8], "data_path": "", "value_range": [-10, 10] },
+      { "name": "angle", "format": "ND", "data_type": "float", "param_type": "required", "shape": [4, 5, 8], "data_path": "", "value_range": [-3.14, 3.14] }
+    ],
+    "output_desc": [
+      { "name": "out", "format": "ND", "data_type": "complex64", "param_type": "required", "shape": [4, 5, 8], "data_path": "", "golden_path": "", "err_threshold": [0.0001, 0.0001] }
+    ],
+    "attr_desc": []
+  },
+  {
+    "case_name": "Test_bcast_scalar",
+    "op_name": "Polar",
+    "case_path": "",
+    "expect_func": "/home/ma-user/work/case_910b/Polar/aot/polar_golden.py:polar",
+    "input_desc": [
+      { "name": "input", "format": "ND", "data_type": "float", "param_type": "required", "shape": [1], "data_path": "", "value_range": [-10, 10] },
+      { "name": "angle", "format": "ND", "data_type": "float", "param_type": "required", "shape": [3, 4, 5], "data_path": "", "value_range": [-3.14, 3.14] }
+    ],
+    "output_desc": [
+      { "name": "out", "format": "ND", "data_type": "complex64", "param_type": "required", "shape": [3, 4, 5], "data_path": "", "golden_path": "", "err_threshold": [0.0001, 0.0001] }
+    ],
+    "attr_desc": []
+  },
+  {
+    "case_name": "Test_bcast_2way",
+    "op_name": "Polar",
+    "case_path": "",
+    "expect_func": "/home/ma-user/work/case_910b/Polar/aot/polar_golden.py:polar",
+    "input_desc": [
+      { "name": "input", "format": "ND", "data_type": "float", "param_type": "required", "shape": [8, 1], "data_path": "", "value_range": [-10, 10] },
+      { "name": "angle", "format": "ND", "data_type": "float", "param_type": "required", "shape": [1, 7], "data_path": "", "value_range": [-3.14, 3.14] }
+    ],
+    "output_desc": [
+      { "name": "out", "format": "ND", "data_type": "complex64", "param_type": "required", "shape": [8, 7], "data_path": "", "golden_path": "", "err_threshold": [0.0001, 0.0001] }
+    ],
+    "attr_desc": []
+  },
+  {
+    "case_name": "Test_highdim_unalign",
+    "op_name": "Polar",
+    "case_path": "",
+    "expect_func": "/home/ma-user/work/case_910b/Polar/aot/polar_golden.py:polar",
+    "input_desc": [
+      { "name": "input", "format": "ND", "data_type": "float", "param_type": "required", "shape": [3, 5, 17, 269], "data_path": "", "value_range": [-10, 10] },
+      { "name": "angle", "format": "ND", "data_type": "float", "param_type": "required", "shape": [3, 5, 17, 269], "data_path": "", "value_range": [-3.14, 3.14] }
+    ],
+    "output_desc": [
+      { "name": "out", "format": "ND", "data_type": "complex64", "param_type": "required", "shape": [3, 5, 17, 269], "data_path": "", "golden_path": "", "err_threshold": [0.0001, 0.0001] }
+    ],
+    "attr_desc": []
+  }
+]

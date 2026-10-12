@@ -1,0 +1,1140 @@
+/**
+ * Copyright (c) 2025-2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include <gtest/gtest.h>
+#include <stdlib.h>
+
+#include <cstddef>
+#include <cstring>
+#include <exception>
+#include <mutex>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "log/log.h"
+#include "nlohmann/json.hpp"
+
+#define protected public
+#define private public
+#include "op_host/tiling_templates_registry.h"
+#include "ut_op_util.h"
+#include "exe_graph/runtime/storage_format.h"
+#include "exe_graph/runtime/storage_shape.h"
+#include "exe_graph/runtime/tiling_parse_context.h"
+#include "kernel_run_context_facker.h"
+#include "test_cube_util.h"
+#include "test_quant_batch_matmul_v3_tiling.h"
+#include "platform/platform_infos_def.h"
+#include "ut_string_utils.h"
+
+using namespace ut_str;
+using namespace std;
+using namespace ge;
+using namespace ut_util;
+
+struct QuantBatchMatmulV3TilingCsvLoadResult {
+    std::vector<QuantBatchMatmulV3TilingTestParam> params;
+    std::vector<std::string> errors;
+};
+
+static string TilingData2Str(const void* tilingData, size_t tilingSize)
+{
+    string result;
+    for (size_t i = 0; i < tilingSize; i += sizeof(int32_t)) {
+        result += std::to_string((reinterpret_cast<const int32_t*>(tilingData)[i / sizeof(int32_t)]));
+        result += " ";
+    }
+    return result;
+}
+
+template <typename T>
+static void SetExpectedTilingFieldIfPresent(std::vector<int32_t>& tilingDataInt, size_t fieldOffset, const T& value)
+{
+    size_t tilingDataSize = tilingDataInt.size() * sizeof(int32_t);
+    if (fieldOffset + sizeof(T) > tilingDataSize) {
+        return;
+    }
+    std::memcpy(reinterpret_cast<char*>(tilingDataInt.data()) + fieldOffset, &value, sizeof(T));
+}
+
+static gert::Shape TransNd2Nz(const gert::Shape& inShape)
+{
+    gert::Shape outShape;
+    for (size_t idx = 0; idx < inShape.GetDimNum() - 2; ++idx) {
+        outShape.AppendDim(inShape.GetDim(idx));
+    }
+
+    int64_t m = inShape.GetDim(inShape.GetDimNum() - 2);
+    int64_t n = inShape.GetDim(inShape.GetDimNum() - 1);
+    outShape.AppendDim((n + 31) / 32);
+    outShape.AppendDim((m + 15) / 16);
+    outShape.AppendDim(16);
+    outShape.AppendDim(32);
+    return outShape;
+}
+
+static void InitPlatformInfo(const std::string& socVersion, gert::TilingContext* tilingContext, string& compileInfoStr,
+                             int64_t aicNum = -1, int64_t aivNum = -1)
+{
+    map<string, string> soc_version_infos = {{"SoC_version", socVersion}, {"Short_SoC_version", socVersion}};
+    map<string, string> soc2Arch = {
+        {"Ascend910B2", "2201"}, {"Ascend910B4", "2201"}, {"Ascend310P3", "2002"},
+        {"Ascend950", "3510"},   {"MC62CM12AA", "5102"},
+    };
+    auto soc2ArchIter = soc2Arch.find(socVersion);
+    if (soc2ArchIter != soc2Arch.end()) {
+        soc_version_infos["NpuArch"] = soc2ArchIter->second;
+    }
+    map<string, string> socInfos;
+    map<string, string> aicoreSpec;
+    map<string, string> intrinsics;
+    compileInfoStr = R"({
+        "hardware_info": {"BT_SIZE": 1024, "load3d_constraints": "0",
+                          "Intrinsic_fix_pipe_l0c2out": true, "Intrinsic_data_move_l12ub": true,
+                          "Intrinsic_data_move_l0c2ub": true, "Intrinsic_data_move_out2l1_nd2nz": false,
+                          "UB_SIZE": 196352, "L2_SIZE": 201326592, "L1_SIZE": 524032,
+                          "L0A_SIZE": 65536, "L0B_SIZE": 65536, "L0C_SIZE": 131072, "CORE_NUM": 24,
+                          "cube_core_cnt": 24, "vector_core_cnt": 48, "core_type_list": "CubeCore,VectorCore"}
+                          })";
+    if (socVersion.compare("Ascend310P3") == 0) {
+        compileInfoStr = R"({
+        "hardware_info": {"load3d_constraints": "1",
+                          "Intrinsic_data_move_l12ub": true,
+                          "Intrinsic_data_move_l0c2ub": true,
+                          "UB_SIZE": 262144, "L2_SIZE": 16777216, "L1_SIZE": 1048576,
+                          "L0A_SIZE": 65536, "L0B_SIZE": 65536, "L0C_SIZE": 262144, "CORE_NUM": 8,
+                          "ai_core_cnt": 8, "vector_core_cnt": 47, "core_type_list": "AiCore,VectorCore"}
+                          })";
+    } else if (socVersion.compare("Ascend910B4") == 0) {
+        compileInfoStr = R"({
+            "hardware_info": {"BT_SIZE": 1024, "load3d_constraints": "0",
+                            "Intrinsic_fix_pipe_l0c2out": true, "Intrinsic_data_move_l12ub": true,
+                            "Intrinsic_data_move_l0c2ub": true, "Intrinsic_data_move_out2l1_nd2nz": false,
+                            "UB_SIZE": 196352, "L2_SIZE": 201326592, "L1_SIZE": 524032,
+                            "L0A_SIZE": 65536, "L0B_SIZE": 65536, "L0C_SIZE": 131072, "CORE_NUM": 20,
+                            "cube_core_cnt": 20, "vector_core_cnt": 40, "core_type_list": "CubeCore,VectorCore"}
+                            })";
+    } else if (socVersion.compare("Ascend950") == 0) {
+        compileInfoStr = R"({
+        "hardware_info": {"BT_SIZE": 4096, "load3d_constraints": "0",
+                          "Intrinsic_fix_pipe_l0c2out": true, "Intrinsic_data_move_l12ub": true,
+                          "intrinsic_fix_pipe_l0c2out_f322bf16": true,
+                          "Intrinsic_data_move_l0c2ub": true, "Intrinsic_data_move_out2l1_nd2nz": true,
+                          "Intrinsic_fix_pipe_pre_conv_cast": true,
+                          "Intrinsic_data_move_l12bt": true,
+                          "UB_SIZE": 245760, "L2_SIZE": 134217728, "L1_SIZE": 524288,
+                          "L0A_SIZE": 65536, "L0B_SIZE": 65536, "L0C_SIZE": 262144, "CORE_NUM": 32,
+                          "cube_core_cnt": 32, "vector_core_cnt": 64, "core_type_list": "CubeCore,VectorCore"}
+                          })";
+    } else if (socVersion.compare("MC62CM12AA") == 0) {
+        compileInfoStr = R"({
+        "hardware_info": {"BT_SIZE": 4096, "load3d_constraints": "0",
+                        "Intrinsic_fix_pipe_l0c2out": true, "Intrinsic_data_move_l12ub": true,
+                        "intrinsic_fix_pipe_l0c2out_f322bf16": true,
+                        "Intrinsic_data_move_l0c2ub": true, "Intrinsic_data_move_out2l1_nd2nz": true,
+                        "Intrinsic_fix_pipe_pre_conv_cast": true,
+                        "Intrinsic_data_move_l12bt": true,
+                        "Intrinsic_mmad": true,
+                        "UB_SIZE": 253952, "L2_SIZE": 134217728, "L1_SIZE": 1048576,
+                        "L0A_SIZE": 65536, "L0B_SIZE": 65536, "L0C_SIZE": 262144, "CORE_NUM": 16,
+                        "cube_core_cnt": 16, "vector_core_cnt": 16, "core_type_list": "CubeCore,VectorCore",
+                        "lut_type": "MTE2_QTABLE"}
+                        })";
+    }
+    GetPlatFormInfos(compileInfoStr.c_str(), socInfos, aicoreSpec, intrinsics);
+    aicoreSpec["cube_freq"] = "1800";
+    if (socVersion.compare("Ascend310P3") == 0) {
+        aicoreSpec["cube_freq"] = "1000";
+    } else if (socVersion.compare("Ascend910B4") == 0) {
+        aicoreSpec["cube_freq"] = "1650";
+    }
+
+    if (aicNum > 0) {
+        socInfos["ai_core_cnt"] = std::to_string(aicNum);
+        socInfos["cube_core_cnt"] = std::to_string(aicNum);
+        socInfos["vector_core_cnt"] = std::to_string(aicNum * 2);
+    }
+    if (aivNum > 0) {
+        socInfos["vector_core_cnt"] = std::to_string(aivNum);
+    }
+
+    ASSERT_NE(tilingContext->GetPlatformInfo(), nullptr);
+    tilingContext->GetPlatformInfo()->SetPlatformRes("SoCInfo", socInfos);
+    tilingContext->GetPlatformInfo()->SetPlatformRes("AICoreSpec", aicoreSpec);
+    tilingContext->GetPlatformInfo()->SetCoreNumByCoreType("AICore");
+    tilingContext->GetPlatformInfo()->SetPlatformRes("AICoreintrinsicDtypeMap", intrinsics);
+    tilingContext->GetPlatformInfo()->SetPlatformRes("version", soc_version_infos);
+}
+
+static QuantBatchMatmulV3TilingCsvLoadResult LoadParams(const std::string& socVersion)
+{
+    QuantBatchMatmulV3TilingCsvLoadResult result;
+    std::string rootPath(ut_str::GetExeDirPath() + "../../../../");
+    std::string casePath(rootPath + "matmul/quant_batch_matmul_v3/tests/ut/op_host/test_quant_batch_matmul_v3.csv");
+    std::ifstream csvData(casePath, std::ios::in);
+    if (!csvData.is_open()) {
+        result.errors.push_back("cannot open case file: " + casePath);
+        return result;
+    }
+
+    std::string line;
+    bool skipHeader = true;
+    constexpr size_t kExpectedCols = 34UL;
+    size_t lineNo = 0UL;
+    while (std::getline(csvData, line)) {
+        ++lineNo;
+        const std::string trimLine = Trim(line);
+        if (trimLine.empty() || trimLine[0] == '#') {
+            continue;
+        }
+        if (skipHeader) {
+            skipHeader = false;
+            continue;
+        }
+
+        std::vector<std::string> testParam;
+        SplitStr2Vec(line, ",", testParam);
+        if (testParam.size() < kExpectedCols) {
+            result.errors.push_back("skip invalid csv line " + std::to_string(lineNo) + " in " + casePath +
+                                    ": expected at least " + std::to_string(kExpectedCols) + " columns, got " +
+                                    std::to_string(testParam.size()));
+            continue;
+        }
+
+        QuantBatchMatmulV3TilingTestParam param;
+        size_t idx = 0UL;
+        param.socVersion = Trim(testParam[idx++]);
+        if (param.socVersion != socVersion) {
+            continue;
+        }
+
+        try {
+            param.caseName = Trim(testParam[idx++]);
+            param.kernelUtDir = Trim(testParam[idx++]);
+            param.prefix = Trim(testParam[idx++]);
+            auto aicNum = Trim(testParam[idx++]);
+            if (aicNum.empty()) {
+                param.aicNum = -1;
+            } else {
+                param.aicNum = stol(aicNum);
+            }
+            auto aivNum = Trim(testParam[idx++]);
+            if (aivNum.empty()) {
+                param.aivNum = -1;
+            } else {
+                param.aivNum = stol(aivNum);
+            }
+            param.x1Dim = stol(testParam[idx++]);
+            param.x2Dim = stol(testParam[idx++]);
+            param.yDim = stol(testParam[idx++]);
+            param.batchA = stol(testParam[idx++]);
+            param.batchB = stol(testParam[idx++]);
+            param.batchC = stol(testParam[idx++]);
+            param.m = stol(testParam[idx++]);
+            param.k = stol(testParam[idx++]);
+            param.n = stol(testParam[idx++]);
+            param.offsetFlag = stol(testParam[idx++]);
+            param.pertokenFlag = stol(testParam[idx++]);
+            param.biasFlag = stol(testParam[idx++]);
+            param.transA = stol(testParam[idx++]);
+            param.transB = stol(testParam[idx++]);
+            param.quantMode = stol(testParam[idx++]);
+            param.x1Dtype = ParseDtype(Trim(testParam[idx++]));
+            param.x2Dtype = ParseDtype(Trim(testParam[idx++]));
+            param.scaleDtype = ParseDtype(Trim(testParam[idx++]));
+            param.perTokenScaleDtype = ParseDtype(Trim(testParam[idx++]));
+            param.biasDtype = ParseDtype(Trim(testParam[idx++]));
+            param.yDtype = ParseDtype(Trim(testParam[idx++]));
+            param.fmapNz = Trim(testParam[idx++]) == "NZ";
+            param.weightNz = Trim(testParam[idx++]) == "NZ";
+            param.result = (strcasecmp(Trim(testParam[idx++]).c_str(), "true") == 0);
+            param.numBlocks = stol(testParam[idx++]);
+            param.tilingKey = stol(testParam[idx++]);
+            param.tilingData = Trim(testParam[idx++]);
+            param.tilingStub = (strcasecmp(Trim(testParam[idx++]).c_str(), "true") == 0);
+            constexpr size_t kDeterministicLevelCol = 35UL;
+            if (testParam.size() > kDeterministicLevelCol && !Trim(testParam[kDeterministicLevelCol]).empty()) {
+                param.deterministicLevel = stoi(testParam[kDeterministicLevelCol]);
+            }
+            result.params.push_back(param);
+        } catch (const std::exception& e) {
+            result.errors.push_back("skip invalid csv line " + std::to_string(lineNo) + " in " + casePath + ": " +
+                                    e.what());
+        }
+    }
+
+    if (result.params.empty()) {
+        result.errors.push_back("no valid tiling cases loaded for " + socVersion + " from: " + casePath);
+    }
+    return result;
+}
+
+static const QuantBatchMatmulV3TilingCsvLoadResult& GetParamsLoadResult(const std::string& socVersion)
+{
+    static const QuantBatchMatmulV3TilingCsvLoadResult kCasesParams910B2 = LoadParams("Ascend910B2");
+    static const QuantBatchMatmulV3TilingCsvLoadResult kCasesParams910B4 = LoadParams("Ascend910B4");
+    static const QuantBatchMatmulV3TilingCsvLoadResult kCasesParams310P3 = LoadParams("Ascend310P3");
+    static const QuantBatchMatmulV3TilingCsvLoadResult kCasesParams950 = LoadParams("Ascend950");
+    static const QuantBatchMatmulV3TilingCsvLoadResult kCasesParamsMC62CM12AA = LoadParams("MC62CM12AA");
+    if (socVersion == "Ascend910B2") {
+        return kCasesParams910B2;
+    }
+    if (socVersion == "Ascend910B4") {
+        return kCasesParams910B4;
+    }
+    if (socVersion == "Ascend310P3") {
+        return kCasesParams310P3;
+    }
+    if (socVersion == "Ascend950") {
+        return kCasesParams950;
+    }
+    return kCasesParamsMC62CM12AA;
+}
+
+std::vector<QuantBatchMatmulV3TilingTestParam> GetParams(const std::string& socVersion)
+{
+    return GetParamsLoadResult(socVersion).params;
+}
+
+void QuantBatchMatmulV3TilingTestParam::Prepare(QuantBatchMatmulV3CompileInfo& compileInfo) const
+{
+    gert::StorageShape x1Shape;
+    gert::StorageShape x2Shape;
+    gert::StorageShape scaleShape;
+    gert::StorageShape pertokenShape;
+    gert::StorageShape biasShape;
+    gert::StorageShape outputShape;
+
+    if (yDim == 6) {
+        outputShape.MutableOriginShape() = gert::Shape({batchC, batchC, batchC, batchC, m, n});
+    } else if (yDim == 3) {
+        outputShape.MutableOriginShape() = gert::Shape({batchC, m, n});
+    } else if (yDim == 2) {
+        outputShape.MutableOriginShape() = gert::Shape({m, n});
+    } else {
+        outputShape.MutableOriginShape() = gert::Shape({m});
+    }
+
+    if (transA) {
+        if (x1Dim == 6) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, batchA, batchA, batchA, k, m});
+        } else if (x1Dim == 3) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, k, m});
+        } else if (x1Dim == 2) {
+            x1Shape.MutableOriginShape() = gert::Shape({k, m});
+        } else {
+            x1Shape.MutableOriginShape() = gert::Shape({m});
+        }
+    } else {
+        if (x1Dim == 6) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, batchA, batchA, batchA, m, k});
+        } else if (x1Dim == 3) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, m, k});
+        } else if (x1Dim == 2) {
+            x1Shape.MutableOriginShape() = gert::Shape({m, k});
+        } else {
+            x1Shape.MutableOriginShape() = gert::Shape({m});
+        }
+    }
+
+    if (transB) {
+        if (x2Dim == 6) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, batchB, batchB, batchB, n, k});
+        } else if (x2Dim == 3) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, n, k});
+        } else if (x2Dim == 2) {
+            x2Shape.MutableOriginShape() = gert::Shape({n, k});
+        } else {
+            x2Shape.MutableOriginShape() = gert::Shape({n});
+        }
+    } else {
+        if (x2Dim == 6) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, batchB, batchB, batchB, k, n});
+        } else if (x2Dim == 3) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, k, n});
+        } else if (x2Dim == 2) {
+            x2Shape.MutableOriginShape() = gert::Shape({k, n});
+        } else {
+            x2Shape.MutableOriginShape() = gert::Shape({n});
+        }
+    }
+
+    pertokenShape.MutableStorageShape() = gert::Shape({m});
+    if (quantMode == 0) { // per_tensor
+        scaleShape.MutableStorageShape() = gert::Shape({1});
+    } else if (quantMode == 1) { // per_channel
+        scaleShape.MutableStorageShape() = gert::Shape({n});
+    } else if (quantMode == 2) {
+        int64_t scaleK = (k + 63) / 64 * 2;
+        scaleShape.MutableStorageShape() = (batchB >= 1) ? gert::Shape({batchB, n, scaleK}) : gert::Shape({n, scaleK});
+        pertokenShape.MutableStorageShape() = (batchA >= 1) ? gert::Shape({batchA, m, scaleK}) :
+                                                              gert::Shape({m, scaleK});
+    } else if (quantMode == 3 || quantMode == 4) {
+        int64_t scaleM = (m + 127) / 128;
+        if (quantMode == 4) {
+            scaleM = m;
+        }
+        int64_t scaleK = (k + 127) / 128;
+        int64_t scaleN = (n + 127) / 128;
+        if (transA) {
+            if (x1Dim == 6) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, batchA, batchA, batchA, scaleK, scaleM});
+            } else if (x1Dim == 3) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, scaleK, scaleM});
+            } else if (x1Dim == 2) {
+                pertokenShape.MutableStorageShape() = gert::Shape({scaleK, scaleM});
+            }
+        } else {
+            if (x1Dim == 6) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, batchA, batchA, batchA, scaleM, scaleK});
+            } else if (x1Dim == 3) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, scaleM, scaleK});
+            } else if (x1Dim == 2) {
+                pertokenShape.MutableStorageShape() = gert::Shape({scaleM, scaleK});
+            }
+        }
+        if (transB) {
+            if (x2Dim == 6) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, batchB, batchB, batchB, scaleN, scaleK});
+            } else if (x2Dim == 3) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, scaleN, scaleK});
+            } else if (x2Dim == 2) {
+                scaleShape.MutableStorageShape() = gert::Shape({scaleN, scaleK});
+            }
+        } else {
+            if (x2Dim == 6) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, batchB, batchB, batchB, scaleK, scaleN});
+            } else if (x2Dim == 3) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, scaleK, scaleN});
+            } else if (x2Dim == 2) {
+                scaleShape.MutableStorageShape() = gert::Shape({scaleK, scaleN});
+            }
+        }
+    } else if (quantMode == 5) { // dynamic T-C: x1Scale is per-tensor, x2Scale is per-channel.
+        pertokenShape.MutableStorageShape() = gert::Shape({1});
+        scaleShape.MutableStorageShape() = gert::Shape({n});
+    } else if (quantMode == 6) { // double per-tensor scale: x1Scale {1}, x2Scale {1}.
+        pertokenShape.MutableStorageShape() = gert::Shape({1});
+        scaleShape.MutableStorageShape() = gert::Shape({1});
+    }
+
+    biasShape.MutableStorageShape() = gert::Shape({n});
+    scaleShape.MutableOriginShape() = scaleShape.MutableStorageShape();
+    biasShape.MutableOriginShape() = biasShape.MutableStorageShape();
+    pertokenShape.MutableOriginShape() = pertokenShape.MutableStorageShape();
+    if (fmapNz) {
+        x1Shape.MutableStorageShape() = TransNd2Nz(x1Shape.MutableOriginShape());
+    } else {
+        x1Shape.MutableStorageShape() = x1Shape.MutableOriginShape();
+    }
+
+    if (weightNz) {
+        x2Shape.MutableStorageShape() = TransNd2Nz(x2Shape.MutableOriginShape());
+    } else {
+        x2Shape.MutableStorageShape() = x2Shape.MutableOriginShape();
+    }
+    scaleShape.MutableOriginShape() = scaleShape.MutableStorageShape();
+    biasShape.MutableOriginShape() = biasShape.MutableStorageShape();
+    outputShape.MutableStorageShape() = outputShape.MutableOriginShape();
+
+    // platform info
+    fe::PlatFormInfos platformInfo;
+    platformInfo.Init();
+
+    std::string opType("QuantBatchMatmulV3");
+    ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl(opType.c_str()), nullptr);
+    auto rawTilingData = gert::TilingData::CreateCap(4096);
+    ASSERT_NE(rawTilingData, nullptr);
+    auto workspaceHolder = gert::ContinuousVector::Create<size_t>(4096);
+    auto workspace = reinterpret_cast<gert::ContinuousVector*>(workspaceHolder.get());
+    int64_t groupSize = 0;
+    if (quantMode == 2) {
+        groupSize = 4295032864;
+    } else if (quantMode == 3) {
+        groupSize = 549764202624;
+    } else if (quantMode == 4) {
+        groupSize = 4303356032;
+    }
+    auto holder = gert::TilingContextFaker()
+                      .NodeIoNum(6, 1)
+                      .IrInstanceNum({1, 1, 1, 1, 1, 1})
+                      .InputShapes({&x1Shape, &x2Shape, &scaleShape, offsetFlag ? &scaleShape : nullptr,
+                                    biasFlag ? &biasShape : nullptr, pertokenFlag ? &pertokenShape : nullptr})
+                      .OutputShapes({&outputShape})
+                      .CompileInfo(&compileInfo)
+                      .PlatformInfo(reinterpret_cast<char*>(&platformInfo))
+                      .NodeInputTd(0, x1Dtype, ge::FORMAT_ND, fmapNz ? ge::FORMAT_FRACTAL_NZ : ge::FORMAT_ND)
+                      .NodeInputTd(1, x2Dtype, ge::FORMAT_ND, weightNz ? ge::FORMAT_FRACTAL_NZ : ge::FORMAT_ND)
+                      .NodeInputTd(2, scaleDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeInputTd(3, ge::DT_FLOAT, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeInputTd(4, biasDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeInputTd(5, perTokenScaleDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeOutputTd(0, yDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeAttrs({{"dtype", Ops::NN::AnyValue::CreateFrom<int64_t>(yDtype)},
+                                  {"transpose_x1", Ops::NN::AnyValue::CreateFrom<bool>(transA)},
+                                  {"transpose_x2", Ops::NN::AnyValue::CreateFrom<bool>(transB)},
+                                  {"group_size", Ops::NN::AnyValue::CreateFrom<int64_t>(groupSize)}})
+                      .DeterministicLevelInfo(deterministicLevel)
+                      .TilingData(rawTilingData.get())
+                      .Workspace(workspace)
+                      .SetOpType(opType)
+                      .Build();
+
+    string compileInfoStr;
+    gert::TilingContext* tilingContext = holder.GetContext<gert::TilingContext>();
+    InitPlatformInfo(socVersion, tilingContext, compileInfoStr, aicNum, aivNum);
+
+    auto kernelHold = gert::KernelRunContextFaker()
+                          .KernelIONum(2, 1)
+                          .Inputs({const_cast<char*>(compileInfoStr.c_str()), reinterpret_cast<void*>(&platformInfo)})
+                          .Outputs({&compileInfo})
+                          .Build();
+
+    auto tilingParseFunc = gert::OpImplRegistry::GetInstance().GetOpImpl(opType.c_str())->tiling_parse;
+    ASSERT_NE(tilingParseFunc, nullptr);
+    ASSERT_EQ(tilingParseFunc(kernelHold.GetContext<gert::KernelContext>()), ge::GRAPH_SUCCESS);
+}
+
+void QuantBatchMatmulV3TilingTestParam::InvokeTilingFunc(QuantBatchMatmulV3CompileInfo& compileInfo) const
+{
+    gert::StorageShape x1Shape;
+    gert::StorageShape x2Shape;
+    gert::StorageShape scaleShape;
+    gert::StorageShape pertokenShape;
+    gert::StorageShape biasShape;
+    gert::StorageShape outputShape;
+    if (yDim == 6) {
+        outputShape.MutableOriginShape() = gert::Shape({batchC, batchC, batchC, batchC, m, n});
+    } else if (yDim == 3) {
+        outputShape.MutableOriginShape() = gert::Shape({batchC, m, n});
+    } else if (yDim == 2) {
+        outputShape.MutableOriginShape() = gert::Shape({m, n});
+    } else {
+        outputShape.MutableOriginShape() = gert::Shape({m});
+    }
+
+    if (transA) {
+        if (x1Dim == 6) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, batchA, batchA, batchA, k, m});
+        } else if (x1Dim == 3) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, k, m});
+        } else if (x1Dim == 2) {
+            x1Shape.MutableOriginShape() = gert::Shape({k, m});
+        } else {
+            x1Shape.MutableOriginShape() = gert::Shape({m});
+        }
+    } else {
+        if (x1Dim == 6) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, batchA, batchA, batchA, m, k});
+        } else if (x1Dim == 3) {
+            x1Shape.MutableOriginShape() = gert::Shape({batchA, m, k});
+        } else if (x1Dim == 2) {
+            x1Shape.MutableOriginShape() = gert::Shape({m, k});
+        } else {
+            x1Shape.MutableOriginShape() = gert::Shape({m});
+        }
+    }
+
+    if (transB) {
+        if (x2Dim == 6) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, batchB, batchB, batchB, n, k});
+        } else if (x2Dim == 3) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, n, k});
+        } else if (x2Dim == 2) {
+            x2Shape.MutableOriginShape() = gert::Shape({n, k});
+        } else {
+            x2Shape.MutableOriginShape() = gert::Shape({n});
+        }
+    } else {
+        if (x2Dim == 6) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, batchB, batchB, batchB, k, n});
+        } else if (x2Dim == 3) {
+            x2Shape.MutableOriginShape() = gert::Shape({batchB, k, n});
+        } else if (x2Dim == 2) {
+            x2Shape.MutableOriginShape() = gert::Shape({k, n});
+        } else {
+            x2Shape.MutableOriginShape() = gert::Shape({n});
+        }
+    }
+
+    pertokenShape.MutableStorageShape() = gert::Shape({m});
+    if (quantMode == 0) { // per_tensor
+        scaleShape.MutableStorageShape() = gert::Shape({1});
+    } else if (quantMode == 1) { // per_channel
+        scaleShape.MutableStorageShape() = gert::Shape({n});
+    } else if (quantMode == 2) {
+        int64_t scaleK = (k + 63) / 64;
+        if (transA) {
+            pertokenShape.MutableStorageShape() = (batchA >= 1) ? gert::Shape({batchA, scaleK, m, 2}) :
+                                                                  gert::Shape({scaleK, m, 2});
+        } else {
+            pertokenShape.MutableStorageShape() = (batchA >= 1) ? gert::Shape({batchA, m, scaleK, 2}) :
+                                                                  gert::Shape({m, scaleK, 2});
+        }
+        if (transB) {
+            scaleShape.MutableStorageShape() = (batchB >= 1) ? gert::Shape({batchB, n, scaleK, 2}) :
+                                                               gert::Shape({n, scaleK, 2});
+        } else {
+            scaleShape.MutableStorageShape() = (batchB >= 1) ? gert::Shape({batchB, scaleK, n, 2}) :
+                                                               gert::Shape({scaleK, n, 2});
+        }
+    } else if (quantMode == 3 || quantMode == 4) {
+        int64_t scaleM = (m + 127) / 128;
+        if (quantMode == 4) {
+            scaleM = m;
+        }
+        int64_t scaleK = (k + 127) / 128;
+        int64_t scaleN = (n + 127) / 128;
+        if (transA) {
+            if (x1Dim == 6) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, batchA, batchA, batchA, scaleK, scaleM});
+            } else if (x1Dim == 3) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, scaleK, scaleM});
+            } else if (x1Dim == 2) {
+                pertokenShape.MutableStorageShape() = gert::Shape({scaleK, scaleM});
+            }
+        } else {
+            if (x1Dim == 6) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, batchA, batchA, batchA, scaleM, scaleK});
+            } else if (x1Dim == 3) {
+                pertokenShape.MutableStorageShape() = gert::Shape({batchA, scaleM, scaleK});
+            } else if (x1Dim == 2) {
+                pertokenShape.MutableStorageShape() = gert::Shape({scaleM, scaleK});
+            }
+        }
+        if (transB) {
+            if (x2Dim == 6) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, batchB, batchB, batchB, scaleN, scaleK});
+            } else if (x2Dim == 3) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, scaleN, scaleK});
+            } else if (x2Dim == 2) {
+                scaleShape.MutableStorageShape() = gert::Shape({scaleN, scaleK});
+            }
+        } else {
+            if (x2Dim == 6) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, batchB, batchB, batchB, scaleK, scaleN});
+            } else if (x2Dim == 3) {
+                scaleShape.MutableStorageShape() = gert::Shape({batchB, scaleK, scaleN});
+            } else if (x2Dim == 2) {
+                scaleShape.MutableStorageShape() = gert::Shape({scaleK, scaleN});
+            }
+        }
+    } else if (quantMode == 5) { // dynamic T-C: x1Scale is per-tensor, x2Scale is per-channel.
+        pertokenShape.MutableStorageShape() = gert::Shape({1});
+        scaleShape.MutableStorageShape() = gert::Shape({n});
+    } else if (quantMode == 6) { // double per-tensor scale: x1Scale {1}, x2Scale {1}.
+        pertokenShape.MutableStorageShape() = gert::Shape({1});
+        scaleShape.MutableStorageShape() = gert::Shape({1});
+    }
+
+    biasShape.MutableStorageShape() = gert::Shape({n});
+    scaleShape.MutableOriginShape() = scaleShape.MutableStorageShape();
+    biasShape.MutableOriginShape() = biasShape.MutableStorageShape();
+    pertokenShape.MutableOriginShape() = pertokenShape.MutableStorageShape();
+    if (fmapNz) {
+        x1Shape.MutableStorageShape() = TransNd2Nz(x1Shape.MutableOriginShape());
+    } else {
+        x1Shape.MutableStorageShape() = x1Shape.MutableOriginShape();
+    }
+
+    if (weightNz) {
+        x2Shape.MutableStorageShape() = TransNd2Nz(x2Shape.MutableOriginShape());
+    } else {
+        x2Shape.MutableStorageShape() = x2Shape.MutableOriginShape();
+    }
+    scaleShape.MutableOriginShape() = scaleShape.MutableStorageShape();
+    biasShape.MutableOriginShape() = biasShape.MutableStorageShape();
+    outputShape.MutableStorageShape() = outputShape.MutableOriginShape();
+
+    // platform info
+    fe::PlatFormInfos platformInfo;
+    platformInfo.Init();
+
+    std::string opType("QuantBatchMatmulV3");
+    ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl(opType.c_str()), nullptr);
+    auto rawTilingData = gert::TilingData::CreateCap(4096);
+    ASSERT_NE(rawTilingData, nullptr);
+    auto workspaceHolder = gert::ContinuousVector::Create<size_t>(4096);
+    auto workspace = reinterpret_cast<gert::ContinuousVector*>(workspaceHolder.get());
+    int64_t groupSize = 0;
+    if (quantMode == 2) {
+        groupSize = 4295032864;
+    } else if (quantMode == 3) {
+        groupSize = 549764202624;
+    } else if (quantMode == 4) {
+        groupSize = 4303356032;
+    }
+    auto holder = gert::TilingContextFaker()
+                      .NodeIoNum(6, 1)
+                      .IrInstanceNum({1, 1, 1, 1, 1, 1})
+                      .InputShapes({&x1Shape, &x2Shape, &scaleShape, offsetFlag ? &scaleShape : nullptr,
+                                    biasFlag ? &biasShape : nullptr, pertokenFlag ? &pertokenShape : nullptr})
+                      .OutputShapes({&outputShape})
+                      .CompileInfo(&compileInfo)
+                      .PlatformInfo(reinterpret_cast<char*>(&platformInfo))
+                      .NodeInputTd(0, x1Dtype, ge::FORMAT_ND, fmapNz ? ge::FORMAT_FRACTAL_NZ : ge::FORMAT_ND)
+                      .NodeInputTd(1, x2Dtype, ge::FORMAT_ND, weightNz ? ge::FORMAT_FRACTAL_NZ : ge::FORMAT_ND)
+                      .NodeInputTd(2, scaleDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeInputTd(3, ge::DT_FLOAT, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeInputTd(4, biasDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeInputTd(5, perTokenScaleDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeOutputTd(0, yDtype, ge::FORMAT_ND, ge::FORMAT_ND)
+                      .NodeAttrs({{"dtype", Ops::NN::AnyValue::CreateFrom<int64_t>(yDtype)},
+                                  {"transpose_x1", Ops::NN::AnyValue::CreateFrom<bool>(transA)},
+                                  {"transpose_x2", Ops::NN::AnyValue::CreateFrom<bool>(transB)},
+                                  {"group_size", Ops::NN::AnyValue::CreateFrom<int64_t>(groupSize)}})
+                      .DeterministicLevelInfo(deterministicLevel)
+                      .TilingData(rawTilingData.get())
+                      .Workspace(workspace)
+                      .SetOpType(opType)
+                      .Build();
+
+    string compileInfoStr;
+    gert::TilingContext* tilingContext = holder.GetContext<gert::TilingContext>();
+    InitPlatformInfo(socVersion, tilingContext, compileInfoStr, aicNum, aivNum);
+
+    auto tilingFunc = gert::OpImplRegistry::GetInstance().GetOpImpl(opType.c_str())->tiling;
+    ASSERT_NE(tilingFunc, nullptr) << "socVersion is: " << socVersion << ", caseName is: " << caseName
+                                   << ", prefix is: " << prefix;
+    if (result) {
+        ASSERT_EQ(tilingFunc(tilingContext), ge::GRAPH_SUCCESS)
+            << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+        bool isMxfp8 = quantMode == 2 && (x1Dtype == ge::DT_FLOAT8_E4M3FN || x1Dtype == ge::DT_FLOAT8_E5M2) &&
+                       (x2Dtype == ge::DT_FLOAT8_E4M3FN || x2Dtype == ge::DT_FLOAT8_E5M2);
+        bool isMxfp4 = quantMode == 2 && x1Dtype == ge::DT_FLOAT4_E2M1 && x2Dtype == ge::DT_FLOAT4_E2M1;
+        bool isAscend950 = socVersion == "Ascend950";
+        bool tensorApiCapable = IsTensorapiCapable() && isAscend950;
+        //  非 Blaze 不支持 weightNz BasicAPI 路径；950 非 TensorAPI 场景跳过 MX 出参校验
+        bool skipMxCheckWithoutTensorApi = isAscend950 && !tensorApiCapable && (isMxfp8 || isMxfp4);
+        // tilingKey布局: ATRANS[0:1] BTRANS[2:3] BATCHMODE[4:7] KERNELTYPE[8:15] APILEVEL[16:17]
+        // CSV用例基于TensorAPI(Blaze)运行环境生成，950非TensorAPI场景tiling走非Blaze路径，出参与预期不一致，跳过校验
+        constexpr uint64_t apiLevelShift = 16UL;
+        constexpr uint64_t apiLevelMask = 0x3UL << apiLevelShift;
+        bool expectBlazeApiLevel = (tilingKey & apiLevelMask) ==
+                                   (static_cast<uint64_t>(QMMApiLevel::BLAZE_LEVEL) << apiLevelShift);
+        bool skipBlazeCheckWithoutTensorApi = isAscend950 && !tensorApiCapable && expectBlazeApiLevel;
+        if (tilingStub || (weightNz && !tensorApiCapable) || skipMxCheckWithoutTensorApi ||
+            skipBlazeCheckWithoutTensorApi) {
+            return;
+        }
+        ASSERT_EQ(tilingContext->GetTilingKey(), tilingKey)
+            << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+        ASSERT_EQ(tilingContext->GetBlockDim(), numBlocks)
+            << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+
+        if (tilingData.empty() || tilingData == "0") {
+            return;
+        }
+
+        std::vector<std::string> tilingDataStrs;
+        SplitStr2Vec(tilingData, " ", tilingDataStrs);
+        std::vector<int32_t> tilingDataInt;
+        tilingDataInt.reserve(tilingDataStrs.size());
+        for (auto& tilingValue : tilingDataStrs) {
+            tilingDataInt.push_back(atoi(tilingValue.c_str()));
+        }
+
+        size_t actualTilingDataSize = tilingContext->GetRawTilingData()->GetDataSize();
+        bool isMxWithoutBatchTilingData = tensorApiCapable && (isMxfp8 || isMxfp4) &&
+                                          actualTilingDataSize ==
+                                              sizeof(DequantBmm::QuantBatchMatmulV3TensorAPIWithoutBatchTilingData);
+        bool useBasicApiTilingData = actualTilingDataSize == sizeof(DequantBmm::QuantBatchMatmulV3BasicAPITilingData);
+        bool useStreamKBasicApiTilingData = actualTilingDataSize ==
+                                            sizeof(DequantBmm::QuantBatchMatmulV3StreamKBasicAPITilingData);
+        if (isMxWithoutBatchTilingData) {
+            DequantBmm::QuantBatchMatmulV3TensorAPIWithoutBatchTilingData&
+                actualTilingData = *reinterpret_cast<DequantBmm::QuantBatchMatmulV3TensorAPIWithoutBatchTilingData*>(
+                    tilingContext->GetRawTilingData()->GetData());
+            if (biasFlag == false) {
+                SetExpectedTilingFieldIfPresent(
+                    tilingDataInt, offsetof(DequantBmm::QuantBatchMatmulV3TensorAPIWithoutBatchTilingData, biasDtype),
+                    actualTilingData.biasDtype);
+            }
+            string actualTilingDataStr = TilingData2Str(tilingContext->GetRawTilingData()->GetData(),
+                                                        tilingContext->GetRawTilingData()->GetDataSize());
+            string expectTilingDataStr = TilingData2Str(tilingDataInt.data(), tilingDataInt.size() * sizeof(int32_t));
+            ASSERT_EQ(actualTilingDataStr, expectTilingDataStr)
+                << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+        } else if (useBasicApiTilingData) {
+            DequantBmm::QuantBatchMatmulV3BasicAPITilingData&
+                actualTilingData = *reinterpret_cast<DequantBmm::QuantBatchMatmulV3BasicAPITilingData*>(
+                    tilingContext->GetRawTilingData()->GetData());
+            // biasFlag 为0时，biasDtype在kernel侧不使用，忽略校验
+            if (biasFlag == false) {
+                SetExpectedTilingFieldIfPresent(
+                    tilingDataInt,
+                    offsetof(DequantBmm::QuantBatchMatmulV3BasicAPITilingData, params) +
+                        offsetof(DequantBmm::QuantBatchMatmulV3BasicAPIDataParams, biasDtype),
+                    actualTilingData.params.biasDtype);
+            }
+            string actualTilingDataStr = TilingData2Str(tilingContext->GetRawTilingData()->GetData(),
+                                                        tilingContext->GetRawTilingData()->GetDataSize());
+            string expectTilingDataStr = TilingData2Str(tilingDataInt.data(), tilingDataInt.size() * sizeof(int32_t));
+            ASSERT_EQ(actualTilingDataStr, expectTilingDataStr)
+                << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+        } else if (useStreamKBasicApiTilingData) {
+            auto& actualTilingData = *reinterpret_cast<DequantBmm::QuantBatchMatmulV3StreamKBasicAPITilingData*>(
+                tilingContext->GetRawTilingData()->GetData());
+            // biasDtype is unused by kernel when bias is disabled.
+            if (biasFlag == false) {
+                SetExpectedTilingFieldIfPresent(
+                    tilingDataInt,
+                    offsetof(DequantBmm::QuantBatchMatmulV3StreamKBasicAPITilingData, params) +
+                        offsetof(DequantBmm::QuantBatchMatmulV3BasicAPIDataParams, biasDtype),
+                    actualTilingData.params.biasDtype);
+            }
+            string actualTilingDataStr = TilingData2Str(tilingContext->GetRawTilingData()->GetData(),
+                                                        tilingContext->GetRawTilingData()->GetDataSize());
+            string expectTilingDataStr = TilingData2Str(tilingDataInt.data(), tilingDataInt.size() * sizeof(int32_t));
+            ASSERT_EQ(actualTilingDataStr, expectTilingDataStr)
+                << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+        } else {
+            QuantBatchMatmulV3TilingData& actualTilingData = *reinterpret_cast<QuantBatchMatmulV3TilingData*>(
+                tilingContext->GetRawTilingData()->GetData());
+            const size_t expectTilingDataSize = tilingDataInt.size() * sizeof(int32_t);
+            if (expectTilingDataSize >= sizeof(QuantBatchMatmulV3TilingData)) {
+                QuantBatchMatmulV3TilingData& expectTilingData = *reinterpret_cast<QuantBatchMatmulV3TilingData*>(
+                    tilingDataInt.data());
+                // 这里通过重置预期结果里的部分字段来忽略不关心的tiling字段，后续有新增的话可以仿照这个方法来忽略其他字段
+                expectTilingData.matmulTiling.shareL1Size = actualTilingData.matmulTiling.shareL1Size;
+                // biasFlag 为0时，biasDtype在kernel侧不使用，忽略校验
+                if (biasFlag == false) {
+                    expectTilingData.params.biasDtype = actualTilingData.params.biasDtype;
+                }
+            }
+            string actualTilingDataStr = TilingData2Str(tilingContext->GetRawTilingData()->GetData(),
+                                                        tilingContext->GetRawTilingData()->GetDataSize());
+            string expectTilingDataStr = TilingData2Str(tilingDataInt.data(), tilingDataInt.size() * sizeof(int32_t));
+            ASSERT_EQ(actualTilingDataStr, expectTilingDataStr)
+                << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+        }
+    } else {
+        ASSERT_EQ(tilingFunc(tilingContext), ge::GRAPH_FAILED)
+            << "socVersion is: " << socVersion << ", caseName is: " << caseName << ", prefix is: " << prefix;
+    }
+}
+
+void QuantBatchMatmulV3TilingTestParam::Test() const
+{
+    QuantBatchMatmulV3CompileInfo compileInfo;
+    Prepare(compileInfo);
+    InvokeTilingFunc(compileInfo);
+}
+
+TEST(QuantBatchMatmulV3TilingCsv, ShouldLoadValidCases)
+{
+    for (const auto& socVersion : {"Ascend910B2", "Ascend910B4", "Ascend310P3", "Ascend950", "MC62CM12AA"}) {
+        const auto& loadResult = GetParamsLoadResult(socVersion);
+        for (const auto& error : loadResult.errors) {
+            ADD_FAILURE() << error;
+        }
+        EXPECT_FALSE(loadResult.params.empty()) << "socVersion is: " << socVersion;
+    }
+}
+
+static BaseBlockRes ComputeStreamKBaseBlock(bool isMxPerGroup, bool transA, bool transB, ge::DataType aDtype,
+                                            ge::DataType bDtype, uint64_t mSize = 256UL, uint64_t nSize = 256UL,
+                                            uint64_t kSize = 1000UL)
+{
+    QuantBatchMatmulInfo inputParams{};
+    inputParams.opName = "QuantBatchMatmulV3StreamKSingleCoreKAlignUt";
+    inputParams.mSize = mSize;
+    inputParams.nSize = nSize;
+    inputParams.kSize = kSize;
+    inputParams.batchC = 1UL;
+    inputParams.transA = transA;
+    inputParams.transB = transB;
+    inputParams.aDtype = aDtype;
+    inputParams.bDtype = bDtype;
+    inputParams.isMxPerGroup = isMxPerGroup;
+    inputParams.isPerTensor = !isMxPerGroup;
+
+    QuantBatchMatmulV3CompileInfo compileInfo{};
+    compileInfo.aicNum = 24U;
+    compileInfo.l0aSize = 65536UL;
+    compileInfo.l0bSize = 65536UL;
+    compileInfo.npuArch = NpuArch::DAV_3510;
+
+    BaseBlockCalculator calculator(inputParams, compileInfo);
+    EXPECT_TRUE(calculator.Compute(BaseBlockMode::STREAMK));
+    return calculator.GetOutput();
+}
+
+TEST(QuantBatchMatmulV3StreamKSingleCoreKAlign, CubeStreamKAlignsEveryTransposeTo256Bytes)
+{
+    for (bool transA : {false, true}) {
+        for (bool transB : {false, true}) {
+            const auto result = ComputeStreamKBaseBlock(false, transA, transB, ge::DT_INT8, ge::DT_INT8);
+            EXPECT_EQ(result.singleCoreK, 256UL) << "transA=" << transA << ", transB=" << transB;
+            EXPECT_EQ(GetSizeWithDataType(result.singleCoreK, ge::DT_INT8) % 256UL, 0UL);
+        }
+    }
+}
+
+TEST(QuantBatchMatmulV3StreamKFixpipeCost, UsesEightyPercentPeakBandwidthForAlignedNTiles)
+{
+    const auto result = streamk_cost_model::EstimateFixpipeCost(224UL, 224UL, 1UL, 458752UL);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_TRUE(result.allNTilesAligned);
+    EXPECT_EQ(result.timeNs, 111UL);
+}
+
+TEST(QuantBatchMatmulV3StreamKFixpipeCost, UsesQuarterPeakBandwidthWhenAnyNTileIsUnaligned)
+{
+    const auto result = streamk_cost_model::EstimateFixpipeCost(418UL, 224UL, 2UL, 5500880UL);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_FALSE(result.allNTilesAligned);
+    EXPECT_EQ(result.timeNs, 4232UL);
+}
+
+TEST(QuantBatchMatmulV3StreamKFixpipeCost, ChecksBaseNEvenWhenShapeNIsAligned)
+{
+    const auto result = streamk_cost_model::EstimateFixpipeCost(480UL, 240UL, 2UL, 5200UL);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_FALSE(result.allNTilesAligned);
+    EXPECT_EQ(result.timeNs, 4UL);
+}
+
+TEST(QuantBatchMatmulV3StreamKSingleCoreKAlign, MxStreamKAlignsEveryTransposeTo256Bytes)
+{
+    for (bool transA : {false, true}) {
+        for (bool transB : {false, true}) {
+            const auto result = ComputeStreamKBaseBlock(true, transA, transB, ge::DT_FLOAT4_E2M1, ge::DT_FLOAT4_E2M1);
+            EXPECT_EQ(result.singleCoreK, 512UL) << "transA=" << transA << ", transB=" << transB;
+            EXPECT_EQ(GetSizeWithDataType(result.singleCoreK, ge::DT_FLOAT4_E2M1) % 256UL, 0UL);
+        }
+    }
+}
+
+TEST(QuantBatchMatmulV3StreamKSingleCoreKAlign, CubeStreamKKeepsByteAlignmentWhenBaseKIsNotFactor)
+{
+    const auto result = ComputeStreamKBaseBlock(false, false, false, ge::DT_INT8, ge::DT_INT8, 270UL, 16UL, 8192UL);
+
+    ASSERT_EQ(result.baseK, 224UL);
+    EXPECT_EQ(result.singleCoreK, 768UL);
+    EXPECT_EQ(GetSizeWithDataType(result.singleCoreK, ge::DT_INT8) % 256UL, 0UL);
+    EXPECT_NE(result.singleCoreK % result.baseK, 0UL);
+}
+
+TEST(QuantBatchMatmulV3StreamKAllSk, DoubleFp32ScaleRequiresAllSkOnlyWithPostBias)
+{
+    QBMMV3StreamKTiling tiling(nullptr);
+    auto& input = tiling.inputParams_;
+    input.aFormat = ge::FORMAT_ND;
+    input.bFormat = ge::FORMAT_ND;
+    input.cFormat = ge::FORMAT_ND;
+    input.aDtype = ge::DT_FLOAT8_E4M3FN;
+    input.bDtype = ge::DT_FLOAT8_E4M3FN;
+    input.cDtype = ge::DT_FLOAT16;
+    input.scaleDtype = ge::DT_FLOAT;
+    input.perTokenScaleDtype = ge::DT_FLOAT;
+    input.biasDtype = ge::DT_FLOAT;
+    input.isPerTensor = true;
+    input.isDoubleScale = true;
+    input.hasBias = true;
+
+    tiling.compileInfo_.aicNum = 32U;
+
+    EXPECT_TRUE(tiling.IsPostDequantBiasInput());
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+    EXPECT_TRUE(tiling.IsAllSkScheduleSupported(1UL));
+    EXPECT_FALSE(tiling.IsAllSkScheduleSupported(32UL));
+    EXPECT_FALSE(tiling.IsAllSkScheduleSupported(33UL));
+
+    input.hasBias = false;
+    EXPECT_FALSE(tiling.IsPostDequantBiasInput());
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+    EXPECT_TRUE(tiling.IsAllSkScheduleSupported(31UL));
+    EXPECT_TRUE(tiling.IsAllSkScheduleSupported(32UL));
+    EXPECT_TRUE(tiling.IsAllSkScheduleSupported(33UL));
+}
+
+TEST(QuantBatchMatmulV3StreamKPostDequantBias, SupportsInt8MatchingFloatingBiasOnlyForAllSk)
+{
+    QBMMV3StreamKTiling tiling(nullptr);
+    auto& input = tiling.inputParams_;
+    input.aFormat = ge::FORMAT_ND;
+    input.bFormat = ge::FORMAT_ND;
+    input.cFormat = ge::FORMAT_ND;
+    input.aDtype = ge::DT_INT8;
+    input.bDtype = ge::DT_INT8;
+    input.cDtype = ge::DT_BF16;
+    input.scaleDtype = ge::DT_FLOAT;
+    input.biasDtype = ge::DT_FLOAT;
+    input.isPerTensor = true;
+    input.isDoubleScale = false;
+    input.hasBias = true;
+
+    tiling.compileInfo_.aicNum = 32U;
+
+    EXPECT_TRUE(tiling.IsPostDequantBiasInput());
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+    EXPECT_TRUE(tiling.IsAllSkScheduleSupported(31UL));
+    EXPECT_FALSE(tiling.IsAllSkScheduleSupported(32UL));
+
+    input.scaleDtype = ge::DT_BF16;
+    input.biasDtype = ge::DT_BF16;
+    EXPECT_TRUE(tiling.IsPostDequantBiasInput());
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+
+    input.biasDtype = ge::DT_FLOAT;
+    EXPECT_FALSE(tiling.IsPostDequantBiasInput());
+    EXPECT_FALSE(tiling.IsPertensorStreamKInput());
+
+    input.scaleDtype = ge::DT_FLOAT;
+    input.biasDtype = ge::DT_BF16;
+    EXPECT_FALSE(tiling.IsPostDequantBiasInput());
+    EXPECT_FALSE(tiling.IsPertensorStreamKInput());
+}
+
+TEST(QuantBatchMatmulV3StreamKDtype, RejectsHifloat8AndFp8MixedPair)
+{
+    QBMMV3StreamKTiling tiling(nullptr);
+    auto& input = tiling.inputParams_;
+    input.aFormat = ge::FORMAT_ND;
+    input.bFormat = ge::FORMAT_ND;
+    input.cFormat = ge::FORMAT_ND;
+    input.cDtype = ge::DT_FLOAT;
+    input.scaleDtype = ge::DT_FLOAT;
+    input.perTokenScaleDtype = ge::DT_FLOAT;
+    input.isPerTensor = true;
+    input.isDoubleScale = true;
+    input.hasBias = false;
+
+    input.aDtype = ge::DT_FLOAT8_E4M3FN;
+    input.bDtype = ge::DT_FLOAT8_E5M2;
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+
+    input.aDtype = ge::DT_HIFLOAT8;
+    input.bDtype = ge::DT_HIFLOAT8;
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+
+    input.bDtype = ge::DT_FLOAT8_E4M3FN;
+    EXPECT_FALSE(tiling.IsPertensorStreamKInput());
+}
+
+TEST(QuantBatchMatmulV3StreamKCapability, RejectsBatchBeforeBenefitEvaluation)
+{
+    QBMMV3StreamKTiling tiling(nullptr);
+    auto& input = tiling.inputParams_;
+    input.aFormat = ge::FORMAT_ND;
+    input.bFormat = ge::FORMAT_ND;
+    input.cFormat = ge::FORMAT_ND;
+    input.aDtype = ge::DT_INT8;
+    input.bDtype = ge::DT_INT8;
+    input.cDtype = ge::DT_BF16;
+    input.scaleDtype = ge::DT_FLOAT;
+    input.biasDtype = ge::DT_FLOAT;
+    input.isPerTensor = true;
+    input.isDoubleScale = false;
+    input.isPertoken = false;
+    input.isPerChannel = false;
+    input.isMxPerGroup = false;
+    input.isPerBlock = false;
+    input.isPerBlockPerToken = false;
+    input.hasBias = true;
+    input.batchC = 2UL;
+
+    EXPECT_TRUE(tiling.IsPertensorStreamKInput());
+    EXPECT_FALSE(tiling.IsCapable());
+}
+
+TEST_P(TestQuantBatchMatmulV3Tiling, generalTest) { GetParam().Test(); }
+
+static const std::vector<QuantBatchMatmulV3TilingTestParam> kCasesParamsMC62CM12AA = GetParams("MC62CM12AA");
+
+INSTANTIATE_TEST_CASE_P(QUANTMMMC62CM12AA, TestQuantBatchMatmulV3Tiling, testing::ValuesIn(kCasesParamsMC62CM12AA));
+
+static mutex tilingTestMutex;
+
+static void ThreadFunc(const QuantBatchMatmulV3TilingTestParam* params, size_t testcaseNum, size_t threadIdx,
+                       size_t threadNum)
+{
+    int32_t logLevel = 0;
+    int32_t enableEvent = 0;
+    for (size_t idx = threadIdx; idx < testcaseNum; idx += threadNum) {
+        // Failure cases are covered by generalTest and may report ErrorManager messages.
+        if (!params[idx].result) {
+            continue;
+        }
+        lock_guard<mutex> lock(tilingTestMutex);
+        params[idx].Test();
+    }
+}
+
+static mutex compileMutex;
+
+static void ThreadFuncPrepare(const QuantBatchMatmulV3TilingTestParam* params, size_t testcaseNum, size_t threadIdx,
+                              size_t threadNum, map<size_t, QuantBatchMatmulV3CompileInfo>& compileInfos)
+{
+    if (threadIdx >= testcaseNum)
+        return;
+    int32_t logLevel = 0;
+    int32_t enableEvent = 0;
+    QuantBatchMatmulV3CompileInfo compileInfo;
+    params[threadIdx].Prepare(compileInfo);
+
+    {
+        lock_guard<mutex> lock(compileMutex);
+        compileInfos[threadIdx] = compileInfo;
+    }
+}
+
+static void ThreadFuncInvokeTilingFunc(const QuantBatchMatmulV3TilingTestParam* params, size_t testcaseNum,
+                                       size_t threadIdx, size_t threadNum, QuantBatchMatmulV3CompileInfo& compileInfo)
+{
+    if (threadIdx >= testcaseNum)
+        return;
+    int32_t logLevel = 0;
+    int32_t enableEvent = 0;
+    params[threadIdx].InvokeTilingFunc(compileInfo);
+}
+
+void TestMultiThread(const QuantBatchMatmulV3TilingTestParam* params, size_t testcaseNum, size_t threadNum)
+{
+    std::thread threads[threadNum];
+    for (size_t idx = 0; idx < threadNum; ++idx) {
+        threads[idx] = std::thread(ThreadFunc, params, testcaseNum, idx, threadNum);
+    }
+
+    for (size_t idx = 0; idx < threadNum; ++idx) {
+        threads[idx].join();
+    }
+}
+
+static void TestMultiThreadSeparate(const QuantBatchMatmulV3TilingTestParam* params, size_t testcaseNum,
+                                    size_t threadNum)
+{
+    std::thread threads[threadNum];
+    map<size_t, QuantBatchMatmulV3CompileInfo> compileInfos;
+    for (size_t idx = 0; idx < threadNum; ++idx) {
+        threads[idx] = std::thread(ThreadFuncPrepare, params, testcaseNum, idx, threadNum, std::ref(compileInfos));
+    }
+
+    for (size_t idx = 0; idx < threadNum; ++idx) {
+        threads[idx].join();
+    }
+
+    std::thread threadsInvoke[threadNum];
+    for (size_t idx = 0; idx < threadNum; ++idx) {
+        threadsInvoke[idx] = std::thread(ThreadFuncInvokeTilingFunc, params, testcaseNum, idx, threadNum,
+                                         std::ref(compileInfos[idx]));
+    }
+
+    for (size_t idx = 0; idx < threadNum; ++idx) {
+        threadsInvoke[idx].join();
+    }
+}

@@ -1,0 +1,48 @@
+SKETCH — chunk_gated_delta_fwd_h (GDN forward-H), MCTS round 4
+direction: R4 continuation of the R3 champion (sha 0d543b7e) — re-verify against the
+re-anchored 6402eb golden, then evaluate a GQA head-merge parallelism lever.
+
+## Reference semantics (golden sha 6402eb, all 8 cases: bf16 K=V=128, no init/final state)
+per sequence/chunk:
+  v_new  = clamp(u_c - w_c @ S_prev)                     # S_prev = pre-update state
+  decay  = exp(g_last - g_c)
+  update = clamp(v_new * decay)
+  S      = clamp(S_prev * exp(g_last) + k_c^T @ update)  # S stored POST-update at chunk idx
+  v_new  stored pre-decay for all rows of the chunk
+Varlen: data batch dim = 0 for every seq; state packed by a global chunk counter.
+
+## R3 champion kernel (baseline for R4) — one program = (seq, value-head, V-tile)
+  grid = (num_seq*HV, num_vt);  HV up to 48; num_vt = V/BV = 2
+  S[BLOCK_K=128, BLOCK_V=64] fp32 register-resident, serial chunk loop
+  GQA: kh = hv // HEAD_RATIO  (key head per value head)
+  fp32-ieee dots; multibuffer=True/unit_flag=True; num_warps=4
+  in-kernel serial prefix over cu_seqlens for varlen chunk offsets (AST clean)
+
+## R4 exploration lever — GQA head-merge (parallelism for B=1,HV=48 weak cases)
+Observation (R3): cases 3/4 (B=1,HV=48,T=8192,dense) run only 96 programs; the per-(seq,head)
+state recurrence is the dominant serialization and the measured ~4.7x is parallel-program-count
+bound. GQA head_ratio==1 for cases 1-4,7-8 and ==3 for case 5/6 (HK=8,HV=24).
+
+Idea A (do NOT break recurrence): restructure program_id so a program owns MORE THAN ONE value
+head sharing the SAME key head (head_ratio>1), loading k_c once and issuing independent dots
+per head. This reduces redundant k loads across value heads (their w/u/v data differ). Only
+helps GQA ratio>1 cases (5/6); head_ratio==1 cases share no k, so no gain and added register
+pressure — a candidate only if cases 5/6 dominate the geomean (they do not: 6.6x/6.1x).
+
+Idea B (the real weak-case lever, R4 candidate): break the V-tile redundancy differently —
+cases 3/4 are head_ratio==1 so each (seq,head) is one independent serial chain. With T=8192 and
+cs=128 there are 64 chunks per program but only 96 programs on a 16-NPU*? core device. This is a
+genuine serial-recurrence bound: the chain length 64 is irreducible, so the ONLY way to add
+programs is to reduce work per program, i.e. split V further (BV=32: grid dim1=4, 192 programs).
+R3 experience warns BV=32 is slower for K=V=128 on 910b1 (parent heuristic fallback), but that
+was measured under BV=128-vs-64; BV=32 vs 64 for the B=1,HV=48 case is re-measured here.
+
+Idea C (fallback / safety): if Ideas A/B do not beat the R3 champion in a head-to-head
+benchmark, keep the champion byte-for-byte (0d543b7e) as the round result. Target (5x) is
+already exceeded; this round is a re-validation + genuine exploration attempt, NOT a regression.
+
+## Key decisions for R4
+- Phase 3 iter_0 = R3 champion (sha 0d543b7e), re-verified & benchmarked as this round's anchor.
+- Phase 4 opt_iter_0 = head-merge (A) OR BV=32 weak-case split (B) — whichever is numerically
+  safe (verify 8/8) and strictly faster than anchor; otherwise revert to anchor.
+- fp32-ieee dots, BLOCK_K=128, in-kernel varlen prefix, multibuffer/unit_flag preserved.

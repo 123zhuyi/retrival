@@ -1,0 +1,241 @@
+//===- HIVMBubbleUpExtractSlice.cpp - Bubble Up ExtractSliceOp on HIVM ops ===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//============================================================================//
+
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVMImpl.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/BubbleUpUtils.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/BufferizationBubbleUp.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/CSEPattern.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/HoistAffine.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/Pattern.h"
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h"
+#include "bishengir/Dialect/HIVM/Transforms/TileAndBindSubBlock/Helper.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+#include "bishengir/Transforms/Passes.h"
+#include "bishengir/Transforms/Transforms.h"
+
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/SCF/Transforms/TileUsingInterface.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/AsmState.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Value.h"
+#include "mlir/IR/Visitors.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "mlir/Transforms/Passes.h"
+
+namespace mlir {
+#define GEN_PASS_DEF_HIVMBUBBLEUPEXTRACTSLICE
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h.inc"
+} // namespace mlir
+
+using namespace mlir;
+using namespace mlir::hivm;
+
+#define DEBUG_TYPE "hivm-bubble-up-extract-slice"
+
+namespace {
+
+using namespace mlir::hivm::detail;
+class HIVMBubbleUpExtractSlicePass
+    : public impl::HIVMBubbleUpExtractSliceBase<HIVMBubbleUpExtractSlicePass> {
+public:
+  explicit HIVMBubbleUpExtractSlicePass(
+      const HIVMBubbleUpExtractSliceOptions &options)
+      : Base(options) {}
+
+  static bool traceAndCheckIsGM(Value value) {
+    return !traceDefOp<memref::AllocOp>(value).has_value();
+  }
+
+  LogicalResult
+  verifyMarkedExtractSlicesAreBubbledUp(func::FuncOp funcOp) const {
+    auto walkResult = funcOp->walk([this](Operation *op) {
+      if (isa<tensor::InsertSliceOp>(op)) {
+        auto insertSliceOp = cast<tensor::InsertSliceOp>(op);
+        // All marked insertslice is expected to be cancelled out
+        // No matter strict mode or not.
+        if (isMarkedInsertSliceOp(insertSliceOp))
+          return WalkResult::interrupt();
+      }
+      if (hacc::utils::isRegBasedArch(op->getParentOfType<ModuleOp>())) {
+        if (auto reduceOp = dyn_cast<hivm::VReduceOp>(op)) {
+          auto srcType = cast<ShapedType>(reduceOp.getSrc().getType());
+          if (ShapedType::isDynamicShape(srcType.getShape()))
+            return WalkResult::interrupt();
+        }
+      }
+
+      if (isa<UnrealizedConversionCastOp>(op))
+        return WalkResult::interrupt();
+
+      if (!isa<tensor::ExtractSliceOp>(op)) {
+        return WalkResult::advance();
+      }
+      auto extractSliceOp = cast<tensor::ExtractSliceOp>(op);
+
+      if (extractSliceOp->hasAttrOfType<UnitAttr>(toBeBubbleUpSlice)) {
+        auto extractSrc = extractSliceOp->getOperand(0);
+        if (isa<BlockArgument>(extractSrc)) {
+          return WalkResult::advance();
+        }
+        auto *srcDefOp = extractSrc.getDefiningOp();
+        if (failed(findContainingTilingLoop(srcDefOp))) {
+          return WalkResult::advance();
+        }
+        if (auto bufferizeToTensor = dyn_cast<bufferization::ToTensorOp>(
+                (extractSrc.getDefiningOp()))) {
+          if (!traceAndCheckIsGM(bufferizeToTensor->getOperand(0)) &&
+              strictMode) {
+            return WalkResult::interrupt();
+          }
+          return WalkResult::advance();
+        }
+        if (auto whileOp = dyn_cast<scf::WhileOp>(srcDefOp)) {
+          return WalkResult::interrupt();
+        }
+        if (!isa<tensor::EmptyOp>(srcDefOp) &&
+            !(isa<scf::ForOp>(srcDefOp) &&
+              srcDefOp->hasAttr("ExtractedLoadOrStore")) &&
+            !srcDefOp->hasAttr(tiledOp)) {
+          if (strictMode) {
+            return WalkResult::interrupt();
+          }
+          extractSliceOp->emitWarning("Extract slice is not fully bubbled up");
+        }
+      }
+      return WalkResult::advance();
+    });
+    if (walkResult.wasInterrupted()) {
+      return failure();
+    }
+    return success();
+  }
+
+  void runOnOperation() override {
+    func::FuncOp funcOp = getOperation();
+    GreedyRewriteConfig config;
+    config.maxIterations = 50;
+    // Apply bubble up patterns.
+    // MarkEmptySliceBufferSize runs after BubbleUpPattern (which
+    // may reject due to areOperandsUpperLevel) but before
+    // FoldTensorEmptyPatterns. This ensures the mark is on the extract_slice
+    // result before the fold moves it to tensor.empty.
+    RewritePatternSet patterns(funcOp.getContext());
+    populateHoistAffinePattern(patterns);
+    if (!hacc::utils::isRegBasedArch(funcOp->getParentOfType<ModuleOp>()))
+      affine::AffineApplyOp::getCanonicalizationPatterns(patterns,
+                                                         patterns.getContext());
+    populateBubbleUpExtractSliceOpPatterns(patterns);
+    populateCSEPattern(patterns);
+    patterns.add<MarkEmptySliceBufferSize>(funcOp.getContext());
+    tensor::populateFoldTensorEmptyPatterns(patterns, true);
+    if (failed(applyPatternsGreedily(funcOp, std::move(patterns), config))) {
+      return signalPassFailure();
+    }
+    PassManager pm(funcOp->getContext());
+    if (hacc::utils::isRegBasedArch(funcOp->getParentOfType<ModuleOp>())) {
+      // regbase baseline (f9d978b): plain canonicalizer.
+      pm.addPass(createCanonicalizerPass());
+    } else {
+      CanonicalizerOptions options;
+      SmallVector<std::string> disabledPatterns(
+          {"ReinterpretCastConstantArgumentFolder"});
+      options.disabledPatterns = disabledPatterns;
+      pm.addPass(bishengir::createExtendedCanonicalizerPass(options));
+    }
+    pm.addPass(createCSEPass());
+    if (failed(pm.run(funcOp))) {
+      return signalPassFailure();
+    }
+    // Apply bubble up once more; canonicalize/CSE are run by the outer
+    // pass pipeline (e.g. bind-sub-block) to avoid crashing on intermediate
+    // UCC propagators left in the IR.
+    RewritePatternSet patterns2(funcOp.getContext());
+    populateHoistAffinePattern(patterns2);
+    if (!hacc::utils::isRegBasedArch(funcOp->getParentOfType<ModuleOp>()))
+      affine::AffineApplyOp::getCanonicalizationPatterns(patterns2,
+                                                         patterns.getContext());
+    populateBubbleUpExtractSliceOpPatterns(patterns2);
+    populateCSEPattern(patterns2);
+    patterns2.add<MarkEmptySliceBufferSize>(funcOp.getContext());
+    tensor::populateFoldTensorEmptyPatterns(patterns2, true);
+    if (failed(applyPatternsGreedily(funcOp, std::move(patterns2), config))) {
+      return signalPassFailure();
+    }
+
+    // Apply post process for removing remaining upward propagation from
+    // bufferization bubble up
+    RewritePatternSet patterns3(funcOp.getContext());
+    patterns3.add<BufferizationPropagatePostProcessPattern>(
+        funcOp.getContext());
+
+    if (failed(applyPatternsGreedily(funcOp, std::move(patterns3), config))) {
+      return signalPassFailure();
+    }
+
+    if (failed(verifyMarkedExtractSlicesAreBubbledUp(funcOp))) {
+      return signalPassFailure();
+    }
+  }
+
+private:
+  void
+  populateBubbleUpExtractSliceOpPatterns(RewritePatternSet &patterns) const {
+    auto *context = patterns.getContext();
+
+    // Create strategies
+    SmallVector<std::shared_ptr<BubbleUpStrategy>> strategies;
+    strategies.push_back(std::make_shared<BroadcastBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<ReduceBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<ExpandBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<CollapseBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<ElementwiseBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<LoopBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<LoopArgsBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<ExtractSliceBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<InsertSliceBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<BitcastBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<VTransposeBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<IfBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<VarangeBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<VInterleaveBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<ScopeBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<SelectBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<FixpipeBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<IndirectLoadBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<GatherLoadBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<StrideLoadBubbleUpStrategy>());
+    strategies.push_back(std::make_shared<BufferizationBubbleUpStrategy>());
+
+    patterns.add<BubbleUpPattern>(context, std::move(strategies));
+    patterns.add<BufferizationPropagateUpPattern>(context);
+    patterns.add<BufferizationPropagateDownPattern>(context);
+  }
+};
+
+} // namespace
+
+std::unique_ptr<Pass> mlir::hivm::createHIVMBubbleUpExtractSlicePass(
+    const HIVMBubbleUpExtractSliceOptions &options) {
+  return std::make_unique<HIVMBubbleUpExtractSlicePass>(options);
+}

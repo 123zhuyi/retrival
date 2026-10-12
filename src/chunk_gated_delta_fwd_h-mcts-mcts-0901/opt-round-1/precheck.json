@@ -1,0 +1,24 @@
+{
+  "category": "gated-delta-net",
+  "template_path": ".claude/template/gated-delta-net.md",
+  "template_exists": true,
+  "layer1_constraints_loaded": [
+    "D1: state S[K,V] per-program full-K, V-dim tile split across programs; grid=(B*HV*num_v_tiles); forbid K-split across programs",
+    "D2: time dim serial in-kernel (chunk loop); forbid flattening chunk dim into grid",
+    "D3: recursion state fp32 end-to-end; cast to out dtype only at store; forbid fp16/bf16 accumulation",
+    "D4: gate numerics: exp(g_last-g) and exp(g_last) computed separately; g is chunk-local cumsum (monotone log-decay)",
+    "D5: S tile area BLOCK_K*BLOCK_V bounded for UB; K=128 -> BV=64 (cs=64) / BV=32 (cs=128)",
+    "D6: tile = min(tile, dim) protection; mask fallback inside kernel",
+    "D7: launch with multibuffer=True, unit_flag=True (measured 15.5x on GDN recurrences)",
+    "L1.4-style: strided loads keep row-contiguous orientation, clamp row index only",
+    "C1: UB total <= 192KB; C3: dot row-width alignment (fp32 128 multiples); C5: int64 scalar fallback guard for arange/mask math"
+  ],
+  "loaded_via": "explicit_path",
+  "matched_patterns": [
+    "chunked-delta-recurrence (ssm/gated-delta-net): per-(b,h) serial chunk loop, in-chunk GEMM (w@S, k^T@u), state S[K,V] register-resident fp32",
+    "V-tile grid split for parallelism (V=128 -> 2 tiles @BV=64)",
+    "varlen: seq folded into grid (pid decodes seq), in-kernel chunk-offset accumulation",
+    "host pre-flatten inputs to [B*HV, T, D] contiguous, k hv->hk via index_select"
+  ],
+  "analysis_reasoning": "MCTS Round 1 (root expansion). Golden is a triple-nested PyTorch loop (N x HV x NT chunks of small fp32 matmuls) -> massive latency headroom; target 5x vs this loop baseline is reachable with a single fused kernel. Operator family = chunked gated delta rule fwd_h: v_new = u - w@S_prev; S_next = exp(g_last)*S_prev + k^T@(v_new*exp(g_last-g)). CRITICAL precision finding (validated empirically on ascend910b3 this round): (1) CANN fp32 matmul is true fp32 (hf32/bf16-truncated dots violate tolerance by ~1M/4M elements); (2) Triton tl.dot(..., input_precision='ieee') with fp32 operands reproduces the NPU golden EXACTLY incl. the +Inf overflow mask (golden itself overflows v_new to +Inf on 37k+/4M positions under the relaxed N(1,1) input distribution - verify requires Inf position+sign match); (3) masked-out rows must contribute exactly 0 to the k^T@u dot (k loads masked to 0). Design: one fused kernel, grid=(B*HV*num_vt) [x num_seqs for varlen], serial per-chunk loop, S=[K,BV] fp32 in registers, BLOCK_L=chunk_size (no sub-block loop - 2nd-iteration misread hazard), w/k/u loaded fp32-cast, two ieee dots per chunk, g per-chunk scalars via masked max-position load, S stored bf16 per chunk (pre-update state), v_new stored bf16."
+}

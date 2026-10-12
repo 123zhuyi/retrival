@@ -1,0 +1,797 @@
+{
+    "op_type": "MoeTokenUnpermuteWithRoutingMapGrad",
+    "op_list": [
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_0",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_1",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_2",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_3",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "bool",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_4",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "bool",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_5",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "bool",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_bfloat16_int8_mix",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithRoutingMapGrad_bfloat16_bool_mix",
+            "inputs": [
+                {
+                    "name": "unpermuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "out_index",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permute_token_id",
+                    "index": 2,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "routing_map",
+                    "index": 3,
+                    "dtype": "bool",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "permuted_tokens",
+                    "index": 4,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 5,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "permuted_tokens_grad",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs_grad",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "drop_and_pad",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ]
+        }
+    ]
+}

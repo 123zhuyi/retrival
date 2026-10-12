@@ -1,0 +1,152 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file weight_quant_batch_matmul_v2_iterbatch.h
+ * \brief
+ */
+
+#pragma once
+
+#if ASC_DEVKIT_MAJOR >= 9
+#include "kernel_basic_intf.h"
+#else
+#include "kernel_operator.h"
+#endif
+#include "lib/matmul_intf.h"
+#include "../tool.h"
+#include "weight_quant_batch_matmul_v2_iterbatch_block.h"
+#include "../weight_quant_batch_matmul_v2_constant.h"
+#include "weight_quant_batch_matmul_v2_arch35_tiling_data.h"
+#include "weight_quant_batch_matmul_v2_kernel_util.h"
+
+#define ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS                                                              \
+    template <typename xType, typename wType, typename biasType, typename yType, bool aTrans, bool bTrans, \
+              QuantType antiQuantType, bool hasAntiQuantOffset, QuantType quantType, const MatmulConfig& mmCfg>
+#define ITERBATCH_LOCAL_TEMPLATE_FUNC_PARAMS \
+    xType, wType, biasType, yType, aTrans, bTrans, antiQuantType, hasAntiQuantOffset, quantType, mmCfg
+
+using AscendC::GetBlockIdx;
+using AscendC::GlobalTensor;
+using AscendC::TPipe;
+using AscendC::TPosition;
+using matmul::MatmulImpl;
+using matmul::MatmulType;
+namespace WeightQuantBatchMatmulV2::Arch35 {
+
+ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS
+class WeightQuantBatchMatmulV2IterBatchKernel {
+public:
+    __aicore__ inline WeightQuantBatchMatmulV2IterBatchKernel() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR weight, GM_ADDR antiquantScale, GM_ADDR antiquantOffset,
+                                GM_ADDR quantScale, GM_ADDR quantOffset, GM_ADDR bias, GM_ADDR y, GM_ADDR workspace,
+                                const void* tilingData, TPipe* tPipe);
+    __aicore__ inline void UpdateGlobalAddr(GM_ADDR x, GM_ADDR weight, GM_ADDR antiquantScale, GM_ADDR antiquantOffset,
+                                            GM_ADDR quantScale, GM_ADDR quantOffset, GM_ADDR bias, GM_ADDR y,
+                                            GM_ADDR workspace);
+    __aicore__ inline void Process();
+    __aicore__ inline void SetL2CacheHint();
+
+protected:
+    __aicore__ inline void CalcMmWithBatch();
+    uint32_t blockIdx_;
+    const wqbmmv2_tiling::WeightQuantBatchMatmulV2ASWTilingDataParams* tiling_;
+
+    GlobalTensor<xType> aGlobal_;
+    GlobalTensor<wType> bGlobal_;
+    GlobalTensor<yType> cGlobal_;
+    GlobalTensor<biasType> biasGlobal_;
+    WeightQuantBmmIterBatchBlock block_;
+    GlobalTensor<uint64_t> scaleGlobal_;
+    using aType = matmul::MatmulType<AscendC::TPosition::GM, CubeFormat::ND, xType, aTrans, LayoutMode::NORMAL>;
+    using bType = matmul::MatmulType<AscendC::TPosition::GM, CubeFormat::ND, wType, bTrans, LayoutMode::NORMAL>;
+    using cType = matmul::MatmulType<AscendC::TPosition::GM, CubeFormat::ND, yType, false, LayoutMode::NORMAL>;
+    using biasMatmulType = matmul::MatmulType<AscendC::TPosition::GM, CubeFormat::ND, biasType>;
+    matmul::MatmulImpl<aType, bType, cType, biasMatmulType, mmCfg> mm_;
+};
+
+ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS
+__aicore__ inline void WeightQuantBatchMatmulV2IterBatchKernel<ITERBATCH_LOCAL_TEMPLATE_FUNC_PARAMS>::Init(
+    GM_ADDR x, GM_ADDR weight, GM_ADDR antiquantScale, GM_ADDR antiquantOffset, GM_ADDR quantScale, GM_ADDR quantOffset,
+    GM_ADDR bias, GM_ADDR y, GM_ADDR workspace, const void* tilingData, TPipe* tPipe)
+{
+    if ASCEND_IS_AIV {
+        return;
+    }
+    tiling_ = static_cast<const wqbmmv2_tiling::WeightQuantBatchMatmulV2ASWTilingDataParams*>(tilingData);
+    blockIdx_ = GetBlockIdx();
+    UpdateGlobalAddr(x, weight, antiquantScale, antiquantOffset, quantScale, quantOffset, bias, y, workspace);
+    mm_.SetSubBlockIdx(0);
+    mm_.Init(&tiling_->matmulTiling, tPipe);
+}
+
+ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS
+__aicore__ inline void WeightQuantBatchMatmulV2IterBatchKernel<ITERBATCH_LOCAL_TEMPLATE_FUNC_PARAMS>::UpdateGlobalAddr(
+    GM_ADDR x, GM_ADDR weight, GM_ADDR antiquantScale, GM_ADDR antiquantOffset, GM_ADDR quantScale, GM_ADDR quantOffset,
+    GM_ADDR bias, GM_ADDR y, GM_ADDR workspace)
+{
+    UpdateGlobalAddrHelper<xType, wType, biasType, yType, antiQuantType>(
+        x, weight, antiquantScale, antiquantOffset, quantScale, quantOffset, bias, y, workspace, block_, tiling_,
+        blockIdx_, aGlobal_, bGlobal_, cGlobal_, biasGlobal_, scaleGlobal_, tiling_->l2CacheDisable);
+}
+
+ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS
+__aicore__ inline void WeightQuantBatchMatmulV2IterBatchKernel<ITERBATCH_LOCAL_TEMPLATE_FUNC_PARAMS>::SetL2CacheHint()
+{
+    SetL2CacheHintHelper<xType, wType, biasType, yType>(tiling_->l2CacheDisable, aGlobal_, bGlobal_);
+}
+
+ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS
+__aicore__ inline void WeightQuantBatchMatmulV2IterBatchKernel<ITERBATCH_LOCAL_TEMPLATE_FUNC_PARAMS>::Process()
+{
+    if ASCEND_IS_AIV {
+        return;
+    }
+    if (blockIdx_ >= block_.tilingData_->matmulTiling.usedCoreNum) {
+        return;
+    }
+    if (block_.params_.innerBatchNum == 0) {
+        block_.offset_.batchCOffset = 0;
+        CalcMmWithBatch();
+    } else {
+        for (uint64_t b1Index = 0; b1Index < block_.params_.iterBatch1; ++b1Index) {
+            for (uint64_t b2Index = 0; b2Index < block_.params_.iterBatch2; ++b2Index) {
+                for (uint64_t b3Index = 0; b3Index < block_.params_.iterBatch3; ++b3Index) {
+                    block_.GetBroadcastBatchOffset(b1Index, b2Index, b3Index);
+                    CalcMmWithBatch();
+                }
+            }
+        }
+    }
+}
+
+ITERBATCH_LOCAL_TEMPLATE_CLASS_PARAMS
+__aicore__ inline void WeightQuantBatchMatmulV2IterBatchKernel<ITERBATCH_LOCAL_TEMPLATE_FUNC_PARAMS>::CalcMmWithBatch()
+{
+    for (uint64_t loopIndex = 0; loopIndex < block_.params_.loopTimes; loopIndex++) {
+        if constexpr (antiQuantType == QuantType::PER_TENSOR) {
+            mm_.SetQuantScalar(block_.offset_.scaleScalar);
+        } else {
+            mm_.SetQuantVector(scaleGlobal_[block_.offset_.offsetScale]);
+        }
+        block_.GetMultiBatchInfo(loopIndex);
+        block_.CalcGMOffset();
+        if (block_.tilingData_->matmulTiling.isBias) {
+            mm_.SetBias(biasGlobal_[block_.offset_.offsetBias]);
+        }
+        mm_.SetFixShiftValue(static_cast<uint8_t>(tiling_->shiftValue));
+        mm_.SetTensorA(aGlobal_[block_.offset_.offsetA], aTrans);
+        mm_.SetTensorB(bGlobal_[block_.offset_.offsetB], bTrans);
+        mm_.SetBatchNum(block_.params_.batchANum, block_.params_.batchBNum);
+        mm_.IterateBatch(cGlobal_[block_.offset_.offsetC], false, 0, false, block_.params_.singleASize,
+                         block_.params_.singleBSize);
+    }
+}
+} // namespace WeightQuantBatchMatmulV2::Arch35

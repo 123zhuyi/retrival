@@ -1,0 +1,54 @@
+diff --git a/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp b/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
+index b37f7b41..ce80d32e 100644
+--- a/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
++++ b/lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
+@@ -48,6 +48,9 @@ static void setupValueTensorToBuiltinTensorConversion(
+     return builder.create<FromBuiltinTensorOp>(loc, type, inputs[0]);
+   };
+   typeConverter.addSourceMaterialization(sourceMaterialization);
++#if BSPUB_DAVINCI_BISHENGIR
++  typeConverter.addArgumentMaterialization(sourceMaterialization);
++#endif
+ }
+ 
+ static void setupTorchBoolToI1Conversion(ConversionTarget &target,
+@@ -73,6 +76,9 @@ static void setupTorchBoolToI1Conversion(ConversionTarget &target,
+     return builder.create<FromI1Op>(loc, inputs[0]);
+   };
+   typeConverter.addSourceMaterialization(sourceMaterialization);
++#if BSPUB_DAVINCI_BISHENGIR
++  typeConverter.addArgumentMaterialization(sourceMaterialization);
++#endif
+ }
+ 
+ static void setupTorchIntToI64Conversion(ConversionTarget &target,
+@@ -101,6 +107,9 @@ static void setupTorchIntToI64Conversion(ConversionTarget &target,
+     return builder.create<FromI64Op>(loc, inputs[0]);
+   };
+   typeConverter.addSourceMaterialization(sourceMaterialization);
++#if BSPUB_DAVINCI_BISHENGIR
++  typeConverter.addArgumentMaterialization(sourceMaterialization);
++#endif
+ }
+ 
+ static void setupTorchFloatToF64Conversion(ConversionTarget &target,
+@@ -123,6 +132,9 @@ static void setupTorchFloatToF64Conversion(ConversionTarget &target,
+     return builder.create<FromF64Op>(loc, inputs[0]);
+   };
+   typeConverter.addSourceMaterialization(sourceMaterialization);
++#if BSPUB_DAVINCI_BISHENGIR
++  typeConverter.addArgumentMaterialization(sourceMaterialization);
++#endif
+ }
+ 
+ static void setupTorchGeneratorToI64Conversion(ConversionTarget &target,
+@@ -153,6 +165,9 @@ static void setupTorchGeneratorToI64Conversion(ConversionTarget &target,
+     return builder.create<I64ToGeneratorOp>(loc, inputs[0]);
+   };
+   typeConverter.addSourceMaterialization(sourceMaterialization);
++#if BSPUB_DAVINCI_BISHENGIR
++  typeConverter.addArgumentMaterialization(sourceMaterialization);
++#endif
+ }
+ 
+ void mlir::torch::TorchConversion::setupBackendTypeConversion(

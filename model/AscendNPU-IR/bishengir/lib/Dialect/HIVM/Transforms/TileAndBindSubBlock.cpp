@@ -1,0 +1,1587 @@
+//===--------------------- TileAndBindSubBlock.cpp-------------------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+//
+// This pass tiles and binds sub block for mix cv function.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/Annotation/IR/Annotation.h"
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HFusion/Transforms/AutoSchedule/AutoScheduleBase.h"
+#include "bishengir/Dialect/HFusion/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/Analysis/DimensionAnalyzer.h"
+#include "bishengir/Dialect/HIVM/IR/CustomOp/DistributedTransformUtils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/IR/HIVMImpl.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/BubbleUpUtils.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/HoistAffine.h"
+#include "bishengir/Dialect/HIVM/Transforms/BubbleUpExtractSlice/Pattern.h"
+#include "bishengir/Dialect/HIVM/Transforms/PartitionAndBindSubBlock/PartitionTypes.h"
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h"
+#include "bishengir/Dialect/HIVM/Transforms/TileAndBindSubBlock/Helper.h"
+#include "bishengir/Dialect/HIVM/Transforms/TileAndBindSubBlock/TileUtils.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+#include "bishengir/Dialect/Tensor/IR/TensorImpl.h"
+#include "bishengir/Dialect/Tensor/Transforms/Passes.h"
+#include "bishengir/Dialect/Utils/Util.h"
+#include "bishengir/Transforms/Passes.h"
+#include "bishengir/Transforms/Transforms.h"
+
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Arith/Utils/Utils.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/SCF/Transforms/TileUsingInterface.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/Dialect/Utils/StaticValueUtils.h"
+#include "mlir/IR/AffineExpr.h"
+#include "mlir/IR/AffineMap.h"
+#include "mlir/IR/Attributes.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/IRMapping.h"
+#include "mlir/IR/Location.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Types.h"
+#include "mlir/IR/Value.h"
+#include "mlir/IR/Visitors.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Support/LLVM.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/ScopeExit.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/LogicalResult.h"
+#include "llvm/Support/raw_ostream.h"
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace mlir {
+#define GEN_PASS_DEF_TILEANDBINDSUBBLOCK
+#include "bishengir/Dialect/HIVM/Transforms/Passes.h.inc"
+} // namespace mlir
+
+using namespace mlir;
+using namespace mlir::hivm;
+
+#define DEBUG_TYPE "hivm-bind-sub-block"
+#define DBGS() (llvm::dbgs() << '[' << DEBUG_TYPE << "] ")
+#define LDBG(X) LLVM_DEBUG(DBGS() << X << "\n")
+
+namespace {
+static constexpr llvm::StringLiteral kLimitedSubBlockOpAttrName =
+    "limit_sub_block_id0";
+static constexpr llvm::StringLiteral tileAndBindLeaf =
+    "hivm.tile_and_bind_leaf";
+
+// Explicit flag ids for the two sub-block barriers around the tiled vreduce
+// store. They must differ: sharing one id collapses both halves and deadlocks.
+// 14 matches HIVMDecomposeOp's default inter-vector flag (ALL_VECTOR /
+// ALL_SUB_VECTOR). 15 matches its default inter-cube flag.
+static constexpr int64_t kInterSubBlockRawSyncFlagId = 14;
+static constexpr int64_t kInterSubBlockWarSyncFlagId = 15;
+} // namespace
+
+namespace {
+
+struct TileAndBindSubBlockPass
+    : public impl::TileAndBindSubBlockBase<TileAndBindSubBlockPass> {
+public:
+  using Base::Base;
+  FailureOr<func::FuncOp> attemptBindSubBlock(func::FuncOp func);
+  void runOnOperation() override;
+
+private:
+  DenseMap<int32_t, int64_t> tightlyCoupledBufferToTilingDim;
+};
+} // namespace
+
+static bool isUbToUbCopy(Operation *op) {
+  auto copyOp = dyn_cast<hivm::CopyOp>(op);
+  if (!copyOp)
+    return false;
+  auto dstOrig = utils::tracebackMemRef(copyOp.getDst());
+  if (!dstOrig.getDefiningOp<memref::AllocOp>())
+    return false;
+  auto maybeAddressSpace = GetBufferSpaceAttr(dstOrig);
+  return !maybeAddressSpace.has_value() ||
+         maybeAddressSpace->getAddressSpace() == hivm::AddressSpace::UB;
+}
+
+static void insertBubblePropagatorUpLinkForSlicedOperand(
+    PatternRewriter &rewriter, OpOperand *operand,
+    ArrayRef<OpFoldResult> mixedOffsets, ArrayRef<OpFoldResult> mixedSize,
+    ArrayRef<int64_t> newShape, int64_t tilingDim) {
+  Value operandValue = operand->get();
+  auto memrefType = cast<MemRefType>(operandValue.getType());
+  auto slicedMemrefType = hivm::detail::getSlicedMemRefType(
+      memrefType, RankedTensorType::get(newShape, memrefType.getElementType()));
+  auto upLink = hivm::detail::createBubblePropagatorUpLink(
+      operandValue, slicedMemrefType, mixedOffsets[tilingDim],
+      mixedSize[tilingDim], tilingDim, rewriter);
+  operand->set(upLink.getResult(0));
+  hivm::detail::markTiledTightlyCoupledAllocIfNeeded(rewriter, operandValue);
+}
+
+static void modifyOpToSliced(RewriterBase &rewriter, OpOperand *operand,
+                             SmallVector<OpFoldResult, 4> mixedOffsets,
+                             SmallVector<OpFoldResult, 4> mixedSize,
+                             SmallVector<OpFoldResult, 4> mixedStrides,
+                             SmallVector<int64_t, 4> newShape) {
+  auto operandValue = operand->get();
+  auto loc = operandValue.getLoc();
+
+  auto newType = operandValue.getType();
+  if (auto tensorType = dyn_cast<RankedTensorType>(newType)) {
+    auto slicedValue = rewriter.create<tensor::ExtractSliceOp>(
+        loc, operandValue, mixedOffsets, mixedSize, mixedStrides);
+    operand->set(slicedValue);
+    markCreatedExtractSliceOp(rewriter, slicedValue);
+  } else if (isa<MemRefType>(newType)) {
+    auto slicedValue = rewriter.create<memref::SubViewOp>(
+        loc, operandValue, mixedOffsets, mixedSize, mixedStrides);
+    operand->set(slicedValue);
+    markCreatedExtractSliceOp(rewriter, slicedValue);
+  }
+}
+
+template <typename OpType>
+LogicalResult modifyStoreCopyOp(OpType Op, int64_t tilingDim, OpOperand *srcOpr,
+                                OpOperand *dstOpr, scf::ForOp containingLoop,
+                                PatternRewriter &rewriter) {
+  auto loc = Op->getLoc();
+  auto src = srcOpr->get();
+  auto srcType = cast<ShapedType>(src.getType());
+  auto maybeSingleTileSize =
+      getSingleTileSize(rewriter, loc, src, tilingDim, containingLoop);
+  if (failed(maybeSingleTileSize))
+    return rewriter.notifyMatchFailure(
+        Op, "failed to calculate tile size for tiled store/copy source");
+  rewriter.setInsertionPointToStart(containingLoop.getBody());
+  auto offsetAtTileDim =
+      calculateOffsetAtTilingDim(rewriter, loc, containingLoop, src, tilingDim);
+
+  rewriter.setInsertionPoint(Op);
+
+  SmallVector<OpFoldResult, 4> mixedStrides, mixedOffsets, mixedSize;
+  SmallVector<int64_t, 4> newShape;
+  if (failed(findCorrespondingSizesOffsetsStrides(
+          rewriter, srcType, tilingDim, offsetAtTileDim,
+          maybeSingleTileSize.value(), mixedStrides, mixedOffsets, mixedSize,
+          newShape)))
+    return failure();
+
+  if (containingLoop.getRegion().isAncestor(srcOpr->get().getParentRegion())) {
+    rewriter.setInsertionPointAfterValue(srcOpr->get());
+  } else {
+    rewriter.setInsertionPointAfterValue(offsetAtTileDim.template get<Value>());
+  }
+  modifyOpToSliced(rewriter, srcOpr, mixedOffsets, mixedSize, mixedStrides,
+                   newShape);
+  if (containingLoop.getRegion().isAncestor(dstOpr->get().getParentRegion())) {
+    rewriter.setInsertionPointAfterValue(dstOpr->get());
+  } else {
+    rewriter.setInsertionPointAfterValue(offsetAtTileDim.template get<Value>());
+  }
+  if (isUbToUbCopy(Op) && isa<MemRefType>(dstOpr->get().getType())) {
+    insertBubblePropagatorUpLinkForSlicedOperand(
+        rewriter, dstOpr, mixedOffsets, mixedSize, newShape, tilingDim);
+  } else {
+    modifyOpToSliced(rewriter, dstOpr, mixedOffsets, mixedSize, mixedStrides,
+                     newShape);
+  }
+  rewriter.modifyOpInPlace(Op, [&]() {
+    if (Op->getNumResults() > 0)
+      Op->getResult(0).setType(Op.getDst().getType());
+    Op->setAttr(tiledOp, rewriter.getUnitAttr());
+  });
+  return success();
+}
+
+/// Tile indirect_store on the parallel tensor tile (src / offsets / mask).
+/// The destination memref is left unchanged: indexing is carried in `offsets`.
+static LogicalResult modifyIndirectStoreOp(hivm::IndirectStoreOp op,
+                                           int64_t tilingDim,
+                                           scf::ForOp containingLoop,
+                                           PatternRewriter &rewriter) {
+  Location loc = op.getLoc();
+  Value srcVal = op.getSrc();
+  auto srcType = dyn_cast<ShapedType>(srcVal.getType());
+  if (!srcType || ShapedType::isDynamicShape(srcType.getShape()))
+    return failure();
+
+  auto maybeSingleTileSize =
+      getSingleTileSize(rewriter, loc, srcVal, tilingDim, containingLoop);
+  if (failed(maybeSingleTileSize))
+    return failure();
+  rewriter.setInsertionPointToStart(containingLoop.getBody());
+  auto offsetAtTileDim = calculateOffsetAtTilingDim(
+      rewriter, loc, containingLoop, srcVal, tilingDim);
+
+  rewriter.setInsertionPoint(op);
+
+  SmallVector<OpFoldResult, 4> mixedStrides, mixedOffsets, mixedSize;
+  SmallVector<int64_t, 4> newShape;
+  if (failed(findCorrespondingSizesOffsetsStrides(
+          rewriter, srcType, tilingDim, offsetAtTileDim,
+          maybeSingleTileSize.value(), mixedStrides, mixedOffsets, mixedSize,
+          newShape)))
+    return failure();
+
+  auto sliceOperandLikeSrc = [&](OpOperand *opr) {
+    if (containingLoop.getRegion().isAncestor(opr->get().getParentRegion())) {
+      rewriter.setInsertionPointAfterValue(opr->get());
+    } else {
+      rewriter.setInsertionPointAfterValue(
+          offsetAtTileDim.template get<Value>());
+    }
+    modifyOpToSliced(rewriter, opr, mixedOffsets, mixedSize, mixedStrides,
+                     newShape);
+  };
+
+  sliceOperandLikeSrc(&op.getSrcMutable());
+  sliceOperandLikeSrc(&op.getOffsetsMutable());
+  auto maskMutable = op.getMaskMutable();
+  if (!maskMutable.empty())
+    sliceOperandLikeSrc(&maskMutable[0]);
+
+  rewriter.modifyOpInPlace(
+      op, [&]() { op->setAttr(tiledOp, rewriter.getUnitAttr()); });
+  return success();
+}
+
+/// Tile stride_store on the source tensor tile. The destination GM buffer stays
+/// intact; the linear GM base offset is advanced by tile_offset * stride[dim].
+static LogicalResult modifyStrideStoreOp(hivm::StrideStoreOp op,
+                                         int64_t tilingDim,
+                                         scf::ForOp containingLoop,
+                                         PatternRewriter &rewriter) {
+  Location loc = op.getLoc();
+  Value srcVal = op.getSrc();
+  auto srcType = dyn_cast<ShapedType>(srcVal.getType());
+  if (!srcType || ShapedType::isDynamicShape(srcType.getShape()))
+    return failure();
+
+  auto maybeSingleTileSize =
+      getSingleTileSize(rewriter, loc, srcVal, tilingDim, containingLoop);
+  if (failed(maybeSingleTileSize))
+    return failure();
+  rewriter.setInsertionPointToStart(containingLoop.getBody());
+  auto offsetAtTileDim = calculateOffsetAtTilingDim(
+      rewriter, loc, containingLoop, srcVal, tilingDim);
+
+  rewriter.setInsertionPoint(op);
+
+  SmallVector<OpFoldResult, 4> mixedStrides, mixedOffsets, mixedSize;
+  SmallVector<int64_t, 4> newShape;
+  if (failed(findCorrespondingSizesOffsetsStrides(
+          rewriter, srcType, tilingDim, offsetAtTileDim,
+          maybeSingleTileSize.value(), mixedStrides, mixedOffsets, mixedSize,
+          newShape)))
+    return failure();
+
+  OpOperand *srcOperand = &op.getSrcMutable();
+  if (containingLoop.getRegion().isAncestor(
+          srcOperand->get().getParentRegion())) {
+    rewriter.setInsertionPointAfterValue(srcOperand->get());
+  } else if (auto offsetValue = offsetAtTileDim.dyn_cast<Value>()) {
+    rewriter.setInsertionPointAfterValue(offsetValue);
+  } else {
+    rewriter.setInsertionPoint(op);
+  }
+  modifyOpToSliced(rewriter, srcOperand, mixedOffsets, mixedSize, mixedStrides,
+                   newShape);
+
+  rewriter.setInsertionPoint(op);
+  Type indexType = op.getOffset().getType();
+  auto castIndexToOffsetType = [&rewriter, &loc,
+                                &indexType](OpFoldResult ofr) -> Value {
+    Value indexValue = getValueOrCreateConstantIndexOp(rewriter, loc, ofr);
+    if (indexValue.getType() == indexType)
+      return indexValue;
+    return rewriter.create<arith::IndexCastOp>(loc, indexType, indexValue);
+  };
+
+  Value tileOffset = castIndexToOffsetType(offsetAtTileDim);
+  Value tileSize = castIndexToOffsetType(maybeSingleTileSize.value());
+  Value offsetDelta = rewriter.create<arith::MulIOp>(loc, tileOffset,
+                                                     op.getStride()[tilingDim]);
+  Value newOffset =
+      rewriter.create<arith::AddIOp>(loc, op.getOffset(), offsetDelta);
+
+  Value remainingNumel =
+      rewriter.create<arith::SubIOp>(loc, op.getNumel()[tilingDim], tileOffset);
+  Value boundedNumel =
+      rewriter.create<arith::MinSIOp>(loc, remainingNumel, tileSize);
+  Value zero = rewriter.create<arith::ConstantOp>(
+      loc, rewriter.getIntegerAttr(indexType, 0));
+  Value newNumel = rewriter.create<arith::MaxSIOp>(loc, boundedNumel, zero);
+
+  rewriter.modifyOpInPlace(op, [&]() {
+    op.getOffsetMutable().assign(newOffset);
+    op.getNumelMutable()[tilingDim].set(newNumel);
+    op->setAttr(tiledOp, rewriter.getUnitAttr());
+  });
+  return success();
+}
+
+namespace {
+
+/// try to tile storeOp and copyOp and bind sub block mapping
+template <typename OpType>
+class TileAndSliceStoreCopyOp : public OpRewritePattern<OpType> {
+public:
+  hivm::detail::DimensionAnalyzer &analyzer;
+
+  explicit TileAndSliceStoreCopyOp(MLIRContext *context,
+                                   hivm::detail::DimensionAnalyzer &analyzer)
+      : OpRewritePattern<OpType>(context, /*benefit=*/1), analyzer(analyzer) {}
+  LogicalResult matchAndRewrite(OpType Op,
+                                PatternRewriter &rewriter) const override {
+    if (Op->template hasAttrOfType<UnitAttr>(tiledOp))
+      return failure();
+    int64_t tilingDim = analyzer.getTilingDim(Op.getSrc());
+    auto inputType = Op.getOperand(0).getType();
+    if (!inputType) {
+      return failure();
+    }
+    /// We differentiate storeOp and copyOp
+    if constexpr (std::is_same_v<hivm::CopyOp, OpType>) {
+      if (!Op.getResults().empty()) { // If copy Op with results
+        // TODO: Check if there is case of copyOp with result, if no, delete
+        // here.
+        if (!llvm::any_of(Op->getUsers(), [](Operation *user) {
+              return isa<annotation::MarkOp>(user);
+            })) {
+          return failure(); // If the user of CopyOp is not MarkOp, it cannot be
+                            // a tiling start point.
+        }
+      }
+      // If the copy input is memref, we cannot tile it.
+      if (isa<mlir::MemRefType>(inputType)) {
+        Op->emitWarning(
+            "Copy input memref is not supported, skip tile and bind.");
+        return failure();
+      }
+      LLVM_DEBUG(DBGS() << "The copy op tiling dim is: " << tilingDim << "\n");
+    } else {
+      LLVM_DEBUG(DBGS() << "The store op tiling dim is: " << tilingDim << "\n");
+    }
+    auto maybeContainingLoop = findContainingSubblockLoop(Op);
+    if (tilingDim == -1 || failed(maybeContainingLoop)) {
+      Op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+      return failure();
+    }
+    auto containingLoop = maybeContainingLoop.value();
+    auto *srcOpr = &Op.getSrcMutable();
+    auto *dstOpr = &Op.getDstMutable();
+    if constexpr (std::is_same_v<hivm::StoreOp, OpType>) {
+      auto storeOp = cast<hivm::StoreOp>(Op);
+      auto srcType = dyn_cast<ShapedType>(storeOp.getSrc().getType());
+      if (!srcType) {
+        Op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+        return failure();
+      }
+
+      /// Handling masked store
+      /// Maskedstore contains the static_mask and dynamic_mask cases, so we
+      /// handle the maskedStore first, this will also handle the dynamicStore.
+      /// After handleMasked, it should not have dynamicShape case.
+      if (failed(handleMaskedStore(storeOp, tilingDim, containingLoop,
+                                   rewriter))) {
+        if (ShapedType::isDynamicShape(srcType.getShape())) {
+          Op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+          return failure();
+        }
+
+        /// Handle the storeOp without mask
+        if (failed(modifyStoreCopyOp(Op, tilingDim, srcOpr, dstOpr,
+                                     containingLoop, rewriter))) {
+          Op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+          return failure();
+        }
+      }
+    } else {
+      /// Handle the copyOp, we assump copyOp does not have a mask
+      if (failed(modifyStoreCopyOp(Op, tilingDim, srcOpr, dstOpr,
+                                   containingLoop, rewriter))) {
+        Op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+        return failure();
+      }
+    }
+
+    LDBG("Success");
+    return success();
+  }
+
+private:
+  LogicalResult handleMaskedStore(hivm::StoreOp storeOp, int64_t tilingDim,
+                                  scf::ForOp containingLoop,
+                                  PatternRewriter &rewriter) const {
+    auto *srcOpr = &storeOp.getSrcMutable();
+    auto *dstOpr = &storeOp.getDstMutable();
+    auto src = srcOpr->get();
+    auto dst = dstOpr->get();
+    SmallVector<OpFoldResult, 4> srcOffsets;
+    SmallVector<OpFoldResult, 4> dstOffsets;
+    SmallVector<OpFoldResult, 4> srcSizes;
+    SmallVector<OpFoldResult, 4> dstSizes;
+
+    if (auto extractSliceOp = src.getDefiningOp<tensor::ExtractSliceOp>()) {
+      src = extractSliceOp.getSource();
+      srcOpr = &extractSliceOp.getSourceMutable();
+      srcOffsets = extractSliceOp.getMixedOffsets();
+      srcSizes = extractSliceOp.getMixedSizes();
+    } else if (auto subViewOp = src.getDefiningOp<memref::SubViewOp>()) {
+      src = subViewOp.getSource();
+      srcOpr = &subViewOp.getSourceMutable();
+      srcOffsets = subViewOp.getMixedOffsets();
+      srcSizes = subViewOp.getMixedSizes();
+    } else {
+      return failure();
+    }
+    if (auto extractSliceOp = dst.getDefiningOp<tensor::ExtractSliceOp>()) {
+      dst = extractSliceOp.getSource();
+      dstOpr = &extractSliceOp.getSourceMutable();
+      dstOffsets = extractSliceOp.getMixedOffsets();
+      dstSizes = extractSliceOp.getMixedSizes();
+    } else if (auto subViewOp = dst.getDefiningOp<memref::SubViewOp>()) {
+      dst = subViewOp.getSource();
+      dstOpr = &subViewOp.getSourceMutable();
+      dstOffsets = subViewOp.getMixedOffsets();
+      dstSizes = subViewOp.getMixedSizes();
+    } else {
+      return failure();
+    }
+    auto srcShape = llvm::to_vector(cast<ShapedType>(src.getType()).getShape());
+    auto dstShape = llvm::to_vector(cast<ShapedType>(dst.getType()).getShape());
+    auto srcOp =
+        storeOp.getSrc().getDefiningOp<OffsetSizeAndStrideOpInterface>();
+    auto dstOp =
+        storeOp.getDst().getDefiningOp<OffsetSizeAndStrideOpInterface>();
+    if (srcShape != dstShape || ShapedType::isDynamicShape(srcShape) ||
+        !srcOp.hasUnitStride() || !dstOp.hasUnitStride())
+      return failure();
+    if (failed(modifyStoreCopyOp(storeOp, tilingDim, srcOpr, dstOpr,
+                                 containingLoop, rewriter)))
+      return failure();
+    auto loc = storeOp.getLoc();
+    rewriter.setInsertionPointToStart(containingLoop.getBody());
+    auto maybeSingleTileSize =
+        getSingleTileSize(rewriter, loc, src, tilingDim, containingLoop);
+    if (failed(maybeSingleTileSize))
+      return storeOp.emitError("failed to calculate masked store tile size");
+
+    auto offsetAtTileDim = calculateOffsetAtTilingDim(
+        rewriter, loc, containingLoop, src, tilingDim);
+
+    auto lb = getValueOrCreateConstantIndexOp(rewriter, loc, offsetAtTileDim);
+    auto ub = getValueOrCreateConstantIndexOp(rewriter, loc,
+                                              maybeSingleTileSize.value());
+
+    src = storeOp.getSrc();
+    dst = storeOp.getDst();
+
+    if (auto extractSliceOp = src.getDefiningOp<tensor::ExtractSliceOp>()) {
+      rewriter.setInsertionPoint(extractSliceOp);
+      handleExtractOfExtract(srcOffsets[tilingDim], srcSizes[tilingDim], lb, ub,
+                             loc, rewriter);
+      src = rewriter.create<tensor::ExtractSliceOp>(
+          extractSliceOp.getLoc(), extractSliceOp.getSource(), srcOffsets,
+          srcSizes, extractSliceOp.getMixedStrides());
+    } else if (auto subViewOp = src.getDefiningOp<memref::SubViewOp>()) {
+      rewriter.setInsertionPoint(subViewOp);
+      handleExtractOfExtract(srcOffsets[tilingDim], srcSizes[tilingDim], lb, ub,
+                             loc, rewriter);
+      src = rewriter.create<memref::SubViewOp>(
+          subViewOp.getLoc(), subViewOp.getSource(), srcOffsets, srcSizes,
+          subViewOp.getMixedStrides());
+    }
+    if (auto extractSliceOp = dst.getDefiningOp<tensor::ExtractSliceOp>()) {
+      rewriter.setInsertionPoint(extractSliceOp);
+      handleExtractOfExtract(dstOffsets[tilingDim], dstSizes[tilingDim], lb, ub,
+                             loc, rewriter);
+      dst = rewriter.create<tensor::ExtractSliceOp>(
+          extractSliceOp.getLoc(), extractSliceOp.getSource(), dstOffsets,
+          dstSizes, extractSliceOp.getMixedStrides());
+    } else if (auto subViewOp = dst.getDefiningOp<memref::SubViewOp>()) {
+      rewriter.setInsertionPoint(subViewOp);
+      handleExtractOfExtract(dstOffsets[tilingDim], dstSizes[tilingDim], lb, ub,
+                             loc, rewriter);
+      dst = rewriter.create<memref::SubViewOp>(
+          subViewOp.getLoc(), subViewOp.getSource(), dstOffsets, dstSizes,
+          subViewOp.getMixedStrides());
+    }
+
+    rewriter.modifyOpInPlace(storeOp, [&]() {
+      storeOp.getSrcMutable().set(src);
+      storeOp.getDstMutable().set(dst);
+    });
+
+    LDBG("New dynamic store:\n" << src << '\n' << dst << '\n' << storeOp);
+
+    return success();
+  }
+};
+
+class TileAndSliceIndirectStore
+    : public OpRewritePattern<hivm::IndirectStoreOp> {
+public:
+  hivm::detail::DimensionAnalyzer &analyzer;
+
+  TileAndSliceIndirectStore(MLIRContext *context,
+                            hivm::detail::DimensionAnalyzer &analyzer)
+      : OpRewritePattern<hivm::IndirectStoreOp>(context, /*benefit=*/1),
+        analyzer(analyzer) {}
+
+  LogicalResult matchAndRewrite(hivm::IndirectStoreOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op->hasAttrOfType<UnitAttr>(tiledOp))
+      return failure();
+
+    int64_t tilingDim = analyzer.getTilingDim(op.getSrc());
+    LLVM_DEBUG(DBGS() << "The indirect store op tiling dim is: " << tilingDim
+                      << "\n");
+
+    auto maybeContainingLoop = findContainingSubblockLoop(op);
+    if (tilingDim == -1 || failed(maybeContainingLoop)) {
+      op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+      return failure();
+    }
+
+    if (failed(modifyIndirectStoreOp(op, tilingDim, maybeContainingLoop.value(),
+                                     rewriter))) {
+      op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+      return failure();
+    }
+
+    LDBG("Success");
+    return success();
+  }
+};
+
+class TileAndSliceStrideStore : public OpRewritePattern<hivm::StrideStoreOp> {
+public:
+  hivm::detail::DimensionAnalyzer &analyzer;
+
+  TileAndSliceStrideStore(MLIRContext *context,
+                          hivm::detail::DimensionAnalyzer &analyzer)
+      : OpRewritePattern<hivm::StrideStoreOp>(context, /*benefit=*/1),
+        analyzer(analyzer) {}
+
+  LogicalResult matchAndRewrite(hivm::StrideStoreOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op->hasAttrOfType<UnitAttr>(tiledOp))
+      return failure();
+
+    int64_t tilingDim = analyzer.getTilingDim(op.getSrc());
+    LLVM_DEBUG(DBGS() << "The stride store op tiling dim is: " << tilingDim
+                      << "\n");
+
+    auto maybeContainingLoop = findContainingSubblockLoop(op);
+    if (tilingDim == -1 || failed(maybeContainingLoop)) {
+      op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+      return failure();
+    }
+
+    if (failed(modifyStrideStoreOp(op, tilingDim, maybeContainingLoop.value(),
+                                   rewriter))) {
+      op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+      return failure();
+    }
+
+    LDBG("Success");
+    return success();
+  }
+};
+
+class TileAndSliceReduceOp : public OpRewritePattern<hivm::VReduceOp> {
+public:
+  hivm::detail::DimensionAnalyzer &analyzer;
+
+  TileAndSliceReduceOp(MLIRContext *context,
+                       hivm::detail::DimensionAnalyzer &analyzer)
+      : OpRewritePattern<hivm::VReduceOp>(context, /*benefit=*/1),
+        analyzer(analyzer) {}
+
+  LogicalResult matchAndRewrite(hivm::VReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op->hasAttrOfType<UnitAttr>(tiledOp) ||
+        op->hasAttrOfType<UnitAttr>(tileAndSliceFailure) ||
+        op->getNumResults() == 0u || op.getDst().size() == 2u)
+      return failure();
+
+    int64_t tilingDim = analyzer.getTilingDim(op.getSrc());
+    auto reducedDims = op.getReduceDims();
+
+    auto maybeContainingLoop = findContainingSubblockLoop(op);
+    if (llvm::find(reducedDims, tilingDim) == reducedDims.end() ||
+        failed(maybeContainingLoop)) {
+      return failure();
+    }
+
+    LLVM_DEBUG(DBGS() << "The reduce op tiling dim is: " << tilingDim << "\n");
+
+    if (failed(modifyReduceOp(op, tilingDim, maybeContainingLoop.value(),
+                              rewriter))) {
+      op->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+      return failure();
+    }
+
+    LDBG("Success");
+    return success();
+  }
+
+private:
+  LogicalResult modifyReduceOp(hivm::VReduceOp op, int64_t tilingDim,
+                               scf::ForOp containingLoop,
+                               PatternRewriter &rewriter) const {
+    auto loc = op.getLoc();
+    Value srcVal = op.getSrc();
+    auto dst = op.getDstValue();
+    auto dstType = cast<TensorType>(dst.getType());
+    auto srcType = dyn_cast<ShapedType>(srcVal.getType());
+    auto elemType = srcType.getElementType();
+    if (!srcType || ShapedType::isDynamicShape(srcType.getShape()))
+      return failure();
+
+    auto maybeSingleTileSize =
+        getSingleTileSize(rewriter, loc, srcVal, tilingDim, containingLoop);
+    if (failed(maybeSingleTileSize))
+      return failure();
+    rewriter.setInsertionPointToStart(containingLoop.getBody());
+    auto offsetAtTileDim = calculateOffsetAtTilingDim(
+        rewriter, loc, containingLoop, srcVal, tilingDim);
+
+    rewriter.setInsertionPoint(op);
+
+    switch (op.getArith().getReduceOp()) {
+    case hivm::ReduceOperation::sum: {
+      Value identityDst;
+      if (elemType.isInteger()) {
+        identityDst = rewriter.create<arith::ConstantOp>(
+            loc, rewriter.getIntegerAttr(elemType, 0));
+      } else {
+        identityDst = rewriter.create<arith::ConstantOp>(
+            loc, rewriter.getFloatAttr(elemType, 0));
+      }
+      auto emptyBuffer = tensor::createTensorEmptyOp(rewriter, loc, dst);
+      identityDst =
+          rewriter.create<hivm::VBrcOp>(loc, dstType, identityDst, emptyBuffer)
+              ->getResult(0);
+      rewriter.modifyOpInPlace(
+          op, [&]() { op.getDstMutable()[0].set(identityDst); });
+      break;
+    }
+    case hivm::ReduceOperation::prod: {
+      Value identityDst;
+      if (elemType.isInteger()) {
+        identityDst = rewriter.create<arith::ConstantOp>(
+            loc, rewriter.getIntegerAttr(elemType, 1));
+      } else {
+        identityDst = rewriter.create<arith::ConstantOp>(
+            loc, rewriter.getFloatAttr(elemType, 1));
+      }
+      auto emptyBuffer = tensor::createTensorEmptyOp(rewriter, loc, dst);
+      identityDst =
+          rewriter.create<hivm::VBrcOp>(loc, dstType, identityDst, emptyBuffer)
+              ->getResult(0);
+      rewriter.modifyOpInPlace(
+          op, [&]() { op.getDstMutable()[0].set(identityDst); });
+      break;
+    }
+    case hivm::ReduceOperation::max:
+    case hivm::ReduceOperation::min:
+    case hivm::ReduceOperation::xori:
+    case hivm::ReduceOperation::ori:
+    case hivm::ReduceOperation::andi:
+      break;
+    default:
+      op->emitWarning("Unhandled reduce operation to be sliced. This might "
+                      "cause precision error");
+    }
+
+    SmallVector<OpFoldResult, 4> mixedOffsets, mixedSizes, mixedStrides;
+    SmallVector<int64_t, 4> newShape;
+    if (failed(findCorrespondingSizesOffsetsStrides(
+            rewriter, srcType, tilingDim, offsetAtTileDim,
+            maybeSingleTileSize.value(), mixedStrides, mixedOffsets, mixedSizes,
+            newShape)))
+      return failure();
+
+    modifyOpToSliced(rewriter, &op.getSrcMutable(), mixedOffsets, mixedSizes,
+                     mixedStrides, newShape);
+
+    rewriter.modifyOpInPlace(
+        op, [&]() { op->setAttr(tiledOp, rewriter.getUnitAttr()); });
+
+    rewriter.setInsertionPointAfter(op);
+    newShape[tilingDim] = 2;
+    auto workspaceOp = createAllocLocalWorkSpace(rewriter, loc, newShape,
+                                                 srcType.getElementType());
+    mixedSizes[tilingDim] = rewriter.getIndexAttr(1);
+    mixedOffsets[tilingDim] = calculateOffsetAtTilingDim(
+        rewriter, loc, containingLoop, workspaceOp, tilingDim);
+    Value curWorkspace = rewriter.create<memref::SubViewOp>(
+        loc, workspaceOp, mixedOffsets, mixedSizes, mixedStrides);
+
+    auto syncSubBlockMode = rewriter.getAttr<hivm::SyncBlockModeAttr>(
+        hivm::SyncBlockMode::ALL_SUB_VECTOR);
+    auto mte3PipeAttr = rewriter.getAttr<hivm::PipeAttr>(hivm::PIPE::PIPE_MTE3);
+    auto mte2PipeAttr = rewriter.getAttr<hivm::PipeAttr>(hivm::PIPE::PIPE_MTE2);
+
+    // The exchange workspace is reused across iterations of the containing
+    // loop, so the store below overwrites data that the peer sub-block reads
+    // through the load further down. Rendezvous before the store to close that
+    // write-after-read window.
+    rewriter.create<hivm::SyncBlockOp>(
+        loc, syncSubBlockMode,
+        rewriter.getI64IntegerAttr(kInterSubBlockWarSyncFlagId), Value{},
+        hivm::PipeAttr{}, hivm::PipeAttr{}, mte2PipeAttr, mte3PipeAttr);
+
+    auto storeOp = rewriter.create<hivm::StoreOp>(
+        loc, TypeRange{}, op->getResult(0), curWorkspace);
+    storeOp->setAttr(tiledOp, rewriter.getUnitAttr());
+
+    // Read-after-write: make the peer sub-block's store visible to the load.
+    rewriter.create<hivm::SyncBlockOp>(
+        loc, syncSubBlockMode,
+        rewriter.getI64IntegerAttr(kInterSubBlockRawSyncFlagId), Value{},
+        hivm::PipeAttr{}, hivm::PipeAttr{}, mte3PipeAttr, mte2PipeAttr);
+    auto localBuffer = utils::createEmptyOp(rewriter, loc, workspaceOp);
+    auto loadOp = rewriter.create<hivm::LoadOp>(loc, TypeRange{}, workspaceOp,
+                                                localBuffer);
+    auto evictionPolicyAttr = rewriter.getAttr<hivm::EvictionPolicyAttr>(
+        hivm::EvictionPolicy::EvictFirst);
+    loadOp.setEvictionPolicyAttr(evictionPolicyAttr);
+    Value loadedValue = rewriter.create<bufferization::ToTensorOp>(
+        loc, localBuffer, true, true);
+
+    auto newReduceOp = rewriter.create<hivm::VReduceOp>(
+        loc, dstType, loadedValue, dst, op.getTempBuffer(), op.getArithAttr(),
+        op.getUnsignedSrcAttr(), op.getTieBreakLeftAttr(),
+        op.getReduceDimsAttr(), op.getIndices());
+    newReduceOp->setAttr(tileAndSliceFailure, rewriter.getUnitAttr());
+    rewriter.replaceAllUsesExcept(op->getResult(0), newReduceOp->getResult(0), storeOp);
+    return success();
+  }
+};
+
+static void modifyDebugOpToSliced(RewriterBase &rewriter, hivm::DebugOp debugOp,
+                                  SmallVector<OpFoldResult, 4> mixedOffsets,
+                                  SmallVector<OpFoldResult, 4> mixedSize,
+                                  SmallVector<OpFoldResult, 4> mixedStrides,
+                                  SmallVector<int64_t, 4> newShape) {
+  auto rankType = cast<RankedTensorType>(debugOp.getArg().getType());
+  auto loc = debugOp->getLoc();
+
+  auto newType =
+      mlir::RankedTensorType::get(newShape, rankType.getElementType());
+  auto slicedDebug = rewriter.create<tensor::ExtractSliceOp>(
+      loc, newType, debugOp->getOperand(0), mixedOffsets, mixedSize,
+      mixedStrides);
+  markCreatedExtractSliceOp(rewriter, slicedDebug);
+  rewriter.modifyOpInPlace(debugOp, [&]() {
+    debugOp->setOperand(0, slicedDebug);
+    debugOp->setAttr(tiledOp, UnitAttr::get(debugOp->getContext()));
+  });
+}
+
+/// try to tile debug ops and bind sub block mapping
+class TileAndSliceDebugOp : public OpRewritePattern<hivm::DebugOp> {
+public:
+  hivm::detail::DimensionAnalyzer &analyzer;
+
+  explicit TileAndSliceDebugOp(MLIRContext *context,
+                               hivm::detail::DimensionAnalyzer &analyzer)
+      : OpRewritePattern<hivm::DebugOp>(context, /*benefit=*/1),
+        analyzer(analyzer) {}
+  LogicalResult matchAndRewrite(hivm::DebugOp debugOp,
+                                PatternRewriter &rewriter) const override {
+    if (debugOp->hasAttrOfType<UnitAttr>(tiledOp))
+      return failure();
+    int64_t tilingDim = analyzer.getTilingDim(debugOp.getArg());
+    auto maybeContainingLoop = findContainingSubblockLoop(debugOp);
+    if (tilingDim == -1 || failed(maybeContainingLoop))
+      return failure();
+
+    auto containingLoop = maybeContainingLoop.value();
+    auto loc = debugOp.getLoc();
+    auto maybeSingleTileSize = getSingleTileSize(
+        rewriter, loc, debugOp.getArg(), tilingDim, containingLoop);
+    if (failed(maybeSingleTileSize))
+      return failure();
+    rewriter.setInsertionPointToStart(containingLoop.getBody());
+    auto offsetAtTileDim = calculateOffsetAtTilingDim(
+        rewriter, loc, containingLoop, debugOp.getArg(), tilingDim);
+
+    rewriter.setInsertionPoint(debugOp);
+
+    SmallVector<OpFoldResult, 4> mixedStrides, mixedOffsets, mixedSize;
+    SmallVector<int64_t, 4> newShape;
+    auto rankType = cast<ShapedType>(debugOp.getArg().getType());
+    assert(!ShapedType::isDynamicShape(rankType.getShape()));
+    if (failed(findCorrespondingSizesOffsetsStrides(
+            rewriter, rankType, tilingDim, offsetAtTileDim,
+            maybeSingleTileSize.value(), mixedStrides, mixedOffsets, mixedSize,
+            newShape)))
+      return failure();
+
+    modifyDebugOpToSliced(rewriter, debugOp, mixedOffsets, mixedSize,
+                          mixedStrides, newShape);
+
+    return success();
+  }
+};
+
+/// Try to tile the leaf nodes that have only annotation::MarkOp as users.
+/// Take scf.for Op as example. We insert tensor.extract_sliceOp before
+/// annotation::MarkOp, it will change to: %42:1 = scf.for {
+///   scf.yield %42#0
+///   }
+///   %43 = tensor.extract_sliceOp %42#0
+///   annotation.mark %43
+template <typename OpTy>
+class TileAndSliceLeaf : public OpRewritePattern<OpTy> {
+public:
+  hivm::detail::DimensionAnalyzer &analyzer;
+
+  explicit TileAndSliceLeaf(MLIRContext *context,
+                            hivm::detail::DimensionAnalyzer &analyzer)
+      : OpRewritePattern<OpTy>(context), analyzer(analyzer) {}
+  LogicalResult matchAndRewrite(OpTy op,
+                                PatternRewriter &rewriter) const override {
+    LogicalResult result = failure();
+    auto maybeContainingLoop = findContainingSubblockLoop(op);
+    if (failed(maybeContainingLoop))
+      return failure();
+    for (auto res : op->getResults()) {
+      int64_t tilingDim = analyzer.getTilingDim(res);
+      if (tilingDim == -1 || !res.use_empty())
+        continue;
+
+      auto containingLoop = maybeContainingLoop.value();
+      auto loc = res.getLoc();
+      auto maybeSingleTileSize =
+          getSingleTileSize(rewriter, loc, res, tilingDim, containingLoop);
+      if (failed(maybeSingleTileSize))
+        continue;
+      rewriter.setInsertionPointToStart(containingLoop.getBody());
+      auto offsetAtTileDim = calculateOffsetAtTilingDim(
+          rewriter, loc, containingLoop, res, tilingDim);
+
+      rewriter.setInsertionPointAfter(op);
+
+      SmallVector<OpFoldResult, 4> mixedStrides, mixedOffsets, mixedSize;
+      SmallVector<int64_t, 4> newShape;
+      auto rankType = cast<ShapedType>(res.getType());
+      assert(!ShapedType::isDynamicShape(rankType.getShape()));
+      if (failed(findCorrespondingSizesOffsetsStrides(
+              rewriter, rankType, tilingDim, offsetAtTileDim,
+              maybeSingleTileSize.value(), mixedStrides, mixedOffsets,
+              mixedSize, newShape)))
+        continue;
+
+      auto newType = RankedTensorType::get(newShape, rankType.getElementType());
+      auto slicedValue = rewriter.create<tensor::ExtractSliceOp>(
+          loc, newType, res, mixedOffsets, mixedSize, mixedStrides);
+      markCreatedExtractSliceOp(rewriter, slicedValue);
+
+      auto mark = rewriter.create<annotation::MarkOp>(loc, slicedValue);
+      mark->setAttr(tileAndBindLeaf, rewriter.getUnitAttr());
+    }
+    return result;
+  }
+};
+
+/// add if (sublock_id == 0) guard for each store/copy/custom op.
+/// e.g.
+/// case 1: store/copy op without results
+///   store/copy op
+/// is changed to
+///   if (subblock_id == 0)
+///     store/copy op
+/// case 2: op with results
+///   %res = store/copy/custom op outs(...)
+/// is changed to
+///   %res = if (subblock_id == 0)
+///     %new_res = store/copy/custom op outs(...)
+///     yield %new_res
+///   else
+///     yield corresponding dps init operands
+template <typename OpType>
+struct LimitUniqueSubBlockIdToStoreCopy : public OpRewritePattern<OpType> {
+public:
+  using OpRewritePattern<OpType>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(OpType op,
+                                PatternRewriter &rewriter) const override {
+    // Skip ops the partition pass already bound to a sub-block.
+    if (op->template hasAttrOfType<UnitAttr>(
+            mlir::hivm::partition_and_bind::kSubBlockBoundOpAttrName))
+      return failure();
+
+    if (auto ifOpOld = dyn_cast_if_present<scf::IfOp>(op->getParentOp())) {
+      if (ifOpOld->template hasAttrOfType<UnitAttr>(kLimitedSubBlockOpAttrName))
+        return failure();
+    }
+
+    if (op->template hasAttrOfType<UnitAttr>(tiledOp))
+      return failure();
+
+    if constexpr (std::is_same_v<hivm::CustomOp, OpType> ||
+                  std::is_same_v<hivm::CustomMacroOp, OpType>) {
+      if (isDistributedTypeCustomOp(op.getOperation()) &&
+          op->getNumResults() > op.getOutputs().size())
+        return failure();
+      if (!op.getGMAddrArgsIndices())
+        return failure();
+    }
+
+    // Copy operations on A2/A3 represent ub-to-ub transfers, whereas on A5 they
+    // can be either ub-to-ub or ub-to-l1, with only ub-to-l1 used for CV1:1.
+    if constexpr (std::is_same_v<hivm::CopyOp, OpType>) {
+      if (!isCopytoL1(op.getOperation())) {
+        return failure();
+      }
+    }
+
+    auto loc = op.getLoc();
+    auto subBlockIdxOp =
+        rewriter.create<hivm::GetSubBlockIdxOp>(loc, rewriter.getI64Type());
+    auto subBlockIndex =
+        rewriter
+            .create<arith::IndexCastOp>(loc, rewriter.getIndexType(),
+                                        subBlockIdxOp.getResult())
+            .getResult();
+    Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
+    auto cond = rewriter.create<arith::CmpIOp>(loc, rewriter.getI1Type(),
+                                               arith::CmpIPredicate::eq,
+                                               subBlockIndex, zero);
+
+    if (op->getResults().empty()) {
+      // case 1: store op without results
+      auto ifOp = rewriter.create<scf::IfOp>(loc, TypeRange(), cond, false);
+      auto thenBodyBuilder = ifOp.getThenBodyBuilder(rewriter.getListener());
+      thenBodyBuilder.clone(*op.getOperation());
+      rewriter.replaceOp(op, ifOp);
+      rewriter.modifyOpInPlace(ifOp, [&]() {
+        ifOp->setAttr(kLimitedSubBlockOpAttrName,
+                      UnitAttr::get(ifOp->getContext()));
+      });
+      return success();
+    }
+
+    // case 2: op with results.
+    auto dpsOp = dyn_cast<DestinationStyleOpInterface>(op.getOperation());
+    if (!dpsOp)
+      return rewriter.notifyMatchFailure(op, "expected destination style op");
+
+    SmallVector<Value> elseYields;
+    elseYields.reserve(op->getNumResults());
+    for (OpResult result : op->getResults()) {
+      OpOperand *initOperand =
+          dpsOp.getDpsInitOperand(result.getResultNumber());
+      Value init = initOperand->get();
+      if (result.getType() != init.getType())
+        return rewriter.notifyMatchFailure(
+            op, "op result type does not match tied init operand type");
+      elseYields.push_back(init);
+    }
+
+    auto ifOp =
+        rewriter.create<scf::IfOp>(loc, op->getResultTypes(), cond, true);
+    // then block
+    {
+      PatternRewriter::InsertionGuard insertionGuard(rewriter);
+      auto thenBodyBuilder = ifOp.getThenBodyBuilder(rewriter.getListener());
+      Operation *cloneOp = thenBodyBuilder.clone(*op.getOperation());
+      thenBodyBuilder.template create<scf::YieldOp>(loc, cloneOp->getResults());
+    }
+
+    // else block
+    {
+      rewriter.setInsertionPointToEnd(&ifOp.getElseRegion().front());
+      rewriter.create<scf::YieldOp>(loc, elseYields);
+    }
+    rewriter.modifyOpInPlace(ifOp, [&]() {
+      ifOp->setAttr(kLimitedSubBlockOpAttrName,
+                    UnitAttr::get(ifOp->getContext()));
+    });
+    rewriter.replaceOp(op, ifOp.getResults());
+    return success();
+  }
+};
+
+} // namespace
+
+LogicalResult mlir::hivm::limitUniqueSubBlockToStore(func::FuncOp funcOp) {
+  RewritePatternSet patterns(funcOp.getContext());
+  patterns.add<LimitUniqueSubBlockIdToStoreCopy<hivm::StoreOp>>(
+      funcOp.getContext());
+  patterns.add<LimitUniqueSubBlockIdToStoreCopy<hivm::CopyOp>>(
+      funcOp.getContext());
+  patterns.add<LimitUniqueSubBlockIdToStoreCopy<hivm::IndirectStoreOp>>(
+      funcOp.getContext());
+  patterns.add<LimitUniqueSubBlockIdToStoreCopy<hivm::StrideStoreOp>>(
+      funcOp.getContext());
+  patterns.add<LimitUniqueSubBlockIdToStoreCopy<hivm::CustomOp>,
+               LimitUniqueSubBlockIdToStoreCopy<hivm::CustomMacroOp>>(
+      funcOp.getContext());
+  GreedyRewriteConfig config;
+  config.maxIterations = kMaxIterations;
+  return applyPatternsGreedily(funcOp, std::move(patterns), config);
+}
+
+static scf::ForOp createSubBlockLoop(Location loc, OpBuilder &builder,
+                                     int64_t lowerBound, int64_t step,
+                                     int64_t upperBound) {
+  auto loopLowerBound =
+      builder.create<arith::ConstantOp>(loc, builder.getIndexAttr(lowerBound));
+  auto loopStep =
+      builder.create<arith::ConstantOp>(loc, builder.getIndexAttr(step));
+  auto loopUpperBound =
+      builder.create<arith::ConstantOp>(loc, builder.getIndexAttr(upperBound));
+  auto subBlockLoop =
+      builder.create<scf::ForOp>(loc, loopLowerBound, loopUpperBound, loopStep);
+  subBlockLoop->setAttr(kMapForToForallAttrName,
+                        UnitAttr::get(subBlockLoop->getContext()));
+
+  SmallVector<Attribute> mappingNames;
+  mappingNames.push_back(HIVMSubBlockMappingAttr::get(
+      subBlockLoop->getContext(), hivm::MappingId::DimX));
+  subBlockLoop->setAttr(
+      kMappingAttrName,
+      ArrayAttr::get(subBlockLoop->getContext(), mappingNames));
+  return subBlockLoop;
+}
+
+static void failAndRevert(func::FuncOp func) {
+  LLVM_DEBUG(DBGS() << "tile and bind subblock fail for "
+                    << func.getSymNameAttr().str() << "\n\n");
+  LLVM_DEBUG(func->dump());
+  // Mark the owning module so that subsequent passes can detect that a tiling
+  // attempt was reverted and adjust their behavior accordingly.
+  if (ModuleOp moduleOp = func->getParentOfType<ModuleOp>()) {
+    moduleOp->setAttr(kTileAndBindSubBlockRevertedAttrName,
+                      UnitAttr::get(func.getContext()));
+  }
+  func->erase();
+}
+
+static void populateBindSubBlockBubbleUpPassManager(PassManager &pm,
+                                                    bool strictMode,
+                                                    ModuleOp moduleOp) {
+  HIVMBubbleUpExtractSliceOptions bubbleUpOptions;
+  bubbleUpOptions.strictMode = strictMode;
+  if (hacc::utils::isRegBasedArch(moduleOp)) {
+    pm.addPass(createHIVMBubbleUpExtractSlicePass(bubbleUpOptions));
+  } else {
+    pm.addPass(createHIVMBubbleUpExtractSlicePass(bubbleUpOptions));
+    CanonicalizerOptions options;
+    SmallVector<std::string> disabledPatterns(
+        {"ReinterpretCastConstantArgumentFolder"});
+    options.disabledPatterns = disabledPatterns;
+    pm.addPass(bishengir::createExtendedCanonicalizerPass(options));
+  }
+  pm.addPass(createCSEPass());
+}
+
+/// Returns true when the mark's source memref uses #hivm.address_space<cbuf>.
+static bool isTightlyCoupledMarkInCbufAddressSpace(annotation::MarkOp markOp) {
+  auto maybeSpace = getOptionalHIVMAddressSpace(markOp.getSrc().getType());
+  return maybeSpace && *maybeSpace == AddressSpace::L1;
+}
+
+static LogicalResult
+tileAndSliceOp(func::FuncOp func,
+               DenseMap<int32_t, int64_t> &tightlyCoupledBufferToTilingDim,
+               bool &isBroadcastAxisCase) {
+  LDBG("Before analyzer: " << func);
+  hivm::detail::DimensionAnalyzer analyzer(func);
+  if (failed(analyzer.initialize()))
+    return failure();
+
+  if (analyzer.computeTilingDim()) {
+    isBroadcastAxisCase = true;
+  }
+
+  func->walk([&](annotation::MarkOp markOp) {
+    if (auto attr = markOp->getAttrOfType<hivm::HIVMTightlyCoupledBufferAttr>(
+            hivm::HIVMTightlyCoupledBufferAttr::name)) {
+      auto tilingDim = analyzer.getTilingDim(markOp.getSrc());
+      markOp->setAttr(
+          AICAttrTilingDim,
+          IntegerAttr::get(IndexType::get(markOp.getContext()), tilingDim));
+      auto maybeId = attr.getId();
+      if (!maybeId) {
+        markOp.emitError() << "Missing id in HIVMTightlyCoupledBufferAttr";
+        return;
+      }
+      if (isTightlyCoupledMarkInCbufAddressSpace(markOp))
+        return;
+      LDBG("Tiling dim for tcb " << markOp.getSrc() << " is " << tilingDim);
+      tightlyCoupledBufferToTilingDim[maybeId.value()] = tilingDim;
+    }
+  });
+
+  // Check there is no dynamic shape store, if there is, we cannot tile it to 2
+  // for now.
+  std::vector<hivm::StoreOp> allStoreOps;
+  func->walk([&allStoreOps](hivm::StoreOp storeOp) {
+    allStoreOps.push_back(storeOp);
+  });
+  if (llvm::any_of(allStoreOps, [&](hivm::StoreOp storeOp) {
+        auto srcShapedType = dyn_cast<ShapedType>(storeOp.getSrcOperandType());
+        auto dstShapedType = dyn_cast<ShapedType>(storeOp.getDstOperandType());
+        if (!srcShapedType || !dstShapedType)
+          return true;
+        auto parentForOp = storeOp->getParentOfType<scf::ForOp>();
+        if (parentForOp && parentForOp->hasAttr(ExtractLoadStoreAttr))
+          return true;
+        if (ShapedType::isDynamicShape(srcShapedType.getShape()) ||
+            ShapedType::isDynamicShape(dstShapedType.getShape())) {
+          auto src = storeOp.getSrc();
+          auto dst = storeOp.getDst();
+          if (auto extractSliceOp =
+                  src.getDefiningOp<tensor::ExtractSliceOp>()) {
+            src = extractSliceOp.getSource();
+          } else if (auto subViewOp = src.getDefiningOp<memref::SubViewOp>()) {
+            src = subViewOp.getSource();
+          }
+          if (auto extractSliceOp =
+                  dst.getDefiningOp<tensor::ExtractSliceOp>()) {
+            dst = extractSliceOp.getSource();
+          } else if (auto subViewOp = dst.getDefiningOp<memref::SubViewOp>()) {
+            dst = subViewOp.getSource();
+          }
+          srcShapedType = cast<ShapedType>(src.getType());
+          dstShapedType = cast<ShapedType>(dst.getType());
+          return ShapedType::isDynamicShape(srcShapedType.getShape()) ||
+                 ShapedType::isDynamicShape(dstShapedType.getShape()) ||
+                 srcShapedType.getShape() != dstShapedType.getShape();
+        }
+        return false;
+      })) {
+    return failure();
+  }
+
+  RewritePatternSet patterns(func->getContext());
+  patterns.add<TileAndSliceStoreCopyOp<hivm::StoreOp>,
+               TileAndSliceStoreCopyOp<hivm::CopyOp>, TileAndSliceIndirectStore,
+               TileAndSliceStrideStore, TileAndSliceDebugOp,
+               TileAndSliceLeaf<scf::ForOp>, TileAndSliceLeaf<scf::WhileOp>,
+               TileAndSliceLeaf<scf::IfOp>>(func->getContext(), analyzer);
+  if (hacc::utils::isRegBasedArch(func->getParentOfType<ModuleOp>())) {
+    patterns.add<TileAndSliceReduceOp>(func->getContext(), analyzer);
+  }
+  GreedyRewriteConfig config;
+  config.maxIterations = kMaxIterations;
+  if (failed(applyPatternsGreedily(func, std::move(patterns), config))) {
+    return failure();
+  }
+  return success();
+}
+
+/// Attempts to tile and bind sub-blocks within a function
+///
+/// This function performs a series of transformations on vector functions:
+/// 1. Creates a BindSubBlock Loop that includes whole function body
+/// i.e.
+/// func {
+///   for {
+///     func_body
+///   } {sub_block_loop}
+/// }
+/// 2. Insert a extract slice before all storeOps
+/// And then we rely on run bubbleUpExtractSlice to tile all ops
+///
+/// @param func The function to transform (should be a clone if rollback is
+/// needed)
+/// @return Success if transformation completed, failure otherwise
+FailureOr<func::FuncOp>
+TileAndBindSubBlockPass::attemptBindSubBlock(func::FuncOp func) {
+  // This only apply for aiv func. Should be check before calling.
+  OpBuilder builder(func->getContext());
+  builder.setInsertionPoint(func);
+  // We cloned newFunc for processing.
+  func::FuncOp newFunc = cast<func::FuncOp>(builder.cloneWithoutRegions(func));
+  newFunc.addEntryBlock();
+  builder.setInsertionPointToStart(&newFunc.getBody().getBlocks().front());
+
+  auto subBlockLoop =
+      createSubBlockLoop(func->getLoc(), builder, 0, 1, kSubBlockDim);
+
+  IRMapping map;
+  for (size_t i = 0; i < func.getNumArguments(); i++) {
+    map.map(func.getArgument(i), newFunc.getArgument(i));
+  }
+
+  builder.setInsertionPointToStart(subBlockLoop.getBody(0));
+  // We are trying to wrap subblock loop to the whole function body.
+  // so we clone the whole function body inside the loop.
+  func.getBody().cloneInto(&subBlockLoop.getBodyRegion(0), map);
+
+  // bb0 is the loop body when the loop is created (empty with a terminator)
+  // bb1 is the cloned function body
+  auto &bb0 = subBlockLoop.getBodyRegion(0).getBlocks().front();
+  auto *bb1 = bb0.getNextNode();
+  if (!bb1)
+    llvm::report_fatal_error("Failed to find function body");
+
+  Operation *terminator = bb0.getTerminator();
+  // We need to merge bb0 and bb1 because a loop body can only have 1 blocks
+  if (bb1->mightHaveTerminator()) {
+    builder.setInsertionPointToEnd(&newFunc.getBody().getBlocks().front());
+    builder.clone(*bb1->getTerminator(), map);
+    bb1->getOperations().pop_back();
+  }
+  bb0.getOperations().splice(terminator->getIterator(), bb1->getOperations());
+  // We need to handle the terminators. clone function body's (bb1) terminator
+  // outside of subblock loop body and use as cloned newFunc's terminator.
+  bb1->erase();
+
+  bool isBroadcastAxisCase = false;
+
+  newFunc->walk([&builder](Operation *op) {
+    if (!isa<tensor::ExtractSliceOp, memref::SubViewOp>(op) || op->hasOneUse())
+      return;
+    builder.setInsertionPoint(op);
+    SmallVector<OpOperand *> uses;
+    for (auto &use : op->getUses())
+      uses.push_back(&use);
+    for (auto *use : uses) {
+      use->set(builder.clone(*op)->getResult(0));
+    }
+  });
+
+  PassManager pm(newFunc->getContext());
+  pm.addPass(tensor::createReplicateOutEmptyTensorPass());
+
+  if (failed(pm.run((newFunc))) ||
+      failed(tileAndSliceOp(newFunc, tightlyCoupledBufferToTilingDim,
+                            isBroadcastAxisCase))) {
+    llvm::errs() << "[hivm-bind-sub-block] revert " << newFunc.getSymName()
+                 << ": tile-and-slice preparation failed\n";
+    failAndRevert(newFunc);
+    return failure();
+  }
+
+  if (isBroadcastAxisCase) {
+    emitRemark(newFunc.getLoc())
+        << "Selected tiling dim might have broadcast two different axis. "
+           "Automatically disables strict mode.";
+    auto hasRestrictiveAttr = func.walk([](scf::ForOp forOp) {
+                                    if (forOp->hasAttr(ExtractLoadStoreAttr) ||
+                                        forOp->hasAttr(VgatherDecomposeAttr))
+                                      return WalkResult::interrupt();
+                                    return WalkResult::advance();
+                                  })
+                                  .wasInterrupted();
+    if (!hasRestrictiveAttr)
+      strictMode = false;
+  }
+
+  // If all the pattern fails due to the tilingDim=-1
+  // walk through the store/copy/indirect_store/stride_store op
+  bool isFailed = true;
+  newFunc->walk([&isFailed](Operation *op) {
+    if (!isa<hivm::StoreOp, hivm::CopyOp, hivm::IndirectStoreOp,
+             hivm::StrideStoreOp, hivm::VReduceOp>(op)) {
+      return WalkResult::advance();
+    }
+    if (op->hasAttr(tileAndSliceFailure)) {
+      op->removeAttr(tileAndSliceFailure);
+      if (auto storeOp = dyn_cast<hivm::StoreOp>(op);
+          storeOp && storeOp.isAtomic()) {
+        isFailed = true;
+        return WalkResult::interrupt();
+      }
+    } else {
+      isFailed = false;
+    }
+    return WalkResult::advance();
+  });
+
+  SmallVector<Operation *> toBeRemoved;
+  newFunc->walk([&](annotation::MarkOp op) {
+    if (op.isAnnotatedBy(kTilingDimMappingAttrName)) {
+      toBeRemoved.push_back(op);
+    }
+  });
+  for (auto *op : toBeRemoved) {
+    op->erase();
+  }
+
+  if (isFailed) {
+    llvm::errs() << "[hivm-bind-sub-block] revert " << newFunc.getSymName()
+                 << ": no store/copy op was tiled\n";
+    failAndRevert(newFunc);
+    return failure();
+  }
+
+  LDBG("After tileAndSliceStore: " << newFunc);
+
+  PassManager pm2(newFunc->getContext());
+  populateBindSubBlockBubbleUpPassManager(pm2, strictMode,
+                                          newFunc->getParentOfType<ModuleOp>());
+
+  LogicalResult bubbleUpResult = pm2.run(newFunc);
+  if (bubbleUpResult.failed() || newFunc.verify().failed() ||
+      newFunc.verifyBody().failed() || newFunc.verifyRegions().failed()) {
+    llvm::errs() << "[hivm-bind-sub-block] revert " << newFunc.getSymName()
+                 << ": bubble-up or verification failed\n";
+    failAndRevert(newFunc);
+    return failure();
+  }
+
+  /// FIXME: Now it reverts to CV1:1 if ub is not tiled. Please fix it after
+  /// fixpipe op is ready to fixpipe full data into two aivs defautly.
+  if (failed(pruneTightlyCoupledBufferToTilingDimAfterAivBubbleUp(
+          newFunc, tightlyCoupledBufferToTilingDim))) {
+    llvm::errs() << "[hivm-bind-sub-block] revert " << newFunc.getSymName()
+                 << ": tightly-coupled UB was not tiled\n";
+    failAndRevert(newFunc);
+    return failure();
+  }
+
+  SmallVector<Operation *> toBeRemovedLeaf;
+  newFunc->walk([&](annotation::MarkOp op) {
+    if (op->hasAttr(tileAndBindLeaf))
+      toBeRemovedLeaf.push_back(op);
+  });
+
+  for (auto *op : toBeRemovedLeaf)
+    op->erase();
+
+  RewritePatternSet patternsPost(&getContext());
+  patternsPost.add<mlir::hivm::detail::BubbleUpSubviewFromTiling>(
+      &getContext());
+  if (failed(applyPatternsGreedily(newFunc, std::move(patternsPost)))) {
+    llvm::errs() << "[hivm-bind-sub-block] revert " << newFunc.getSymName()
+                 << ": post tiling cleanup failed\n";
+    failAndRevert(newFunc);
+    return failure();
+  }
+
+  return newFunc;
+}
+
+static bool shouldLimitAllAivToSubBlock0(ArrayRef<func::FuncOp> aivFunctions,
+                                         ArrayRef<func::FuncOp> aicFunctions,
+                                         ModuleOp moduleOp) {
+  // if core_ratio is already x:1
+  if (llvm::any_of(aivFunctions, [](func::FuncOp aivFunc) {
+        auto ratio = getCoreRatioAttr(aivFunc);
+        return ratio && ratio.getVector() < 2;
+      }))
+    return true;
+
+  // Custom ops may have side effects and variadic outs/results, and must never
+  // be cloned into the 1:2 sub-block loop.
+  // TODO: wait for sych of
+  if (llvm::any_of(aivFunctions, [](func::FuncOp aivFunc) {
+        return hfusion::util::hasCustomOp(aivFunc);
+      }))
+    return true;
+
+  // On regbase archs, a batch matmul is already expanded to a batch-dim for
+  // loop that must stay synchronized across AIC/AIV; the 1:2 sub-block tiling
+  // that would break that correspondence is skipped when the batch_matmul label
+  // is present. On membase archs tiling stays enabled even with the label.
+  if (hacc::utils::isRegBasedArch(moduleOp) &&
+      hasBatchMatmulLoopInAicFuncs(aicFunctions))
+    return true;
+
+  // FIXME: Currently, implicit tranpose's load is not tiled. The data is fully
+  // loaded and extracted to use. In some cases, the extract slice is not fused
+  // into the vector function, which will lead to precision error because of the
+  // function boundary setting of one-shot-bufferize. So we don't tile cases
+  // with implicit transpose at all to avoid the problem for now.
+  return hasImplicitTransposeWithLastAxisInAiv(aivFunctions);
+}
+
+/// Walks through all functions in the module and attempts to tile and bind
+/// sub-blocks for vector functions.
+///
+/// Functions are cloned before transformation to allow rollback on failure.
+/// If attempt to bind some block fail it will rollback to 1:1 and limit to
+/// unique block to store.
+void TileAndBindSubBlockPass::runOnOperation() {
+  ModuleOp moduleOp = getOperation();
+  // Ensure temporary tiling-dim mapping marks are removed on every exit path.
+  auto removeTilingDimMappingMarksOnExit = llvm::make_scope_exit(
+      [moduleOp]() { removeTilingDimMappingMarksFromModule(moduleOp); });
+
+  if (moduleOp->hasAttr("hivm.disable_auto_tile_and_bind_subblock")) {
+    return;
+  }
+#ifndef NDEBUG
+  uint64_t tiledFunctionCount = 0;
+#endif
+
+  runTileAndBindSubBlockEarlyPatterns(moduleOp);
+
+  // Collect the AIV and AIC funcs in moduleOp to tile.
+  SmallVector<func::FuncOp> aicFunctions;
+  SmallVector<func::FuncOp> aivFunctions;
+  collectMixAicAndAivFuncs(moduleOp, aicFunctions, aivFunctions);
+
+  auto limitAllAivToSubBlock0 = [this, &aivFunctions]() -> LogicalResult {
+    for (func::FuncOp aivFunc : aivFunctions) {
+      auto symNameStr = aivFunc.getSymNameAttr().str();
+      if (failed(limitUniqueSubBlockToStore(aivFunc))) {
+        LLVM_DEBUG(DBGS() << "Failed to limit unique subblock: " << symNameStr
+                          << "\n");
+        signalPassFailure();
+        return failure();
+      }
+    }
+    return success();
+  };
+
+  if (!this->enableTile ||
+      shouldLimitAllAivToSubBlock0(aivFunctions, aicFunctions, moduleOp)) {
+    (void)limitAllAivToSubBlock0();
+    return;
+  }
+
+  // If there is a possibility that loadOp and storeOp accessing the same
+  // address, skip this pass
+  if (!hacc::utils::isRegBasedArch(moduleOp) &&
+      areLoadAndStoreSameAddress(aivFunctions)) {
+    (void)limitAllAivToSubBlock0();
+    return;
+  }
+
+  SmallVector<FuncRollbackBackup> aivRollbackBackups;
+  SmallVector<FuncRollbackBackup> aicRollbackBackups;
+  createFuncBackups(aivFunctions, aivRollbackBackups);
+  createFuncBackups(aicFunctions, aicRollbackBackups);
+  auto destroyAllBackups = [&aivRollbackBackups, &aicRollbackBackups]() {
+    destroyFuncBackups(aivRollbackBackups);
+    destroyFuncBackups(aicRollbackBackups);
+  };
+
+  // Step 1: Tile AIV functions
+  bool aivSuccessFlag = false;
+  SmallVector<func::FuncOp> tiledAivFunctions;
+  auto tileAivFuncs = [this, &aivFunctions, &aivSuccessFlag, &tiledAivFunctions
+#ifndef NDEBUG
+                       ,
+                       &tiledFunctionCount
+#endif
+  ]() -> LogicalResult {
+    for (func::FuncOp originalFunc : aivFunctions) {
+      auto symNameStr = originalFunc.getSymNameAttr().str();
+      FailureOr<func::FuncOp> res = attemptBindSubBlock(originalFunc);
+      removeTilingDimMappingMarksFromModule(
+          originalFunc->getParentOfType<ModuleOp>());
+      if (failed(res)) {
+        if (failed(limitUniqueSubBlockToStore(originalFunc))) {
+          LLVM_DEBUG(DBGS() << "Failed to limit unique subblock: " << symNameStr
+                            << "\n");
+          signalPassFailure();
+        }
+        LLVM_DEBUG(DBGS() << "Failed to transform function: " << symNameStr
+                          << ", keeping original\n");
+        return failure();
+      }
+      auto processedFunc = res.value();
+      processedFunc.setName(originalFunc.getName().str() + "_processing");
+      aivSuccessFlag = true;
+      // Success: Remove original and rename clone
+      originalFunc.erase();
+      processedFunc.setName(symNameStr);
+      tiledAivFunctions.push_back(processedFunc);
+#ifndef NDEBUG
+      tiledFunctionCount++;
+      LLVM_DEBUG(DBGS() << "Successfully transformed function #"
+                        << tiledFunctionCount << ": " << symNameStr << "\n");
+#endif
+    }
+    return success();
+  };
+
+  auto limitTiledAivFuncsToSubBlock0 = [this, &tiledAivFunctions]() {
+    for (func::FuncOp tiledAivFunc : tiledAivFunctions) {
+      auto symNameStr = tiledAivFunc.getSymNameAttr().str();
+      if (failed(limitUniqueSubBlockToStore(tiledAivFunc))) {
+        LLVM_DEBUG(DBGS() << "Failed to limit unique subblock: " << symNameStr
+                          << "\n");
+        signalPassFailure();
+        return failure();
+      }
+    }
+    return success();
+  };
+
+  if (failed(tileAivFuncs())) {
+    destroyAllBackups();
+    return;
+  }
+
+  if (failed(limitTiledAivFuncsToSubBlock0())) {
+    destroyAllBackups();
+    return;
+  }
+
+  // Step 2: Tile the AIC funcs, tiling AIC is only needed in Ascend910_95 Arch
+  bool archIs950 = hacc::utils::isAscend910_95(moduleOp);
+  if (!(aivSuccessFlag && archIs950)) {
+    destroyAllBackups();
+    return;
+  }
+
+  if (failed(tileAicFixpipeFuncsIfNeeded(aicFunctions,
+                                         tightlyCoupledBufferToTilingDim))) {
+    if (failed(restoreFunctionsFromBackups(moduleOp, aicRollbackBackups,
+                                           /*limitSubBlockToStore=*/false)) ||
+        failed(restoreFunctionsFromBackups(moduleOp, aivRollbackBackups,
+                                           /*limitSubBlockToStore=*/true))) {
+      LLVM_DEBUG(DBGS() << "Failed to restore from backups.\n");
+      signalPassFailure();
+    }
+    destroyAllBackups();
+    return;
+  }
+
+  destroyAllBackups();
+
+#ifndef NDEBUG
+  LLVM_DEBUG(DBGS() << "TileAndBindSubBlock pass completed. "
+                    << "Successfully transformed " << tiledFunctionCount
+                    << " functions.\n");
+#endif
+}
+
+std::unique_ptr<Pass> mlir::hivm::createTileAndBindSubBlockPass(
+    const TileAndBindSubBlockOptions &options) {
+  return std::make_unique<TileAndBindSubBlockPass>(options);
+}

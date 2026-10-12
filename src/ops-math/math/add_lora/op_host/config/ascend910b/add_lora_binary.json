@@ -1,0 +1,101 @@
+{
+  "op_type": "AddLora",
+  "optional_input_mode": "gen_placeholder",
+  "op_list": [
+    {
+      "bin_filename": "AddLora_a1532827238e1555db7b997c7bce2928",
+      "inputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "weightB",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "indices",
+          "index": 3,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "weightA",
+          "index": 4,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "layer_idx",
+          "dtype": "int",
+          "value": 0
+        },
+        {
+          "name": "scale",
+          "dtype": "float",
+          "value": 1e-3
+        },
+        {
+          "name": "y_offset",
+          "dtype": "int",
+          "value": 0
+        },
+        {
+          "name": "y_slice_size",
+          "dtype": "int",
+          "value": -1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y_out",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    }
+  ]
+}

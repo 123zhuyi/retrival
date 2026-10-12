@@ -1,0 +1,109 @@
+[
+    {
+        "id": 0,
+        "name": "attention_update",
+        "aclnn_name": "AttentionUpdate",
+        "version": "v2.1",
+        "expected_error_msg": null,
+        "api": "pytorch",
+        "api_type": "ascend_attention_update",
+        "aclnn_api_type": "ascend_attention_update_npu",
+        "backward": false,
+        "standard": {
+            "acc": {
+                "single_bm": {
+                    "type": "high_precision"
+                }
+            },
+            "perf": "not_key"
+        },
+        "outputs": null,
+        "inputs": [
+            [
+                {
+                    "name": "lse",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "fp32",
+                    "shape": [
+                        20480
+                    ],
+                    "range_values": [
+                        -1,
+                        1
+                    ],
+                    "backward": false,
+                    "align_32B": null
+                },
+                {
+                    "name": "lse",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "fp32",
+                    "shape": [
+                        20480
+                    ],
+                    "range_values": [
+                        -1,
+                        1
+                    ],
+                    "backward": false,
+                    "align_32B": null
+                }
+            ],
+            [
+                {
+                    "name": "localOut",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "fp32",
+                    "shape": [
+                        20480,
+                        512
+                    ],
+                    "range_values": [
+                        -1,
+                        1
+                    ],
+                    "backward": false,
+                    "align_32B": null
+                },
+                {
+                    "name": "localOut",
+                    "type": "tensors",
+                    "required": true,
+                    "dtype": "fp32",
+                    "shape": [
+                        20480,
+                        512
+                    ],
+                    "range_values": [
+                        -1,
+                        1
+                    ],
+                    "backward": false,
+                    "align_32B": null
+                }
+            ],
+            {
+                "name": "updateType",
+                "type": "attr",
+                "required": true,
+                "dtype": "int",
+                "shape": null,
+                "range_values": 0,
+                "backward": false,
+                "align_32B": null
+            }
+        ],
+        "acl_json": "",
+        "method_inputs": null,
+        "tensor_input": null,
+        "save_name": null,
+        "uuid": null,
+        "downloaded": false,
+        "is_boundary": true,
+        "xrun_cs_name": null,
+        "xrun_data": null
+    }
+]

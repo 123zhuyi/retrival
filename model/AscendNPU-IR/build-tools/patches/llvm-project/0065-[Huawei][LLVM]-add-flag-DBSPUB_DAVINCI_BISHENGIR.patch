@@ -1,0 +1,12 @@
+diff --git a/llvm/cmake/modules/TableGen.cmake b/llvm/cmake/modules/TableGen.cmake
+index ffcc718b4777..b30a0892b969 100644
+--- a/llvm/cmake/modules/TableGen.cmake
++++ b/llvm/cmake/modules/TableGen.cmake
+@@ -79,6 +79,7 @@ function(tablegen project ofn)
+   else()
+     set(tblgen_change_flag "--write-if-changed")
+   endif()
++  list(APPEND tblgen_change_flag "-DBSPUB_DAVINCI_BISHENGIR")
+ 
+   if (NOT LLVM_ENABLE_WARNINGS)
+     list(APPEND LLVM_TABLEGEN_FLAGS "-no-warn-on-unused-template-args")

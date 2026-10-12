@@ -1,0 +1,110 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file transpose_quant_batch_mat_mul_common.h
+ * \brief
+ */
+#pragma once
+
+#include "exe_graph/runtime/tiling_context.h"
+#include "exe_graph/runtime/compute_node_info.h"
+#include "matmul/mat_mul_v3/op_host/op_tiling/arch35/matmul_v3_common_advanced.h"
+
+namespace optiling {
+namespace transpose_quant_batch_mat_mul_advanced {
+
+constexpr size_t BATCH_IDX = 0;
+constexpr size_t X1_IDX = 0;
+constexpr size_t X2_IDX = 1;
+constexpr size_t M_IDX = 1;
+constexpr size_t KA_IDX = 2;
+constexpr size_t KB_IDX = 1;
+constexpr size_t N_IDX = 2;
+constexpr size_t BIAS_IDX = 2;
+constexpr size_t SCALE_X1_IDX = 3;
+constexpr size_t SCALE_X2_IDX = 4;
+constexpr size_t PERM_X1_IDX = 2;
+constexpr size_t PERM_X2_IDX = 3;
+constexpr size_t PERM_Y_IDX = 4;
+constexpr size_t GROUP_SIZE_IDX = 1;
+constexpr size_t ATTR_NUM = 6;
+constexpr size_t ALLOW_DIM = 3;
+constexpr size_t EXPECTED_SCALE_DIM = 1;
+constexpr size_t EXPECTED_MX_SCALE_DIM = 4;
+constexpr size_t TQBMM_VALID_K = 512;
+constexpr size_t TQBMM_VALID_N = 128;
+constexpr uint64_t L1_ALIGN_SIZE = 32;
+constexpr uint64_t L2_ALIGN_SIZE = 128;
+constexpr uint64_t CUBE_REDUCE_BLOCK = 32UL;
+constexpr uint64_t CUBE_BLOCK = 16UL;
+constexpr uint64_t BASIC_BLOCK_SIZE_32 = 32UL;
+constexpr uint64_t NUM_HALF = 2;
+constexpr uint64_t BASEM_BASEN_RATIO = 2;
+constexpr uint32_t DOUBLE_CORE_NUM = 2;
+constexpr uint64_t BASEK_LIMIT = 4095;
+constexpr int64_t SUPPORTED_GROUP_SIZE = 32;
+constexpr int64_t NUM_TWO = 2;
+constexpr int64_t NUM_THREE = 3;
+constexpr uint32_t SCALER_FACTOR_MIN = 1;
+constexpr uint32_t SCALER_FACTOR_MAX = 127;
+constexpr uint32_t SCALER_FACTOR_B_BIT = 8;
+constexpr uint32_t SCALER_FACTOR_M_BIT = 16;
+constexpr uint32_t SCALER_FACTOR_N_BIT = 24;
+constexpr uint32_t SCALER_FACTOR_DEFAULT = 1;
+constexpr uint64_t MXFP_DIVISOR_SIZE = 64;
+constexpr uint64_t MXFP_MULTI_BASE_SIZE = 2;
+constexpr uint64_t MTE2_MIN_LOAD_SIZE_V100 = 32768;
+constexpr uint32_t BASIC_BLOCK_SIZE_512 = 512;
+constexpr uint32_t BASIC_BLOCK_SIZE_256 = 256;
+constexpr uint64_t MX_GROUP_SIZE = 32;
+constexpr uint64_t K_ALIGNMENT64 = 64UL;
+static const uint64_t GROUP_M_OFFSET = 32;
+static const uint64_t GROUP_N_OFFSET = 16;
+static const uint64_t GROUP_MNK_BIT_SIZE = 0xFFFF;
+static constexpr size_t EXPECTED_NZ_DIM = 5;
+
+bool inline IsMicroScaling(const gert::CompileTimeTensorDesc* x1Scale, const gert::CompileTimeTensorDesc* x2Scale)
+{
+    if (x1Scale == nullptr || x2Scale == nullptr) {
+        return false;
+    }
+    return x1Scale->GetDataType() == ge::DT_FLOAT8_E8M0 && x2Scale->GetDataType() == ge::DT_FLOAT8_E8M0;
+}
+
+bool inline IsMxFp8(const gert::CompileTimeTensorDesc* x1, const gert::CompileTimeTensorDesc* x2,
+                    const gert::CompileTimeTensorDesc* x1Scale, const gert::CompileTimeTensorDesc* x2Scale)
+{
+    if (x1 == nullptr || x2 == nullptr || x1Scale == nullptr || x2Scale == nullptr) {
+        return false;
+    }
+    bool isFp8Data = (x1->GetDataType() == ge::DT_FLOAT8_E4M3FN || x1->GetDataType() == ge::DT_FLOAT8_E5M2) &&
+                     (x2->GetDataType() == ge::DT_FLOAT8_E4M3FN || x2->GetDataType() == ge::DT_FLOAT8_E5M2);
+    bool isE8M0Scale = x1Scale->GetDataType() == ge::DT_FLOAT8_E8M0 && x2Scale->GetDataType() == ge::DT_FLOAT8_E8M0;
+    return isFp8Data && isE8M0Scale;
+}
+
+bool inline IsHIFP8(const gert::CompileTimeTensorDesc* x1, const gert::CompileTimeTensorDesc* x2)
+{
+    return x1->GetDataType() == ge::DT_HIFLOAT8 && x2->GetDataType() == ge::DT_HIFLOAT8;
+}
+
+bool inline IsMXFP4(const gert::CompileTimeTensorDesc* x1, const gert::CompileTimeTensorDesc* x2,
+                    const gert::CompileTimeTensorDesc* x1Scale, const gert::CompileTimeTensorDesc* x2Scale)
+{
+    if (x1 == nullptr || x2 == nullptr || x1Scale == nullptr || x2Scale == nullptr) {
+        return false;
+    }
+    bool isFp4Data = x1->GetDataType() == ge::DT_FLOAT4_E2M1 && x2->GetDataType() == ge::DT_FLOAT4_E2M1;
+    bool isE8M0Scale = x1Scale->GetDataType() == ge::DT_FLOAT8_E8M0 && x2Scale->GetDataType() == ge::DT_FLOAT8_E8M0;
+    return isFp4Data && isE8M0Scale;
+}
+} // namespace transpose_quant_batch_mat_mul_advanced
+} // namespace optiling

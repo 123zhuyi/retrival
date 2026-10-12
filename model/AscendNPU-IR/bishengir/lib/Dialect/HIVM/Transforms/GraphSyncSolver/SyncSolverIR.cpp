@@ -1,0 +1,454 @@
+//===---------- SyncSolverIR.cpp ---- Graph Sync Solver -------------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/SyncSolverIR.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/MemInfo.h"
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/Utility.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/AsmState.h"
+#include "mlir/IR/SymbolTable.h"
+#include "llvm/ADT/StringExtras.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
+#include <string>
+
+#define DEBUG_TYPE "hivm-gss-ir"
+
+using namespace mlir;
+using namespace hivm::syncsolver;
+
+namespace mlir::hivm::syncsolver {
+
+int OperationBase::globalIndex = 0;
+
+namespace {
+
+std::string getDebugOpIdSuffix(int id) {
+  std::string suffix;
+  LLVM_DEBUG(suffix = std::to_string(id););
+  return suffix;
+}
+
+} // namespace
+
+// Map OpType enum to human-readable strings for debugging output.
+std::string getOpTypeStr(OpType opType) {
+  const llvm::DenseMap<OpType, std::string> conv = {
+      {OpType::OPERATION, "OperationBase"},
+      {OpType::PLACE_HOLDER, "PlaceHolder"},
+      {OpType::ANCHOR, "Anchor"},
+      {OpType::SCOPE, "Scope"},
+      {OpType::FUNCTION, "Function"},
+      {OpType::FUNCTION_BLOCK, "FunctionBlock"},
+      {OpType::LOOP, "Loop"},
+      {OpType::MMAD_SCOPE, "MmadLoop"},
+      {OpType::CONDITION, "Condition"},
+      {OpType::BARRIER_OP, "BarrierOp"},
+      {OpType::SET_FLAG_OP, "SetFlagOp"},
+      {OpType::WAIT_FLAG_OP, "WaitFlagOp"},
+      {OpType::RW_OPERATION, "RWOperation"},
+      {OpType::MMAD_OPERATION, "MmadOp"},
+      {OpType::MMAD_MX_SCOPE, "MmadMxLoop"},
+      {OpType::MMAD_LOAD_L0A_OPERATION, "LoadMmadL0AOp"},
+      {OpType::MMAD_LOAD_L0B_OPERATION, "LoadMmadL0BOp"},
+      {OpType::MMAD_LOAD_L0A_MX_OPERATION, "LoadMmadL0AMxOp"},
+      {OpType::MMAD_LOAD_L0B_MX_OPERATION, "LoadMmadL0BMxOp"},
+      {OpType::MMAD_LOAD_BIAS_OPERATION, "LoadMmadBias"},
+      {OpType::RW_OPERATION_END, "RW_OPERATION_END"},
+  };
+  return conv.at(opType);
+}
+
+bool operator<(const SyncOp &op1, const SyncOp &op2) {
+  return isa<WaitFlagOp>(&op1) && isa<SetFlagOp>(&op2);
+}
+
+struct Comma {
+  bool comma = false;
+  std::string get() {
+    std::string ret = comma ? ", " : "";
+    comma = true;
+    return ret;
+  }
+};
+
+std::string FuncArgInfo::str() {
+  std::string ret = "FuncArgInfo(";
+  ret += this->funcOp.getSymName();
+  ret += ", ";
+  ret += std::to_string(this->argNum);
+  ret += ")";
+  return ret;
+}
+
+std::string PointerLikeInfo::str() {
+  std::string ret = "PointerLikeInfo(";
+  Comma comma;
+  if (addressSpace.has_value()) {
+    ret += comma.get();
+    ret += stringifyEnum(addressSpace.value());
+  }
+  ret += comma.get();
+  ret += parentCounterScope ? parentCounterScope->str(0, false) : "null";
+  ret += comma.get();
+  {
+    Comma comma;
+    ret += "[";
+    for (auto addr : addresses) {
+      ret += comma.get();
+      ret += std::to_string(addr);
+    }
+    ret += "]";
+  }
+  if (allocateSize.has_value()) {
+    ret += comma.get();
+    ret += std::to_string(allocateSize.value());
+  }
+  ret += comma.get();
+  ret += std::string("isWorkSpace=") + (isWorkSpace ? "true" : "false");
+  ret += comma.get();
+  ret += std::string("isTightlyCoupledBuffer=") +
+         (isTightlyCoupledBuffer ? "true" : "false");
+  ret += ")";
+  return ret;
+}
+
+std::string AllocLikeInfo::str() {
+  std::string ret = "AllocLikeInfo()";
+  return ret;
+}
+
+static std::string valueAsOperandStr(Value value) {
+  std::string ret;
+  llvm::raw_string_ostream os(ret);
+  value.printAsOperand(os, OpPrintingFlags());
+  return ret;
+}
+
+static std::string opFoldResultStr(OpFoldResult ofr) {
+  if (auto attr = dyn_cast<Attribute>(ofr)) {
+    if (auto intAttr = dyn_cast<IntegerAttr>(attr)) {
+      return std::to_string(intAttr.getInt());
+    }
+    std::string ret;
+    llvm::raw_string_ostream os(ret);
+    attr.print(os);
+    return ret;
+  }
+  return valueAsOperandStr(cast<Value>(ofr));
+}
+
+static std::string opFoldResultListStr(ArrayRef<OpFoldResult> values) {
+  std::string ret = "[";
+  Comma comma;
+  for (auto value : values) {
+    ret += comma.get();
+    ret += opFoldResultStr(value);
+  }
+  ret += "]";
+  return ret;
+}
+
+std::string SubviewInfo::str() {
+  std::string ret = "SubviewInfo(";
+  ret += "source=" + valueAsOperandStr(source);
+  ret += ", offsets=" + opFoldResultListStr(getOffsets());
+  ret += ", sizes=" + opFoldResultListStr(getSizes());
+  ret += ", strides=" + opFoldResultListStr(getStrides());
+  ret += ")";
+  return ret;
+}
+
+std::string MemInfo::str() {
+  std::string ret = "MemInfo";
+  if (this->pipe) {
+    ret += "<" + stringifyPIPE(this->pipe.value()).str() + ">";
+  }
+  ret += "(";
+  Comma comma;
+  if (this->value) {
+    ret += comma.get();
+    ret += op2str(this->value);
+  }
+  if (this->funcArgInfo) {
+    ret += comma.get();
+    ret += this->funcArgInfo->str();
+  }
+  if (this->pointerLikeInfo) {
+    ret += comma.get();
+    ret += this->pointerLikeInfo->str();
+  }
+  if (this->allocLikeInfo) {
+    ret += comma.get();
+    ret += this->allocLikeInfo->str();
+  }
+  if (this->subviewInfo) {
+    ret += comma.get();
+    ret += this->subviewInfo->str();
+  }
+  ret += ")";
+  return ret;
+}
+
+// Provide readable string representations for IR nodes used in logs and dumps.
+// Each specialized .str implementation documents what it prints.
+std::string PlaceHolder::str(int indent, bool recursive) const {
+  std::string opStr =
+      (op != nullptr
+           ? op2str(op)
+           : llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType))) +
+      getDebugOpIdSuffix(this->id);
+  return std::string(indent, ' ') + opStr;
+}
+
+std::string Anchor::str(int indent, bool recursive) const {
+  std::string ret =
+      std::string(indent, ' ') +
+      llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+      getDebugOpIdSuffix(this->id);
+  ret += " (anchor-id=" + std::to_string(this->anchorId) + ")";
+  return ret;
+}
+
+std::string Scope::str(int indent, bool recursive) const {
+  std::string ret =
+      std::string(indent, ' ') +
+      llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+      getDebugOpIdSuffix(this->id);
+  if (maxPreloadNum.has_value()) {
+    ret += " max-preload-num=" + std::to_string(maxPreloadNum.value());
+  }
+  if (preloadNum.has_value()) {
+    ret += " preload-num=" + std::to_string(preloadNum.value());
+  }
+  if (recursive) {
+    ret += " {\n";
+    for (auto &op : body) {
+      ret += op->str(indent + 2, true) + "\n";
+    }
+    ret += std::string(indent, ' ') + "}";
+  }
+  return ret;
+}
+
+std::string Loop::str(int indent, bool recursive) const {
+  std::string ret =
+      std::string(indent, ' ') +
+      llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+      getDebugOpIdSuffix(this->id);
+  if (isParallel) {
+    ret += " parallel-loop";
+  }
+  if (multibufferUnrollNum.has_value()) {
+    ret += " multibuffer-unroll-num=" +
+           std::to_string(multibufferUnrollNum.value());
+  }
+  if (staticLoopCount.has_value()) {
+    ret += " static-loop-count=" + std::to_string(staticLoopCount.value());
+  }
+  if (recursive) {
+    ret += " {\n";
+    for (auto &op : body) {
+      ret += op->str(indent + 2, true) + "\n";
+    }
+    ret += std::string(indent, ' ') + "}";
+  }
+  return ret;
+}
+
+std::string Condition::str(int indent, bool recursive) const {
+  std::string ret =
+      std::string(indent, ' ') +
+      llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+      getDebugOpIdSuffix(this->id);
+  if (isUnlikely) {
+    ret += " unlikely-cond";
+  }
+  if (recursive) {
+    ret += " {\n";
+    for (auto &op : body) {
+      if (op.get() == getTrueScope()) {
+        ret += std::string(indent + 2, ' ') + "(trueScope)\n";
+      } else if (op.get() == getFalseScope()) {
+        ret += std::string(indent + 2, ' ') + "(falseScope)\n";
+      }
+      ret += op->str(indent + 2, true) + "\n";
+    }
+    ret += std::string(indent, ' ') + "}";
+  }
+  return ret;
+}
+
+std::string RWOperation::str(int indent, bool recursive) const {
+  std::string ret;
+  std::string opStr =
+      (op != nullptr
+           ? op2str(op)
+           : llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType))) +
+      getDebugOpIdSuffix(this->id);
+  std::string coreTypeStr;
+  if (coreType != hivm::TCoreType::CUBE_OR_VECTOR) {
+    coreTypeStr = "[<" + stringifyTCoreType(coreType).str() + ">]";
+  }
+  std::string pipesStr;
+  if (this->pipeRead != this->pipeWrite) {
+    pipesStr = "[<" + stringifyPIPE(this->pipeRead).str() + ">, <" +
+               stringifyPIPE(this->pipeWrite).str() + ">]";
+  } else {
+    pipesStr = "[<" + stringifyPIPE(this->pipeRead).str() + ">]";
+  }
+  ret += std::string(indent, ' ') + opStr + " " + coreTypeStr + " " + pipesStr +
+         " " + mergedUnitFlagInfo.str() + "\n";
+  if (indent) {
+    for (auto memInfo : this->readMemInfo) {
+      ret += std::string(indent + 2, ' ') + "read: " + memInfo.str() + "\n";
+    }
+    for (auto memInfo : this->writeMemInfo) {
+      ret += std::string(indent + 2, ' ') + "write: " + memInfo.str() + "\n";
+    }
+  }
+  ret.pop_back();
+  return ret;
+}
+
+std::string SetFlagOp::str(int indent, bool recursive) const {
+  std::string ret;
+  ret += std::string(indent, ' ') +
+         llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+         getDebugOpIdSuffix(this->id);
+  if (this->debugId.has_value()) {
+    ret += " [" + std::to_string(this->debugId.value()) + "]";
+  }
+  ret += " [<";
+  if (this->coreType != hivm::TCoreType::CUBE_OR_VECTOR) {
+    ret += stringifyTCoreType(this->coreType).str() + ">, <";
+  }
+  ret += stringifyPIPE(this->pipeSrc).str() + ">, <" +
+         stringifyPIPE(this->pipeDst).str() + ">, (";
+  Comma comma;
+  for (auto eventId : this->eventIds) {
+    ret += comma.get() + "EVENT_ID" + llvm::itostr(eventId);
+  }
+  ret += ")]";
+  if (allAtOnce) {
+    ret += " all-at-once";
+  }
+  if (checkFirstIter) {
+    ret += " check-first-iter";
+  }
+  if (checkLastIter) {
+    ret += " check-last-iter";
+  }
+  return ret;
+}
+
+std::string WaitFlagOp::str(int indent, bool recursive) const {
+  std::string ret;
+  ret += std::string(indent, ' ') +
+         llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+         getDebugOpIdSuffix(this->id);
+  if (this->debugId.has_value()) {
+    ret += " [" + std::to_string(this->debugId.value()) + "]";
+  }
+  ret += " [<";
+  if (this->coreType != hivm::TCoreType::CUBE_OR_VECTOR) {
+    ret += stringifyTCoreType(this->coreType).str() + ">, <";
+  }
+  ret += stringifyPIPE(this->pipeSrc).str() + ">, <" +
+         stringifyPIPE(this->pipeDst).str() + ">, (";
+  Comma comma;
+  for (auto eventId : this->eventIds) {
+    ret += comma.get() + "EVENT_ID" + llvm::itostr(eventId);
+  }
+  ret += ")]";
+  if (allAtOnce) {
+    ret += " all-at-once";
+  }
+  if (checkFirstIter) {
+    ret += " check-first-iter";
+  }
+  if (checkLastIter) {
+    ret += " check-last-iter";
+  }
+  return ret;
+}
+
+std::string BarrierOp::str(int indent, bool recursive) const {
+  std::string ret;
+  ret += std::string(indent, ' ') +
+         llvm::convertToCamelFromSnakeCase(getOpTypeStr(this->opType)) +
+         getDebugOpIdSuffix(this->id);
+  if (this->debugId.has_value()) {
+    ret += " [" + std::to_string(this->debugId.value()) + "]";
+  }
+  ret += " [";
+  ret += "<" + stringifyPIPE(this->pipe).str() + ">";
+  if (this->coreType.has_value()) {
+    ret += ", <" + stringifyTCoreType(this->coreType.value()).str() + ">";
+  }
+  ret += "]";
+  return ret;
+}
+
+std::string ConflictPair::str() const {
+  std::string ret;
+  ret += "ConflictPair" + std::to_string(this->id);
+  ret += " (" + std::to_string(this->startIndex) + ", " +
+         std::to_string(this->endIndex) + ")";
+  if (this->isBarrier()) {
+    ret += " [<" + stringifyPIPE(setCorePipeInfo.pipe).str() + ">]";
+  } else {
+    if (setCorePipeInfo.coreType != hivm::TCoreType::CUBE_OR_VECTOR ||
+        waitCorePipeInfo.coreType != hivm::TCoreType::CUBE_OR_VECTOR) {
+      ret += "[<" + stringifyTCoreType(setCorePipeInfo.coreType).str() +
+             ">, <" + stringifyTCoreType(waitCorePipeInfo.coreType).str() +
+             ">]";
+    }
+    ret += " [<" + stringifyPIPE(setCorePipeInfo.pipe).str() + ">, <" +
+           stringifyPIPE(waitCorePipeInfo.pipe).str() + ">, (";
+    Comma comma;
+    if (this->eventIdNode != nullptr) {
+      for (auto eventId : this->eventIdNode->getEventIds()) {
+        ret += comma.get() + "EVENT_ID" + llvm::itostr(eventId);
+      }
+    }
+    ret += ")]";
+  }
+
+  Comma comma;
+  ret += " {";
+  ret += (isBarrier() ? (comma.get() + "is-barrier") : "");
+  ret += (isInnerBackwardPair ? (comma.get() + "is-backward") : "");
+  ret += (isUseless ? (comma.get() + "is-useless") : "");
+  ret +=
+      (replacedWithUnitFlag ? (comma.get() + "replaced-with-unit-flag") : "");
+  ret += "}";
+
+  ret += "\n";
+  if (this->op1 != nullptr) {
+    ret += this->op1->str(2, false) + '\n';
+  }
+  if (this->op2 != nullptr) {
+    ret += this->op2->str(2, false) + '\n';
+  }
+  // ret += this->opSet->str(0, false) + '\n';
+  // ret += this->opWait->str(0, false) + '\n';
+  ret.pop_back();
+  return ret;
+}
+} // namespace mlir::hivm::syncsolver

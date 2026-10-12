@@ -1,0 +1,117 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+index ddbf0c5e932f..326cb8e3de3c 100644
+--- a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
++++ b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+@@ -69,6 +69,112 @@ struct SimplifySplatDenseForBinary : public OpRewritePattern<OpType> {
+   }
+ };
+ 
++template <typename OpType>
++struct InlineDenseSplatToGenericRegion : public OpRewritePattern<OpType> {
++  using OpRewritePattern<OpType>::OpRewritePattern;
++
++  /// Inline Dense Splat Constants to Generic Region
++  ///
++  /// For example:
++  /// ```mlir
++  ///    linalg.elemwise_unary {fun = #linalg.unary_fn<negf>}
++  ///             ins(%constant : tensor<16x16xf32>)
++  /// ```
++  ///
++  /// Will be converted to:
++  /// ```mlir
++  ///    arith.negf %constant : tensor<16x16xf32>
++  /// ```
++  InlineDenseSplatToGenericRegion(MLIRContext *context)
++      : OpRewritePattern<OpType>(context, /*benefit=*/2) {}
++  // For linalg/hfusion binary ops this conflicts with
++  // SimplifySplatDenseForBinary We give this pattern higher benefit since it's
++  // better to inline to generic region than changing one of the operands to a
++  // scalar
++  LogicalResult matchAndRewrite(OpType op,
++                                PatternRewriter &rewriter) const override {
++
++    bool inputSplatDense = llvm::all_of(
++        op.getDpsInputs(), [](Value input) { return isSplatDense(input); });
++
++    bool outputEmptyTensor = llvm::all_of(op.getDpsInits(), [](Value init) {
++      Operation *defOp = init.getDefiningOp();
++      auto emptyTensor = dyn_cast_or_null<tensor::EmptyOp>(defOp);
++      return static_cast<bool>(emptyTensor);
++    });
++
++    if (!outputEmptyTensor)
++      return rewriter.notifyMatchFailure(op, "output is not empty tensor");
++
++    if (!inputSplatDense)
++      return rewriter.notifyMatchFailure(op,
++                                         "input is not dense splat/constant");
++
++    // Step 1. Set insert pos
++    OpBuilder::InsertionGuard guard(rewriter);
++    rewriter.setInsertionPoint(op);
++
++    // Step 2. Map arguments of block to op input/result.
++    Block &block = op->getRegions().front().getBlocks().front();
++    IRMapping mapping;
++    auto inputs = op.getDpsInputs();
++    auto results = op.getDpsInits();
++    auto arguments = block.getArguments();
++    assert(arguments.size() == inputs.size() + results.size());
++    int cnt = 0;
++    for (Value in : inputs) {
++      mapping.map(block.getArgument(cnt++), in);
++    }
++    for (Value res : results) {
++      mapping.map(block.getArgument(cnt++), res);
++    }
++
++    // Checking for generic region. might not be needed as we dont support
++    // Load/Store anymore
++    if (std::distance(block.getOperations().begin(),
++                      block.getOperations().end()) == 1) {
++      auto singleOp = block.getOperations().begin();
++      if (singleOp->hasTrait<OpTrait::IsTerminator>()) {
++        return rewriter.notifyMatchFailure(op, "generic region is empty");
++      }
++    }
++
++    // We can infer the shape from any of the LinalgOp results because we deal
++    // with simple elemwise
++    auto currentOpResShape =
++        op->getResultTypes()[0].template cast<ShapedType>().getShape();
++    // Step 3. Travese operations in block and convert scalar into shaped
++    // tensor.
++    for (auto &opInBlock : block.getOperations()) {
++      if (opInBlock.hasTrait<OpTrait::IsTerminator>()) {
++        continue;
++      }
++
++      auto *newOp = rewriter.clone(opInBlock, mapping);
++      for (auto [newRes, oldRes] :
++           llvm::zip(newOp->getResults(), opInBlock.getResults())) {
++        auto newType = RankedTensorType::get(currentOpResShape,
++                                             getElementTypeOrSelf(newRes));
++        newRes.setType(newType);
++        mapping.map(oldRes, newRes);
++      }
++    }
++
++    // Step 4. replace res with yieldop res.
++    auto *terminator = block.getTerminator();
++    assert(terminator);
++    assert(isa<linalg::YieldOp>(terminator));
++    auto yieldOp = cast<linalg::YieldOp>(terminator);
++    for (auto [res, yieldOper] :
++         llvm::zip(op->getResults(), yieldOp.getOperands())) {
++      rewriter.replaceAllUsesWith(res, mapping.lookup(yieldOper));
++    }
++
++    rewriter.eraseOp(op);
++    return success();
++  }
++};
++
+ } // namespace linalg
+ } // namespace mlir
+ 

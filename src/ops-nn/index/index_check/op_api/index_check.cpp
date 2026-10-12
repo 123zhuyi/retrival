@@ -1,0 +1,100 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file index_check.cpp
+ * \brief IndexCheck L0 interface implementation
+ */
+
+#include "index_check.h"
+#include "opdev/op_log.h"
+#include "opdev/op_executor.h"
+#include "opdev/make_op_executor.h"
+#include "opdev/shape_utils.h"
+#include "opdev/op_def.h"
+#include "opdev/op_dfx.h"
+#include "opdev/platform.h"
+#include "op_api/aclnn_util.h"
+
+using namespace op;
+
+namespace l0op {
+
+OP_TYPE_REGISTER(IndexCheck);
+
+constexpr uint64_t MAX_DIM_LEN = 8;
+static const std::initializer_list<op::DataType> AICORE_DTYPE_SUPPORT_LIST = {op::DataType::DT_INT64,
+                                                                              op::DataType::DT_INT32};
+
+static bool IsAiCoreSupport(const aclTensorList* indices)
+{
+    op::DataType firstDtype = op::DataType::DT_UNDEFINED;
+    for (size_t i = 0; i < indices->Size(); i++) {
+        auto dtype = (*indices)[i]->GetDataType();
+        if (!CheckType(dtype, AICORE_DTYPE_SUPPORT_LIST)) {
+            OP_LOGW("Tensor indices not implemented for %s, should be in dtype support list %s.",
+                    op::ToString(dtype).GetString(), op::ToString(AICORE_DTYPE_SUPPORT_LIST).GetString());
+            return false;
+        }
+        if (i == 0) {
+            firstDtype = dtype;
+        } else if (dtype != firstDtype) {
+            OP_LOGW("All indices tensors must have the same dtype, but tensor[%zu] is %s while tensor[0] is %s.", i,
+                    op::ToString(dtype).GetString(), op::ToString(firstDtype).GetString());
+            return false;
+        }
+    }
+    return true;
+}
+
+void IndexCheck(const aclTensor* bounds, const aclTensorList* indices, aclOpExecutor* executor)
+{
+    auto socVersion = GetCurrentPlatformInfo().GetSocVersion();
+    if (socVersion != SocVersion::ASCEND910B && socVersion != SocVersion::ASCEND910_93 &&
+        !Ops::NN::AclnnUtil::IsRegbase()) {
+        OP_LOGD("IndexCheck only support ASCEND910B, ASCEND910_93 and ASCEND950, skip.");
+        return;
+    }
+
+    if (bounds->GetDataType() != op::DataType::DT_INT64) {
+        OP_LOGW("bounds dtype should be INT64, got %s, skip IndexCheck.",
+                op::ToString(bounds->GetDataType()).GetString());
+        return;
+    }
+
+    if (!IsAiCoreSupport(indices)) {
+        OP_LOGD("Unsupported dtype of indices in IndexCheck, skip.");
+        return;
+    }
+
+    if (indices->Size() == 0) {
+        OP_LOGD("available indices is empty, skip IndexCheck.");
+        return;
+    }
+
+    if (static_cast<int64_t>(bounds->Size()) != static_cast<int64_t>(indices->Size())) {
+        OP_LOGW("bounds size %zu not equal indices size %zu, skip IndexCheck.", bounds->Size(), indices->Size());
+        return;
+    }
+
+    if (indices->Size() > MAX_DIM_LEN) {
+        OP_LOGW("indices tensor num %zu exceeds max, skip IndexCheck.", indices->Size());
+        return;
+    }
+
+    L0_DFX(IndexCheck, bounds, indices);
+
+    auto ret = ADD_TO_LAUNCHER_LIST_AICORE(IndexCheck, OP_INPUT(bounds, indices));
+
+    OP_CHECK(ret == ACLNN_SUCCESS,
+             OP_LOGE(ACLNN_ERR_INNER_NULLPTR, "IndexCheckAiCore ADD_TO_LAUNCHER_LIST_AICORE failed."), return);
+}
+
+} // namespace l0op

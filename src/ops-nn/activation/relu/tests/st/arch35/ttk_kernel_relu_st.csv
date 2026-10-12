@@ -1,0 +1,6 @@
+testcase_name,op_name,input_dtypes,input_ori_shapes,output_ori_shapes,input_ori_formats,output_ori_formats,attributes,input_shapes,output_dtypes,output_shapes,input_formats,output_formats,input_data_ranges,precision_tolerances,absolute_precision,soc_series
+Relu_ND_float32_IDMTT01_000010,relu,"('float32',)","((10, 128),)","((10, 128),)","('ND',)","('ND',)",{},"((10, 128),)","('float32',)","((10, 128),)","('ND',)","('ND',)","((-1, 1),)",,1e-08,
+relu_fuzz_77,relu,"('float16',)","((24, 4, 48, 36, 4, 4, 29),)","((24, 4, 48, 36, 4, 4, 29),)","('ND',)","('ND',)",{},"((24, 4, 48, 36, 4, 4, 29),)","('float16',)","((24, 4, 48, 36, 4, 4, 29),)","('ND',)","('ND',)","((-65500.0, 65500.0),)",,1e-08,
+relu_fuzz_74,relu,"('bfloat16',)","((1, 31, 20),)","((1, 31, 20),)","('ND',)","('ND',)",{},"((1, 31, 20),)","('bfloat16',)","((1, 31, 20),)","('ND',)","('ND',)","((-1, 1),)",,1e-08,
+relu_fuzz_16,relu,"('bfloat16',)","((20, 41, 50, 40),)","((20, 41, 50, 40),)","('ND',)","('ND',)",{},"((20, 41, 50, 40),)","('bfloat16',)","((20, 41, 50, 40),)","('ND',)","('ND',)","((-3.389531389251505e+38, 3.389531389251505e+38),)",,1e-08,
+relu_fuzz_25,relu,"('int32',)","((15,),)","((15,),)","('ND',)","('ND',)",{},"((15,),)","('int32',)","((15,),)","('ND',)","('ND',)","((-1, 1),)",,1e-08,

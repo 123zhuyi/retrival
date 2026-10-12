@@ -1,0 +1,105 @@
+{
+  "op_name": "chunk_gated_delta_fwd_h",
+  "round_index": 1,
+  "work_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1",
+  "baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/global_baseline",
+  "algorithm": "mcts",
+  "algorithm_reference": ".claude/references/algorithms/mcts/round.md",
+  "algorithm_params": {
+    "c_uct": 1.414,
+    "c_pw": 2.0,
+    "alpha": 0.5,
+    "failure_threshold": 3,
+    "reward_output_error": -2,
+    "reward_compile_error": -3
+  },
+  "round_strategy": "exploration",
+  "analysis_policy": "pattern_entry",
+  "hypothesis": "MCTS Round 1 expands implicit root (manifest missing mcts_parent_id/mcts_selection_path - degradation per spec 3.2). Global baseline is a pure-PyTorch triple-nested-loop golden (N x HV x NT chunks, small matmuls) => massive headroom. Reuse the proven Triton-Ascend architecture from prior operator memory (verify 8/8 on ascend910b3, 2026-09-01): host pre-transposes inputs to flat [n_bh, T, D] per-(b,hv), one core per (b,hv, V-tile), serial in-kernel chunk loop with S[K,V] fp32 register-resident, BLOCK_L=chunk_size, varlen seq folded into grid, multibuffer/unit_flag launch.",
+  "direction": "pattern: custom (fused chunk-recurrence: per-(b,h) flat serial chunk loop, S[K,V] fp32 register-resident, V-tile grid split, seq-in-grid varlen)",
+  "evidence_sources": [
+    "model_knowledge",
+    "operator_memory",
+    "kkb_cache",
+    "direction_history"
+  ],
+  "mode": "A",
+  "arch": "ascend910b3",
+  "input_files": {
+    "task_desc": "/home/l30083907/cannbot-skills_5171_old/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.py",
+    "task_json": "/home/l30083907/cannbot-skills_5171_old/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.json",
+    "gpu_kernel_ref": null,
+    "gpu_perf_csv": null
+  },
+  "config": {
+    "target_speedup": 5,
+    "max_rounds": 10,
+    "initial_worker_timeout": 7200,
+    "max_worker_timeout": 28800,
+    "npu_device_id": null,
+    "npu_idle": {
+      "aicore": 1.0,
+      "aivector": 1.0,
+      "npu_util": 1.0,
+      "hbm": 10.0
+    },
+    "algorithms": {
+      "naive": {
+        "enabled": true,
+        "params": {}
+      },
+      "mcts": {
+        "enabled": true,
+        "params": {
+          "c_uct": 1.414,
+          "c_pw": 2.0,
+          "alpha": 0.5,
+          "failure_threshold": 3,
+          "reward_output_error": -2,
+          "reward_compile_error": -3
+        }
+      },
+      "fusion-search": {
+        "enabled": true,
+        "params": {
+          "max_routes": 3,
+          "min_expected_benefit": 0.05,
+          "enable_math_transforms": true,
+          "route_timeout": 3600,
+          "crossover_rate": 0.7,
+          "mutation_rate": 0.15,
+          "elite_count": 1,
+          "exploration_count": 1
+        }
+      }
+    }
+  },
+  "is_recovery": false,
+  "worker_reference": ".claude/references/algorithms/mcts/round.md",
+  "lineage_summary": [
+    {
+      "round_index": 1,
+      "round_dir": "opt-round-1",
+      "direction": "pattern: custom",
+      "best_speedup": 0.0,
+      "direction_yield": null,
+      "hypothesis": "Initial LLM-driven exploration for chunk_gated_delta_fwd_h optimization",
+      "parent_round_dir": "global_baseline"
+    }
+  ],
+  "experience_file": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/operator_experience.md",
+  "global_baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/global_baseline",
+  "global_baseline_speedup": 1.0,
+  "parent_round_journal": null,
+  "mcts_parent_id": "root",
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "mean_reward": 0.0,
+      "visit_count": 0,
+      "description": "virtual root; no direction explored yet",
+      "round_dir": null
+    }
+  ]
+}

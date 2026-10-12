@@ -1,0 +1,1969 @@
+//===- HFusionToHIVM.cpp - HFusion to HIVM dialect conversion -------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+//
+// This file implements a pass to convert HFusion dialect to HIVM dialect.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Conversion/HFusionToHIVM/HFusionToHIVM.h"
+#include "bishengir/Conversion/HFusionToHIVM/HFusionToHIVMPass.h"
+#include "bishengir/Conversion/HFusionToHIVM/Utils.h"
+#include "bishengir/Dialect/Annotation/IR/Annotation.h"
+#include "bishengir/Dialect/HACC/IR/HACC.h"
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HFusion/IR/HFusion.h"
+#include "bishengir/Dialect/HFusion/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/IR/HIVMTraits.h"
+#include "bishengir/Dialect/HIVM/Interfaces/ExtraBufferOpInterface.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+#include "bishengir/Dialect/Utils/Util.h"
+
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/Attributes.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/TypeRange.h"
+#include "mlir/IR/ValueRange.h"
+#include "mlir/Interfaces/DestinationStyleOpInterface.h"
+#include "mlir/Support/LLVM.h"
+#include "mlir/Target/LLVMIR/Dialect/ArmNeon/ArmNeonToLLVMIRTranslation.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/LogicalResult.h"
+#include <cstdint>
+#include <type_traits>
+
+namespace mlir {
+#define GEN_PASS_DEF_CONVERTHFUSIONTOHIVM
+#include "bishengir/Conversion/Passes.h.inc"
+} // namespace mlir
+
+#define DEBUG_TYPE "hfusion-to-hivm-converter"
+#define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE "]: ")
+#define DBGSNL() (llvm::dbgs() << "\n")
+#define LDBG(X) LLVM_DEBUG(DBGS() << X << "\n")
+
+using namespace mlir::utils::debugger;
+using namespace mlir;
+using namespace mlir::hivm;
+
+static thread_local bool isRegBasedArch{false};
+
+namespace {
+
+static void copyAttrIfPresent(Operation *const &srcOp, Operation *const &dstOp,
+                              StringRef attrName) {
+  if (auto attr = srcOp->getAttr(attrName)) {
+    if (!dstOp->getAttr(attrName))
+      dstOp->setAttr(attrName, attr);
+  }
+}
+
+static bool isUnsignedLinalgMinMaxFn(linalg::BinaryFn kind) {
+  return kind == linalg::BinaryFn::max_unsigned ||
+         kind == linalg::BinaryFn::min_unsigned;
+}
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMElemwiseOp
+//===----------------------------------------------------------------------===//
+
+class ElemwiseOpConvertor {
+public:
+  ElemwiseOpConvertor(OpBuilder b, Operation *op) : b(b), op(op) {
+    assert(hfusion::reshape_utils::isMarkedAsElementwiseOp(op) &&
+           "ElemwiseOpConvertor only converts elemwise op");
+  }
+
+  template <typename opType> Operation *create() {
+    auto dpsOp = cast<DestinationStyleOpInterface>(op);
+    Location loc = dpsOp->getLoc();
+    auto resultTypes = dpsOp->getResultTypes();
+    auto inputs = dpsOp.getDpsInputs();
+    auto inits = dpsOp.getDpsInits();
+
+    opType hivmOp;
+
+    if (isRegBasedArch) {
+      bool isSigned = true;
+      if (isa<linalg::ElemwiseBinaryOp>(op)) {
+        linalg::BinaryFn kind = cast<linalg::ElemwiseBinaryOp>(op).getFun();
+        if (kind == linalg::BinaryFn::div_unsigned ||
+            isUnsignedLinalgMinMaxFn(kind)) {
+          isSigned = false;
+        }
+      }
+
+      if (isa<hfusion::ElemwiseBinaryOp>(op)) {
+        hfusion::BinaryFn kind = cast<hfusion::ElemwiseBinaryOp>(op).getFun();
+        if (kind == hfusion::BinaryFn::shrui) {
+          isSigned = false;
+        }
+      }
+
+      if constexpr (std::is_base_of_v<
+                        mlir::hivm::detail::ExtraBufferOpInterfaceTrait<opType>,
+                        opType>) {
+        // don't need temp buffer, but need to pass extra operand to create op
+        if constexpr (std::is_same_v<opType, VDivOp>) {
+          hivmOp = b.create<opType>(loc, resultTypes, inputs, inits,
+                                    /*temp_buffer=*/Value(), isSigned);
+        } else if constexpr (std::is_same_v<opType, VMaxOp> ||
+                             std::is_same_v<opType, VMinOp>) {
+          hivmOp = b.create<opType>(loc, resultTypes, inputs, inits, isSigned);
+        } else if constexpr (std::is_same_v<opType, VShROp>) {
+          hivmOp = b.create<opType>(loc, resultTypes, inputs, inits,
+                                    /*temp_buffer=*/Value(), isSigned);
+        } else {
+          hivmOp = b.create<opType>(loc, resultTypes, inputs, inits,
+                                    /*temp_buffer=*/Value());
+        }
+      } else {
+        if constexpr (std::is_same_v<opType, VDivOp> ||
+                      std::is_same_v<opType, VMaxOp> ||
+                      std::is_same_v<opType, VMinOp>) {
+          hivmOp = b.create<opType>(loc, resultTypes, inputs, inits, isSigned);
+        } else {
+          hivmOp = b.create<opType>(loc, resultTypes, inputs, inits);
+        }
+      }
+
+    } else {
+      if constexpr (std::is_base_of_v<
+                        mlir::hivm::detail::ExtraBufferOpInterfaceTrait<opType>,
+                        opType>) {
+        // don't need temp buffer, but need to pass extra operand to create op
+        hivmOp = b.create<opType>(loc, resultTypes, inputs, inits,
+                                  /*temp_buffer=*/Value());
+      } else {
+        hivmOp = b.create<opType>(loc, resultTypes, inputs, inits);
+      }
+    }
+
+    return hivmOp;
+  }
+
+  OpBuilder &getBuilder() { return b; }
+  Operation *getOp() { return op; }
+
+  ~ElemwiseOpConvertor() {}
+
+private:
+  OpBuilder b;
+  Operation *op;
+};
+
+hivm::CompareMode mapCompareModeHFusionToHiVM(hfusion::CompareFn hsCmpMode) {
+  switch (hsCmpMode) {
+  case hfusion::CompareFn::veq:
+    return hivm::CompareMode::EQ;
+  case hfusion::CompareFn::vne:
+    return hivm::CompareMode::NE;
+  case hfusion::CompareFn::vle:
+    return hivm::CompareMode::LE;
+  case hfusion::CompareFn::vlt:
+    return hivm::CompareMode::LT;
+  case hfusion::CompareFn::vge:
+    return hivm::CompareMode::GE;
+  case hfusion::CompareFn::vgt:
+    return hivm::CompareMode::GT;
+  case hfusion::CompareFn::vule:
+    return hivm::CompareMode::LE;
+  case hfusion::CompareFn::vuge:
+    return hivm::CompareMode::GE;
+  case hfusion::CompareFn::vugt:
+    return hivm::CompareMode::GT;
+  case hfusion::CompareFn::vult:
+    return hivm::CompareMode::LT;
+  default:
+    llvm::report_fatal_error(
+        "mapCompareModeHFusionToHiVM: unsupported hfusion::CompareFn");
+  }
+}
+
+bool isSignedCompareMode(hfusion::CompareFn hsCmpMode) {
+  switch (hsCmpMode) {
+  case hfusion::CompareFn::vule:
+  case hfusion::CompareFn::vuge:
+  case hfusion::CompareFn::vugt:
+  case hfusion::CompareFn::vult:
+    return false;
+  default:
+    return true;
+  }
+}
+
+template <> Operation *ElemwiseOpConvertor::create<hivm::VCmpOp>() {
+  auto dpsOp = cast<DestinationStyleOpInterface>(op);
+  hfusion::CompareFn hsCmpMode = cast<hfusion::CompareOp>(op).getCompareFn();
+  hivm::CompareMode hvCmpMode = mapCompareModeHFusionToHiVM(hsCmpMode);
+
+  hivm::VCmpOp op;
+  if (isRegBasedArch) {
+    op = b.create<hivm::VCmpOp>(dpsOp->getLoc(), dpsOp->getResultTypes(),
+                                dpsOp.getDpsInputs(), dpsOp.getDpsInits(),
+                                isSignedCompareMode(hsCmpMode), hvCmpMode);
+  } else {
+    op = b.create<hivm::VCmpOp>(dpsOp->getLoc(), dpsOp->getResultTypes(),
+                                dpsOp.getDpsInputs(), dpsOp.getDpsInits(),
+                                hvCmpMode);
+  }
+  return op;
+}
+
+static hivm::RoundMode mapRoundModeHFusionToHiVM(hfusion::RoundMode hsRndMode) {
+  switch (hsRndMode) {
+  case (hfusion::RoundMode::RINT):
+    return hivm::RoundMode::RINT;
+  case (hfusion::RoundMode::ROUND):
+    return hivm::RoundMode::ROUND;
+  case (hfusion::RoundMode::CEIL):
+    return hivm::RoundMode::CEIL;
+  case (hfusion::RoundMode::FLOOR):
+    return hivm::RoundMode::FLOOR;
+  case (hfusion::RoundMode::TRUNC):
+    return hivm::RoundMode::TRUNC;
+  case (hfusion::RoundMode::ODD):
+    return hivm::RoundMode::ODD;
+  case (hfusion::RoundMode::TRUNCWITHOVERFLOW):
+    return hivm::RoundMode::TRUNCWITHOVERFLOW;
+  }
+}
+
+hivm::TypeFn mapCastHFusionToHiVM(hfusion::TypeFn casting) {
+  switch (casting) {
+  case hfusion::TypeFn::cast_signed:
+    return hivm::TypeFn::cast_signed;
+  case hfusion::TypeFn::cast_unsigned:
+    return hivm::TypeFn::cast_unsigned;
+  case hfusion::TypeFn::bitcast:
+    return hivm::TypeFn::bitcast;
+  }
+  llvm::report_fatal_error("unsupported hfusion::TypeFn");
+}
+
+template <> Operation *ElemwiseOpConvertor::create<hivm::VCastOp>() {
+  auto dpsOp = cast<DestinationStyleOpInterface>(op);
+  auto castOp = cast<hfusion::CastOp>(op);
+
+  hivm::VCastOp hivmOp;
+  if (isRegBasedArch) {
+    hivm::RoundMode roundMode =
+        mapRoundModeHFusionToHiVM(castOp.getRoundMode());
+    hivm::TypeFn casting = mapCastHFusionToHiVM(castOp.getCast());
+    hivm::UnsignedMode unsignedMode =
+        mlir::hfusion_conversion_utils::mapUnsignedModeHFusionToHiVM(
+            castOp.getUnsignedMode());
+
+    hivmOp = b.create<hivm::VCastOp>(dpsOp->getLoc(), dpsOp->getResultTypes(),
+                                     dpsOp.getDpsInputs(), dpsOp.getDpsInits(),
+                                     roundMode, casting);
+
+    if (auto moduleOp = op->getParentOfType<ModuleOp>();
+        moduleOp && hacc::utils::isRegBasedArch(moduleOp)) {
+      hivmOp->setAttr(castOp.getEnableOverflowAttrName(),
+                      b.getBoolAttr(castOp.getEnableOverflow()));
+      hivmOp->setAttr(castOp.getEnableSaturateAttrName(),
+                      b.getBoolAttr(castOp.getEnableSaturate()));
+      hivmOp->setAttr(
+          hivm::UnsignedModeAttr::name,
+          hivm::UnsignedModeAttr::get(b.getContext(), unsignedMode));
+    }
+
+  } else {
+    hivm::RoundMode roundMode =
+        mapRoundModeHFusionToHiVM(castOp.getRoundMode());
+    hivm::TypeFn casting = mapCastHFusionToHiVM(castOp.getCast());
+
+    hivmOp = b.create<hivm::VCastOp>(dpsOp->getLoc(), dpsOp->getResultTypes(),
+                                     dpsOp.getDpsInputs(), dpsOp.getDpsInits(),
+                                     roundMode, casting);
+  }
+
+  return hivmOp;
+}
+
+Operation *convertNegfToMulOp(ElemwiseOpConvertor &b) {
+  auto elemwiseOp = cast<linalg::ElemwiseUnaryOp>(b.getOp());
+  auto input = elemwiseOp.getDpsInputs()[0];
+  auto elementType = getElementTypeOrSelf(input);
+
+  OpBuilder &builder = b.getBuilder();
+  Value negOne = builder.create<arith::ConstantOp>(
+      elemwiseOp->getLoc(), elementType,
+      builder.getFloatAttr(elementType, -1.0));
+
+  auto operation = cast<DestinationStyleOpInterface>(b.getOp());
+  Location location = operation->getLoc();
+  auto resultTypes = operation->getResultTypes();
+  auto inits = operation.getDpsInits();
+
+  return builder.create<hivm::VMulOp>(location, resultTypes,
+                                      ValueRange{input, negOne}, inits);
+}
+
+Operation *convertUnaryLinalgOp(ElemwiseOpConvertor &b, linalg::UnaryFn kind) {
+  switch (kind) {
+  case linalg::UnaryFn::exp:
+    return b.create<hivm::VExpOp>();
+  case linalg::UnaryFn::log:
+    return b.create<hivm::VLnOp>();
+  case linalg::UnaryFn::abs:
+    return b.create<hivm::VAbsOp>();
+  case linalg::UnaryFn::negf:
+    return convertNegfToMulOp(b);
+  default:
+    llvm::report_fatal_error("unsupported linalg unary operation kind");
+  }
+}
+
+Operation *convertBinaryLinalgOp(ElemwiseOpConvertor &b,
+                                 linalg::BinaryFn kind) {
+  switch (kind) {
+  case linalg::BinaryFn::add:
+    return b.create<hivm::VAddOp>();
+  case linalg::BinaryFn::mul:
+    return b.create<hivm::VMulOp>();
+  case linalg::BinaryFn::sub:
+    return b.create<hivm::VSubOp>();
+  case linalg::BinaryFn::div:
+    return b.create<hivm::VDivOp>();
+  case linalg::BinaryFn::div_unsigned:
+    return b.create<hivm::VDivOp>();
+  case linalg::BinaryFn::max_signed:
+    return b.create<hivm::VMaxOp>();
+  case linalg::BinaryFn::min_signed:
+    return b.create<hivm::VMinOp>();
+  case linalg::BinaryFn::max_unsigned:
+    return b.create<hivm::VMaxOp>();
+  case linalg::BinaryFn::min_unsigned:
+    return b.create<hivm::VMinOp>();
+  default:
+    llvm::report_fatal_error("unsupported linalg binary operation kind");
+  }
+}
+
+Operation *convertUnaryHFusionOp(ElemwiseOpConvertor &b,
+                                 hfusion::UnaryFn kind) {
+  Operation *hivmOp = nullptr;
+
+  switch (kind) {
+  case hfusion::UnaryFn::relu:
+    hivmOp = b.create<hivm::VReluOp>();
+    break;
+  case hfusion::UnaryFn::sqrt:
+    hivmOp = b.create<hivm::VSqrtOp>();
+    break;
+  case hfusion::UnaryFn::rsqrt:
+    hivmOp = b.create<hivm::VRsqrtOp>();
+    break;
+  case hfusion::UnaryFn::rec:
+    hivmOp = b.create<hivm::VRecOp>();
+    break;
+  case hfusion::UnaryFn::vnot:
+    hivmOp = b.create<hivm::VNotOp>();
+    break;
+  case hfusion::UnaryFn::tanh:
+    hivmOp = b.create<hivm::VTanhOp>();
+    break;
+  case hfusion::UnaryFn::sin:
+    hivmOp = b.create<hivm::VSinOp>();
+    break;
+  case hfusion::UnaryFn::cos:
+    hivmOp = b.create<hivm::VCosOp>();
+    break;
+  case hfusion::UnaryFn::absi:
+    hivmOp = b.create<hivm::VAbsOp>();
+    break;
+  case hfusion::UnaryFn::erf:
+    hivmOp = b.create<hivm::VErfOp>();
+    break;
+  default:
+    llvm::report_fatal_error("unsupported hfusion unary operation kind");
+  }
+  copyAttrIfPresent(b.getOp(), hivmOp, "cast");
+  return hivmOp;
+}
+
+Operation *convertBinaryHFusionOp(ElemwiseOpConvertor &b,
+                                  hfusion::BinaryFn kind) {
+  Operation *hivmOp = nullptr;
+
+  switch (kind) {
+  case hfusion::BinaryFn::vor:
+    hivmOp = b.create<hivm::VOrOp>();
+    break;
+  case hfusion::BinaryFn::vand:
+    hivmOp = b.create<hivm::VAndOp>();
+    break;
+  case hfusion::BinaryFn::minf:
+    hivmOp = b.create<hivm::VMinOp>();
+    break;
+  case hfusion::BinaryFn::maxf:
+    hivmOp = b.create<hivm::VMaxOp>();
+    break;
+  case hfusion::BinaryFn::powi:
+    hivmOp = b.create<hivm::VPowOp>();
+    break;
+  case hfusion::BinaryFn::shli:
+    hivmOp = b.create<hivm::VShLOp>();
+    break;
+  case hfusion::BinaryFn::shrsi:
+  case hfusion::BinaryFn::shrui:
+    hivmOp = b.create<hivm::VShROp>();
+    break;
+  case hfusion::BinaryFn::divfhp: {
+    auto dpsOp = cast<DestinationStyleOpInterface>(b.getOp());
+    hivmOp = b.getBuilder().create<hivm::VDivOp>(
+        dpsOp->getLoc(), dpsOp->getResultTypes(), dpsOp.getDpsInputs(),
+        dpsOp.getDpsInits(), /*isSigned=*/true, /*isHP=*/true);
+  } break;
+  case hfusion::BinaryFn::modui:
+    hivmOp = b.create<hivm::VModUIOp>();
+    break;
+  case hfusion::BinaryFn::mod:
+    hivmOp = b.create<hivm::VModOp>();
+    break;
+  case hfusion::BinaryFn::vxor:
+    hivmOp = b.create<hivm::VXorOp>();
+    break;
+  default:
+    llvm::report_fatal_error("unsupported hfusion binary operation kind");
+  }
+  copyAttrIfPresent(b.getOp(), hivmOp, "cast");
+  return hivmOp;
+}
+
+Operation *convertCastHFusionOp(ElemwiseOpConvertor &b) {
+  return b.create<hivm::VCastOp>();
+}
+
+Operation *convertCompareHFusionOp(ElemwiseOpConvertor &b) {
+  return b.create<hivm::VCmpOp>();
+}
+
+Operation *convertTernaryHFusionOp(ElemwiseOpConvertor &b,
+                                   hfusion::TernaryFn kind) {
+  return b.create<hivm::VSelOp>();
+}
+
+Value brcOperand(OpBuilder &b, Location loc, Value scalarVal,
+                 Value brcInitVal) {
+  Type brcInitType = brcInitVal.getType();
+  const bool isTensorType = isa<TensorType>(brcInitType);
+
+  if (isRegBasedArch) {
+    // Extract tensor<i16> to i16 to make vbrc valid.
+    // hivm.hir.vbrc ins(%x : i16) outs(%y : tensor<1xi16>) -> tensor<1xi16>
+    if (isa<ShapedType>(scalarVal.getType())) {
+      scalarVal =
+          b.create<tensor::ExtractOp>(loc, scalarVal, ArrayRef<Value>{});
+    }
+  }
+
+  auto resultTypeRange = isTensorType ? TypeRange(brcInitVal) : TypeRange();
+  auto vbrcOp =
+      b.create<hivm::VBrcOp>(loc, resultTypeRange, scalarVal, brcInitVal,
+                             b.getDenseI64ArrayAttr(ArrayRef<int64_t>{}));
+  Value newVal = isTensorType ? vbrcOp.getResult()[0] : brcInitVal;
+
+  return newVal;
+}
+
+bool isScalarOperand(Value val) {
+  auto const &type = val.getType();
+  return type.isIntOrFloat() ||
+         isRegBasedArch &&
+             (isa<IndexType>(type) ||
+              (isa<ShapedType>(type) && cast<ShapedType>(type).getRank() == 0));
+}
+
+void getInvalidScalarOperands(HIVMStructuredOp *hivmOp,
+                              SmallVector<size_t> &scalarOperands) {
+  Operation *op = hivmOp->getOperation();
+  // TODO: remove the vsub and vdiv special process and support scalar operands
+  // for hivm ops
+  if (auto *vsubOp = dyn_cast<hivm::VSubOp>(hivmOp)) {
+    Type scalarSrc0Type = vsubOp->getSrc()[0].getType();
+    Type scalarSrc1Type = vsubOp->getSrc()[0].getType();
+    if (scalarSrc0Type.isIntOrFloat() && scalarSrc1Type.isIntOrFloat()) {
+      scalarOperands.push_back(0);
+      return;
+    }
+  }
+  if (auto *vdivOp = dyn_cast<hivm::VDivOp>(hivmOp)) {
+    Type scalarSrc0Type = vdivOp->getSrc()[0].getType();
+    Type scalarSrc1Type = vdivOp->getSrc()[0].getType();
+    if (scalarSrc0Type.isIntOrFloat() && scalarSrc1Type.isIntOrFloat()) {
+      scalarOperands.push_back(0);
+      return;
+    }
+  }
+  for (size_t idx = 0; idx < op->getNumOperands() - 1; ++idx) {
+    auto oprd = op->getOperand(idx);
+    if (isScalarOperand(oprd) && hivmOp->isVectorOnlyOperand(idx)) {
+      scalarOperands.push_back(idx);
+    }
+  }
+}
+
+void convertInvalidScalarOperandByBrc(
+    Operation *op, SmallVector<size_t> &invalidscalarOperands) {
+  OpBuilder b(op);
+  Value dstVal = op->getOperand(op->getNumOperands() - 1);
+
+  if (isRegBasedArch) {
+    Type dstType = dstVal.getType();
+    auto dstShapedType = mlir::dyn_cast<ShapedType>(dstType);
+    for (size_t invalidIdx : invalidscalarOperands) {
+      auto operand = op->getOperand(invalidIdx);
+      Type srcType = operand.getType();
+      auto dstElementType = dstShapedType.getElementType();
+      Value brcResult;
+      // Distinguishing Scalars and Vectors
+      if (auto srcShapedType = mlir::dyn_cast<ShapedType>(srcType)) {
+        auto srcElementType = srcShapedType.getElementType();
+        srcType = srcElementType;
+      }
+      if (dstElementType == srcType) {
+        brcResult = utils::createEmptyOp(b, op->getLoc(), dstVal);
+      } else {
+        brcResult = utils::createEmptyOpWithTargetElemType(b, op->getLoc(),
+                                                           dstVal, srcType);
+      }
+      Value newOperand = brcOperand(b, op->getLoc(), operand, brcResult);
+      op->setOperand(invalidIdx, newOperand);
+    }
+  } else {
+    for (size_t invalidIdx : invalidscalarOperands) {
+      Value scalarOperand = op->getOperand(invalidIdx);
+      Type scalarElemTy = scalarOperand.getType();
+
+      Value empty = utils::createEmptyOpWithTargetElemType(
+          b, op->getLoc(), dstVal, scalarElemTy, std::nullopt);
+      Value newOperand = brcOperand(b, op->getLoc(), scalarOperand, empty);
+      op->setOperand(invalidIdx, newOperand);
+    }
+  }
+}
+
+LogicalResult tryConvertInvalidScalarOperandByCommutative(
+    HIVMStructuredOp *hivmOp, SmallVector<size_t> &invalidscalarOperands) {
+  Operation *op = hivmOp->getOperation();
+  if (!op->hasTrait<OpTrait::CommutativeOpTrait>()) {
+    return failure();
+  }
+  // swap input operands if allowed by commutative law
+  for (int64_t idx = 0; idx < hivmOp->getNumDpsInputs(); ++idx) {
+    if (invalidscalarOperands.empty()) {
+      return success();
+    }
+    Value operand = hivmOp->getDpsInputOperand(idx)->get();
+    // cases where swapping operands is not possible
+    // 1. current operand is scalar -- should not swap with another scalar
+    // 2. current operand is vector, but only vector is allowed at current idx
+    if (isScalarOperand(operand) || hivmOp->isVectorOnlyOperand(idx)) {
+      continue;
+    }
+
+    auto invalidOperandIt = invalidscalarOperands.back();
+    invalidscalarOperands.pop_back();
+
+    Value scalarOperands = op->getOperand(invalidOperandIt);
+    // swap operand and invalidOperandIt
+    op->setOperand(invalidOperandIt, operand);
+    op->setOperand(idx, scalarOperands);
+  }
+
+  return invalidscalarOperands.empty() ? success() : failure();
+}
+
+void convertInvalidScalarOperands(Operation *op) {
+  assert(isa<HIVMStructuredOp>(op));
+  auto hivmOp = cast<HIVMStructuredOp>(op);
+  SmallVector<size_t> scalarOperands;
+  getInvalidScalarOperands(&hivmOp, scalarOperands);
+
+  if (scalarOperands.empty()) {
+    return;
+  }
+  if (succeeded(tryConvertInvalidScalarOperandByCommutative(&hivmOp,
+                                                            scalarOperands))) {
+    return;
+  }
+  convertInvalidScalarOperandByBrc(op, scalarOperands);
+}
+
+LogicalResult elementwiseMatchAndRewriteHelper(Operation *op,
+                                               PatternRewriter &rewriter) {
+  OpBuilder b(op);
+  ElemwiseOpConvertor builder(b, op);
+  Operation *hivmOp = nullptr;
+
+  if (isa<linalg::ElemwiseUnaryOp>(op)) {
+    linalg::UnaryFn kind = cast<linalg::ElemwiseUnaryOp>(op).getFun();
+    hivmOp = convertUnaryLinalgOp(builder, kind);
+  } else if (isa<linalg::ElemwiseBinaryOp>(op)) {
+    linalg::BinaryFn kind = cast<linalg::ElemwiseBinaryOp>(op).getFun();
+    hivmOp = convertBinaryLinalgOp(builder, kind);
+  } else if (isa<hfusion::ElemwiseUnaryOp>(op)) {
+    hfusion::UnaryFn kind = cast<hfusion::ElemwiseUnaryOp>(op).getFun();
+    hivmOp = convertUnaryHFusionOp(builder, kind);
+  } else if (isa<hfusion::ElemwiseBinaryOp>(op)) {
+    hfusion::BinaryFn kind = cast<hfusion::ElemwiseBinaryOp>(op).getFun();
+    hivmOp = convertBinaryHFusionOp(builder, kind);
+  } else if (isa<hfusion::CastOp>(op)) {
+    hivmOp = convertCastHFusionOp(builder);
+  } else if (isa<hfusion::CompareOp>(op)) {
+    hivmOp = convertCompareHFusionOp(builder);
+  } else if (isa<hfusion::SelectOp>(op)) {
+    hfusion::TernaryFn kind = hfusion::TernaryFn::select;
+    hivmOp = convertTernaryHFusionOp(builder, kind);
+  } else {
+    llvm::report_fatal_error("undhandled conversion");
+  }
+  convertInvalidScalarOperands(hivmOp);
+  rewriter.replaceOp(op, hivmOp->getResults());
+  return success();
+}
+
+template <typename SrcOp>
+class HFusionElemwiseOpConverter : public OpRewritePattern<SrcOp> {
+public:
+  using OpRewritePattern<SrcOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SrcOp op,
+                                PatternRewriter &rewriter) const final {
+    return elementwiseMatchAndRewriteHelper(op, rewriter);
+  }
+};
+
+class ExtractScalarForBinaryShiftOp
+    : public OpRewritePattern<hfusion::ElemwiseBinaryOp> {
+public:
+  using OpRewritePattern<hfusion::ElemwiseBinaryOp>::OpRewritePattern;
+  explicit ExtractScalarForBinaryShiftOp(MLIRContext *context,
+                                         PatternBenefit benefit = 100)
+      : OpRewritePattern<hfusion::ElemwiseBinaryOp>(context, benefit) {}
+
+  LogicalResult matchAndRewrite(hfusion::ElemwiseBinaryOp binOp,
+                                PatternRewriter &rewriter) const final {
+    hfusion::BinaryFn kind = binOp.getFun();
+    DenseSet<hfusion::BinaryFn> supported = {hfusion::BinaryFn::shli,
+                                             hfusion::BinaryFn::shrsi,
+                                             hfusion::BinaryFn::shrui};
+    if (!supported.contains(kind)) {
+      return failure();
+    }
+    Value rhs = binOp.getInputs()[1];
+    if (rhs.getType().isIntOrIndexOrFloat()) {
+      return failure();
+    }
+    if (!utils::isScalarLike(rhs)) {
+      return failure();
+    }
+    std::optional<Value> scalarMaybe =
+        utils::extractScalarValue(rewriter, binOp->getLoc(), rhs);
+    if (!scalarMaybe.has_value()) {
+      return failure();
+    }
+    Value scalar = scalarMaybe.value();
+    auto *rhsOperand = binOp.getDpsInputOperand(1);
+    rewriter.modifyOpInPlace(binOp, [&]() { rhsOperand->assign(scalar); });
+    return success();
+  }
+};
+
+struct LinalgFillOpToHIVMBrcOp : public OpRewritePattern<linalg::FillOp> {
+  using OpRewritePattern<linalg::FillOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(linalg::FillOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.hasPureBufferSemantics() && !op.hasPureTensorSemantics()) {
+      return op.emitOpError(
+          "linalg::FillOp should have pure buffer or tensor Semantics!");
+    }
+    auto inputs = op.getInputs();
+    assert(inputs.size() == 1);
+    auto inits = op.getDpsInits();
+    assert(inits.size() == 1);
+    auto resultTypeRange =
+        op.hasPureBufferSemantics() ? TypeRange() : TypeRange(op->getResults());
+    auto hivmVBrcOp = rewriter.create<hivm::VBrcOp>(
+        op.getLoc(), resultTypeRange, inputs[0], inits[0],
+        rewriter.getDenseI64ArrayAttr(ArrayRef<int64_t>{}));
+    rewriter.replaceOp(op, hivmVBrcOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// LinalgBrcOpToHIVMBrcOp
+//===----------------------------------------------------------------------===//
+/// Convert linalg.broadcast to hivm.hir.vbrc, expand_shape is required.
+/// e.g.
+///   linalg.broadcast
+///     ins(%input:memref<8x32xf32>)
+///     outs(%init:memref<8x16x32xf32>)
+///     dimensions = [1]
+/// converts to
+///   %tmp = memref.expand_shape %input [[0, 1], [2]]
+///          : memref<8x32xf32> into memref<8x1x32xf32>
+///   hivm.hir.vbrc
+///     ins(%tmp:memref<8x1x32xf32>)
+///     outs(%init:memref<8x16x32xf32>)
+///     broadcast_dims = [1]
+/// note that input's rank of linalg.broadcast is always less than init's rank,
+/// while src'rank of hivm.hir.vbrc is the same as dst's rank.
+struct LinalgBrcOpToHIVMBrcOp : public OpRewritePattern<linalg::BroadcastOp> {
+  using OpRewritePattern<linalg::BroadcastOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(linalg::BroadcastOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.hasPureBufferSemantics() && !op.hasPureTensorSemantics()) {
+      return op.emitOpError(
+          "linalg::BroadcastOp should have pure buffer or tensor Semantics!");
+    }
+
+    Value expandShapeOp = hfusion_conversion_utils::createExpandShapeOp(
+        op, rewriter, op.getInput(), op.getInit().getType());
+    auto resultTypeRange =
+        op.hasPureBufferSemantics() ? TypeRange() : TypeRange(op.getResult());
+    auto brcDimsAttr = op.getDimensionsAttr();
+    auto hivmVBrcOp = rewriter.create<hivm::VBrcOp>(
+        op.getLoc(), resultTypeRange, expandShapeOp, op.getInit(), brcDimsAttr);
+
+    rewriter.replaceOp(op, hivmVBrcOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// LinalgToHIVMCopyOp
+//===----------------------------------------------------------------------===//
+
+struct LinalgToHIVMCopyOp : public OpRewritePattern<linalg::CopyOp> {
+  using OpRewritePattern<linalg::CopyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(linalg::CopyOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert linalg::CopyOp to hivm::CopyOp
+    auto src = cast<::mlir::Value>(*op.getInputs().begin());
+    auto dst = cast<::mlir::Value>(*op.getOutputs().begin());
+    auto res = op.getResultTensors();
+    rewriter.replaceOpWithNewOp<hivm::CopyOp>(op, TypeRange(res), src, dst);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// LinalgToHIVMTransposeOp
+//===----------------------------------------------------------------------===//
+
+struct LinalgToHIVMTransposeOp : public OpRewritePattern<linalg::TransposeOp> {
+  using OpRewritePattern<linalg::TransposeOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(linalg::TransposeOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.hasPureBufferSemantics() && !op.hasPureTensorSemantics()) {
+      return op.emitOpError(
+          "linalg::TansposeOp should have pure buffer or tensor Semantics!");
+    }
+    Value outputValue =
+        op.hasPureBufferSemantics() ? op.getInit() : op.getResult().getBase();
+
+    Operation *withoutAlignMarkOp = nullptr;
+    for (auto *user : outputValue.getUsers()) {
+      if (auto markOp = dyn_cast<annotation::MarkOp>(user)) {
+        if (markOp->getAttrDictionary().contains("transpose_without_align")) {
+          withoutAlignMarkOp = user;
+          break;
+        }
+      }
+    }
+
+    bool disableAlign = false;
+    if (withoutAlignMarkOp) {
+      rewriter.eraseOp(withoutAlignMarkOp);
+      disableAlign = true;
+    }
+
+    auto resultTypeRange =
+        op.hasPureBufferSemantics() ? TypeRange() : TypeRange(op.getResult());
+    rewriter.replaceOpWithNewOp<hivm::VTransposeOp>(
+        op, resultTypeRange, op.getInput(), op.getInit(),
+        op.getPermutationAttr(), disableAlign);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMArangeOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMArangeOp : public OpRewritePattern<hfusion::ArangeOp> {
+  using OpRewritePattern<hfusion::ArangeOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::ArangeOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.hasPureBufferSemantics() && !op.hasPureTensorSemantics()) {
+      return op.emitOpError(
+          "hfusion::ArangeOp should have pure buffer or tensor Semantics!");
+    }
+    auto resultTypeRange = op.hasPureBufferSemantics()
+                               ? TypeRange()
+                               : TypeRange(op->getResultTypes());
+    rewriter.replaceOpWithNewOp<hivm::VArangeOp>(
+        op, resultTypeRange, op.getInit(), op.getOffset(), op.getStrides());
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMGatherOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMGatherOp : public OpRewritePattern<hfusion::GatherOp> {
+  using OpRewritePattern<hfusion::GatherOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::GatherOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.hasPureBufferSemantics() && !op.hasPureTensorSemantics()) {
+      return op.emitOpError(
+          "hfusion::GatherOp should have pure buffer or tensor Semantics!");
+    }
+
+    if (!isRegBasedArch) {
+      const auto rank = op.getSrc().getType().getRank();
+      if (rank - 1 != static_cast<int64_t>(op.getAxis())) {
+        return op.emitOpError(
+            "can only lower hfusion.gather to hivm gather if axis is last dim");
+      }
+    }
+
+    auto resultTypeRange = op.hasPureBufferSemantics()
+                               ? TypeRange()
+                               : TypeRange(op->getResultTypes());
+
+    if (isRegBasedArch) {
+      const auto axis = static_cast<int64_t>(op.getAxis());
+      auto newOp = rewriter.create<hivm::VGatherOp>(
+          op.getLoc(), resultTypeRange, op.getSrc(), op.getIndex(),
+          op.getInit(), axis);
+      newOp->setAttr(VFModeAttr::name,
+                     VFModeAttr::get(op->getContext(), VFMode::SIMT));
+      rewriter.replaceOp(op, newOp);
+    } else {
+      rewriter.replaceOpWithNewOp<hivm::VGatherOp>(
+          op, resultTypeRange, op.getSrc(), op.getIndex(), op.getInit());
+    }
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMGatherMaskOp
+//===----------------------------------------------------------------------===//
+struct HFusionToHIVMGatherMaskOp
+    : public OpRewritePattern<hfusion::GatherMaskOp> {
+  using OpRewritePattern<hfusion::GatherMaskOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::GatherMaskOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.hasPureBufferSemantics() && !op.hasPureTensorSemantics()) {
+      return op.emitOpError(
+          "hfusion::GatherMaskOp should have pure buffer or tensor Semantics!");
+    }
+
+    auto resultTypeRange = op.hasPureBufferSemantics()
+                               ? TypeRange()
+                               : TypeRange(op->getResultTypes());
+    mlir::ValueRange dstOperands = op.getInit();
+    rewriter.replaceOpWithNewOp<hivm::VGatherMaskOp>(
+        op, resultTypeRange, op.getSrc(), op.getMask(), dstOperands);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionLoadOpToHIVMLoadOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionLoadOpToHIVMLoadOp : public OpRewritePattern<hfusion::LoadOp> {
+  using OpRewritePattern<hfusion::LoadOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::LoadOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert hfusion::LoadOp to hivm::LoadOp
+    auto src = cast<::mlir::Value>(*op.getInputs().begin());
+    auto dst = cast<::mlir::Value>(*op.getOutputs().begin());
+    auto res = op.getResultTensors();
+    rewriter.replaceOpWithNewOp<hivm::LoadOp>(op, TypeRange(res), src, dst);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionStoreOpToHIVMStoreOp
+//===----------------------------------------------------------------------===//
+
+hivm::AtomicKind mapAtomicKindHFusionToHiVM(hfusion::AtomicKind hsAtKind) {
+  hivm::AtomicKind hvAtKind;
+  switch (hsAtKind) {
+  case (hfusion::AtomicKind::NONE):
+    hvAtKind = hivm::AtomicKind::NONE;
+    break;
+  case (hfusion::AtomicKind::ADD):
+    hvAtKind = hivm::AtomicKind::ADD;
+    break;
+  case (hfusion::AtomicKind::MAX):
+    hvAtKind = hivm::AtomicKind::MAX;
+    break;
+  case (hfusion::AtomicKind::MIN):
+    hvAtKind = hivm::AtomicKind::MIN;
+    break;
+  case (hfusion::AtomicKind::AND):
+    hvAtKind = hivm::AtomicKind::AND;
+    break;
+  case (hfusion::AtomicKind::OR):
+    hvAtKind = hivm::AtomicKind::OR;
+    break;
+  case (hfusion::AtomicKind::XOR):
+    hvAtKind = hivm::AtomicKind::XOR;
+    break;
+  case (hfusion::AtomicKind::UMAX):
+    if (isRegBasedArch) {
+      // In A5, it should never reach here
+      hvAtKind = hivm::AtomicKind::MAX;
+    } else {
+      hvAtKind = hivm::AtomicKind::UMAX;
+    }
+    break;
+  case (hfusion::AtomicKind::UMIN):
+    if (isRegBasedArch) {
+      // In A5, it should never reach here
+      hvAtKind = hivm::AtomicKind::MIN;
+    } else {
+      hvAtKind = hivm::AtomicKind::UMIN;
+    }
+    break;
+  case (hfusion::AtomicKind::CAS):
+    if (isRegBasedArch) {
+      hvAtKind = hivm::AtomicKind::CAS;
+    } else {
+      llvm::report_fatal_error("Unsupported atomic kind");
+    }
+    break;
+  case (hfusion::AtomicKind::XCHG):
+    if (isRegBasedArch) {
+      hvAtKind = hivm::AtomicKind::XCHG;
+    } else {
+      llvm::report_fatal_error("Unsupported atomic kind");
+    }
+    break;
+  default:
+    llvm::report_fatal_error("Unsupported atomic kind");
+  }
+  return hvAtKind;
+}
+
+struct HFusionStoreOpToHIVMStoreOp : public OpRewritePattern<hfusion::StoreOp> {
+  using OpRewritePattern<hfusion::StoreOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::StoreOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert hfusion::StoreOp to hivm::StoreOp
+    auto src = cast<::mlir::Value>(*op.getInputs().begin());
+    auto dst = cast<::mlir::Value>(*op.getOutputs().begin());
+    auto res = op.getResultTensors();
+
+    auto newStoreOp =
+        rewriter.create<hivm::StoreOp>(op.getLoc(), TypeRange(res), src, dst);
+
+    // Add atomic attr to hivm.store
+    // hfusion.store has default atomic attr
+    // then hivm.store should has one too.
+    auto hsAtomicKind = op.getAtomicKind();
+    hivm::AtomicKind hvAtomicKind = mapAtomicKindHFusionToHiVM(hsAtomicKind);
+    newStoreOp.setAtomicKind(hvAtomicKind);
+
+    rewriter.replaceOp(op, newStoreOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMBitcastOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMBitcastOp : public OpRewritePattern<hfusion::BitcastOp> {
+  using OpRewritePattern<hfusion::BitcastOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::BitcastOp op,
+                                PatternRewriter &rewriter) const override {
+    Value src = op.getInputs().front();
+    Type dstType = op.getOutputs().front().getType();
+
+    if (!op.hasPureTensorSemantics()) {
+      return op->emitOpError(
+          "hfusion.bitcast must be in Pure Tensor Semantics\n");
+    }
+
+    // TODO:  This check should be moved to verifier,
+    // and/or change the design of hfusion.bitcast to non-destination style.
+    if (!mlir::hfusion::reshape_utils::isContainerAllocator(
+            op.getOutputs().front().getDefiningOp())) {
+      LDBG("precision loss warning: hfusion.bitcast outs() must be a container "
+           "allocator (empty tensor)");
+    }
+
+    hivm::BitcastOp hivmOp =
+        rewriter.create<hivm::BitcastOp>(op->getLoc(), dstType, src);
+
+    rewriter.replaceOp(op, hivmOp);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionPrintOpToHIVMDebugOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionPrintOpToHIVMDebugOp : public OpRewritePattern<hfusion::PrintOp> {
+  using OpRewritePattern<hfusion::PrintOp>::OpRewritePattern;
+
+  static constexpr llvm::StringLiteral HIVMDebugTypePrint = "print";
+
+  LogicalResult matchAndRewrite(hfusion::PrintOp op,
+                                PatternRewriter &rewriter) const override {
+    rewriter.setInsertionPoint(op);
+    Value opArg = op.getArg();
+
+    (void)(rewriter.replaceOpWithNewOp<hivm::DebugOp>(
+        op, HIVMDebugTypePrint, op.getPrefix(), op.getHex(), opArg));
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionAssertOpToHIVMDebugOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionAssertOpToHIVMDebugOp
+    : public OpRewritePattern<hfusion::AssertOp> {
+  using OpRewritePattern<hfusion::AssertOp>::OpRewritePattern;
+
+  static constexpr llvm::StringLiteral HIVMDebugTypeAssert = "assert";
+
+  LogicalResult matchAndRewrite(hfusion::AssertOp op,
+                                PatternRewriter &rewriter) const override {
+    rewriter.setInsertionPoint(op);
+
+    (void)(rewriter.replaceOpWithNewOp<hivm::DebugOp>(
+        op, HIVMDebugTypeAssert, op.getMsg(), false /* hex */, op.getCond()));
+
+    return success();
+  }
+};
+
+struct HFusionToHIVMBarrierOp : public OpRewritePattern<hfusion::BarrierOp> {
+  using OpRewritePattern<hfusion::BarrierOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::BarrierOp op,
+                                PatternRewriter &rewriter) const override {
+    auto ctx = op.getContext();
+    auto pipeAll = hivm::PipeAttr::get(ctx, hivm::PIPE::PIPE_ALL);
+    rewriter.replaceOpWithNewOp<hivm::PipeBarrierOp>(op, pipeAll);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMMulExtOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMMulExtOp : public OpRewritePattern<hfusion::MulExtOp> {
+  using OpRewritePattern<hfusion::MulExtOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::MulExtOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert hfusion::MulExtOp to hivm::VMulExtOp
+    Value lhs = op.getLhs();
+    Value rhs = op.getRhs();
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmMulExtOp = rewriter.create<hivm::VMulExtOp>(
+        op->getLoc(), op->getResultTypes(), ValueRange({lhs, rhs}),
+        ValueRange{dsts});
+    convertInvalidScalarOperands(hivmMulExtOp);
+    rewriter.replaceOp(op, hivmMulExtOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMMulExtUiOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMMulExtUiOp : public OpRewritePattern<hfusion::MulExtUiOp> {
+  using OpRewritePattern<hfusion::MulExtUiOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::MulExtUiOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert hfusion::MulExtUiOp to hivm::VMulExtUiOp
+    Value lhs = op.getLhs();
+    Value rhs = op.getRhs();
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmMulExtUiOp = rewriter.create<hivm::VMulExtUiOp>(
+        op->getLoc(), op->getResultTypes(), ValueRange({lhs, rhs}),
+        ValueRange{dsts});
+    convertInvalidScalarOperands(hivmMulExtUiOp);
+    rewriter.replaceOp(op, hivmMulExtUiOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HfusionToHIVMInterleaveOp
+//===----------------------------------------------------------------------===//
+struct HfusionToHIVMInterleaveOp
+    : public OpRewritePattern<hfusion::InterleaveOp> {
+  using OpRewritePattern<hfusion::InterleaveOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::InterleaveOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert hfusion::InterleaveOp to hivm::VInterleaveOp
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmInterleaveOp = rewriter.create<hivm::VInterleaveOp>(
+        op->getLoc(), op->getResultTypes(), ValueRange(op.getInput()), dsts[0],
+        hfusion::InterleaveOp::getInterLeaveChannelNums());
+    rewriter.replaceOp(op, hivmInterleaveOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMDeinterleaveOp
+//===----------------------------------------------------------------------===//
+class HFusionToHIVMDeinterleaveOp
+    : public OpRewritePattern<hfusion::DeinterleaveOp> {
+  using OpRewritePattern<hfusion::DeinterleaveOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::DeinterleaveOp op,
+                                PatternRewriter &rewriter) const override {
+    // convert hfusion::DeinterleaveOp to hivm::VDeinterleaveOp
+    Value input = op.getInput();
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    hivm::DeinterleaveMode hivmDeinterleaveMode =
+        hivm::symbolizeDeinterleaveMode(op.getDeInterLeaveChannelIdx()).value();
+
+    // TODO: hfusion::DeinterleaveOp support channel num other than 2
+    auto hivmDeinterleaveOp = rewriter.create<hivm::VDeinterleaveOp>(
+        op->getLoc(), op->getResultTypes(), input, ValueRange{dsts},
+        hfusion::DeinterleaveOp::getDeInterLeaveChannelNum(),
+        hivmDeinterleaveMode);
+    rewriter.replaceOp(op, hivmDeinterleaveOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMFlipOp
+//===----------------------------------------------------------------------===//
+struct HFusionToHIVMFlipOp : public OpRewritePattern<hfusion::FlipOp> {
+  using OpRewritePattern<hfusion::FlipOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::FlipOp op,
+                                PatternRewriter &rewriter) const override {
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmFlipOp = rewriter.create<hivm::VFlipOp>(
+        op->getLoc(), op->getResultTypes(), op.getInput(), dsts[0],
+        op.getFlipAxis());
+    rewriter.replaceOp(op, hivmFlipOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMCumOp
+//===----------------------------------------------------------------------===//
+template <typename HFUSIONOP, typename HIVMOP>
+struct HFusionToHIVMCumOp : public OpRewritePattern<HFUSIONOP> {
+  using OpRewritePattern<HFUSIONOP>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(HFUSIONOP op,
+                                PatternRewriter &rewriter) const override {
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+
+    if (isRegBasedArch) {
+      auto newOp = rewriter.create<HIVMOP>(op.getLoc(), op->getResultTypes(),
+                                           op.getInput(), dsts[0],
+                                           op.getCumDims(), op.getReverse());
+      // cummax/cummin carry a NaN-propagation flag (max/minimum vs max/minnum).
+      // Forward it; cumsum/cumprod have no such attribute.
+      if constexpr (std::is_same_v<HFUSIONOP, hfusion::CummaxOp> ||
+                    std::is_same_v<HFUSIONOP, hfusion::CumminOp>) {
+        newOp.setPropagateNan(op.getPropagateNan());
+      }
+      // The cancellation tag is set on the hfusion.cumsum by the detector walk
+      // in HFusionGeneralizePass; propagate it to the new VCumsumOp so the
+      // lowering (getOpLibraryCallName) routes to the compensated "_comp"
+      // symbol.
+      if (op->hasAttr("needs_compensation"))
+        newOp->setAttr("needs_compensation", rewriter.getUnitAttr());
+      rewriter.replaceOp(op, newOp->getResults());
+    } else {
+      rewriter.replaceOpWithNewOp<HIVMOP>(op, op->getResultTypes(),
+                                          op.getInput(), dsts[0],
+                                          op.getCumDims(), op.getReverse());
+    }
+    return success();
+  }
+};
+
+// ===----------------------------------------------------------------------===//
+// HFusionToHIVM AtomicRMWOp, AtomicCasOp and AtomicXchgOp
+// ===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMAtomicRMWOp
+    : public OpRewritePattern<hfusion::AtomicRMWOp> {
+  using OpRewritePattern<hfusion::AtomicRMWOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::AtomicRMWOp op,
+                                PatternRewriter &rewriter) const override {
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmAtomicOp = rewriter.create<hivm::AtomicRMWOp>(
+        op->getLoc(), op->getResultTypes(), op.getInput(), op.getDst(),
+        mapAtomicKindHFusionToHiVM(op.getAtomicKind()));
+    rewriter.replaceOp(op, hivmAtomicOp);
+    return success();
+  }
+};
+
+struct HFusionToHIVMAtomicCasOp
+    : public OpRewritePattern<hfusion::AtomicCasOp> {
+  using OpRewritePattern<hfusion::AtomicCasOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::AtomicCasOp op,
+                                PatternRewriter &rewriter) const override {
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmAtomicOp = rewriter.create<hivm::AtomicCasOp>(
+        op->getLoc(), op->getResultTypes(), op.getInput(), op.getDst());
+    rewriter.replaceOp(op, hivmAtomicOp);
+    return success();
+  }
+};
+
+struct HFusionToHIVMAtomicXchgOp
+    : public OpRewritePattern<hfusion::AtomicXchgOp> {
+  using OpRewritePattern<hfusion::AtomicXchgOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::AtomicXchgOp op,
+                                PatternRewriter &rewriter) const override {
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    auto hivmAtomicOp = rewriter.create<hivm::AtomicXchgOp>(
+        op->getLoc(), op->getResultTypes(), op.getInput(), op.getDst(),
+        op.getMask());
+    rewriter.replaceOp(op, hivmAtomicOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMConv1DOp
+//===----------------------------------------------------------------------===//
+struct HFusionToHIVMConv1DOp : public OpRewritePattern<hfusion::Conv1DOp> {
+  using OpRewritePattern<hfusion::Conv1DOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(hfusion::Conv1DOp op,
+                                PatternRewriter &rewriter) const override {
+    mlir::IntegerType int1Type = rewriter.getIntegerType(1);
+    auto resType = op->getResults().front().getType();
+    auto init = op.getInit();
+    auto input = op.getInput();
+    auto weight = op.getWeight();
+    auto bias = op.getBias();
+    auto group = op.getGroups();
+    auto stride = op.getStride();
+    auto padding = op.getPadding();
+    auto dilation = op.getDilation();
+#ifndef BSPUB_DAVINCI_BISHENGIR_A5
+    Value initCondition =
+        rewriter.create<arith::ConstantIntOp>(op->getLoc(), 1, int1Type);
+#else
+    Value initCondition =
+        rewriter.create<arith::ConstantIntOp>(op->getLoc(), int1Type, 1);
+#endif
+    rewriter.replaceOpWithNewOp<hivm::Conv1DL1Op>(op, resType, input, weight,
+                                                  bias, init, initCondition,
+                                                  ValueRange{}, stride, padding,
+                                                  dilation, group);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMConv2DOp
+//===----------------------------------------------------------------------===//
+struct HFusionToHIVMConv2DOp : public OpRewritePattern<hfusion::Conv2DOp> {
+  using OpRewritePattern<hfusion::Conv2DOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(hfusion::Conv2DOp op,
+                                PatternRewriter &rewriter) const override {
+    mlir::IntegerType int1Type = rewriter.getIntegerType(1);
+    auto resType = op->getResults().front().getType();
+    auto init = op.getInit();
+    auto input = op.getInput();
+    auto weight = op.getWeight();
+    auto bias = op.getBias();
+    auto group = op.getGroups();
+    auto stride = op.getStrideAttr();
+    auto padding = op.getPaddingAttr();
+    auto dilation = op.getDilationAttr();
+#ifndef BSPUB_DAVINCI_BISHENGIR_A5
+    Value initCondition =
+        rewriter.create<arith::ConstantIntOp>(op->getLoc(), 1, int1Type);
+#else
+    Value initCondition =
+        rewriter.create<arith::ConstantIntOp>(op->getLoc(), int1Type, 1);
+#endif
+    rewriter.replaceOpWithNewOp<hivm::Conv2DL1Op>(op, resType, input, weight,
+                                                  bias, init, initCondition,
+                                                  ValueRange{}, stride, padding,
+                                                  dilation, group);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMConv3DOp
+//===----------------------------------------------------------------------===//
+struct HFusionToHIVMConv3DOp : public OpRewritePattern<hfusion::Conv3DOp> {
+  using OpRewritePattern<hfusion::Conv3DOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(hfusion::Conv3DOp op,
+                                PatternRewriter &rewriter) const override {
+    mlir::IntegerType int1Type = rewriter.getIntegerType(1);
+    auto resType = op->getResults().front().getType();
+    auto init = op.getInit();
+    auto input = op.getInput();
+    auto weight = op.getWeight();
+    auto bias = op.getBias();
+    auto group = op.getGroups();
+    auto stride = op.getStrideAttr();
+    auto padding = op.getPaddingAttr();
+    auto dilation = op.getDilationAttr();
+#ifndef BSPUB_DAVINCI_BISHENGIR_A5
+    Value initCondition =
+        rewriter.create<arith::ConstantIntOp>(op->getLoc(), 1, int1Type);
+#else
+    Value initCondition =
+        rewriter.create<arith::ConstantIntOp>(op->getLoc(), int1Type, 1);
+#endif
+    rewriter.replaceOpWithNewOp<hivm::Conv3DL1Op>(op, resType, input, weight,
+                                                  bias, init, initCondition,
+                                                  ValueRange{}, stride, padding,
+                                                  dilation, group);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMSortOp
+//===----------------------------------------------------------------------===//
+struct HFusionToHIVMSortOp : public OpRewritePattern<hfusion::SortOp> {
+  using OpRewritePattern<hfusion::SortOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::SortOp op,
+                                PatternRewriter &rewriter) const override {
+    SmallVector<Value> dsts;
+    if (failed(
+            tensor::getOrCreateDestinations(rewriter, op.getLoc(), op, dsts)))
+      return failure();
+    rewriter.replaceOpWithNewOp<hivm::VSortOp>(
+        op, op->getResultTypes(), op.getSrc(), ValueRange{dsts},
+        op.getDescending(), op.getSortAxis());
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMGatherLoadOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMGatherLoadOp
+    : public OpRewritePattern<hfusion::GatherLoadOp> {
+  using OpRewritePattern<hfusion::GatherLoadOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::GatherLoadOp op,
+                                PatternRewriter &rewriter) const override {
+    auto newOp = rewriter.create<hivm::GatherLoadOp>(
+        op->getLoc(), op->getResultTypes(), op->getOperands());
+
+    if (auto evict = op.getEvictAttr()) {
+      auto attrVal = static_cast<hivm::EvictionPolicy>(evict.getPolicy());
+      newOp->setAttr("evict",
+                     hivm::EvictionPolicyAttr::get(op->getContext(), attrVal));
+    }
+    if (auto cache = op.getCacheAttr()) {
+      auto attrVal = static_cast<hivm::CacheModifier>(cache.getPolicy());
+      newOp->setAttr("cache",
+                     hivm::CacheModifierAttr::get(op->getContext(), attrVal));
+    }
+    if (auto isVolatile = op.getIsVolatileAttr())
+      newOp->setAttr("isVolatile", isVolatile);
+
+    rewriter.replaceOp(op, newOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMScatterStoreOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMScatterStoreOp
+    : public OpRewritePattern<hfusion::ScatterStoreOp> {
+  using OpRewritePattern<hfusion::ScatterStoreOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::ScatterStoreOp op,
+                                PatternRewriter &rewriter) const override {
+    auto newOp = rewriter.create<hivm::ScatterStoreOp>(
+        op->getLoc(), op->getResultTypes(), op->getOperands());
+
+    if (auto evict = op.getEvictAttr()) {
+      auto attrVal = static_cast<hivm::EvictionPolicy>(evict.getPolicy());
+      newOp->setAttr("evict",
+                     hivm::EvictionPolicyAttr::get(op->getContext(), attrVal));
+    }
+    if (auto cache = op.getCacheAttr()) {
+      auto attrVal = static_cast<hivm::CacheModifier>(cache.getPolicy());
+      newOp->setAttr("cache",
+                     hivm::CacheModifierAttr::get(op->getContext(), attrVal));
+    }
+
+    rewriter.replaceOp(op, newOp);
+    return success();
+  }
+};
+
+struct HFusionAttrsLowering : public OpRewritePattern<annotation::MarkOp> {
+  using OpRewritePattern<annotation::MarkOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(annotation::MarkOp op,
+                                PatternRewriter &rewriter) const override {
+    auto hfusionMultiBufferAttr = hfusion::MultiBufferAttr::name;
+    auto hfusionStrideAlignDimsAttr = hfusion::StrideAlignDimsAttr::name;
+    auto hfusionStrideAlignValueInByteAttr =
+        hfusion::StrideAlignValueInByteAttr::name;
+
+    bool attrMatchStatus = false;
+
+    for (auto iter : op->getAttrDictionary()) {
+      if (iter.getName() == hfusionMultiBufferAttr) {
+        auto attrVal = op->getAttr(hfusionMultiBufferAttr);
+        op->removeAttr(hfusionMultiBufferAttr);
+        auto hivmMultiBufferAttr = hivm::MultiBufferAttr::name;
+        op->setAttr(hivmMultiBufferAttr, attrVal);
+        attrMatchStatus = true;
+      } else if (iter.getName() == hfusionStrideAlignDimsAttr) {
+        auto attrVal = op->getAttr(hfusionStrideAlignDimsAttr);
+        op->removeAttr(hfusionStrideAlignDimsAttr);
+        auto hivmStrideAlignDimsAttr = hivm::StrideAlignDimsAttr::name;
+        op->setAttr(hivmStrideAlignDimsAttr, attrVal);
+        attrMatchStatus = true;
+      } else if (iter.getName() == hfusionStrideAlignValueInByteAttr) {
+        auto attrVal = op->getAttr(hfusionStrideAlignValueInByteAttr);
+        op->removeAttr(hfusionStrideAlignValueInByteAttr);
+        auto hivmStrideAlignValueInByteAttr =
+            hivm::StrideAlignValueInByteAttr::name;
+        op->setAttr(hivmStrideAlignValueInByteAttr, attrVal);
+        attrMatchStatus = true;
+      }
+    }
+    if (!attrMatchStatus) {
+      return failure();
+    }
+    return success();
+  }
+};
+
+struct HFusionBindSubBlockAttrLowing : public OpRewritePattern<scf::ForOp> {
+  using OpRewritePattern<scf::ForOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(scf::ForOp forOp,
+                                PatternRewriter &rewriter) const override {
+    if (!forOp->hasAttrOfType<UnitAttr>(hfusion::BindSubBlockAttr::name))
+      return failure();
+
+    // The func requires two vectors in order for us to spread
+    // the loop across two vec sub-blocks.
+    // It make no sense to perform the spread if vec < 2.
+    // In this case, raise a warning and fallback.
+    auto parentFunc = forOp->getParentOfType<func::FuncOp>();
+    auto coreRatio =
+        parentFunc ? hivm::getCoreRatioAttr(parentFunc) : TCoreRatioAttr();
+    if (coreRatio && coreRatio.getVector() < 2) {
+      forOp->emitWarning(
+          "[hfusion-bind-sub-block]: hivm.core_ratio<" +
+          std::to_string(coreRatio.getCube()) + ", " +
+          std::to_string(coreRatio.getVector()) +
+          "> gives fewer than two vector sub-blocks per block; sub-block "
+          "binding needs two, dropping the bind_sub_block hint");
+      rewriter.modifyOpInPlace(
+          forOp, [&]() { forOp->removeAttr(hfusion::BindSubBlockAttr::name); });
+      return success();
+    }
+
+    rewriter.modifyOpInPlace(
+        forOp, [&]() { forOp->removeAttr(hfusion::BindSubBlockAttr::name); });
+    setSubBlockMapping(rewriter, forOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMEmbeddingGatherOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMEmbeddingGatherOp
+    : public OpRewritePattern<hfusion::EmbeddingGatherOp> {
+  using OpRewritePattern<hfusion::EmbeddingGatherOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::EmbeddingGatherOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto loc = op.getLoc();
+    auto src = op.getSrc();
+    auto idx = op.getIndex();
+    auto dst = op.getDst();
+    auto bound = op.getBound();
+    auto offsets = op.getOffsets();
+    auto numels = op.getNumels();
+    auto ret = op.getResult();
+    auto retTy = ret.getType();
+
+    auto gatherOp = rewriter.create<hivm::EmbeddingGatherOp>(
+        loc, retTy, src, idx, dst, bound, offsets, numels);
+
+    gatherOp->setAttr(VFModeAttr::name,
+                      VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, gatherOp);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMIndirectLoadOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMIndirectLoadOp
+    : public OpRewritePattern<hfusion::IndirectLoadOp> {
+  using OpRewritePattern<hfusion::IndirectLoadOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::IndirectLoadOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto loc = op.getLoc();
+    auto ret = op.getResult();
+    auto retTy = ret.getType();
+    auto src = op.getSrc();
+    auto offset = op.getOffsets();
+    auto dst = op.getDst();
+    auto mask = op.getMask();
+    auto other = op.getOther();
+
+    auto indirectLoadOp = rewriter.create<hivm::IndirectLoadOp>(
+        loc, retTy, src, offset, dst, mask, other);
+    indirectLoadOp->setAttr("isVolatile",
+                            rewriter.getBoolAttr(op.getIsVolatile()));
+
+    indirectLoadOp->setAttr(VFModeAttr::name,
+                            VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, indirectLoadOp);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMStrideLoadOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMStrideLoadOp
+    : public OpRewritePattern<hfusion::StrideLoadOp> {
+  using OpRewritePattern<hfusion::StrideLoadOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::StrideLoadOp op,
+                                PatternRewriter &rewriter) const override {
+    auto strideLoadOp = rewriter.create<hivm::StrideLoadOp>(
+        op.getLoc(), op.getResult().getType(), op.getSrc(), op.getDst(),
+        op.getOffset(), op.getOther(), op.getStride(), op.getNumel());
+
+    strideLoadOp->setAttr(VFModeAttr::name,
+                          VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, strideLoadOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMStrideStoreOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMStrideStoreOp
+    : public OpRewritePattern<hfusion::StrideStoreOp> {
+  using OpRewritePattern<hfusion::StrideStoreOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::StrideStoreOp op,
+                                PatternRewriter &rewriter) const override {
+    auto strideStoreOp = rewriter.create<hivm::StrideStoreOp>(
+        op.getLoc(), op.getDst(), op.getSrc(), op.getOffset(), op.getStride(),
+        op.getNumel());
+
+    strideStoreOp->setAttr(VFModeAttr::name,
+                           VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, strideStoreOp);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMIndirectStoreOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMIndirectStoreOp
+    : public OpRewritePattern<hfusion::IndirectStoreOp> {
+  using OpRewritePattern<hfusion::IndirectStoreOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::IndirectStoreOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto loc = op.getLoc();
+    auto src = op.getSrc();
+    auto offset = op.getOffsets();
+    auto dst = op.getDst();
+    auto mask = op.getMask();
+
+    auto indirectStoreOp =
+        rewriter.create<hivm::IndirectStoreOp>(loc, dst, offset, src, mask);
+
+    indirectStoreOp->setAttr(VFModeAttr::name,
+                             VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, indirectStoreOp);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMGatherTOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMGatherTOp : public OpRewritePattern<hfusion::GatherTOp> {
+  using OpRewritePattern<hfusion::GatherTOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::GatherTOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto loc = op.getLoc();
+    auto ret = op.getResult();
+    auto retTy = ret.getType();
+    auto src = op.getSrc();
+    auto index = op.getIndex();
+    auto dst = op.getDst();
+    auto bound = op.getBound();
+    auto dim = op.getDim();
+    auto src_stride = op.getSrcStride();
+    auto index_shape = op.getIndexShape();
+    auto offsets = op.getOffsets();
+
+    auto gatherTOp =
+        rewriter.create<hivm::GatherTOp>(loc, retTy, src, index, dst, bound,
+                                         dim, src_stride, index_shape, offsets);
+
+    gatherTOp->setAttr(VFModeAttr::name,
+                       VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, gatherTOp);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMIndexPutOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMIndexPutOp : public OpRewritePattern<hfusion::IndexPutOp> {
+  using OpRewritePattern<hfusion::IndexPutOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::IndexPutOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto loc = op.getLoc();
+    auto dst = op.getDst();
+    auto index = op.getIndex();
+    auto value = op.getValue();
+    auto scatter_dim = op.getScatterDim();
+    auto bound = op.getBound();
+    auto end_offset = op.getEndOffset();
+    auto start_offset = op.getStartOffset();
+    auto dst_stride = op.getDstStride();
+
+    auto indexPutOp = rewriter.create<hivm::IndexPutOp>(
+        loc, dst, index, value, scatter_dim, bound, end_offset, start_offset,
+        dst_stride);
+
+    indexPutOp->setAttr(VFModeAttr::name,
+                        VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, indexPutOp);
+
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+// HFusionToHIVMScatterTOp
+//===----------------------------------------------------------------------===//
+
+struct HFusionToHIVMScatterTOp : public OpRewritePattern<hfusion::ScatterTOp> {
+  using OpRewritePattern<hfusion::ScatterTOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(hfusion::ScatterTOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto loc = op.getLoc();
+    auto dst = op.getDst();
+    auto value = op.getValue();
+    auto index_tile = op.getIndexTile();
+    auto index_boundary = op.getIndexBoundary();
+    auto dim = op.getDim();
+    auto dst_stride = op.getDstStride();
+    auto index_shape = op.getIndexShape();
+    auto offsets = op.getOffsets();
+
+    auto scatterTOp = rewriter.create<hivm::ScatterTOp>(
+        loc, dst, value, index_tile, index_boundary, dim, dst_stride,
+        index_shape, offsets);
+
+    scatterTOp->setAttr(VFModeAttr::name,
+                        VFModeAttr::get(op->getContext(), VFMode::SIMT));
+
+    rewriter.replaceOp(op, scatterTOp);
+
+    return success();
+  }
+};
+
+void populateHIVMOpRewritingRule(RewritePatternSet &patterns) {
+  patterns.add<HFusionAttrsLowering, HFusionBindSubBlockAttrLowing>(
+      patterns.getContext());
+}
+
+void populateLowerHFusionToHIVMPattern(RewritePatternSet &patterns) {
+  // clang-format off
+  (void)patterns.add<
+    ExtractScalarForBinaryShiftOp,
+    HFusionElemwiseOpConverter<linalg::ElemwiseBinaryOp>,
+    HFusionElemwiseOpConverter<linalg::ElemwiseUnaryOp>,
+    HFusionElemwiseOpConverter<hfusion::ElemwiseUnaryOp>,
+    HFusionElemwiseOpConverter<hfusion::ElemwiseBinaryOp>,
+    HFusionElemwiseOpConverter<hfusion::CompareOp>,
+    HFusionElemwiseOpConverter<hfusion::SelectOp>,
+    HFusionElemwiseOpConverter<hfusion::CastOp>,
+    HFusionToHIVMBitcastOp,
+    LinalgBrcOpToHIVMBrcOp,
+    LinalgFillOpToHIVMBrcOp,
+    LinalgToHIVMCopyOp,
+    HFusionLoadOpToHIVMLoadOp,
+    HFusionStoreOpToHIVMStoreOp,
+    LinalgToHIVMTransposeOp,
+    HFusionToHIVMArangeOp,
+    HFusionToHIVMGatherOp,
+    HFusionToHIVMGatherMaskOp,
+    HFusionToHIVMGatherLoadOp,
+    HFusionPrintOpToHIVMDebugOp,
+    HFusionAssertOpToHIVMDebugOp,
+    HFusionToHIVMBarrierOp,
+    HFusionToHIVMMulExtOp,
+    HFusionToHIVMMulExtUiOp,
+    HfusionToHIVMInterleaveOp,
+    HFusionToHIVMDeinterleaveOp,
+    HFusionToHIVMFlipOp,
+    HFusionToHIVMSortOp,
+    HFusionToHIVMScatterStoreOp,
+    HFusionToHIVMCumOp<hfusion::CumsumOp, hivm::VCumsumOp>,
+    HFusionToHIVMCumOp<hfusion::CumprodOp, hivm::VCumprodOp>,
+    HFusionToHIVMAtomicCasOp,
+    HFusionToHIVMAtomicXchgOp,
+    HFusionToHIVMAtomicRMWOp,
+    HFusionToHIVMConv1DOp,
+    HFusionToHIVMConv2DOp,
+    HFusionToHIVMConv3DOp
+  >(patterns.getContext());
+  // clang-format on
+}
+
+/// Patterns for SIMT-style ops ported from the Ascend950/A5 path. These set
+/// `VFMode::SIMT` and are only registered when the compilation target is an
+/// Ascend950 device; on other targets the corresponding hfusion ops are not
+/// expected to reach this pass.
+void populateLowerHFusionToHIVMSimtPatterns(RewritePatternSet &patterns) {
+  // clang-format off
+  (void)patterns.add<
+    HFusionToHIVMEmbeddingGatherOp,
+    HFusionToHIVMIndirectLoadOp,
+    HFusionToHIVMStrideLoadOp,
+    HFusionToHIVMStrideStoreOp,
+    HFusionToHIVMIndirectStoreOp,
+    HFusionToHIVMGatherTOp,
+    HFusionToHIVMIndexPutOp,
+    HFusionToHIVMScatterTOp,
+    HFusionToHIVMCumOp<hfusion::CummaxOp, hivm::VCummaxOp>,
+    HFusionToHIVMCumOp<hfusion::CumminOp, hivm::VCumminOp>
+  >(patterns.getContext());
+  // clang-format on
+}
+
+struct ConvertHFusionToHIVMPass
+    : public impl::ConvertHFusionToHIVMBase<ConvertHFusionToHIVMPass> {
+public:
+  using Base::Base;
+
+  void runOnOperation() override {
+
+    auto mod = dyn_cast<ModuleOp>(getOperation());
+    isRegBasedArch = mod && hacc::utils::isRegBasedArch(mod);
+
+    RewritePatternSet patterns(&getContext());
+    ConversionTarget target(getContext());
+    ConvertHFusionToHIVMOptions options = {this->mmMapMode};
+
+    target.addLegalDialect<hivm::HIVMDialect, memref::MemRefDialect,
+                           bufferization::BufferizationDialect,
+                           tensor::TensorDialect, arith::ArithDialect,
+                           affine::AffineDialect, scf::SCFDialect,
+                           func::FuncDialect>();
+    target.addIllegalDialect<linalg::LinalgDialect, hfusion::HFusionDialect>();
+
+    populateLowerHFusionToHIVMPattern(patterns);
+    if (isRegBasedArch)
+      populateLowerHFusionToHIVMSimtPatterns(patterns);
+    populateReductionPatternsAndLegality(patterns, target, isRegBasedArch);
+    populateMatmulPatternsAndLegality(patterns, target, options,
+                                      isRegBasedArch);
+    if (failed(applyPartialConversion(getOperation(), target,
+                                      std::move(patterns)))) {
+      signalPassFailure();
+    }
+
+    Operation *moduleOp = getOperation();
+    auto *ctx = &getContext();
+    moduleOp->walk([&, this](func::FuncOp funcOp) {
+      if (hacc::utils::isHost(funcOp))
+        // avoid convert host op to hivm op
+        return;
+
+      // rewrite op within cur funcOp
+      RewritePatternSet hivmOpPatterns(ctx);
+      populateHIVMOpRewritingRule(hivmOpPatterns);
+      (void)applyPatternsGreedily(funcOp, std::move(hivmOpPatterns));
+      if (this->isEnableUbufSaving) {
+        funcOp->setAttr(hivm::EnableSavingUbAttr::name,
+                        UnitAttr::get(&getContext()));
+      }
+      if (this->isDisableSizeAlignForCast) {
+        funcOp->setAttr(hivm::DisableSizeAlignForCastAttr::name,
+                        UnitAttr::get(&getContext()));
+      }
+    });
+
+    moduleOp->walk([&](hivm::MmadL1Op op) {
+      std::optional<Operation *> tileCubeMarkOp = utils::getAnnotateOpWithAttr(
+          op.getResult(0), hivm::TileMixCubeNumAttr::name);
+      if (tileCubeMarkOp.has_value()) {
+        IntegerAttr tileCubeAttrVal =
+            tileCubeMarkOp.value()->getAttrOfType<IntegerAttr>(
+                hivm::TileMixCubeNumAttr::name);
+        op->setAttr(hivm::TileMixCubeNumAttr::name, tileCubeAttrVal);
+      }
+    });
+
+    moduleOp->walk([&](annotation::MarkOp markOp) {
+      if (markOp.isAnnotatedBy(hivm::TileMixCubeNumAttr::name))
+        markOp.erase();
+    });
+
+    moduleOp->walk([&](annotation::MarkOp markOp) {
+      if (markOp.isAnnotatedBy("enable_i4"))
+        markOp.erase();
+    });
+  }
+};
+} // namespace
+
+std::unique_ptr<Pass> mlir::createHFusionToHIVMConversionPass() {
+  return std::make_unique<ConvertHFusionToHIVMPass>();
+}
+
+std::unique_ptr<Pass> mlir::createHFusionToHIVMConversionPass(
+    const ConvertHFusionToHIVMOptions &option) {
+  return std::make_unique<ConvertHFusionToHIVMPass>(option);
+}

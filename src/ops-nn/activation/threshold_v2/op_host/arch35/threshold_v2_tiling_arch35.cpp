@@ -1,0 +1,204 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file threshold_v2_tiling_arch35.cpp
+ * \brief
+ */
+
+#include "threshold_v2_tiling_arch35.h"
+#include "log/log.h"
+#include "platform/platform_info.h"
+#include "tiling/platform/platform_ascendc.h"
+#include "activation/threshold_v2/op_kernel/arch35/threshold_dag.h"
+#include "activation/threshold_v2/op_kernel/arch35/threshold_tiling_struct.h"
+#include "register/op_impl_registry.h"
+#include "atvoss/elewise/elewise_tiling.h"
+#include "atvoss/broadcast/broadcast_tiling.h"
+#include "util/math_util.h"
+#include <unordered_map>
+
+using namespace AscendC;
+using namespace ge;
+using namespace ThresholdV2Ns;
+using namespace ThresholdOp;
+using namespace platform_ascendc;
+using namespace Ops::Base;
+
+namespace optiling {
+
+ge::graphStatus ThresholdTiling::CalcInputDtype()
+{
+    OP_LOGD(tilingContext->GetNodeName(), "ThresholdV2Tiling CalcInputDtype enter.");
+
+    auto IsSupportedDtype = [](ge::DataType dtype) -> bool {
+        return dtype == ge::DT_FLOAT16 || dtype == ge::DT_BF16 || dtype == ge::DT_INT8 || dtype == ge::DT_UINT8 ||
+               dtype == ge::DT_INT16 || dtype == ge::DT_INT32 || dtype == ge::DT_FLOAT || dtype == ge::DT_INT64;
+    };
+
+    auto inputDesc = tilingContext->GetInputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, inputDesc);
+    this->inputDtype = inputDesc->GetDataType();
+    OP_CHECK_IF(!IsSupportedDtype(this->inputDtype),
+                OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(tilingContext->GetNodeName(), "x",
+                                                      ge::TypeUtils::DataTypeToSerialString(this->inputDtype).c_str(),
+                                                      "The dtype of x must be within the range DT_FLOAT16, DT_BF16, "
+                                                      "DT_INT8, DT_UINT8, DT_INT16, DT_INT32, DT_FLOAT and DT_INT64"),
+                return ge::GRAPH_FAILED);
+
+    auto thresholdDesc = tilingContext->GetInputDesc(1);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, thresholdDesc);
+    auto thresholdDtype = thresholdDesc->GetDataType();
+    OP_CHECK_IF(
+        !IsSupportedDtype(thresholdDtype),
+        OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(tilingContext->GetNodeName(), "threshold",
+                                              ge::TypeUtils::DataTypeToSerialString(thresholdDtype).c_str(),
+                                              "The dtype of threshold must be within the range DT_FLOAT16, DT_BF16, "
+                                              "DT_INT8, DT_UINT8, DT_INT16, DT_INT32, DT_FLOAT and DT_INT64"),
+        return ge::GRAPH_FAILED);
+
+    auto valueDesc = tilingContext->GetOptionalInputDesc(2);
+    if (valueDesc != nullptr) {
+        auto valueDtype = valueDesc->GetDataType();
+        OP_CHECK_IF(
+            !IsSupportedDtype(valueDtype),
+            OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(tilingContext->GetNodeName(), "value",
+                                                  ge::TypeUtils::DataTypeToSerialString(valueDtype).c_str(),
+                                                  "The dtype of value must be within the range DT_FLOAT16, DT_BF16, "
+                                                  "DT_INT8, DT_UINT8, DT_INT16, DT_INT32, DT_FLOAT and DT_INT64"),
+            return ge::GRAPH_FAILED);
+    }
+
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus ThresholdTiling::CalcOutputDtype()
+{
+    OP_LOGD(tilingContext->GetNodeName(), "ThresholdV2Tiling CalcOutputDtype enter.");
+    auto outputDesc = tilingContext->GetOutputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, outputDesc);
+    this->outputDtype = outputDesc->GetDataType();
+
+    if (this->outputDtype != this->inputDtype) {
+        OP_LOGE_FOR_INVALID_DTYPE_WITH_REASON(
+            tilingContext->GetNodeName(), "y", ge::TypeUtils::DataTypeToSerialString(this->outputDtype).c_str(),
+            std::string("The dtype of y must be the same as " +
+                        ge::TypeUtils::DataTypeToSerialString(this->inputDtype) + " of x")
+                .c_str());
+        return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus ThresholdTiling::CheckShape()
+{
+    OP_LOGD(tilingContext->GetNodeName(), "ThresholdV2Tiling CheckShape enter.");
+    auto xStorageShape = tilingContext->GetInputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, xStorageShape);
+    const gert::Shape& inputXShape = EnsureNotScalar(xStorageShape->GetStorageShape());
+
+    auto valueStorageShape = tilingContext->GetOptionalInputShape(2);
+    if (valueStorageShape == nullptr) {
+        hasValue = false;
+    }
+
+    auto outputStorageShape = tilingContext->GetOutputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, outputStorageShape);
+    const gert::Shape& outputYShape = EnsureNotScalar(outputStorageShape->GetStorageShape());
+
+    OP_CHECK_IF(inputXShape != outputYShape,
+                OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(tilingContext->GetNodeName(), "y", ToString(outputYShape).c_str(),
+                                                      "The shape of y must be equal to the shape of x"),
+                return ge::GRAPH_FAILED);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus ThresholdTiling::ValidateParams()
+{
+    if (CalcInputDtype() == ge::GRAPH_FAILED || CalcOutputDtype() == ge::GRAPH_FAILED ||
+        CheckShape() == ge::GRAPH_FAILED) {
+        return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus ThresholdTiling::RunTiling()
+{
+    if (ValidateParams() == ge::GRAPH_FAILED) {
+        return ge::GRAPH_FAILED;
+    }
+    ElewiseBaseTiling elewiseBaseTiling(tilingContext);
+
+    auto tiling = tilingContext->GetTilingData<EleBaseTilingDataV2>();
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, tiling);
+
+    ge::graphStatus res = ge::GRAPH_FAILED;
+    if (this->inputDtype == ge::DT_BF16) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdCastDag<bfloat16_t, float>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdCastDagNoValue<bfloat16_t, float>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_FLOAT16) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<half>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<half>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_FLOAT) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<float>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<float>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_INT8) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<int8_t>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<int8_t>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_UINT8) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<uint8_t>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<uint8_t>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_INT16) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<int16_t>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<int16_t>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_INT32) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<int32_t>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<int32_t>::OpDag>(*tiling);
+    } else if (this->inputDtype == ge::DT_INT64) {
+        res = hasValue ? elewiseBaseTiling.DoTiling<ThresholdDag<int64_t>::OpDag>(*tiling) :
+                         elewiseBaseTiling.DoTiling<ThresholdDagNoValue<int64_t>::OpDag>(*tiling);
+    } else {
+        OP_LOGE_FOR_INVALID_DTYPE(
+            tilingContext->GetNodeName(), "x", ge::TypeUtils::DataTypeToSerialString(this->inputDtype).c_str(),
+            "The dtype of x must be within the range fp16, bf16, fp32, int64, int32, int16, uint8 and int8");
+        return ge::GRAPH_FAILED;
+    }
+
+    tilingContext->GetWorkspaceSizes(1)[0] = 0;
+    tilingContext->SetTilingKey(GET_TPL_TILING_KEY(tiling->scheMode, hasValue ? TPL_HAS_VALUE : TPL_NO_VALUE));
+    tilingContext->SetBlockDim(tiling->blockNum);
+    return res;
+}
+
+ge::graphStatus TilingForThreshold(gert::TilingContext* tilingContext)
+{
+    OP_LOGD(tilingContext->GetNodeName(), "TilingForThreshold arch35 is running");
+    auto compileInfo = tilingContext->GetCompileInfo<ThresholdV2CompileInfo>();
+    OP_CHECK_NULL_WITH_CONTEXT(tilingContext, compileInfo);
+    ThresholdTiling baseOpTiling(tilingContext);
+    OP_LOGD(tilingContext->GetNodeName(), "ThresholdV2Tiling RunTiling start.");
+    return baseOpTiling.RunTiling();
+}
+
+ge::graphStatus TilingPrepareForThreshold(gert::TilingParseContext* context)
+{
+    auto compileInfoPtr = context->GetCompiledInfo<ThresholdV2CompileInfo>();
+    OP_CHECK_NULL_WITH_CONTEXT(context, compileInfoPtr);
+    fe::PlatFormInfos* platformInfoPtr = context->GetPlatformInfo();
+    OP_CHECK_NULL_WITH_CONTEXT(context, platformInfoPtr);
+    auto ascendcPlatform = platform_ascendc::PlatformAscendC(platformInfoPtr);
+    compileInfoPtr->coreNum = ascendcPlatform.GetCoreNumAiv();
+    ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, compileInfoPtr->ubSize);
+    return ge::GRAPH_SUCCESS;
+}
+
+IMPL_OP_OPTILING(ThresholdV2).Tiling(TilingForThreshold).TilingParse<ThresholdV2CompileInfo>(TilingPrepareForThreshold);
+
+} // namespace optiling

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Triton Optimizer Multi-Agent Config",
+  "description": "Runtime configuration for the triton-optimizer-multi-agent plugin. The active algorithm is selected by the user at session start; this file only defines available algorithms and their parameters.",
+  "type": "object",
+  "required": ["target_speedup", "max_rounds", "algorithms"],
+  "properties": {
+    "target_speedup": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Target geometric-mean speedup"
+    },
+    "max_rounds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum optimization rounds before forced stop"
+    },
+    "initial_worker_timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Initial sub-agent timeout in seconds"
+    },
+    "max_worker_timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum sub-agent timeout in seconds"
+    },
+    "npu_device_id": {
+      "type": ["integer", "null"],
+      "description": "NPU device ID for benchmarking"
+    },
+    "npu_idle": {
+      "type": "object",
+      "description": "NPU idle thresholds",
+      "properties": {
+        "aicore": { "type": "number" },
+        "aivector": { "type": "number" },
+        "npu_util": { "type": "number" },
+        "hbm": { "type": "number" }
+      }
+    },
+    "algorithms": {
+      "type": "object",
+      "description": "Available optimization algorithms. The active algorithm is chosen by the user at runtime and stored in the session state file.",
+      "patternProperties": {
+        "^[a-z0-9-]+$": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether this algorithm appears in the user selection list"
+            },
+            "params": {
+              "type": "object",
+              "description": "Algorithm-specific parameters passed to the Strategy class with the same name",
+              "default": {}
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "ScaledDotProductAttentionBackward",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "grad_output": {
+      "description": "shape (B, H, S_q, D); supports float16, bfloat16, float32"
+    },
+    "query": {
+      "description": "shape (B, H, S_q, D); same dtype as grad_output"
+    },
+    "key": {
+      "description": "shape (B, H, S_k, D); same dtype as grad_output"
+    },
+    "value": {
+      "description": "shape (B, H, S_k, D); same dtype as grad_output"
+    },
+    "attn_output": {
+      "description": "shape (B, H, S_q, D); forward pass output"
+    },
+    "logsumexp": {
+      "description": "shape (B, H, S_q); float32; logsumexp from forward pass"
+    },
+    "is_causal": {
+      "description": "bool; whether causal masking was applied"
+    }
+  },
+  "outputs": {
+    "grad_query": {
+      "description": "gradient w.r.t. query; same shape and dtype as query"
+    },
+    "grad_key": {
+      "description": "gradient w.r.t. key; same shape and dtype as key"
+    },
+    "grad_value": {
+      "description": "gradient w.r.t. value; same shape and dtype as value"
+    }
+  },
+  "reference": "import torch\nimport math\n\ndef run(grad_output, query, key, value, attn_output, logsumexp, is_causal=False):\n    query = query.float()\n    key = key.float()\n    value = value.float()\n    grad_output = grad_output.float()\n\n    B, H, S_q, D = query.shape\n    S_k = key.shape[2]\n\n    scale = 1.0 / math.sqrt(D)\n\n    # Recompute logsumexp and true forward output from query/key/value\n    # so that the golden reference uses self-consistent intermediates.\n    attn_weight = torch.matmul(query, key.transpose(-2, -1)) * scale\n    if is_causal:\n        causal_mask = torch.triu(torch.ones(S_q, S_k, device=query.device, dtype=torch.bool), diagonal=S_k - S_q + 1)\n        attn_weight = attn_weight.masked_fill(causal_mask, float('-inf'))\n    logsumexp = torch.logsumexp(attn_weight, dim=-1)\n    attn_probs = torch.exp(attn_weight - logsumexp.unsqueeze(-1))\n    attn_output = torch.matmul(attn_probs, value)\n\n    grad_value = torch.matmul(attn_probs.transpose(-2, -1), grad_output)\n    grad_attn_probs = torch.matmul(grad_output, value.transpose(-2, -1))\n    D_term = (grad_output * attn_output).sum(dim=-1, keepdim=True)\n    grad_attn_weight = attn_probs * (grad_attn_probs - D_term)\n\n    grad_query = torch.matmul(grad_attn_weight, key) * scale\n    grad_key = torch.matmul(grad_attn_weight.transpose(-2, -1), query) * scale\n\n    return grad_query.to(grad_output.dtype), grad_key.to(grad_output.dtype), grad_value.to(grad_output.dtype)\n",
+  "description": "Backward pass for scaled dot-product attention. Computes gradients w.r.t. query, key, and value tensors. The forward pass computes: attn_weight = Q @ K^T / sqrt(D), applies optional causal mask, softmax, then output = attn_probs @ V. The backward pass uses the logsumexp from forward for numerical stability. Supports GQA (grouped query attention) via repeat_interleave on key/value heads. Common in transformer training with sequence lengths 128-4096, head dimensions 64-128, batch sizes 1-32, and head counts 8-128. Triton implementation: use @triton.jit kernels with block-level tiled matmul for grad_attn_probs = dO @ V^T and grad_V = P^T @ dO; reconstruct P from logsumexp to avoid storing the full attention matrix; compute softmax backward as dS = P * (dP - rowsum(dP * P)); apply causal mask by zeroing upper-triangular tiles; use tl.dot for all matmul ops with BLOCK_M/BLOCK_N tiling along sequence dimensions; grid = (cdiv(S_q, BLOCK_M), B * H); accumulate grad_Q and grad_K via tl.dot(dS, K) and tl.dot(dS^T, Q) scaled by 1/sqrt(D)."
+}

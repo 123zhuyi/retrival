@@ -1,0 +1,41 @@
+diff --git a/mlir/include/mlir/Dialect/MemRef/IR/MemRefOps.td b/mlir/include/mlir/Dialect/MemRef/IR/MemRefOps.td
+index 2ff9d612a5ef..fa4edfadda27 100644
+--- a/mlir/include/mlir/Dialect/MemRef/IR/MemRefOps.td
++++ b/mlir/include/mlir/Dialect/MemRef/IR/MemRefOps.td
+@@ -1407,6 +1407,13 @@ def MemRef_ReinterpretCastOp
+       "OpFoldResult":$offset, "ArrayRef<OpFoldResult>":$sizes,
+       "ArrayRef<OpFoldResult>":$strides,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attrs)>,
++#ifdef BSPUB_DAVINCI_BISHENGIR
++    OpBuilder<(ins "MemRefType":$resultType, "Value":$source,
++      "ArrayRef<OpFoldResult>":$offsets,
++      "ArrayRef<OpFoldResult>":$sizes,
++      "ArrayRef<OpFoldResult>":$strides,
++      CArg<"ArrayRef<NamedAttribute>", "{}">:$attrs)>,
++#endif
+     // Build a ReinterpretCastOp with static entries.
+     OpBuilder<(ins "MemRefType":$resultType, "Value":$source,
+       "int64_t":$offset, "ArrayRef<int64_t>":$sizes,
+diff --git a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+index f9e8a2797317..535b0852ce92 100644
+--- a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
++++ b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+@@ -1833,6 +1833,18 @@ void ReinterpretCastOp::build(OpBuilder &b, OperationState &result,
+         b.getDenseI64ArrayAttr(staticStrides));
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++void ReinterpretCastOp::build(OpBuilder &b, OperationState &result,
++                              MemRefType resultType, Value source,
++                              ArrayRef<OpFoldResult> offsets,
++                              ArrayRef<OpFoldResult> sizes,
++                              ArrayRef<OpFoldResult> strides,
++                              ArrayRef<NamedAttribute> attrs) {
++  ReinterpretCastOp::build(b, result, resultType, source, offsets[0], sizes,
++                           strides, attrs);
++}
++#endif
++
+ void ReinterpretCastOp::build(OpBuilder &b, OperationState &result,
+                               MemRefType resultType, Value source,
+                               int64_t offset, ArrayRef<int64_t> sizes,

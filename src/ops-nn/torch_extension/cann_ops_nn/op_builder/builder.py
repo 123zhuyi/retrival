@@ -1,0 +1,219 @@
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
+
+import fcntl
+import os
+import shutil
+from abc import ABC, abstractmethod
+from typing import List, Union
+import torch
+from torch.utils.cpp_extension import load
+from torch.library import Library
+
+ASCEND_HOME_PATH = "ASCEND_HOME_PATH"
+_as_library = None
+
+
+def get_as_library():
+    global _as_library
+    if _as_library is None:
+        try:
+            _as_library = Library("cann_ops_nn", "DEF")
+        except RuntimeError:
+            _as_library = Library("cann_ops_nn", "FRAGMENT")
+    return _as_library
+
+
+class OpBuilder(ABC):
+    """
+    基于 aclnn 的算子构建基类
+
+    :param name: 算子名称，如 'mat_mul_v3'
+    """
+
+    _loaded_ops = {}
+
+    def __init__(self, name):
+        self.name = name
+        self._initialized = False
+
+    def _ensure_initialized(self):
+        if self._initialized:
+            return
+        import torch_npu
+
+        self._torch_npu_path = os.path.dirname(os.path.abspath(torch_npu.__file__))
+        self._package_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self._cann_path = self.get_cann_path()
+        if not hasattr(torch.ops.cann_ops_nn, self.name):
+            self.register_schema(self.schema())
+            self.register_meta()
+        self._initialized = True
+
+    def get_cann_path(self):
+        if ASCEND_HOME_PATH in os.environ and os.path.exists(
+            os.environ[ASCEND_HOME_PATH]
+        ):
+            return os.environ[ASCEND_HOME_PATH]
+        return os.path.dirname(os.path.dirname(self._torch_npu_path))
+
+    @property
+    def cann_path(self):
+        self._ensure_initialized()
+        return self._cann_path
+
+    @property
+    def torch_npu_path(self):
+        self._ensure_initialized()
+        return self._torch_npu_path
+
+    def get_absolute_paths(self, paths):
+        self._ensure_initialized()
+        return [os.path.join(self._package_path, path) for path in paths]
+
+    def resolve_source(self, cpp_filename):
+        return f"csrc/{cpp_filename}"
+
+    def register_schema(self, op_schema: Union[str, List[str]]):
+        if isinstance(op_schema, str):
+            op_schema = [op_schema]
+        for schema in op_schema:
+            get_as_library().define(schema)
+
+    @abstractmethod
+    def sources(self): ...
+
+    @abstractmethod
+    def schema(self): ...
+
+    @abstractmethod
+    def register_meta(self): ...
+
+    def _custom_opp_paths(self):
+        custom_opp_paths = []
+        custom_opp_env = os.environ.get("ASCEND_CUSTOM_OPP_PATH", "")
+        for custom_opp_path in custom_opp_env.split(os.pathsep):
+            custom_opp_path = custom_opp_path.strip()
+            if custom_opp_path and os.path.isdir(custom_opp_path):
+                custom_opp_paths.append(custom_opp_path)
+        vendors_dir = os.path.join(self._cann_path, "opp", "vendors")
+        if os.path.isdir(vendors_dir):
+            for vendor_name in sorted(os.listdir(vendors_dir)):
+                vendor_dir = os.path.join(vendors_dir, vendor_name)
+                if os.path.isdir(vendor_dir):
+                    custom_opp_paths.append(vendor_dir)
+        return custom_opp_paths
+
+    def include_paths(self):
+        self._ensure_initialized()
+        paths = []
+        for vendor_dir in self._custom_opp_paths():
+            inc = os.path.join(vendor_dir, "op_api", "include")
+            if os.path.isdir(inc):
+                paths.append(inc)
+        paths.extend(
+            [
+                os.path.join(self._cann_path, "include"),
+                os.path.join(self._cann_path, "include/aclnnop"),
+                os.path.join(self._torch_npu_path, "include"),
+                os.path.join(self._torch_npu_path, "include/third_party/hccl/inc"),
+                os.path.join(self._torch_npu_path, "include/third_party/acl/inc"),
+                os.path.join(self._torch_npu_path, "include/third_party/op-plugin"),
+                os.path.join(self._package_path, "common"),
+            ]
+        )
+        return paths
+
+    def cxx_args(self):
+        args = [
+            "-O3",
+            "-w",
+            "-fPIC",
+            "-fstack-protector-all",
+            "-Wl,-z,relro,-z,now,-z,noexecstack",
+            "-pie",
+            "-s",
+            "-fvisibility=hidden",
+            "-D_FORTIFY_SOURCE=2",
+        ]
+        major, minor = torch.__version__.split(".")[:2]
+        major, minor = int(major), int(minor)
+        args.append(f"-DCURRENT_VERSION=V{major}R{minor}")
+        if major > 2 or (major == 2 and minor >= 14):
+            args.append("-std=c++20")
+        else:
+            args.append("-std=c++17")
+        if torch._C._GLIBCXX_USE_CXX11_ABI:
+            args.append("-D_GLIBCXX_USE_CXX11_ABI=1")
+        else:
+            args.append("-D_GLIBCXX_USE_CXX11_ABI=0")
+        return args
+
+    def extra_ldflags(self):
+        self._ensure_initialized()
+        flags = []
+        for vendor_dir in self._custom_opp_paths():
+            lib = os.path.join(vendor_dir, "op_api", "lib")
+            if os.path.isdir(lib):
+                flags.append("-L" + lib)
+        flags.extend(
+            [
+                "-L" + os.path.join(self._cann_path, "lib64"),
+                "-lascendcl",
+                "-L" + os.path.join(self._torch_npu_path, "lib"),
+                "-ltorch_npu",
+            ]
+        )
+        return flags
+
+    def load(self, verbose=True):
+        self._ensure_initialized()
+        if self.name in OpBuilder._loaded_ops:
+            return OpBuilder._loaded_ops[self.name]
+
+        if shutil.which("ninja") is None:
+            raise RuntimeError(
+                f"ninja is required to JIT compile operator '{self.name}', "
+                f"please install it via 'pip install ninja'"
+            )
+
+        ext_dir = os.path.expanduser(
+            os.environ.get(
+                "TORCH_EXTENSIONS_DIR", os.path.join("~", ".cache", "torch_extensions")
+            )
+        )
+        os.makedirs(ext_dir, exist_ok=True)
+        lock_path = os.path.join(ext_dir, f"{self.name}.compile.lock")
+
+        with open(lock_path, "w") as lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            if self.name in OpBuilder._loaded_ops:
+                return OpBuilder._loaded_ops[self.name]
+
+            try:
+                op_module = load(
+                    name=self.name,
+                    sources=self.get_absolute_paths(self.sources()),
+                    extra_include_paths=self.get_absolute_paths(self.include_paths()),
+                    extra_cflags=self.cxx_args(),
+                    extra_ldflags=self.extra_ldflags(),
+                    verbose=verbose,
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to JIT compile operator '{self.name}': {e}\n"
+                    f"Common causes:\n"
+                    f"  1. CANN toolkit not sourced: source <cann_path>/set_env.sh\n"
+                    f"  2. Missing compiler: ensure gcc/g++ in PATH\n"
+                    f"  3. Missing ninja: pip install ninja"
+                ) from e
+
+            OpBuilder._loaded_ops[self.name] = op_module
+            return op_module

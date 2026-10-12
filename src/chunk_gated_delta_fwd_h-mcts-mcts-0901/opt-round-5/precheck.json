@@ -1,0 +1,27 @@
+{
+  "category": "chunk_gated_delta_fwd_h",
+  "template_path": ".claude/template/chunk_gated_delta_fwd_h.md",
+  "template_exists": false,
+  "layer1_constraints_loaded": [
+    "D1: each program holds full K; V dim may be V-tiled across programs (w@S reduces over K)",
+    "D2: chunk recurrence is strictly serial within (b,hv) — S_{i+1} depends on S_i",
+    "D3: state S must remain fp32 register-resident; casts only on store",
+    "D4: numerical stability via exp() domain guard / clamp; g is chunk-local log decay",
+    "D5: BLOCK_K * BLOCK_V <= 1024 register budget on 910b1",
+    "D6: BLOCK_V = min(BLOCK_V, V)",
+    "D7: launch with multibuffer=True, unit_flag=True",
+    "D8: if speed anomaly, check benchmark baseline pollution first"
+  ],
+  "loaded_via": "explicit_path",
+  "matched_patterns": [
+    "fused chunk-recurrence GDN fwd-H (S[K,BV] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split)",
+    "GQA head-group index-select into flat [BH,T,D]",
+    "in-kernel varlen seq-prefix chunk offset (no host python loops)"
+  ],
+  "analysis_reasoning": "R5 is a fresh MCTS root expansion (parent=root, pending_expansion). The two prior root children (opt-round-1 chain, opt-round-3 chain) both reached 5x target (best 7.33x) with the same fused chunk-recurrence algorithm family. Per operator_experience.md, the correct MCTS exploitation step when a parent already exceeds target is 're-anchor + one untested single-variable probe' to make the node independently reproducible against the freeze-anchored 6402eb golden. The genuinely untested launch knob after R4's num_warps probe is multibuffer (True/False). Chosen direction: re-anchor the documented champion recipe (BV=min(64,V), fp32-ieee dots, multibuffer/unit_flag launch, nw=4) against the 6402eb golden in a fresh work_dir, verify 8/8, then Phase-4 A/B probe multibuffer=False.",
+  "probe_plan": [
+    "anchor: champion-equivalent kernel, nw=4, multibuffer=True, unit_flag=True",
+    "opt_iter_1: multibuffer=False (genuinely untested launch knob; R4 only probed num_warps 4->8)",
+    "if multibuffer=False regresses, revert to anchor and record negative data point"
+  ]
+}

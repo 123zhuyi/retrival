@@ -1,0 +1,6 @@
+testcase_name,op_name,input_dtypes,input_ori_shapes,output_ori_shapes,input_ori_formats,output_ori_formats,attributes,input_shapes,output_dtypes,output_shapes,input_formats,output_formats,input_data_ranges,precision_tolerances,absolute_precision,soc_series
+gelu_v2_fuzz_220,gelu_v2,"('float32',)","((40, 24),)","((40, 24),)","('ND',)","('ND',)",{'approximate': 'tanh'},"((40, 24),)","('float32',)","((40, 24),)","('ND',)","('ND',)","((nan, nan),)",,1e-08,
+gelu_v2_fuzz_103,gelu_v2,"('float16',)","((22, 48),)","((22, 48),)","('NCHW',)","('NCHW',)",{'approximate': 'none'},"((22, 48),)","('float16',)","((22, 48),)","('NCHW',)","('NCHW',)","((-1, 1, nan, -0.0, inf),)",,1e-08,
+gelu_v2_fuzz_158,gelu_v2,"('bfloat16',)","((34, 40, 25, 48),)","((34, 40, 25, 48),)","('NCHW',)","('NCHW',)",{'approximate': 'tanh'},"((34, 40, 25, 48),)","('bfloat16',)","((34, 40, 25, 48),)","('NCHW',)","('NCHW',)","((3.389531389251505e+38, 3.389531389251505e+38),)",,1e-08,
+gelu_v2_fuzz_44,gelu_v2,"('float16',)","((25, 16),)","((25, 16),)","('ND',)","('ND',)",{'approximate': 'none'},"((25, 16),)","('float16',)","((25, 16),)","('ND',)","('ND',)","((-1, 1),)",,1e-08,
+gelu_v2_fuzz_62,gelu_v2,"('float32',)","((16, 20),)","((16, 20),)","('ND',)","('ND',)",{'approximate': 'none'},"((16, 20),)","('float32',)","((16, 20),)","('ND',)","('ND',)","((inf, inf),)",,1e-08,

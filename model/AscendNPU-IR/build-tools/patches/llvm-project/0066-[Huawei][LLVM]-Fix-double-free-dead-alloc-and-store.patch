@@ -1,0 +1,35 @@
+diff --git a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+index 4879c5cc98ea..42e9eee7bab5 100644
+--- a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
++++ b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+@@ -160,6 +160,22 @@ static bool resultIsNotRead(Operation *op, std::vector<Operation *> &uses) {
+ }
+ 
+ void eraseDeadAllocAndStores(RewriterBase &rewriter, Operation *parentOp) {
++#if BSPUB_DAVINCI_BISHENGIR
++  llvm::SetVector<Operation *> opToErase;
++  parentOp->walk([&](memref::AllocOp op) {
++    std::vector<Operation *> candidates;
++    if (resultIsNotRead(op, candidates)) {
++      for(auto candidate: candidates)
++        opToErase.insert(candidate);
++      opToErase.insert(op.getOperation());
++    }
++  });
++  for (Operation *op : opToErase) {
++    if (op->use_empty())
++      rewriter.eraseOp(op);
++  }
++  return;
++#else
+   std::vector<Operation *> opToErase;
+   parentOp->walk([&](memref::AllocOp op) {
+     std::vector<Operation *> candidates;
+@@ -171,6 +187,7 @@ void eraseDeadAllocAndStores(RewriterBase &rewriter, Operation *parentOp) {
+   for (Operation *op : opToErase) {
+     rewriter.eraseOp(op);
+   }
++#endif
+ }
+ 
+ static SmallVector<OpFoldResult>

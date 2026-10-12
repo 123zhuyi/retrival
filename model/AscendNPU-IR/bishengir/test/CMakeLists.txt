@@ -1,0 +1,85 @@
+add_subdirectory(CAPI)
+add_subdirectory(lib)
+
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  add_subdirectory(python)
+endif()
+
+llvm_canonicalize_cmake_booleans(
+  MLIR_ENABLE_BINDINGS_PYTHON
+  SHMEM_BUILD_TEMPLATE
+)
+
+configure_lit_site_cfg(
+  ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
+  ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
+  MAIN_CONFIG
+  ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
+)
+
+set(BISHENGIR_TEST_DEPENDS
+  FileCheck count not
+  bishengir-compile
+  bishengir-opt
+  bishengir-options-tblgen
+  bishengir-target-spec-tblgen
+  bishengir-capi-ir-test
+  bishengir-capi-pass-test
+  # These really shouldnt be here, to remove from the testcases in the future
+  opt llc llvm-dis
+)
+
+# Tests using mlir-cpu-runner (REQUIRES: execution-engine) need the runner
+# and its runtime support libraries built before lit runs.
+if(MLIR_ENABLE_EXECUTION_ENGINE)
+  list(APPEND BISHENGIR_TEST_DEPENDS
+    mlir-cpu-runner
+    mlir_runner_utils
+    mlir_c_runner_utils
+  )
+endif()
+
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  list(APPEND BISHENGIR_TEST_DEPENDS
+    MLIRPythonModules
+    BiShengIRPythonModules
+  )
+endif()
+
+if(MLIR_INCLUDE_INTEGRATION_TESTS)
+  option(BISHENGIR_RUN_NPU_TESTS "Run AscendNPU tests.")
+endif()
+
+llvm_canonicalize_cmake_booleans(
+  LLVM_BUILD_EXAMPLES
+  MLIR_INCLUDE_INTEGRATION_TESTS
+  BISHENGIR_RUN_NPU_TESTS
+)
+
+if(BISHENGIR_RUN_NPU_TESTS)
+  add_subdirectory(Integration)
+  list(APPEND BISHENGIR_TEST_DEPENDS bishengir-npu-hivm-vec-add)
+  set(ASCEND_HOME_PATH $ENV{ASCEND_HOME_PATH}
+        CACHE STRING "Ascend CANN install path")
+  if(ASCEND_HOME_PATH STREQUAL "")
+    message(FATAL_ERROR "ASCEND_HOME_PATH should be set to the installed CANN package dir")
+  endif()
+endif()
+
+add_lit_testsuite(check-bishengir "Running the bishengir regression tests"
+  ${CMAKE_CURRENT_BINARY_DIR}
+  DEPENDS ${BISHENGIR_TEST_DEPENDS}
+)
+
+# The HIVM compile tests consume the linked template bitcode. Since the
+# bitcode is built by ccec/llvm-link custom commands, make it an explicit
+# dependency of the test target.
+get_property(bishengir_template_bitcode_targets GLOBAL
+  PROPERTY bishengir_meta_op_targets)
+foreach(template_bitcode_target ${bishengir_template_bitcode_targets})
+  if(TARGET ${template_bitcode_target})
+    add_dependencies(check-bishengir ${template_bitcode_target})
+  endif()
+endforeach()
+
+set_target_properties(check-bishengir PROPERTIES FOLDER "Tests")

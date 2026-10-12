@@ -1,0 +1,540 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file rms_norm_grad_tiling.cpp
+ * \brief RmsNormGrad Tiling file
+ */
+#include "rms_norm_grad_tiling.h"
+#include "register/op_def_registry.h"
+#include "op_host/tiling_util.h"
+#include "tiling/tiling_api.h"
+
+using namespace Ops::Base;
+
+namespace optiling {
+using namespace Ops::NN::OpTiling;
+
+static const uint32_t ALIGN_32 = 8;
+static const uint32_t ALIGN_16 = 16;
+static const uint32_t ALIGN_4096 = 4096;
+static const uint32_t SIZEOF_FLOAT = 4;
+static const uint64_t DTYPE_FP32 = 1;
+static const uint64_t DTYPE_FP16 = 2;
+static const uint64_t DTYPE_BF16 = 3;
+static const uint64_t MULTI_CORE = 2;
+static const uint64_t UB_SPLIT_N = 1;
+static const uint64_t UB_SPLIT_D = 2;
+static const uint32_t BUFFER_SIZE_SPLIT_N_HIGH_PRECISION = 6080;
+static const uint32_t BUFFER_SIZE_SPLIT_D_HIGH_PRECISION = 4096;
+static const uint32_t BF16_SPLIT_N_BUFFER_SIZE = 5760;
+static const uint32_t BF16_SPLIT_D_BUFFER_SIZE = 4096;
+static const uint32_t COL_VAL_MULTIPLE_910 = 64;
+static const uint32_t FIXED_OUTPUT_WORKSPACE_SIZE = 1152000; // 5760 * 50 * 4
+static const uint32_t SMALLD_THRESHOLD = 640;
+static const uint32_t USED_UB = 195584; // (192 - 1) * 1024
+constexpr size_t MAX_DIM_NUM = 8;
+constexpr size_t MIN_DIM_X = 1;
+constexpr size_t MIN_DIM_GAMMA = 1;
+constexpr uint8_t SCHEDULE_MODE = 1;
+
+static uint32_t CalcSmallDBufferSize(uint32_t colValAlign)
+{
+    /*
+    +----------------+----------+-------------+---------------+------------+-------------+
+    |                | row      | col         | sizeof()      | buffer num | 备注        |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | inQueueDY      | ubFactor | colValAlign | sizeof(T)     | 2(1)       | BF16开DB    |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | inQueueX       | ubFactor | colValAlign | sizeof(T)     | 2(1)       | BF16开DB    |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | inQueueRstd    | ubFactor | 1           | sizeof(float) | 2(1)       | BF16开DB    |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | inQueueGamma   | 1        | colValAlign | sizeof(T)     | 1          |             |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | outQueueDX     | ubFactor | colValAlign | sizeof(T)     | 2(1)       | BF16开DB    |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | outQueueDgamma | 1        | colValAlign | sizeof(float) | 1          |             |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | ndBufFp32Buf   | ubFactor | colValAlign | sizeof(float) | 1          |             |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | ndBufFp32Buf   | ubFactor | colValAlign | sizeof(float) | 1          | B16场景申请 |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | ndBufFp32Buf   | ubFactor | colValAlign | sizeof(float) | 1          | B16场景申请 |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | nFp32Buf       | ubFactor | 1           | sizeof(float) | 1          |             |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | dFp32Buf       | 1        | colValAlign | sizeof(float) | 1          |             |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    | tmpBuf         | ubFactor | 64          | sizeof(float) | 1          |             |
+    +----------------+----------+-------------+---------------+------------+-------------+
+    */
+    uint32_t ubFactor = 1;
+    uint32_t rowWeight = 268;
+    uint32_t colWeight = 10;
+    uint32_t rowColWeight = 24;
+
+    ubFactor = (USED_UB - colValAlign * colWeight) / (colValAlign * rowColWeight + rowWeight);
+    return ubFactor * colValAlign;
+}
+
+static void LargeNSmallD(gert::TilingContext* context, RmsNormGradTilingData& tiling, uint32_t buffer_size,
+                         uint32_t row_val, uint32_t col_val, uint32_t core_num)
+{
+    if (core_num == 0 || col_val == 0) {
+        return;
+    }
+    // block split
+    uint32_t block_factor = (row_val + core_num - 1) / core_num;
+    uint32_t block_dim = (row_val + block_factor - 1) / block_factor;
+    uint32_t core_calc_num = block_factor;
+    uint32_t core_calc_tail = row_val % block_factor != 0 ? row_val - (block_dim - 1) * block_factor : 0;
+    tiling.set_block_factor(block_factor);
+    tiling.set_core_calc_num(core_calc_num);
+    tiling.set_core_calc_tail(core_calc_tail);
+    context->SetBlockDim(block_dim);
+    tiling.set_block_dim(block_dim);
+    // ub split, assume col_val <= buffer_size
+    uint32_t ub_factor = buffer_size / col_val < block_factor ? buffer_size / col_val : block_factor;
+    uint32_t ub_loop = (block_factor + ub_factor - 1) / ub_factor;
+    uint32_t ub_calc_num = ub_factor;
+    uint32_t ub_calc_tail = block_factor % ub_factor != 0 ? block_factor - (ub_loop - 1) * ub_factor : 0;
+    tiling.set_ub_split_dim(0);
+    tiling.set_ub_factor(ub_factor);
+    tiling.set_ub_calc_num(ub_calc_num);
+    tiling.set_ub_calc_tail(ub_calc_tail);
+    tiling.set_ub_calc_loop(ub_loop);
+    // calc ub factor for tail core
+    if (core_calc_tail == 0) {
+        tiling.set_ub_calc_tail_num(0);
+        tiling.set_ub_calc_tail_tail(0);
+        tiling.set_ub_calc_tail_loop(0);
+    } else {
+        uint32_t ub_tail_factor = ub_factor;
+        uint32_t ub_tail_loop = (core_calc_tail + ub_tail_factor - 1) / ub_tail_factor;
+        uint32_t ub_tail_num = ub_tail_factor;
+        uint32_t ub_tail_tail = core_calc_tail % ub_tail_factor != 0 ?
+                                    core_calc_tail - (ub_tail_loop - 1) * ub_tail_factor :
+                                    0;
+        tiling.set_ub_calc_tail_num(ub_tail_num);
+        tiling.set_ub_calc_tail_tail(ub_tail_tail);
+        tiling.set_ub_calc_tail_loop(ub_tail_loop);
+    }
+}
+
+static void LargeNLargeD(gert::TilingContext* context, RmsNormGradTilingData& tiling, uint32_t buffer_size,
+                         uint32_t row_val, uint32_t col_val, uint32_t core_num)
+{
+    // block split
+    if (core_num == 0) {
+        return;
+    }
+    uint32_t block_factor = (row_val + core_num - 1) / core_num;
+    uint32_t block_dim = (row_val + block_factor - 1) / block_factor;
+    uint32_t core_calc_num = block_factor;
+    uint32_t core_calc_tail = row_val % block_factor != 0 ? row_val - (block_dim - 1) * block_factor : 0;
+    tiling.set_block_factor(block_factor);
+    tiling.set_core_calc_num(core_calc_num);
+    tiling.set_core_calc_tail(core_calc_tail);
+    context->SetBlockDim(block_dim);
+    tiling.set_block_dim(block_dim);
+    // ub split
+    uint32_t ub_factor = buffer_size;
+    uint32_t ub_loop = (col_val + ub_factor - 1) / ub_factor;
+    uint32_t ub_calc_num = ub_factor;
+    uint32_t ub_calc_tail = col_val % ub_factor != 0 ? col_val - (ub_loop - 1) * ub_factor : 0;
+    tiling.set_ub_split_dim(1);
+    tiling.set_ub_factor(ub_factor);
+    tiling.set_ub_calc_num(ub_calc_num);
+    tiling.set_ub_calc_tail(ub_calc_tail);
+    tiling.set_ub_calc_loop(ub_loop);
+    if (core_calc_tail == 0) {
+        tiling.set_ub_calc_tail_num(0);
+        tiling.set_ub_calc_tail_tail(0);
+        tiling.set_ub_calc_tail_loop(0);
+    } else {
+        tiling.set_ub_calc_tail_num(ub_calc_num);
+        tiling.set_ub_calc_tail_tail(ub_calc_tail);
+        tiling.set_ub_calc_tail_loop(ub_loop);
+    }
+}
+
+static bool CheckInputDim(const gert::TilingContext* context, size_t dyDimNum, size_t xDimNum, size_t gammaDimNum)
+{
+    OP_CHECK_IF(xDimNum > MAX_DIM_NUM || xDimNum < MIN_DIM_X,
+                OP_LOGE_FOR_INVALID_SHAPEDIM_WITH_REASON(context->GetNodeName(), "x", std::to_string(xDimNum).c_str(),
+                                                         "in the range of [1, 8]"),
+                return false);
+    OP_CHECK_IF(gammaDimNum > MAX_DIM_NUM || gammaDimNum < MIN_DIM_GAMMA,
+                OP_LOGE_FOR_INVALID_SHAPEDIM(context->GetNodeName(), "gamma", std::to_string(gammaDimNum).c_str(),
+                                             "in the range of [1, 8]"),
+                return false);
+    if (gammaDimNum > xDimNum) {
+        std::string gammaDimsMsg = std::to_string(gammaDimNum) + " and " + std::to_string(xDimNum);
+        OP_LOGE_FOR_INVALID_SHAPEDIMS_WITH_REASON(
+            context->GetNodeName(), "gamma and x", gammaDimsMsg.c_str(),
+            "The shape dim of input gamma must be less than or equal to that of input x");
+        return false;
+    }
+    if (dyDimNum != xDimNum) {
+        std::string dimsMsg = std::to_string(dyDimNum) + " and " + std::to_string(xDimNum);
+        OP_LOGE_FOR_INVALID_SHAPEDIMS_WITH_REASON(context->GetNodeName(), "dy and x", dimsMsg.c_str(),
+                                                  "The shape dims of input dy and input x must be the same");
+        return false;
+    }
+    return true;
+}
+
+static bool CheckOutputDim(const gert::TilingContext* context, size_t dyDimNum, size_t dxDimNum, size_t gammaDimNum,
+                           size_t dgammaDimNum)
+{
+    if (dxDimNum != dyDimNum) {
+        std::string dimsMsg = std::to_string(dxDimNum) + " and " + std::to_string(dyDimNum);
+        OP_LOGE_FOR_INVALID_SHAPEDIMS_WITH_REASON(context->GetNodeName(), "dx and dy", dimsMsg.c_str(),
+                                                  "The shape dims of output dx and input dy must be the same");
+        return false;
+    }
+    if (gammaDimNum != dgammaDimNum) {
+        std::string dimsMsg = std::to_string(dgammaDimNum) + " and " + std::to_string(gammaDimNum);
+        OP_LOGE_FOR_INVALID_SHAPEDIMS_WITH_REASON(context->GetNodeName(), "dgamma and gamma", dimsMsg.c_str(),
+                                                  "The shape dims of output dgamma and input gamma must be the same");
+        return false;
+    }
+    return true;
+}
+
+static bool CheckInputAndOutputShape(const gert::TilingContext* context, const gert::StorageShape* dyShape,
+                                     const gert::StorageShape* xShape, const gert::StorageShape* dxShape)
+{
+    size_t xDimNum = xShape->GetStorageShape().GetDimNum();
+    for (uint32_t i = 0; i < xDimNum; i++) {
+        if (dyShape->GetStorageShape().GetDim(i) != xShape->GetStorageShape().GetDim(i)) {
+            std::string shapeMsg = ToString(xShape->GetStorageShape()) + " and " + ToString(dyShape->GetStorageShape());
+            OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "x and dy", shapeMsg.c_str(),
+                                                   "The shapes of input x and input dy must be the same");
+            return false;
+        }
+        if (dyShape->GetStorageShape().GetDim(i) != dxShape->GetStorageShape().GetDim(i)) {
+            std::string shapeMsg = ToString(dxShape->GetStorageShape()) + " and " +
+                                   ToString(dyShape->GetStorageShape());
+            OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "dx and dy", shapeMsg.c_str(),
+                                                   "The shapes of output dx and input dy must be the same");
+            return false;
+        }
+    }
+    OP_CHECK_IF(dyShape->GetStorageShape().GetDim(xDimNum - 1) == 0,
+                OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(context->GetNodeName(), "dy",
+                                                      ToString(dyShape->GetStorageShape()).c_str(),
+                                                      "The last axis of input dy can not be 0"),
+                return false);
+    return true;
+}
+
+static bool CheckRstdShape(const gert::TilingContext* context, const gert::StorageShape* xShape,
+                           const gert::StorageShape* rstdShape, size_t gammaDimNum)
+{
+    size_t xDimNum = xShape->GetStorageShape().GetDimNum();
+    size_t rstdDimNum = rstdShape->GetStorageShape().GetDimNum();
+    if (rstdDimNum < xDimNum - gammaDimNum) {
+        for (uint32_t i = 0; i < rstdDimNum; i++) {
+            if (rstdShape->GetStorageShape().GetDim(i) != xShape->GetStorageShape().GetDim(i)) {
+                std::string shapeMsg = ToString(rstdShape->GetStorageShape()) + " and " +
+                                       ToString(xShape->GetStorageShape());
+                std::string
+                    reasonMsg = "The shape of input rstd must be the same as the shape consisting of the first " +
+                                std::to_string(rstdDimNum) + " axes of input x";
+                OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "rstd and x", shapeMsg.c_str(),
+                                                       reasonMsg.c_str());
+                return false;
+            }
+        }
+        for (uint32_t i = rstdDimNum; i < xDimNum - gammaDimNum; i++) {
+            if (xShape->GetStorageShape().GetDim(i) != 1) {
+                std::string reasonMsg = "The " + std::to_string(i) + "th axis of input x must be 1";
+                OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(context->GetNodeName(), "x",
+                                                      ToString(xShape->GetStorageShape()).c_str(), reasonMsg.c_str());
+                return false;
+            }
+        }
+    } else {
+        for (uint32_t i = 0; i < xDimNum - gammaDimNum; i++) {
+            if (rstdShape->GetStorageShape().GetDim(i) != xShape->GetStorageShape().GetDim(i)) {
+                std::string shapeMsg = ToString(rstdShape->GetStorageShape()) + " and " +
+                                       ToString(xShape->GetStorageShape());
+                std::string
+                    reasonMsg = "The shape of input rstd must be the same as the shape consisting of the first " +
+                                std::to_string(xDimNum - gammaDimNum) + " axes of input x";
+                OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "rstd and x", shapeMsg.c_str(),
+                                                       reasonMsg.c_str());
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+static bool CheckGammaAndDgammaShape(const gert::TilingContext* context, const gert::StorageShape* gammaShape,
+                                     const gert::StorageShape* dgammaShape, const gert::StorageShape* dyShape)
+{
+    size_t gammaDimNum = gammaShape->GetStorageShape().GetDimNum();
+    size_t dyDimNum = dyShape->GetStorageShape().GetDimNum();
+    if (dyDimNum < gammaDimNum) {
+        std::string dimsMsg = std::to_string(gammaDimNum) + " and " + std::to_string(dyDimNum);
+        OP_LOGE_FOR_INVALID_SHAPEDIMS_WITH_REASON(
+            context->GetNodeName(), "gamma and dy", dimsMsg.c_str(),
+            "The shape dim of input gamma must be less than or equal to that of input dy");
+        return false;
+    }
+    for (uint32_t i = 0; i < gammaDimNum; i++) {
+        if (gammaShape->GetStorageShape().GetDim(i) != dyShape->GetStorageShape().GetDim(dyDimNum - gammaDimNum + i)) {
+            std::string shapeMsg = ToString(gammaShape->GetStorageShape()) + " and " +
+                                   ToString(dyShape->GetStorageShape());
+            std::string reasonMsg = "The shape of input gamma must be the same as the shape consisting of the last " +
+                                    std::to_string(gammaDimNum) + " axes of input dy";
+            OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "gamma and dy", shapeMsg.c_str(),
+                                                   reasonMsg.c_str());
+            return false;
+        }
+        if (dgammaShape->GetStorageShape().GetDim(i) != dyShape->GetStorageShape().GetDim(dyDimNum - gammaDimNum + i)) {
+            std::string shapeMsg = ToString(dgammaShape->GetStorageShape()) + " and " +
+                                   ToString(dyShape->GetStorageShape());
+            std::string reasonMsg = "The shape of output dgamma must be the same as the shape consisting of the last " +
+                                    std::to_string(gammaDimNum) + " axes of input dy";
+            OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "dgamma and dy", shapeMsg.c_str(),
+                                                   reasonMsg.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool CheckInputShape4RmsNormGrad(const gert::TilingContext* context)
+{
+    const gert::StorageShape* dyShape = context->GetInputShape(0);
+    const gert::StorageShape* xShape = context->GetInputShape(1);
+    const gert::StorageShape* rstdShape = context->GetInputShape(2);
+    const gert::StorageShape* gammaShape = context->GetInputShape(3);
+    const gert::StorageShape* dxShape = context->GetOutputShape(0);
+    const gert::StorageShape* dgammaShape = context->GetOutputShape(1);
+
+    size_t dyDimNum = dyShape->GetStorageShape().GetDimNum();
+    size_t xDimNum = xShape->GetStorageShape().GetDimNum();
+    size_t gammaDimNum = gammaShape->GetStorageShape().GetDimNum();
+    size_t dxDimNum = dxShape->GetStorageShape().GetDimNum();
+    size_t dgammaDimNum = dgammaShape->GetStorageShape().GetDimNum();
+
+    OP_CHECK_IF(!CheckInputDim(context, dyDimNum, xDimNum, gammaDimNum), OP_LOGE(context, "Input dim invalid."),
+                return false);
+    OP_CHECK_IF(!CheckOutputDim(context, dyDimNum, dxDimNum, gammaDimNum, dgammaDimNum),
+                OP_LOGE(context, "Output dim invalid."), return false);
+    OP_CHECK_IF(!CheckInputAndOutputShape(context, dyShape, xShape, dxShape),
+                OP_LOGE(context, "Input/Output shape invalid."), return false);
+    OP_CHECK_IF(!CheckRstdShape(context, xShape, rstdShape, gammaDimNum), OP_LOGE(context, "Rstd shape invalid."),
+                return false);
+    OP_CHECK_IF(!CheckGammaAndDgammaShape(context, gammaShape, dgammaShape, dyShape),
+                OP_LOGE(context, "Gamma/dGamma shape invalid."), return false);
+    return true;
+}
+
+static void SetChunkWorkspace(gert::TilingContext* context, RmsNormGradTilingData& tiling, uint32_t row_val,
+                              uint32_t col_val, uint32_t col_val_align, uint64_t tiling_key, uint64_t block_factor)
+{
+    uint32_t dtype_key = tiling.get_data_type() + 1;
+    uint32_t dtype_size = dtype_key == DTYPE_FP32 ? 4 : 2;
+    uint64_t totalInputSize = row_val * col_val * dtype_size * 2 + row_val * 4 + col_val * dtype_size;
+    const uint64_t WORKSPACE_LIMIT = 500 * 1024 * 1024;                             // 16MB
+    const uint64_t WORKSPACE_ENABLE = static_cast<uint64_t>(totalInputSize * 0.05); // 16MB
+    const uint32_t sizeof_float = SIZEOF_FLOAT;
+    uint32_t blockDim = tiling.get_block_dim();
+    uint32_t need_chunk = 0;
+    // Deterministic mode: calculate chunk parameters
+    uint64_t currentWorkspace = static_cast<uint64_t>(blockDim) * col_val_align * sizeof_float;
+    auto ascendc_platform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
+    platform_ascendc::SocVersion curSocVersion = ascendc_platform.GetSocVersion();
+    bool isSoc910bc = curSocVersion == platform_ascendc::SocVersion::ASCEND910B ||
+                      curSocVersion == platform_ascendc::SocVersion::ASCEND910_93;
+    if (currentWorkspace <= WORKSPACE_ENABLE || totalInputSize < WORKSPACE_LIMIT || tiling_key == 1 || !isSoc910bc) {
+        // No need for chunk processing
+        tiling.set_need_chunk(0);
+        tiling.set_chunk_size(col_val_align);
+        tiling.set_chunk_num(1);
+        tiling.set_chunk_tail(0);
+    } else {
+        // Need chunk processing to limit workspace within 16MB
+        tiling.set_need_chunk(1);
+        // Calculate chunk_size to fit within workspace limit
+        uint32_t chunk_size = (WORKSPACE_ENABLE - block_factor * 4) / (blockDim * sizeof_float);
+        // Align chunk_size to ALIGN_32
+        chunk_size = (chunk_size / ALIGN_4096) * ALIGN_4096;
+        if (chunk_size == 0) {
+            chunk_size = ALIGN_4096; // Minimum chunk size
+        }
+        tiling.set_chunk_size(chunk_size);
+        // Calculate chunk_num and chunk_tail
+        uint32_t chunk_num = (col_val + chunk_size - 1) / chunk_size;
+        uint32_t chunk_tail = col_val - (chunk_num - 1) * chunk_size;
+        tiling.set_chunk_num(chunk_num);
+        tiling.set_chunk_tail(chunk_tail);
+    }
+    OP_LOGI(context, "[RmsNormGrad] Chunk params: need_chunk=%u, chunk_size=%u, chunk_num=%u, chunk_tail=%u",
+            tiling.get_need_chunk(), tiling.get_chunk_size(), tiling.get_chunk_num(), tiling.get_chunk_tail());
+}
+
+static void SetTilingDataAndWorkspace(gert::TilingContext* context, RmsNormGradTilingData& tiling, uint32_t row_val,
+                                      uint32_t col_val, uint32_t col_val_align, float avg_factor_val,
+                                      uint64_t tiling_key)
+{
+    tiling.set_row(row_val);
+    tiling.set_col(col_val);
+    tiling.set_avg_factor(avg_factor_val);
+    uint32_t fixed_output_flag = context->GetDeterministic() == 1 ? 1 : 0;
+    OP_LOGI(context, "[RmsNormGrad] GetDeterministic state: %u", context->GetDeterministic());
+    tiling.set_fixed_output(fixed_output_flag); // 0 is atomic add, 1 is fixed add output
+
+    // Calculate chunk parameters for workspace optimization
+    uint64_t block_factor = tiling.get_block_factor();
+
+    if (fixed_output_flag == 1) {
+        SetChunkWorkspace(context, tiling, row_val, col_val, col_val_align, tiling_key, block_factor);
+    } else {
+        // Non-deterministic mode: no chunk processing needed
+        tiling.set_need_chunk(0);
+        tiling.set_chunk_size(col_val_align);
+        tiling.set_chunk_num(1);
+        tiling.set_chunk_tail(0);
+    }
+
+    context->SetTilingKey(tiling_key);
+
+    tiling.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
+    context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
+
+    // Calculate workspace size based on chunk parameters
+    size_t usr_workspace_size = 0;
+    if (fixed_output_flag == 1) {
+        uint32_t need_chunk = tiling.get_need_chunk();
+        // Deterministic mode: use chunk_size instead of col_val_align
+        if (need_chunk == 1) {
+            usr_workspace_size = (tiling.get_chunk_size() + ALIGN_32 + block_factor) * tiling.get_block_dim() *
+                                 SIZEOF_FLOAT;
+        } else {
+            usr_workspace_size = (col_val_align + ALIGN_32) * tiling.get_block_dim() * SIZEOF_FLOAT;
+        }
+    } else {
+        usr_workspace_size = ALIGN_32 * tiling.get_block_dim() * SIZEOF_FLOAT;
+    }
+    size_t sys_work_space_size = 16 * 1024 * 1024;
+    size_t* current_workspace = context->GetWorkspaceSizes(1);
+    current_workspace[0] = usr_workspace_size + sys_work_space_size;
+    OP_LOGI(context, "[RmsNormGrad] Workspace size: usr=%zu, total=%zu", usr_workspace_size, current_workspace[0]);
+}
+
+static void UpdateShapeInfo(gert::TilingContext* context, uint32_t& col_val, uint32_t& row_val, uint32_t& rstd_shape)
+{
+    const gert::StorageShape* dy_shape = context->GetInputShape(0);
+    const gert::StorageShape* rstd = context->GetInputShape(2);
+    const gert::StorageShape* gamma = context->GetInputShape(3);
+    auto gamma_dim_num = gamma->GetStorageShape().GetDimNum();
+    for (uint32_t i = 0; i < gamma_dim_num; i++) {
+        col_val *= gamma->GetStorageShape().GetDim(i);
+    }
+    for (uint32_t i = 0; i < dy_shape->GetStorageShape().GetDimNum() - gamma_dim_num; i++) {
+        row_val *= dy_shape->GetStorageShape().GetDim(i);
+    }
+    for (uint32_t i = 0; i < rstd->GetStorageShape().GetDimNum(); i++) {
+        rstd_shape *= rstd->GetStorageShape().GetDim(i);
+    }
+}
+
+static ge::graphStatus Tiling4RmsNormGrad(gert::TilingContext* context)
+{
+    OP_CHECK_IF(!CheckInputShape4RmsNormGrad(context), OP_LOGE(context, "Input shape invalid."),
+                return ge::GRAPH_FAILED);
+    context->SetScheduleMode(SCHEDULE_MODE);
+    RmsNormGradTilingData tiling;
+    uint32_t col_val = 1;
+    uint32_t row_val = 1;
+    uint32_t rstd_shape = 1;
+    UpdateShapeInfo(context, col_val, row_val, rstd_shape);
+    bool isEmptyTensor = false;
+    if (row_val == 0) {
+        isEmptyTensor = true;
+    }
+    float avg_factor_val = 1.0f / col_val;
+    if (rstd_shape != row_val) {
+        return ge::GRAPH_FAILED;
+    }
+    // calc Tiling Factor
+    auto ascendc_platform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
+    uint64_t max_ub_size;
+    ascendc_platform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, max_ub_size);
+    platform_ascendc::SocVersion curSocVersion = ascendc_platform.GetSocVersion();
+    OP_CHECK_IF(curSocVersion == platform_ascendc::SocVersion::ASCEND910 && col_val % COL_VAL_MULTIPLE_910 != 0,
+                OP_LOGE_FOR_INVALID_SHAPESIZE_WITH_REASON(
+                    context->GetNodeName(), "gamma", std::to_string(col_val).c_str(),
+                    "The shape size of input gamma must be divisible by 64 when the soc version of chip is 910"),
+                return ge::GRAPH_FAILED);
+    bool isRegbase_ = IsRegbaseSocVersion(context) ? true : false;
+    if (isRegbase_) {
+        if (isEmptyTensor) {
+            OP_LOGD(context, "RmsNormGrad Empty tiling start");
+            RmsNormGradEmptyTiling rmsNormGradTiling(context);
+            return rmsNormGradTiling.DoTiling();
+        }
+        OP_LOGD(context, "RmsNormGrad Regbase tiling start");
+        return Ops::NN::Optiling::TilingRegistry::GetInstance().DoTilingImpl(context);
+    }
+    OP_CHECK_IF(isEmptyTensor,
+                OP_LOGE_FOR_INVALID_SHAPESIZE_WITH_REASON(context->GetNodeName(), "dy", "0",
+                                                          "Parameter dy does not support empty tensor"),
+                return ge::GRAPH_FAILED);
+    uint32_t core_num = ascendc_platform.GetCoreNumAiv();
+    auto data_type = context->GetInputDesc(0)->GetDataType();
+    uint32_t buffer_size = BUFFER_SIZE_SPLIT_N_HIGH_PRECISION;
+    // key include: dtype, splitN, splitD
+    uint64_t dtype_key = DTYPE_FP32;
+    if (data_type == ge::DT_FLOAT16) {
+        dtype_key = DTYPE_FP16;
+    }
+    if (data_type == ge::DT_BF16) {
+        dtype_key = DTYPE_BF16;
+    }
+    uint32_t align_factor = dtype_key == 1 ? ALIGN_32 : ALIGN_16;
+    uint32_t col_val_align = (col_val + align_factor - 1) / align_factor * align_factor;
+    tiling.set_data_type(dtype_key - 1);
+    uint64_t ub_key = UB_SPLIT_N;
+    uint64_t tiling_key;
+
+    if (col_val <= buffer_size) {
+        tiling_key = ub_key;
+        if (col_val_align <= SMALLD_THRESHOLD) {
+            buffer_size = CalcSmallDBufferSize(col_val_align);
+        }
+        LargeNSmallD(context, tiling, buffer_size, row_val, col_val_align, core_num);
+    } else {
+        ub_key = UB_SPLIT_D;
+        tiling_key = ub_key;
+        buffer_size = BUFFER_SIZE_SPLIT_D_HIGH_PRECISION;
+        LargeNLargeD(context, tiling, buffer_size, row_val, col_val, core_num);
+    }
+    SetTilingDataAndWorkspace(context, tiling, row_val, col_val, col_val_align, avg_factor_val, tiling_key);
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus TilingPrepare4RmsNormGrad(gert::TilingParseContext* context)
+{
+    OP_LOGD(context, "Enter TilingPrepare4RmsNormGrad");
+    return ge::GRAPH_SUCCESS;
+}
+
+struct RmsNormCompileInfo {};
+IMPL_OP_OPTILING(RmsNormGrad).Tiling(Tiling4RmsNormGrad).TilingParse<RmsNormCompileInfo>(TilingPrepare4RmsNormGrad);
+
+} // namespace optiling

@@ -1,0 +1,22 @@
+diff --git a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+index 4f75ab570636..091fc1282cd5 100644
+--- a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
++++ b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+@@ -2666,10 +2666,16 @@ computeCollapsedLayoutMap(MemRefType srcType,
+       auto srcStride = SaturatedInteger::wrap(srcStrides[idx - 1]);
+       if (strict && (stride.saturated || srcStride.saturated))
+         return failure();
+-
++#if BSPUB_DAVINCI_BISHENGIR
++      if (!stride.saturated && !srcStride.saturated &&
++          (stride != srcStride && idx > startIdx))
++        return failure();
++    }
++#else
+       if (!stride.saturated && !srcStride.saturated && stride != srcStride)
+         return failure();
+     }
++#endif
+   }
+   return StridedLayoutAttr::get(srcType.getContext(), srcOffset, resultStrides);
+ }

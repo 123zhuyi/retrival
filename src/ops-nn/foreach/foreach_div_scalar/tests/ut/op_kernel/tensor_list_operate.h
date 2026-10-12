@@ -1,0 +1,129 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file tensor_list_operate.h
+ * \brief
+ */
+
+#ifndef FOREACH_DIV_SCALAR_TENSOR_LIST_OPERATE_H
+#define FOREACH_DIV_SCALAR_TENSOR_LIST_OPERATE_H
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include "data_utils.h"
+
+template <typename T1, typename T2>
+inline T1 CeilA2B(T1 a, T2 b)
+{
+    if (b == 0) {
+        return a;
+    }
+
+    return (a + b - 1) / b;
+}
+
+template <typename T>
+uint8_t* CreateTensorListForeachDivScalar(const std::vector<std::vector<uint64_t>>& shapeInfos, char* d_type)
+{
+    uint64_t tensorListDescCount = 1 + shapeInfos.size() * 2;
+    for (auto s : shapeInfos) {
+        tensorListDescCount += s.size();
+    }
+    std::vector<uint64_t> shapeSizeList;
+    uint64_t* tensorListDesc = (uint64_t*)AscendC::GmAlloc(tensorListDescCount * sizeof(uint64_t));
+    *tensorListDesc = (tensorListDescCount - shapeInfos.size()) * sizeof(uint64_t);
+    uint64_t addrIndex = 0;
+    for (size_t i = 0; i < shapeInfos.size(); i++) {
+        addrIndex++;
+        uint16_t dimCount = shapeInfos[i].size();
+        *(tensorListDesc + addrIndex) = ((uint64_t)(i) << 32) + dimCount;
+        uint64_t shapeSize = 1;
+        for (size_t j = 0; j < dimCount; j++) {
+            addrIndex++;
+            *(tensorListDesc + addrIndex) = shapeInfos[i][j];
+            shapeSize *= shapeInfos[i][j];
+        }
+        shapeSizeList.push_back(shapeSize);
+    }
+    for (size_t i = 0; i < shapeInfos.size(); i++) {
+        addrIndex++;
+        uint64_t dataSize = shapeSizeList[i] * sizeof(T);
+        uint8_t* dataPtr = (uint8_t*)AscendC::GmAlloc(CeilA2B(dataSize, 32) * 32);
+        std::stringstream fileName;
+        fileName << "./div_scalar_data/" << d_type << "_input_t_foreach_div" << i << ".bin";
+        ReadFile(fileName.str(), dataSize, dataPtr, dataSize);
+        *(tensorListDesc + addrIndex) = (uint64_t)dataPtr;
+    }
+    return (uint8_t*)tensorListDesc;
+}
+
+template <typename T>
+uint8_t* CreateListTensorForeachDivScalar(const std::vector<std::vector<uint64_t>>& shapeInfos, char* d_type)
+{
+    if (shapeInfos.empty())
+        return nullptr;
+    uint32_t N = shapeInfos.size();
+    uint32_t totalShapeCount = 0;
+    for (const auto& s : shapeInfos)
+        totalShapeCount += s.size();
+
+    uint32_t descAreaSize = 1 + N + totalShapeCount;
+    uint32_t totalUint64Count = descAreaSize + N;
+    uint64_t* tensorListDesc = (uint64_t*)AscendC::GmAlloc(totalUint64Count * sizeof(uint64_t));
+    uint64_t dataPtrOffset = descAreaSize * sizeof(uint64_t);
+    *tensorListDesc = dataPtrOffset;
+
+    uint64_t* descPtr = tensorListDesc + 1;
+    for (uint32_t i = 0; i < N; ++i) {
+        uint32_t dim = shapeInfos[i].size();
+        *descPtr++ = ((uint64_t)i << 32) | dim;
+        for (uint64_t shapeVal : shapeInfos[i]) {
+            *descPtr++ = shapeVal;
+        }
+    }
+    uint64_t* dataPtrArray = descPtr;
+
+    for (uint32_t i = 0; i < N; ++i) {
+        uint64_t shapeSize = 1;
+        for (uint64_t s : shapeInfos[i])
+            shapeSize *= s;
+        uint64_t dataSize = shapeSize * sizeof(T);
+        uint8_t* dataPtr = (uint8_t*)AscendC::GmAlloc(CeilA2B(dataSize, 32) * 32);
+        std::stringstream fileName;
+        fileName << "./div_scalar_data/" << d_type << "_input_t_foreach_div" << i << ".bin";
+        ReadFile(fileName.str(), dataSize, dataPtr, dataSize);
+        dataPtrArray[i] = (uint64_t)dataPtr;
+    }
+    return (uint8_t*)tensorListDesc;
+}
+
+template <typename T>
+void FreeTensorListForeachDivScalar(uint8_t* addr, const std::vector<std::vector<uint64_t>>& shapeInfos, char* d_type)
+{
+    uint64_t dataPtrOffset = *((uint64_t*)addr);
+    uint8_t* dataAddr = addr + dataPtrOffset;
+    for (size_t i = 0; i < shapeInfos.size(); i++) {
+        uint64_t shapeSize = 1;
+        for (size_t j = 0; j < shapeInfos[i].size(); j++) {
+            shapeSize *= shapeInfos[i][j];
+        }
+        uint8_t* tensorAddr = (uint8_t*)(*((uint64_t*)(dataAddr) + i));
+        std::stringstream fileName;
+        fileName << "./div_scalar_data/" << d_type << "_output_t_foreach_div" << i << ".bin";
+        WriteFile(fileName.str(), tensorAddr, shapeSize * sizeof(T));
+        AscendC::GmFree((void*)(tensorAddr));
+    }
+
+    AscendC::GmFree((void*)addr);
+}
+
+#endif // FOREACH_DIV_SCALAR_TENSOR_LIST_OPERATE_H

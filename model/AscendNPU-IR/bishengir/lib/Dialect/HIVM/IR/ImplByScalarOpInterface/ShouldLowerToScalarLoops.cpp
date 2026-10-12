@@ -1,0 +1,499 @@
+//===- ShouldLowerToScalarLoops.cpp - HIVM should lower to scalar check ---===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025~2026. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+
+#include "mlir/IR/TypeUtilities.h"
+#include <algorithm>
+
+using namespace mlir;
+using namespace mlir::hivm;
+
+namespace mlir::hivm {
+
+template <typename HIVMOP> bool shouldCumOpLowerToScalarLoops(HIVMOP op) {
+  if (!op.hasPureBufferSemantics()) {
+    return false;
+  }
+  auto cumDims = op.getCumDims();
+  if (cumDims.size() > 1) {
+    // only support to lower to scalar ops for cum op with unique cum dim
+    return false;
+  }
+
+  auto elemType = getElementTypeOrSelf(op.getDst());
+  if (elemType.isInteger(64)) {
+    return true;
+  }
+
+  // if it is last cum op with i64 elem type, lower to scalar ops
+  auto hivmFlattenInterfaceOp = cast<hivm::FlattenInterface>(op.getOperation());
+  FlattenOptions flattenOptions;
+  flattenOptions.checkMarkStride = true;
+  auto flattenResult = hivmFlattenInterfaceOp.getFlattened(flattenOptions);
+  assert(succeeded(flattenResult));
+  auto flattenedCumDims = flattenResult->barrierDims;
+  assert(flattenedCumDims.size() == 1);
+  auto flattenedRank = flattenResult->getRankAfterFlatten();
+  return flattenedCumDims[0] == flattenedRank - 1;
+}
+
+} // namespace mlir::hivm
+
+namespace mlir::hivm {
+
+template <typename HIVMOP> bool shouldModOpLowerToScalarLoops(HIVMOP op) {
+  if (!op.hasPureBufferSemantics()) {
+    return false;
+  }
+
+  if (op.hasHWUnsupportedScalarOperand()) {
+    return true;
+  }
+
+  auto elemType = getElementTypeOrSelf(op.getOperandTypes()[0]);
+  return elemType.isInteger(64) || elemType.isInteger(32);
+}
+
+} // namespace mlir::hivm
+
+//===----------------------------------------------------------------------===//
+// Macros to help generate `shouldLowerToScalarLoops`
+//===----------------------------------------------------------------------===//
+
+#define ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(OP_NAME)           \
+  bool OP_NAME::shouldLowerToScalarLoops() {                                   \
+    if (!hasPureBufferSemantics()) {                                           \
+      return false;                                                            \
+    }                                                                          \
+                                                                               \
+    if (util::isSIMTVF(getOperation()) || hasHWUnsupportedScalarOperand())     \
+      return true;                                                             \
+                                                                               \
+    auto elemType = getElementTypeOrSelf(getOperandTypes()[0]);                \
+    return elemType.isInteger(64);                                             \
+  }
+
+#define ENABLE_CUM_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(OP_NAME)               \
+  bool OP_NAME::shouldLowerToScalarLoops() {                                   \
+    return shouldCumOpLowerToScalarLoops(*this);                               \
+  }
+#define ENABLE_MOD_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(OP_NAME)               \
+  bool OP_NAME::shouldLowerToScalarLoops() {                                   \
+    return shouldModOpLowerToScalarLoops(*this);                               \
+  }
+
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VInterleaveOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VDeinterleaveOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VMulOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VAddOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VSubOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VMinOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VMaxOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VAbsOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VShLOp)
+ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VDivOp)
+#undef ENABLE_DEFAULT_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL
+
+//===----------------------------------------------------------------------===//
+// VShROp
+//===----------------------------------------------------------------------===//
+
+bool VShROp::shouldLowerToScalarLoops() {
+  if (!hasPureBufferSemantics()) {
+    return false;
+  }
+
+  if (util::isSIMTVF(getOperation()) || hasHWUnsupportedScalarOperand())
+    return true;
+
+  auto elemType = getElementTypeOrSelf(getOperandTypes()[0]);
+  if (elemType.isInteger(64))
+    return true;
+
+  // Mem-based (A3): ConvertHIVMToStandard would emit `vshr_*` library calls for
+  // shaped / broadcast shift amounts, but those symbols are not provided on A3.
+  // Lower them to scalar loops instead. Reg-based (A5) keeps the HIVM op for the
+  // AVE / template path.
+  auto mod = getOperation()->getParentOfType<ModuleOp>();
+  if (!hacc::utils::isRegBasedArch(mod)) {
+    auto inputs = getDpsInputs();
+    if (inputs.size() > 1 && isa<ShapedType>(inputs[1].getType()))
+      return true;
+  }
+
+  return false;
+}
+
+// TODO: Use unified method to decide if we should lower to loops
+#undef ENABLE_CUM_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL
+
+ENABLE_MOD_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL(VModOp)
+#undef ENABLE_MOD_OP_SHOULD_LOWER_TO_SCALAR_LOOPS_IMPL
+
+//===----------------------------------------------------------------------===//
+// VCumsumOp
+//===----------------------------------------------------------------------===//
+
+// Shared by cum ops lowered to rank/dim-specialized library calls
+// (vcumsum/vcummax/vcummin): only i64 falls back to scalar loops.
+template <typename HIVMOP>
+static bool shouldCumOpWithTempLowerToScalarLoops(HIVMOP op) {
+  if (!op.hasPureBufferSemantics()) {
+    return false;
+  }
+  auto cumDims = op.getCumDims();
+  if (cumDims.size() > 1) {
+    // only support to lower to scalar ops for cum op with unique cum dim
+    return false;
+  }
+
+  auto elemType = getElementTypeOrSelf(op.getDst());
+  return elemType.isInteger(64);
+}
+
+bool VCumsumOp::shouldLowerToScalarLoops() {
+  auto moduleOp = (*this)->getParentOfType<ModuleOp>();
+  if (!hacc::utils::isRegBasedArch(moduleOp)) {
+    return shouldCumOpLowerToScalarLoops(*this);
+  }
+
+  if (!hasPureBufferSemantics()) {
+    return false;
+  }
+  auto cumDims = getCumDims();
+  if (cumDims.size() > 1) {
+    return false;
+  }
+  auto elemType = getElementTypeOrSelf(getDst());
+  // i64 vector register is unsupported on hardware; the 1D dim0 path uses the
+  // SIMT Sklansky library call (warp scan + cross-block carry) instead.
+  // Gate on the (src,dst) pairs that actually have a bc symbol:
+  //   (i64,i64)    -> cumsum_1d_int64_t_dim0
+  //   (i32,i64)    -> cumsum_1d_int32_t_to_int64_t_dim0
+  // Other i64-dst mixes (i1/i8/i16/u8/u16/u32 src) would fall through the
+  // library-call path and fail at link time (no bc symbol), so they stay on
+  // the scalar-loop fallback here.
+  auto srcType = dyn_cast<ShapedType>(getSrc().getType());
+  if (elemType.isInteger(64) && srcType && srcType.getRank() == 1 &&
+      !cumDims.empty() && cumDims[0] == 0) {
+    auto srcElemType = getElementTypeOrSelf(getSrc());
+    if (srcElemType.isInteger(64) || srcElemType.isInteger(32)) {
+      return false;
+    }
+  }
+  return shouldCumOpWithTempLowerToScalarLoops(*this);
+}
+
+bool VCummaxOp::shouldLowerToScalarLoops() {
+  auto moduleOp = (*this)->getParentOfType<ModuleOp>();
+  if (!hacc::utils::isRegBasedArch(moduleOp)) {
+    return shouldCumOpLowerToScalarLoops(*this);
+  }
+  return shouldCumOpWithTempLowerToScalarLoops(*this);
+}
+
+bool VCumminOp::shouldLowerToScalarLoops() {
+  auto moduleOp = (*this)->getParentOfType<ModuleOp>();
+  if (!hacc::utils::isRegBasedArch(moduleOp)) {
+    return shouldCumOpLowerToScalarLoops(*this);
+  }
+  return shouldCumOpWithTempLowerToScalarLoops(*this);
+}
+
+//===----------------------------------------------------------------------===//
+// VCumprodOp
+//===----------------------------------------------------------------------===//
+
+bool VCumprodOp::shouldLowerToScalarLoops() {
+  auto moduleOp = (*this)->getParentOfType<ModuleOp>();
+  if (!hacc::utils::isRegBasedArch(moduleOp)) {
+    return shouldCumOpLowerToScalarLoops(*this);
+  }
+
+  if (!hasPureBufferSemantics()) {
+    return false;
+  }
+  auto cumDims = getCumDims();
+  if (cumDims.size() > 1) {
+    return false;
+  }
+  auto elemType = getElementTypeOrSelf(getDst());
+  if (elemType.isInteger(64)) {
+    return true;
+  }
+  return false;
+}
+
+//===----------------------------------------------------------------------===//
+// VCmpOp
+//===----------------------------------------------------------------------===//
+
+namespace mlir::hivm {
+
+bool shouldVCmpOpLowerToScalarLoopsImpl(VCmpOp op) {
+  if (!op.hasPureBufferSemantics()) {
+    return false;
+  }
+  Type srcType = op.getOperand(0).getType();
+  if (!isa<MemRefType>(srcType) && !isa<TensorType>(srcType)) {
+    return false;
+  }
+  if (!getElementTypeOrSelf(srcType).isInteger()) {
+    return false;
+  }
+
+  CompareMode cmpMode = op.getCompareMode();
+  return !getElementTypeOrSelf(srcType).isInteger(32) ||
+         (cmpMode != CompareMode::NE && cmpMode != CompareMode::EQ);
+}
+
+} // namespace mlir::hivm
+
+bool VCmpOp::shouldLowerToScalarLoops() {
+  return shouldVCmpOpLowerToScalarLoopsImpl(*this);
+}
+
+//===----------------------------------------------------------------------===//
+// VMulExtOp
+//===----------------------------------------------------------------------===//
+
+bool VMulExtOp::shouldLowerToScalarLoops() {
+  if (!hasPureBufferSemantics()) {
+    return false;
+  }
+  auto elemType = getElementTypeOrSelf(getOperandTypes()[0]);
+  return elemType.isInteger(32) || elemType.isInteger(64);
+}
+
+//===----------------------------------------------------------------------===//
+// VMulExtUiOp
+//===----------------------------------------------------------------------===//
+
+bool VMulExtUiOp::shouldLowerToScalarLoops() {
+  if (!hasPureBufferSemantics()) {
+    return false;
+  }
+  auto elemType = getElementTypeOrSelf(getOperandTypes()[0]);
+  return elemType.isInteger(32) || elemType.isInteger(64);
+}
+
+//===----------------------------------------------------------------------===//
+// VReduceOp
+//===----------------------------------------------------------------------===//
+
+namespace mlir::hivm {
+
+static bool processIndexLeft(VReduceOp op, Type elemType) {
+  // lower reduce_with_index op with integer-type src
+  if (elemType.isInteger(64) || elemType.isInteger(32) ||
+      elemType.isInteger(16)) {
+    return true;
+  }
+
+  // lower reduce_with_index op with 3 or more dims
+  if (elemType.isF16() || elemType.isF32() || elemType.isBF16()) {
+    auto hivmFlattenInterfaceOp =
+        cast<hivm::FlattenInterface>(op.getOperation());
+    FlattenOptions flattenOptions;
+    flattenOptions.checkMarkStride = true;
+    auto flatttenResult = hivmFlattenInterfaceOp.getFlattened(flattenOptions);
+    assert(succeeded(flatttenResult));
+    auto flattenRank = flatttenResult->getRankAfterFlatten();
+    return flattenRank > 2;
+  }
+
+  return false;
+}
+
+static bool processIndexRight(VReduceOp op, Type elemType) {
+  MemRefType srcVecType = cast<MemRefType>(op.getSrc().getType());
+  int rank = srcVecType.getRank();
+  llvm::ArrayRef<int64_t> reduceDims = op.getReduceDims();
+  assert(reduceDims.size() == 1 &&
+         "reduce dimensions array is not decomposed yet");
+  bool lastAxis = reduceDims[0] == rank - 1;
+  bool isROrAR = rank == 1 || lastAxis;
+
+  // lower reduce_with_index op with integer-type src
+  // lower rightmost type reduce_with_index op in R and AR condition
+  if (elemType.isInteger(64) || elemType.isInteger(32) ||
+      elemType.isInteger(16) ||
+      (isROrAR &&
+       (elemType.isF16() || elemType.isF32() || elemType.isBF16()))) {
+
+    return true;
+  }
+
+  // lower reduce_with_index op with 3 or more dims
+  if (elemType.isF16() || elemType.isF32() || elemType.isBF16()) {
+    auto hivmFlattenInterfaceOp =
+        cast<hivm::FlattenInterface>(op.getOperation());
+    FlattenOptions flattenOptions;
+    flattenOptions.checkMarkStride = true;
+    auto flatttenResult = hivmFlattenInterfaceOp.getFlattened(flattenOptions);
+    assert(succeeded(flatttenResult));
+    auto flattenRank = flatttenResult->getRankAfterFlatten();
+    return flattenRank > 2;
+  }
+
+  return false;
+}
+
+// If strides are unknown geometry of tensor is marked illegal and
+// max_with_index/min_with_index are lowered to loops.
+//
+// Motivation: some passes do not add strides due to bug or intentionally. In
+// that case it's always safe to lower to loops by default.
+static bool isLegalAccessAlignment(VReduceOp op, MemRefType in) {
+  if (!in || in.getShape().size() == 1) {
+    return true;
+  }
+
+  // rely on fact that flattening already happened
+  auto isLeadingDimReduce = [in](int rd) {
+    return rd == static_cast<int>(in.getShape().size()) - 1;
+  };
+
+  auto reduceDimValid = [in, &isLeadingDimReduce](int rd) {
+    assert(rd >= 0);
+
+    auto shape = in.getShape();
+    auto sla = dyn_cast<StridedLayoutAttr>(in.getLayout());
+    if (!sla) {
+      // If there is no strided layout attr we can't confirm validness of
+      // alignment, default value is "no, not aligned, so lower to loops"
+      return false;
+    }
+    auto strides = sla.getStrides();
+    assert(strides.size() == shape.size());
+    auto N = shape.size();
+    SmallVector<int, 4> dctrs(N, 0);
+
+    // Unaligned access cases could be detected by checking dimension start
+    // and first element accesses without checking all element positions;
+    // for leading dim reduce only dimension start need to be checked.
+    auto dimCheckLim = isLeadingDimReduce(rd) ? 1 : 2;
+    auto increment = [&dctrs, dimCheckLim, N]() {
+      for (int i = N - 1; i >= 0; i--) {
+        if (++dctrs[i] < dimCheckLim) {
+          break;
+        }
+        dctrs[i] = 0;
+      }
+    };
+
+    auto numAccesses = 1 << shape.size();
+    auto elemSize = in.getElementType().getIntOrFloatBitWidth() / 8;
+
+    for (int i = 0; i < numAccesses; i++) {
+      auto accessAddr = 0;
+      for (int j = 0; j < static_cast<int>(N); j++) {
+        accessAddr += dctrs[j] * strides[j] * static_cast<int>(elemSize);
+      }
+      if (accessAddr % util::BL != 0) {
+        return false;
+      }
+      increment();
+    }
+
+    return true;
+  };
+
+  auto ord = op.getReduceDims();
+  return std::all_of(ord.begin(), ord.end(),
+                     [&reduceDimValid](int rd) { return reduceDimValid(rd); });
+}
+
+// Workaround to avoid unaligned accesses in template lib-side code.
+// Will be removed when argmin/argmax code is generated by the compiler
+// without relying on any template lib-side code
+// https://codehub-y.huawei.com/CompilerKernel/BiShengCompiler/AscendNPU-IR/issues/440
+static bool isTLReduceGeometryLegal(VReduceOp op) {
+  auto legalizer = [&op](Value v) {
+    return !isLegalAccessAlignment(op, dyn_cast<MemRefType>(v.getType()));
+  };
+
+  if (auto ops = op.getOperands();
+      std::any_of(ops.begin(), ops.end(), legalizer)) {
+    return false;
+  }
+
+  if (auto res = op.getResults();
+      std::any_of(res.begin(), res.end(), legalizer)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool shouldVReduceOpDecomposeToScalarImpl(VReduceOp op) {
+  auto mod = op->getParentOfType<ModuleOp>();
+  auto reduceOpArith = op.getArithAttr();
+  auto reduceOpAttr = reduceOpArith.getReduceOp();
+
+  // Reg-based arch: only index-reduce ops may lower to loops, and only when
+  // template-lib geometry/alignment would be illegal.
+  if (hacc::utils::isRegBasedArch(mod)) {
+    switch (reduceOpAttr) {
+    case hivm::ReduceOperation::max_with_index_left:
+    case hivm::ReduceOperation::min_with_index_left:
+    case hivm::ReduceOperation::max_with_index_right:
+    case hivm::ReduceOperation::min_with_index_right:
+      return !isTLReduceGeometryLegal(op);
+    default:
+      return false;
+    }
+  }
+
+  auto elemType = getElementTypeOrSelf(op.getOperandTypes()[0]);
+  bool shouldDecomposeToScalar = false;
+  switch (reduceOpAttr) {
+  case hivm::ReduceOperation::min:
+  case hivm::ReduceOperation::max:
+  case hivm::ReduceOperation::sum:
+  case hivm::ReduceOperation::prod:
+  case hivm::ReduceOperation::xori:
+    shouldDecomposeToScalar = elemType.isInteger(64);
+    break;
+  case hivm::ReduceOperation::max_with_index_left:
+  case hivm::ReduceOperation::min_with_index_left: {
+    shouldDecomposeToScalar = processIndexLeft(op, elemType);
+    break;
+  }
+  case hivm::ReduceOperation::max_with_index_right:
+  case hivm::ReduceOperation::min_with_index_right: {
+    shouldDecomposeToScalar = processIndexRight(op, elemType);
+    break;
+  }
+  default:
+    break;
+  }
+
+  return shouldDecomposeToScalar;
+}
+
+} // namespace mlir::hivm
+
+bool VReduceOp::shouldLowerToScalarLoops() {
+  if (!this->hasPureBufferSemantics()) {
+    return false;
+  }
+  return shouldVReduceOpDecomposeToScalarImpl(*this);
+}

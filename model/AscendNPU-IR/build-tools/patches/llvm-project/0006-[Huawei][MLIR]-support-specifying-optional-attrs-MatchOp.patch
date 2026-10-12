@@ -1,0 +1,104 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+index ecc86999006d..b20085ae9405 100644
+--- a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
++++ b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+@@ -603,6 +603,9 @@ def MatchOp : Op<Transform_Dialect, "structured.match",
+                        OptionalAttr<StrArrayAttr>:$ops,
+                        OptionalAttr<MatchInterfaceEnum>:$interface,
+                        OptionalAttr<DictionaryAttr>:$op_attrs,
++#ifdef BSPUB_DAVINCI_BISHENGIR
++                       OptionalAttr<DictionaryAttr>:$optional_op_attrs,
++#endif
+                        OptionalAttr<TypeAttr>:$filter_result_type,
+                        OptionalAttr<TypeArrayAttr>:$filter_operand_types);
+   // TODO: variadic results when needed.
+@@ -611,12 +614,24 @@ def MatchOp : Op<Transform_Dialect, "structured.match",
+   let builders = [
+     OpBuilder<(ins "Value":$target, "ArrayRef<StringRef>":$opNames)>,
+     OpBuilder<(ins "TypeRange":$resultTypes, "Value":$target, "ArrayRef<StringRef>":$opNames)>
++#ifdef BSPUB_DAVINCI_BISHENGIR
++   ,
++   OpBuilder<(ins "Value":$target, "ArrayAttr":$ops,
++                  "DictionaryAttr":$op_attrs, "DictionaryAttr":$optional_op_attrs)>,
++   OpBuilder<(ins "Value":$target, "ArrayAttr":$ops, "DictionaryAttr":$op_attrs)>
++#endif
+   ];
+ 
+   let assemblyFormat = [{
+     (`ops` `{` $ops^ `}`)?
+     (`interface` `{` $interface^ `}`)?
+-    (`attributes` $op_attrs^)?
++    (`attributes` $op_attrs^)? }] #
++#ifdef BSPUB_DAVINCI_BISHENGIR
++  [{
++    (`optional_attributes` $optional_op_attrs^)?
++  }] #
++#endif
++  [{
+     (`filter_result_type` `=` $filter_result_type^)?
+     (`filter_operand_types` `=` $filter_operand_types^)?
+     `in` $target attr-dict
+diff --git a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+index b611347b8de2..531c2c9ec0ec 100644
+--- a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
++++ b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+@@ -1203,6 +1203,34 @@ void transform::MatchOp::build(OpBuilder &builder, OperationState &result,
+   result.addTypes(resultTypes);
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++void transform::MatchOp::build(OpBuilder &builder, OperationState &result,
++                               Value target, ArrayAttr ops,
++                               DictionaryAttr op_attrs,
++                               DictionaryAttr optional_op_attrs) {
++  result.addOperands(target);
++  if (ops)
++    result.addAttribute(MatchOp::getOpsAttrName(result.name), ops);
++  if (op_attrs)
++    result.addAttribute(MatchOp::getOpAttrsAttrName(result.name), op_attrs);
++  if (optional_op_attrs)
++    result.addAttribute(MatchOp::getOptionalOpAttrsAttrName(result.name),
++                        optional_op_attrs);
++  result.addTypes(transform::AnyOpType::get(builder.getContext()));
++}
++
++void transform::MatchOp::build(OpBuilder &builder, OperationState &result,
++                               Value target, ArrayAttr ops,
++                               DictionaryAttr op_attrs) {
++  result.addOperands(target);
++  if (ops)
++    result.addAttribute(MatchOp::getOpsAttrName(result.name), ops);
++  if (op_attrs)
++    result.addAttribute(MatchOp::getOpAttrsAttrName(result.name), op_attrs);
++  result.addTypes(transform::AnyOpType::get(builder.getContext()));
++}
++#endif
++
+ DiagnosedSilenceableFailure
+ transform::MatchOp::apply(transform::TransformRewriter &rewriter,
+                           transform::TransformResults &results,
+@@ -1252,6 +1280,24 @@ transform::MatchOp::apply(transform::TransformRewriter &rewriter,
+       }
+     }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    // Check if at least one of the optional attributes match.
++    if (getOptionalOpAttrs().has_value() &&
++        !getOptionalOpAttrs().value().empty()) {
++      DictionaryAttr optionalOpAttrs = getOptionalOpAttrs().value();
++      if (llvm::none_of(optionalOpAttrs, [&](NamedAttribute attr) {
++            if (!op->hasAttr(attr.getName()))
++              return false;
++
++            if (op->getAttr(attr.getName()) != attr.getValue())
++              return false;
++
++            return true;
++          }))
++        return;
++    }
++#endif
++
+     if (getFilterResultType().has_value()) {
+       Type t = getFilterResultType().value();
+       if (op->getNumResults() != 1 || op->getResultTypes().front() != t)

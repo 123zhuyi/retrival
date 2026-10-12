@@ -1,0 +1,47 @@
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index 8bf33402993e..930328f675ea 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -22,6 +22,10 @@
+ #include "mlir/Dialect/Tensor/Utils/Utils.h"
+ #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++#define DEBUG_TYPE "bubble-up-extract-slice"
++#endif
++
+ using namespace mlir;
+ using namespace mlir::linalg;
+ 
+diff --git a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+index 68edd45448ee..5019f0ded16d 100644
+--- a/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
++++ b/mlir/lib/Dialect/MemRef/Utils/MemRefUtils.cpp
+@@ -17,6 +17,10 @@
+ #include "mlir/Dialect/Vector/IR/VectorOps.h"
+ #include "llvm/ADT/STLExtras.h"
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++#include "mlir/Dialect/Func/IR/FuncOps.h"
++#endif
++
+ namespace mlir {
+ namespace memref {
+ 
+@@ -128,6 +132,16 @@ static bool resultIsNotRead(Operation *op, std::vector<Operation *> &uses) {
+   std::vector<Operation *> opUses;
+   for (OpOperand &use : op->getUses()) {
+     Operation *useOp = use.getOwner();
++    // Handle potentially dangerous operations
++#if BSPUB_DAVINCI_BISHENGIR
++    if (isa<func::ReturnOp, func::CallOp>(useOp) ||
++        useOp->hasTrait<OpTrait::HasRecursiveMemoryEffects>() ||
++        useOp->hasTrait<OpTrait::AutomaticAllocationScope>() ||
++        useOp->hasTrait<OpTrait::IsIsolatedFromAbove>() ||
++        useOp->hasTrait<OpTrait::SymbolTable>() || useOp->getNumRegions() > 0) {
++      return false;
++    }
++#endif
+     if (isa<memref::DeallocOp>(useOp) ||
+         (useOp->getNumResults() == 0 && useOp->getNumRegions() == 0 &&
+          !mlir::hasEffect<MemoryEffects::Read>(useOp)) ||

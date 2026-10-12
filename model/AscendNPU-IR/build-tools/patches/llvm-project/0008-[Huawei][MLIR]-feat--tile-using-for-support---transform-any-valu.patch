@@ -1,0 +1,233 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+index 65798b31c1e4..a706f6c708bf 100644
+--- a/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
++++ b/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.td
+@@ -1996,7 +1996,11 @@ def TileUsingForOp : Op<Transform_Dialect, "structured.tile_using_for",
+   }];
+ 
+   let arguments = (ins TransformHandleTypeInterface:$target,
++#ifdef BSPUB_DAVINCI_BISHENGIR
++                   Variadic<Transform_AnyHandleOrParamType>:$dynamic_sizes,
++#else
+                    Variadic<TransformAnyParamTypeOrAnyHandle>:$dynamic_sizes,
++#endif
+                    DefaultValuedOptionalAttr<DenseI64ArrayAttr, "{}">:$static_sizes,
+                    DefaultValuedOptionalAttr<DenseI64ArrayAttr, "{}">:$interchange,
+                    DefaultValuedOptionalAttr<DenseBoolArrayAttr, "{}">:$scalable_sizes);
+diff --git a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+index e600d414c38f..411e190ab542 100644
+--- a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
++++ b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+@@ -56,6 +56,11 @@ using namespace mlir::transform;
+ #define DBGSNL() (llvm::dbgs() << "\n")
+ #define LDBG(X) LLVM_DEBUG(DBGS() << (X) << "\n")
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++#include "mlir/Dialect/Index/IR/IndexOps.h"
++#define ONLY_ONE_TRUE(x, y, z) ((x) ^ (y) ^ (z)) && !((x) && (y) && (z))
++#endif
++
+ /// Attempts to apply the pattern specified as template argument to the given
+ /// operation. The pattern is expected to have a `returningMatchAndRewrite`
+ /// function that returns the "main" result or failure. Returns failure if the
+@@ -3051,6 +3056,191 @@ LogicalResult transform::TileUsingForOp::verify() {
+   return success();
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++
++DiagnosedSilenceableFailure
++transform::TileUsingForOp::apply(transform::TransformRewriter &rewriter,
++                                 TransformResults &transformResults,
++                                 TransformState &state) {
++  ArrayRef<int64_t> tileSizes = getStaticSizes();
++  auto dynamicSizes = getDynamicSizes();
++  SmallVector<Operation *> targets =
++      llvm::to_vector(state.getPayloadOps(getTarget()));
++
++  SmallVector<SmallVector<Operation *>> dynamicSizeProducers;
++  SmallVector<SmallVector<int64_t>> paramSizes;
++  SmallVector<SmallVector<Value>> valueSizes;
++  auto dynamicSizesSize = dynamicSizes.size();
++  dynamicSizeProducers.reserve(dynamicSizesSize);
++  paramSizes.reserve(dynamicSizesSize);
++  valueSizes.reserve(dynamicSizesSize);
++
++  for (Value transformValue : dynamicSizes) {
++    if (isa<ParamType>(transformValue.getType())) {
++      valueSizes.push_back({});
++      dynamicSizeProducers.push_back({});
++      ArrayRef<Attribute> params = state.getParams(transformValue);
++      paramSizes.push_back(
++          llvm::to_vector(llvm::map_range(params, [](Attribute attr) {
++            return cast<IntegerAttr>(attr).getValue().getSExtValue();
++          })));
++
++      if (paramSizes.back().size() != targets.size()) {
++        DiagnosedSilenceableFailure diag =
++            emitSilenceableError()
++            << "expected as many parameter values ("
++            << dynamicSizeProducers.back().size() << ") as target ops ("
++            << targets.size() << ")";
++        diag.attachNote(transformValue.getLoc()) << "for this parameter";
++        return diag;
++      }
++
++      continue;
++    }
++    if (isa<transform::AnyValueType>(transformValue.getType())) {
++      dynamicSizeProducers.push_back({});
++      paramSizes.push_back({});
++      valueSizes.push_back(
++          llvm::to_vector(state.getPayloadValues(transformValue)));
++
++      if (valueSizes.back().size() != targets.size()) {
++        DiagnosedSilenceableFailure diag =
++            emitSilenceableError()
++            << "expected as many dynamic values (" << valueSizes.back().size()
++            << ") as target ops (" << targets.size() << ")";
++        diag.attachNote(transformValue.getLoc()) << "for this handle";
++        return diag;
++      }
++
++      continue;
++    }
++    valueSizes.push_back({});
++    paramSizes.push_back({});
++    dynamicSizeProducers.push_back(
++        llvm::to_vector(state.getPayloadOps(transformValue)));
++
++    if (dynamicSizeProducers.back().size() != targets.size()) {
++      DiagnosedSilenceableFailure diag =
++          emitSilenceableError()
++          << "expected as many dynamic size-producing operations ("
++          << dynamicSizeProducers.back().size() << ") as target ops ("
++          << targets.size() << ")";
++      diag.attachNote(transformValue.getLoc()) << "for this handle";
++      return diag;
++    }
++
++    for (Operation *op : dynamicSizeProducers.back()) {
++      if (op->getNumResults() == 1 &&
++          isa<IndexType>(op->getResult(0).getType())) {
++        continue;
++      }
++
++      DiagnosedSilenceableFailure diag =
++          emitSilenceableError() << "expected sizes to be produced by ops "
++                                    "with a single index-type result";
++      diag.attachNote(op->getLoc()) << "size producer op";
++      diag.attachNote(transformValue.getLoc()) << "for this handle";
++      return diag;
++    }
++  }
++
++  SmallVector<Operation *> tiled;
++  SmallVector<SmallVector<Operation *, 4>, 4> loops;
++  loops.resize(getLoops().size());
++  auto scalableSizes = getScalableSizes();
++  for (auto [i, op] : llvm::enumerate(targets)) {
++    auto tilingInterface = dyn_cast<TilingInterface>(op);
++    if (!tilingInterface) {
++      DiagnosedSilenceableFailure diag =
++          emitSilenceableError()
++          << "only ops implementing TilingInterface are supported";
++      diag.attachNote(op->getLoc()) << "target op";
++      return diag;
++    }
++    if (tileSizes.size() > tilingInterface.getLoopIteratorTypes().size()) {
++      DiagnosedSilenceableFailure diag =
++          emitSilenceableError()
++          << "too many tiles provided, expected at most "
++          << tilingInterface.getLoopIteratorTypes().size() << " found "
++          << tileSizes.size();
++      diag.attachNote(op->getLoc()) << "target op";
++      return diag;
++    }
++
++    scf::SCFTilingOptions tilingOptions;
++    if (tileSizes.empty()) {
++      tilingOptions.setTileSizeComputationFunction(
++          [](OpBuilder &, Operation *) -> SmallVector<OpFoldResult> {
++            return {};
++          });
++    } else {
++      tilingOptions.setTileSizeComputationFunction([&, index = i](OpBuilder &b,
++                                                                  Operation *) {
++        SmallVector<OpFoldResult> sizes;
++        sizes.reserve(tileSizes.size());
++        unsigned dynamicIdx = 0;
++
++        for (auto [ofrIdx, ofr] : llvm::enumerate(getMixedSizes())) {
++          if (auto attr = llvm::dyn_cast_if_present<Attribute>(ofr)) {
++            if (scalableSizes[ofrIdx]) {
++              auto val = b.create<arith::ConstantIndexOp>(
++                  getLoc(), cast<IntegerAttr>(attr).getInt());
++              Value vscale =
++                  b.create<vector::VectorScaleOp>(getLoc(), b.getIndexType());
++              sizes.push_back(
++                  b.create<arith::MulIOp>(getLoc(), val, vscale).getResult());
++            } else {
++              sizes.push_back(attr);
++            }
++            continue;
++          }
++          ArrayRef<Operation *> dynamicSizes = dynamicSizeProducers[dynamicIdx];
++          ArrayRef<int64_t> params = paramSizes[dynamicIdx];
++          ArrayRef<Value> values = valueSizes[dynamicIdx];
++          ++dynamicIdx;
++#ifndef NDEBUG
++          bool dynamicSizesIsNotEmpty = !dynamicSizes.empty();
++          bool paramsIsNotEmpty = !params.empty();
++          bool valuesIsNotEmpty = !values.empty();
++          assert(ONLY_ONE_TRUE(dynamicSizesIsNotEmpty, paramsIsNotEmpty,
++                               valuesIsNotEmpty) &&
++                 "expected either dynamic sizes or parameters or values");
++#endif
++          if (!params.empty()) {
++            sizes.push_back(b.getIndexAttr(params[index]));
++          } else if (!dynamicSizes.empty()) {
++            sizes.push_back(dynamicSizes[index]->getResult(0));
++          } else {
++            sizes.push_back(getValueOrCreateCastToIndexLike(
++                b, getLoc(), b.getIndexType(), values[index]));
++          }
++        }
++        return sizes;
++      });
++    }
++
++    tilingOptions.setInterchange(getInterchange());
++    FailureOr<scf::SCFTilingResult> maybeTilingResult =
++        tileUsingSCF(rewriter, tilingInterface, tilingOptions);
++    if (failed(maybeTilingResult))
++      return DiagnosedSilenceableFailure::definiteFailure();
++
++    rewriter.replaceOp(op, maybeTilingResult->replacements);
++
++    tiled.append(maybeTilingResult->tiledOps);
++    for (const auto &en2 : llvm::enumerate(maybeTilingResult->loops))
++      loops[en2.index()].push_back(en2.value());
++  }
++
++  transformResults.set(cast<OpResult>(getTiledLinalgOp()), tiled);
++  for (const auto &en : llvm::enumerate(loops))
++    transformResults.set(cast<OpResult>(getLoops()[en.index()]), en.value());
++
++  return DiagnosedSilenceableFailure::success();
++}
++
++#else
++
+ DiagnosedSilenceableFailure
+ transform::TileUsingForOp::apply(transform::TransformRewriter &rewriter,
+                                  TransformResults &transformResults,
+@@ -3198,6 +3388,8 @@ transform::TileUsingForOp::apply(transform::TransformRewriter &rewriter,
+   return DiagnosedSilenceableFailure::success();
+ }
+ 
++#endif
++
+ SmallVector<OpFoldResult> transform::TileUsingForOp::getMixedSizes() {
+   ValueRange dynamic = getDynamicSizes();
+   ArrayRef<int64_t> tileSizes = getStaticSizes();

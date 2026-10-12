@@ -1,0 +1,120 @@
+{
+  "op_name": "chunk_gated_delta_fwd_h",
+  "round_index": 2,
+  "work_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-2",
+  "baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-1",
+  "algorithm": "mcts",
+  "algorithm_reference": ".claude/references/algorithms/mcts/round.md",
+  "algorithm_params": {
+    "c_uct": 1.414,
+    "c_pw": 2.0,
+    "alpha": 0.5,
+    "failure_threshold": 3,
+    "reward_output_error": -2,
+    "reward_compile_error": -3
+  },
+  "round_strategy": "exploration",
+  "analysis_policy": "pattern_entry",
+  "hypothesis": "MCTS expands high-reward node opt-round-1 (mean reward 1.7403, visits 1). Parent used a hand-tuned BV heuristic (BV=64 when BT<=64 else 32) which leaves headroom on chunk_size=128 and large-head-ratio shapes. Autotune the V-tile size and warp count to let the compiler pick the best configuration per shape without changing the fused chunk-recurrence structure.",
+  "direction": "autotune: V-tile (BV) and warp-count sweep for chunk-recurrence kernel",
+  "evidence_sources": [
+    "mcts_tree",
+    "parent_round_perf",
+    "direction_history"
+  ],
+  "mode": "A",
+  "arch": "ascend910b1",
+  "input_files": {
+    "task_desc": "/home/l30083907/cannbot-skills_5171_old/plugins-community/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.py",
+    "task_json": "/home/l30083907/cannbot-skills_5171_old/plugins-community/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.json",
+    "gpu_kernel_ref": null,
+    "gpu_perf_csv": null
+  },
+  "config": {
+    "target_speedup": 5,
+    "max_rounds": 10,
+    "initial_worker_timeout": 7200,
+    "max_worker_timeout": 28800,
+    "npu_device_id": null,
+    "npu_idle": {
+      "aicore": 1.0,
+      "aivector": 1.0,
+      "npu_util": 1.0,
+      "hbm": 10.0
+    },
+    "algorithms": {
+      "naive": {
+        "enabled": true,
+        "params": {}
+      },
+      "mcts": {
+        "enabled": true,
+        "params": {
+          "c_uct": 1.414,
+          "c_pw": 2.0,
+          "alpha": 0.5,
+          "failure_threshold": 3,
+          "reward_output_error": -2,
+          "reward_compile_error": -3
+        }
+      },
+      "fusion-search": {
+        "enabled": true,
+        "params": {
+          "max_routes": 3,
+          "min_expected_benefit": 0.05,
+          "enable_math_transforms": true,
+          "route_timeout": 3600,
+          "crossover_rate": 0.7,
+          "mutation_rate": 0.15,
+          "elite_count": 1,
+          "exploration_count": 1
+        }
+      }
+    }
+  },
+  "is_recovery": false,
+  "worker_reference": ".claude/references/algorithms/mcts/round.md",
+  "lineage_summary": [
+    {
+      "round_index": 1,
+      "round_dir": "opt-round-1",
+      "direction": "pattern: custom",
+      "best_speedup": 0.0,
+      "direction_yield": "high",
+      "hypothesis": "Initial LLM-driven exploration for chunk_gated_delta_fwd_h optimization",
+      "parent_round_dir": "global_baseline"
+    },
+    {
+      "round_index": 2,
+      "round_dir": "opt-round-2",
+      "direction": "",
+      "best_speedup": 0.0,
+      "direction_yield": null,
+      "hypothesis": "MCTS selects to expand from node opt-round-1 (mean reward 1.7403, visits 1); selection path depth 2.",
+      "parent_round_dir": "opt-round-1"
+    }
+  ],
+  "experience_file": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/operator_experience.md",
+  "global_baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/global_baseline",
+  "global_baseline_speedup": 1.0,
+  "parent_round_journal": null,
+  "mcts_parent_id": "opt-round-1",
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "mean_reward": 1.740308267636976,
+      "visit_count": 1,
+      "description": "virtual root"
+    },
+    {
+      "node_id": "opt-round-1",
+      "depth": 1,
+      "mean_reward": 1.740308267636976,
+      "visit_count": 1,
+      "description": "pattern: custom (fused chunk-recurrence: per-(b,h) flat serial chunk loop, S[K,V] fp32 register-resident, V-tile grid split, seq-in-grid varlen)"
+    }
+  ],
+  "mcts_pending_expansion": true
+}

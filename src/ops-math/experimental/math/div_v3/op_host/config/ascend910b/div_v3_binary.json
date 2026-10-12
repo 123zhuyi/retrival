@@ -1,0 +1,210 @@
+{
+  "op_type": "DivV3",
+  "op_list": [
+    {
+      "bin_filename": "DivV3_fp32_mode",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "mode",
+          "dtype": "int",
+          "value": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "DivV3_fp16_mode",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "mode",
+          "dtype": "int",
+          "value": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "DivV3_int32_mode",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "mode",
+          "dtype": "int",
+          "value": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "DivV3_int16_mode",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "mode",
+          "dtype": "int",
+          "value": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "DivV3_bf16_mode",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "mode",
+          "dtype": "int",
+          "value": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    }
+  ]
+}

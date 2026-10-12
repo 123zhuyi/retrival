@@ -1,0 +1,50 @@
+{
+  "op_type": "CdistGrad",
+  "op_list": [
+    {
+      "bin_filename": "CdistGrad_6d3844989f83c1de15cb106d07138083",
+      "inputs": [
+        { "name": "grad", "index": 0, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "x1", "index": 1, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "x2", "index": 2, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "cdist", "index": 3, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" }
+      ],
+      "outputs": [
+        { "name": "y", "index": 0, "dtype": "float16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" }
+      ],
+      "attrs": [
+        { "name": "p", "dtype": "float", "value": null }
+      ]
+    },
+    {
+      "bin_filename": "CdistGrad_876161686b0bc0b329614d9b9c3b5adc",
+      "inputs": [
+        { "name": "grad", "index": 0, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "x1", "index": 1, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "x2", "index": 2, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "cdist", "index": 3, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" }
+      ],
+      "outputs": [
+        { "name": "y", "index": 0, "dtype": "bfloat16", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" }
+      ],
+      "attrs": [
+        { "name": "p", "dtype": "float", "value": null }
+      ]
+    },
+    {
+      "bin_filename": "CdistGrad_632f457d4787205a3df995bf22221bbe",
+      "inputs": [
+        { "name": "grad", "index": 0, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "x1", "index": 1, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "x2", "index": 2, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" },
+        { "name": "cdist", "index": 3, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" }
+      ],
+      "outputs": [
+        { "name": "y", "index": 0, "dtype": "float32", "format": "ND", "paramType": "required", "shape": [-2], "format_match_mode": "FormatAgnostic" }
+      ],
+      "attrs": [
+        { "name": "p", "dtype": "float", "value": null }
+      ]
+    }
+  ]
+}

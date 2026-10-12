@@ -1,0 +1,59 @@
+diff --git a/lib/Conversion/TorchToLinalg/Linear.cpp b/lib/Conversion/TorchToLinalg/Linear.cpp
+index 9ffb7c1d..98f11f8a 100644
+--- a/lib/Conversion/TorchToLinalg/Linear.cpp
++++ b/lib/Conversion/TorchToLinalg/Linear.cpp
+@@ -1220,6 +1220,11 @@ public:
+     if (numGroups == 1 && inputZp) {
+       switch (numSpatialDims) {
+       case 2:
++#ifdef BSPUB_DAVINCI_BISHENGIR
++        // [Huawei][BiShengIR] LLVM version unmatched, not support this.
++        return rewriter.notifyMatchFailure(
++            op, "unimplemented: quantized grouped convolutions");
++#else
+         conv = rewriter
+                    .create<linalg::Conv2DNchwFchwQOp>(
+                        loc, outputTensor.getType(),
+@@ -1227,6 +1232,7 @@ public:
+                        outputTensor, stridesAttr, dilationAttr)
+                    .getResult(0);
+         break;
++#endif
+       case 3: {
+         // The quantized version uses a different channel ordering so we need to
+         // permute the tensors in order to use the existing path. We should
+diff --git a/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp b/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp
+index 341eb6e9..acb9556c 100644
+--- a/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp
++++ b/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp
+@@ -13099,9 +13099,14 @@ public:
+     addPatternIfTargetOpIsIllegal<DecomposeAtenAsStridedOp>(patterns);
+ 
+     GreedyRewriteConfig config;
++#ifdef BSPUB_DAVINCI_BISHENGIR
++    config.useTopDownTraversal = true;
++    config.maxIterations = GreedyRewriteConfig::kNoLimit;
++#else
+     config.setUseTopDownTraversal(true);
+     config.setMaxIterations(GreedyRewriteConfig::kNoLimit);
+ 
++#endif
+     if (failed(applyPatternsGreedily(getOperation(), std::move(patterns),
+                                      config))) {
+       return signalPassFailure();
+diff --git a/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp b/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp
+index 94b21e99..c4d9d9e1 100644
+--- a/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp
++++ b/lib/Dialect/Torch/Transforms/ScalarizeShapes.cpp
+@@ -1601,7 +1601,11 @@ public:
+     // When propagating, we need to go back and clean up aten.Tensor ops that
+     // have been futher propagated. It is also necessary to add newly created
+     // ops for custom folding after scalarizing a where.self op.
++#ifdef BSPUB_DAVINCI_BISHENGIR
++    config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
++#else
+     config.setStrictness(GreedyRewriteStrictness::ExistingAndNewOps);
++#endif
+     if (failed(applyOpPatternsGreedily(shapeCalculationOps.getArrayRef(),
+                                        std::move(patterns), config))) {
+       return signalPassFailure();

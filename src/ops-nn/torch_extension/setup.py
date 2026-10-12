@@ -1,0 +1,406 @@
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
+
+import os
+import shutil
+import glob
+import logging
+from setuptools import setup, find_packages
+from setuptools import Command
+from setuptools.command.build_py import build_py as _build_py
+from setuptools.command.sdist import sdist as _sdist
+
+try:
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+except ImportError:
+    _bdist_wheel = None
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+DESCRIPTION = "AscendOpsNn"
+VERSION = "1.0.1"
+BASE_PACKAGE_NAME = "cann_ops_nn"
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+OPS_NN_ROOT = os.path.normpath(os.path.join(HERE, ".."))
+_src_path = os.path.join(HERE, BASE_PACKAGE_NAME)
+
+_ops_env = os.environ.get("TORCH_EXTENSION_OPS", "").strip()
+_selected_ops = (
+    frozenset(op.strip() for op in _ops_env.split(",") if op.strip())
+    if _ops_env
+    else None
+)
+
+_vendor_env = os.environ.get("TORCH_EXTENSION_VENDOR", "").strip()
+
+_experimental_env = os.environ.get("TORCH_EXTENSION_EXPERIMENTAL", "").strip()
+_enable_experimental = _experimental_env.upper() == "TRUE"
+
+if _selected_ops:
+    PACKAGE_NAME = "%s_%s" % (BASE_PACKAGE_NAME, _vendor_env or "custom")
+else:
+    PACKAGE_NAME = BASE_PACKAGE_NAME
+
+if PACKAGE_NAME != BASE_PACKAGE_NAME and not os.path.isdir(
+    os.path.join(HERE, PACKAGE_NAME)
+):
+    os.symlink(BASE_PACKAGE_NAME, os.path.join(HERE, PACKAGE_NAME))
+
+
+_selected_op_categories = []
+
+if _selected_ops is not None:
+    _ops_dir = os.path.join(_src_path, "ops")
+    for cat in os.listdir(_ops_dir):
+        cat_path = os.path.join(_ops_dir, cat)
+        if not os.path.isdir(cat_path):
+            continue
+        for name in os.listdir(cat_path):
+            if name in _selected_ops:
+                _selected_op_categories.append((cat, name))
+
+
+def _non_python_files(directory):
+    paths = []
+    for path, dirs, filenames in os.walk(directory):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        if _selected_ops is not None:
+            rel = os.path.relpath(path, directory)
+            parts = rel.split(os.sep)
+            if len(parts) >= 2 and parts[0] == "ops" and parts[1] not in _selected_ops:
+                continue
+        for filename in filenames:
+            if filename.endswith((".h", ".cpp")):
+                if _selected_ops is not None and filename.endswith(".cpp"):
+                    op_name = filename[:-4]
+                    if op_name not in _selected_ops:
+                        continue
+                paths.append(os.path.join(path, filename))
+    return paths
+
+
+_extra_packages = []
+for _subdir in ("csrc", "common"):
+    _root = os.path.join(_src_path, _subdir)
+    if os.path.isdir(_root):
+        for root, _, _ in os.walk(_root):
+            rel = os.path.relpath(root, HERE).replace(os.sep, ".")
+            _extra_packages.append(rel)
+
+
+# --- 收集 ops-nn/ 下所有 torch_extension/ 中的算子文件 ---
+_op_category_inits = {}
+_op_py_files = []
+_op_cpp_files = []
+
+
+def _collect_cpp(csrc_dir):
+    if not os.path.isdir(csrc_dir):
+        return
+    for cpp in os.listdir(csrc_dir):
+        if not cpp.endswith(".cpp"):
+            continue
+        dst_rel = os.path.join("csrc", cpp)
+        src_abs = os.path.join(csrc_dir, cpp)
+        for existing_rel, existing_src in _op_cpp_files:
+            if existing_rel == dst_rel:
+                raise ValueError(
+                    "Duplicate csrc file '%s' from '%s' conflicts with "
+                    "already collected '%s'" % (dst_rel, src_abs, existing_src)
+                )
+        _op_cpp_files.append((dst_rel, src_abs))
+
+
+def _collect_op(cat, name, torch_extension):
+    # Collect one operator's torch_extension dir, staging its files under (cat, name).
+    _selected_op_categories.append((cat, name))
+    for f in ("__init__.py", "%s.py" % name):
+        f_src = os.path.join(torch_extension, f)
+        if os.path.isfile(f_src):
+            _op_py_files.append((os.path.join("ops", cat, name, f), f_src))
+
+    graph_src = os.path.join(torch_extension, "graph_convert_%s.py" % name)
+    if os.path.isfile(graph_src):
+        _op_py_files.append(
+            (
+                os.path.join("ops", cat, name, "graph_convert_%s.py" % name),
+                graph_src,
+            )
+        )
+
+    _collect_cpp(os.path.join(torch_extension, "csrc"))
+
+
+for cat in sorted(os.listdir(OPS_NN_ROOT)):
+    cat_path = os.path.join(OPS_NN_ROOT, cat)
+    if not os.path.isdir(cat_path) or cat.startswith((".", "_")):
+        continue
+
+    is_experimental = cat == "experimental"
+    if is_experimental and not _enable_experimental:
+        continue
+    if not is_experimental and _enable_experimental:
+        continue
+
+    cat_init_src = os.path.join(cat_path, "__init__.py")
+    if os.path.isfile(cat_init_src):
+        _op_category_inits[cat] = cat_init_src
+
+    for name in sorted(os.listdir(cat_path)):
+        sub_path = os.path.join(cat_path, name)
+
+        # 2-level: <cat>/<name>/torch_extension  (e.g. quant/<op>)
+        torch_extension = os.path.join(sub_path, "torch_extension")
+        if os.path.isdir(torch_extension):
+            if _selected_ops is not None and name not in _selected_ops:
+                continue
+            _collect_op(cat, name, torch_extension)
+            continue
+
+        # 3-level: <cat>/<subcat>/<op>/torch_extension  (e.g. experimental/activation/<op>).
+        # Stage under the subcategory so the op joins the matching family in the wheel
+        # (sources path / module path / category __init__ stay consistent).
+        if not os.path.isdir(sub_path):
+            continue
+        for op_name in sorted(os.listdir(sub_path)):
+            if _selected_ops is not None and op_name not in _selected_ops:
+                continue
+            torch_extension = os.path.join(sub_path, op_name, "torch_extension")
+            if os.path.isdir(torch_extension):
+                _collect_op(name, op_name, torch_extension)
+
+# --- 收集 cann_ops_nn/ops/ 下已有的联合算子（直接放在包目录中）---
+_staged_ops_dir = os.path.join(_src_path, "ops")
+if os.path.isdir(_staged_ops_dir):
+    for cat in sorted(os.listdir(_staged_ops_dir)):
+        cat_path = os.path.join(_staged_ops_dir, cat)
+        if not os.path.isdir(cat_path) or cat.startswith((".", "_")):
+            continue
+        for name in sorted(os.listdir(cat_path)):
+            op_path = os.path.join(cat_path, name)
+            if not os.path.isdir(op_path):
+                continue
+            op_py = os.path.join(op_path, "%s.py" % name)
+            if not os.path.isfile(op_py):
+                continue
+            if _selected_ops is not None and name not in _selected_ops:
+                continue
+            if (cat, name) in _selected_op_categories:
+                continue
+            _selected_op_categories.append((cat, name))
+            for f in ("__init__.py", "%s.py" % name):
+                f_src = os.path.join(op_path, f)
+                if os.path.isfile(f_src):
+                    _op_py_files.append((os.path.join("ops", cat, name, f), f_src))
+            graph_src = os.path.join(op_path, "graph_convert_%s.py" % name)
+            if os.path.isfile(graph_src):
+                _op_py_files.append(
+                    (
+                        os.path.join("ops", cat, name, "graph_convert_%s.py" % name),
+                        graph_src,
+                    )
+                )
+            _collect_cpp(os.path.join(op_path, "csrc"))
+
+
+_sorted_selected_op_categories = sorted(set(_selected_op_categories))
+
+_entry_points = []
+if _selected_ops is not None:
+    for _cat, _op_name in _sorted_selected_op_categories:
+        _entry_points.append(
+            "%s = %s.ops.%s.%s:%s" % (_op_name, PACKAGE_NAME, _cat, _op_name, _op_name)
+        )
+
+
+class Clean(Command):
+    description = "clean build artifacts"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        for pattern in ("build", "dist", "*.egg-info"):
+            for path in glob.glob(os.path.join(HERE, pattern)):
+                if os.path.isdir(path):
+                    shutil.rmtree(path)
+                    logger.info("removing %s", path)
+        if PACKAGE_NAME != BASE_PACKAGE_NAME:
+            link = os.path.join(HERE, PACKAGE_NAME)
+            if os.path.islink(link):
+                os.remove(link)
+
+
+class BuildPyWithOps(_build_py):
+    def run(self):
+        _clean_build_artifacts()
+        super().run()
+        build_pkg = os.path.join(self.build_lib, PACKAGE_NAME)
+        if _selected_ops is not None:
+            for subdir in ("ops", "csrc"):
+                base_dir = os.path.join(build_pkg, subdir)
+                if not os.path.isdir(base_dir):
+                    continue
+                if subdir == "csrc":
+                    for name in os.listdir(base_dir):
+                        op_name = name[:-4] if name.endswith(".cpp") else name
+                        if op_name not in _selected_ops and name != "__pycache__":
+                            target = os.path.join(base_dir, name)
+                            if os.path.isfile(target):
+                                os.remove(target)
+                                logger.info("removing centralized %s/%s", subdir, name)
+                    continue
+                for cat in os.listdir(base_dir):
+                    cat_dir = os.path.join(base_dir, cat)
+                    if not os.path.isdir(cat_dir):
+                        continue
+                    for name in os.listdir(cat_dir):
+                        if name not in _selected_ops and name != "__pycache__":
+                            target = os.path.join(cat_dir, name)
+                            if os.path.isdir(target):
+                                shutil.rmtree(target)
+                                logger.info(
+                                    "removing centralized %s/%s/%s", subdir, cat, name
+                                )
+            ops_cat_inits = {}
+            for cat, name in _sorted_selected_op_categories:
+                if cat not in ops_cat_inits:
+                    ops_cat_inits[cat] = []
+                ops_cat_inits[cat].append(name)
+            for cat, names in ops_cat_inits.items():
+                dst = os.path.join(build_pkg, "ops", cat, "__init__.py")
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, "w") as f:
+                    for name in names:
+                        f.write("from .%s import %s\n" % (name, name))
+        else:
+            for category, init_src in _op_category_inits.items():
+                dst = os.path.join(build_pkg, "ops", category, "__init__.py")
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(init_src, dst)
+            staged_cats = {}
+            for cat, name in _sorted_selected_op_categories:
+                if cat not in _op_category_inits:
+                    staged_cats.setdefault(cat, []).append(name)
+            for category, names in staged_cats.items():
+                dst = os.path.join(build_pkg, "ops", category, "__init__.py")
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, "w") as f:
+                    for name in names:
+                        f.write("from .%s import *\n" % name)
+        for rel_path, src_abs in _op_py_files:
+            dst = os.path.join(build_pkg, rel_path)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if PACKAGE_NAME != BASE_PACKAGE_NAME:
+                with open(src_abs, "r") as _f:
+                    _content = _f.read()
+                _content = _content.replace(
+                    "from cann_ops_nn.op_builder",
+                    "from %s.op_builder" % PACKAGE_NAME,
+                )
+                _content = _content.replace(
+                    "import cann_ops_nn.op_builder",
+                    "import %s.op_builder" % PACKAGE_NAME,
+                )
+                with open(dst, "w") as _f:
+                    _f.write(_content)
+            else:
+                shutil.copy2(src_abs, dst)
+        for rel_path, src_abs in _op_cpp_files:
+            dst = os.path.join(build_pkg, rel_path)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src_abs, dst)
+        common_src_dir = os.path.join(_src_path, "common")
+        if os.path.isdir(common_src_dir):
+            for root, _, filenames in os.walk(common_src_dir):
+                for filename in filenames:
+                    src_abs = os.path.join(root, filename)
+                    rel_path = os.path.relpath(src_abs, _src_path)
+                    dst = os.path.join(build_pkg, rel_path)
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    shutil.copy2(src_abs, dst)
+
+
+_all_packages = find_packages() + _extra_packages
+if _selected_ops is not None:
+    _prefix = BASE_PACKAGE_NAME + "."
+    _all_packages = [
+        pkg.replace(_prefix, PACKAGE_NAME + ".", 1) if pkg.startswith(_prefix) else pkg
+        for pkg in _all_packages
+        if pkg == PACKAGE_NAME or pkg.startswith(PACKAGE_NAME + ".")
+    ]
+
+
+def _clean_symlink():
+    if PACKAGE_NAME != BASE_PACKAGE_NAME:
+        link = os.path.join(HERE, PACKAGE_NAME)
+        if os.path.islink(link):
+            os.remove(link)
+
+
+class SdistWithClean(_sdist):
+    def run(self):
+        _clean_build_artifacts()
+        super().run()
+        _clean_symlink()
+
+
+def _clean_build_artifacts():
+    for pattern in ("build", "dist", "*.egg-info"):
+        for path in glob.glob(os.path.join(HERE, pattern)):
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+                logger.info("removing %s", path)
+
+
+if _bdist_wheel is not None:
+
+    class BdistWheelWithClean(_bdist_wheel):
+        def run(self):
+            _clean_build_artifacts()
+            super().run()
+            _clean_symlink()
+else:
+    BdistWheelWithClean = None
+
+
+_cmdclass = {
+    "build_py": BuildPyWithOps,
+    "sdist": SdistWithClean,
+    "clean": Clean,
+}
+if BdistWheelWithClean is not None:
+    _cmdclass["bdist_wheel"] = BdistWheelWithClean
+
+
+setup(
+    name=PACKAGE_NAME,
+    version=VERSION,
+    description=DESCRIPTION,
+    author="CANN",
+    license="CANN Open Software License Agreement Version 2.0",
+    url="https://gitcode.com/cann/ops-nn/tree/master/torch_extension",
+    install_requires=[
+        "ninja",
+        "torch",
+        "torch_npu",
+    ],
+    packages=_all_packages,
+    package_data={PACKAGE_NAME: _non_python_files(_src_path)},
+    entry_points={"cann_ops_nn.ops": _entry_points} if _entry_points else {},
+    cmdclass=_cmdclass,
+    zip_safe=False,
+)

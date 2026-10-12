@@ -1,0 +1,127 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file batch_mat_mul_v3_iterbatch_basicapi_block_scheduler.h
+ * \brief
+ */
+
+#pragma once
+
+#include "cmct/block/block_scheduler_policy.h"
+#include "cmct/block/block_scheduler_utils.h"
+#include "../../mat_mul_v3/arch35/mat_mul_tiling_data.h"
+
+namespace Cmct {
+namespace Gemm {
+namespace Block {
+
+template <class ProblemShape_, class L1TileShape_, class L0TileShape_>
+class BlockSchedulerIterBatchBuiltIn {
+public:
+    int64_t m_{0};
+    int64_t n_{0};
+    int64_t b_{0};
+    int64_t k_{0};
+    int64_t iterBatchL1_{1};
+    int64_t iterBatchL0_{1};
+    int64_t baseM_{16};
+    int64_t baseN_{16};
+    int64_t baseK_{16};
+    int64_t mmadParam_{0};
+    int64_t innerBatch_{0};
+    int64_t batchX3_{1};
+    bool needNdDma_{false};
+    L2CacheMode l2CacheDisable_{L2CacheMode::L2_CACHE_DEFAULT};
+
+    using BlockShape = Shape<int64_t, int64_t, int64_t, int64_t>;
+    using BlockCoord = Coord<int64_t, int64_t, int64_t, int64_t>;
+    using ProblemShape = ProblemShape_;
+
+    struct Params {
+        const BatchMatMulV3IterBatchBasicTilingData* tilingData;
+    };
+
+public:
+    __aicore__ inline BlockSchedulerIterBatchBuiltIn(const ProblemShape& shape, int64_t blockIdx, int64_t blockNum,
+                                                     const Params& params)
+    {
+        m_ = shape.m;
+        n_ = shape.n;
+        k_ = shape.k;
+        b_ = shape.b;
+        iterBatchL1_ = params.tilingData->iterBatchL1;
+        iterBatchL0_ = params.tilingData->iterBatchL0;
+        baseM_ = params.tilingData->baseM;
+        baseN_ = params.tilingData->baseN;
+        baseK_ = params.tilingData->baseK;
+        mmadParam_ = params.tilingData->mmadParam;
+        innerBatch_ = params.tilingData->innerBatch;
+        l2CacheDisable_ = params.tilingData->l2CacheDisable;
+        needNdDma_ = static_cast<bool>(params.tilingData->needNdDma);
+        batchX3_ = params.tilingData->batchX3;
+    }
+
+    __aicore__ inline int64_t GetTileNum() { return MMV3DivCeil(b_, iterBatchL1_); }
+
+    __aicore__ inline int64_t GetInnerBatch() { return innerBatch_; }
+
+    __aicore__ inline Shape<int64_t, int64_t, int64_t, int64_t> GetIterBatchTuple()
+    {
+        return {iterBatchL1_, iterBatchL0_, 0, 0};
+    }
+
+    __aicore__ inline Shape<int64_t, int64_t, int64_t, int64_t> GetTileL0Tuple() { return {baseM_, baseN_, baseK_, 0}; }
+
+    __aicore__ inline int64_t GetShiftValue() { return mmadParam_; }
+
+    __aicore__ inline bool GetHf32Flag() { return mmadParam_ > 0; }
+
+    __aicore__ inline int64_t GetBlockNum(ProblemShape shape, int64_t blockNum)
+    {
+        int64_t tilingBlockNum = 0;
+        if (b_ < blockNum) {
+            tilingBlockNum = b_;
+        } else {
+            tilingBlockNum = blockNum;
+        }
+        return tilingBlockNum;
+    }
+
+    __aicore__ inline BlockShape GetBlockShape(int64_t tileIdx) { return {m_, n_, k_, b_}; }
+
+    __aicore__ inline BlockCoord GetBlockCoord(int64_t tileIdx) { return {0, 0, 0, tileIdx * iterBatchL1_}; }
+
+    __aicore__ inline bool GetAL2CacheDisable()
+    {
+        return (l2CacheDisable_ == L2CacheMode::ALL_L2_CACHE_DISABLE ||
+                l2CacheDisable_ == L2CacheMode::A_L2_CACHE_DISABLE);
+    }
+
+    __aicore__ inline bool GetBL2CacheDisable()
+    {
+        return (l2CacheDisable_ == L2CacheMode::ALL_L2_CACHE_DISABLE ||
+                l2CacheDisable_ == L2CacheMode::B_L2_CACHE_DISABLE);
+    }
+
+    __aicore__ inline bool GetNeedNdDma() { return needNdDma_; }
+
+    __aicore__ inline int64_t GetBatchX3() { return batchX3_; }
+};
+
+template <class ProblemShape_, class L1TileShape_, class L0TileShape_, bool TransA_, bool TransB_>
+struct BlockSchedulerSelector<ProblemShape_, L1TileShape_, L0TileShape_, Cmct::Gemm::BuiltInIterBatchScheduler, TransA_,
+                              TransB_> {
+    using SchedulerOp = BlockSchedulerIterBatchBuiltIn<ProblemShape_, L1TileShape_, L0TileShape_>;
+};
+
+} // namespace Block
+} // namespace Gemm
+} // namespace Cmct

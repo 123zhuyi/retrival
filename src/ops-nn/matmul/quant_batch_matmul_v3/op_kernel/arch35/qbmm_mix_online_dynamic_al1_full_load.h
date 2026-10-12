@@ -1,0 +1,218 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file qbmm_mix_online_dynamic_al1_full_load.h
+ * \brief
+ */
+#pragma once
+
+#include "qbmm_mix_online_dynamic.h"
+#include "qbmm_api_utils.h"
+
+namespace QuantBatchMatmulV3 {
+
+using namespace AscendC;
+using namespace matmul;
+
+template <class aType, class bType, class scaleType, class biasType, class ptScaleType, class cType, CubeFormat aFormat,
+          CubeFormat bFormat, CubeFormat cFormat, bool aTrans, bool bTrans, class l0cDtype,
+          class blockType = QuantBmmAswBlock, const MatmulConfig& mmCfg = MM_CFG_NO_PRELOAD_OPEN_UNIT_FLAG>
+class QuantBmmPertokenAL1FullLoad
+    : public QuantBmmPertokenRegbaseKernel<aType, bType, scaleType, biasType, ptScaleType, cType, aFormat, bFormat,
+                                           cFormat, aTrans, bTrans, l0cDtype, blockType, mmCfg> {
+public:
+    __aicore__ inline QuantBmmPertokenAL1FullLoad() {}
+    __aicore__ inline void Init(GM_ADDR aGM, GM_ADDR bGM, GM_ADDR scale, GM_ADDR offset, GM_ADDR bias, GM_ADDR ptScale,
+                                GM_ADDR cGM, GM_ADDR workSpace, const void* tilingData, TPipe* pipe);
+    __aicore__ inline void InitBuffer();
+    __aicore__ inline void Process();
+    __aicore__ inline void ProcessWithoutBatch();
+
+protected:
+    __aicore__ inline void MMCompute();
+    using aT = AscendC::MatmulType<TPosition::TSCM, aFormat, aType, aTrans>;
+    using bT = AscendC::MatmulType<TPosition::GM, bFormat, bType, bTrans>;
+    using biasT = AscendC::MatmulType<TPosition::GM, CubeFormat::ND, biasType>;
+    using cT = AscendC::MatmulType<TPosition::VECIN, CubeFormat::ND_ALIGN, l0cDtype>;
+    AscendC::MatmulImpl<aT, bT, cT, biasT, mmCfg, AscendC::MatmulCallBackFunc<nullptr, nullptr, nullptr>,
+                        AscendC::QBmmCustomMatmulPolicy>
+        mm;
+    TQue<QuePosition::A1, 1> InQueueAL1_;
+    LocalTensor<aType> al1Local_;
+    bool isMMultiCore_;
+};
+
+LOCAL_TEMPLATE_CLASS_MIX_PARAMS
+__aicore__ inline void QuantBmmPertokenAL1FullLoad<LOCAL_TEMPLATE_FUNC_MIX_PARAMS>::Init(
+    GM_ADDR aGM, GM_ADDR bGM, GM_ADDR scale, GM_ADDR offset, GM_ADDR bias, GM_ADDR ptScale, GM_ADDR cGM,
+    GM_ADDR workSpace, const void* tilingData, TPipe* pipe)
+{
+    this->blockIdx_ = GetBlockIdx();
+    if ASCEND_IS_AIV {
+        this->blockIdx_ = this->blockIdx_ / AscendC::GetTaskRation();
+        this->subBlockIdx_ = AscendC::GetSubBlockIdx();
+    }
+    this->pipe_ = pipe;
+    this->tilingData_ = static_cast<const DequantBmm::QuantBatchMatmulV3TilingDataParams*>(tilingData);
+
+    this->biasDtype_ = this->tilingData_->params.biasDtype;
+    this->InitBiasEpilogueMode();
+    this->UpdateGlobalAddr(aGM, bGM, scale, bias, ptScale, cGM, workSpace);
+}
+
+LOCAL_TEMPLATE_CLASS_MIX_PARAMS
+__aicore__ inline void QuantBmmPertokenAL1FullLoad<LOCAL_TEMPLATE_FUNC_MIX_PARAMS>::InitBuffer()
+{
+    if ASCEND_IS_AIC {
+        uint64_t aL1Size = DequantBmm::CalcAL1Size<aType, aTrans>(this->block_.tilingData_->matmulTiling.singleCoreM,
+                                                                  this->block_.tilingData_->matmulTiling.Ka);
+        this->pipe_->InitBuffer(InQueueAL1_, 1, aL1Size); // m k的计算
+        al1Local_ = InQueueAL1_.AllocTensor<aType>();
+        CopyInA1<aType, aTrans>(this->block_, static_cast<uint64_t>(this->blockIdx_) % this->block_.params_.mCnt,
+                                isMMultiCore_, al1Local_, this->aGlobal_);
+        mm.Init(&this->block_.tilingData_->matmulTiling, this->pipe_);
+    }
+    uint32_t mForSingleVec = DequantBmm::CeilDiv(this->tilingData_->matmulTiling.baseM, CV_RATIO);
+    uint64_t ubOffset = 0;
+    this->l0cOutUb_ = LocalTensor<l0cDtype>(TPosition::VECIN, 0, mForSingleVec * this->tilingData_->matmulTiling.baseN);
+    ubOffset += mForSingleVec * this->tilingData_->matmulTiling.baseN * sizeof(l0cDtype);
+    // 仅AIV相关的buffer
+    if ASCEND_IS_AIV {
+        if (!static_cast<bool>(this->tilingData_->params.isPerTensor)) {
+            this->scaleUb_ = LocalTensor<scaleType>(TPosition::VECIN, ubOffset, this->tilingData_->matmulTiling.baseN);
+            ubOffset += this->tilingData_->matmulTiling.baseN * sizeof(scaleType);
+        }
+        if (static_cast<bool>(this->tilingData_->params.isPertoken)) {
+            this->ptScaleUb_ = LocalTensor<ptScaleType>(
+                TPosition::VECIN, ubOffset,
+                DequantBmm::Align(mForSingleVec * sizeof(ptScaleType), static_cast<uint64_t>(DATA_BLOCK)) /
+                    sizeof(ptScaleType));
+            ubOffset += DequantBmm::Align(mForSingleVec * sizeof(ptScaleType), static_cast<uint64_t>(DATA_BLOCK));
+        }
+        if (this->isBiasEpilogue_) {
+            if (this->biasDtype_ == DT_FLOAT) {
+                this->biasUbFloat_ = LocalTensor<float>(TPosition::VECIN, ubOffset,
+                                                        this->tilingData_->matmulTiling.baseN);
+                ubOffset += this->tilingData_->matmulTiling.baseN * sizeof(float);
+            } else {
+                this->biasUbB16_ = LocalTensor<bfloat16_t>(TPosition::VECIN, ubOffset,
+                                                           this->tilingData_->matmulTiling.baseN);
+                ubOffset += this->tilingData_->matmulTiling.baseN * sizeof(bfloat16_t);
+            }
+        }
+        // fp16/bf16分两次输出，fp32分四次输出
+        this->dequantOutInUBPing_ = LocalTensor<cType>(
+            TPosition::VECOUT, ubOffset,
+            DequantBmm::CeilDiv(mForSingleVec, FP32_OUTPUT_TIMES) * this->tilingData_->matmulTiling.baseN);
+        ubOffset += DequantBmm::CeilDiv(mForSingleVec, FP32_OUTPUT_TIMES) * this->tilingData_->matmulTiling.baseN *
+                    sizeof(cType);
+        this->dequantOutInUBPong_ = LocalTensor<cType>(
+            TPosition::VECOUT, ubOffset,
+            DequantBmm::CeilDiv(mForSingleVec, FP32_OUTPUT_TIMES) * this->tilingData_->matmulTiling.baseN);
+    }
+}
+
+LOCAL_TEMPLATE_CLASS_MIX_PARAMS
+__aicore__ inline void QuantBmmPertokenAL1FullLoad<LOCAL_TEMPLATE_FUNC_MIX_PARAMS>::Process()
+{
+    isMMultiCore_ = this->block_.tilingData_->matmulTiling.singleCoreM < this->block_.tilingData_->matmulTiling.M;
+    uint64_t innerAlignedBlock = ONE_BLK_SIZE / sizeof(aType);
+    uint64_t mAligned = 0;
+    uint64_t kAligned = 0;
+    if constexpr (aTrans) {
+        mAligned = DequantBmm::Align(this->block_.tilingData_->matmulTiling.singleCoreM, innerAlignedBlock);
+        kAligned = DequantBmm::Align(this->block_.tilingData_->matmulTiling.Ka, BMM_BLOCK_NUM);
+    } else {
+        mAligned = DequantBmm::Align(this->block_.tilingData_->matmulTiling.singleCoreM, BMM_BLOCK_NUM);
+        kAligned = DequantBmm::Align(this->block_.tilingData_->matmulTiling.Ka, innerAlignedBlock);
+    }
+    if (!isMMultiCore_) {
+        this->block_.params_.mCnt = 1;
+        this->block_.params_.mainRow = 0;
+        this->block_.params_.totalCnt = this->block_.params_.nCnt;
+    }
+    InitBuffer();
+    if (likely(this->tilingData_->params.batchC == 1)) {
+        this->block_.offset_.batchCOffset = 0;
+        this->block_.offset_.batchAOffset = 0;
+        this->block_.offset_.batchBOffset = 0;
+        ProcessWithoutBatch();
+    } else {
+        ProcessWithBatch<QuantBmmPertokenAL1FullLoad>(this->block_, *this);
+    }
+    if ASCEND_IS_AIC {
+        InQueueAL1_.FreeTensor(al1Local_);
+    }
+}
+
+LOCAL_TEMPLATE_CLASS_MIX_PARAMS
+__aicore__ inline void QuantBmmPertokenAL1FullLoad<LOCAL_TEMPLATE_FUNC_MIX_PARAMS>::ProcessWithoutBatch()
+{
+    bool isVecSetSyncCom = false;
+    for (uint64_t j = 0; j < this->block_.params_.round; j++) {
+        if (j == (this->block_.params_.round - 1) && this->block_.params_.totalTailTile > 1) {
+            this->block_.UpdateBasicIndex4AL1FullLoad(j);
+        } else {
+            this->block_.UpdateBasicIndex(j);
+        }
+        if (this->block_.params_.index < this->block_.params_.totalCnt) {
+            if (j == (this->block_.params_.round - 1) && this->block_.params_.totalTailTile > 1) {
+                this->block_.template UpdateBlockParams4AL1FullLoad<bTrans, bFormat>(j);
+            } else {
+                this->block_.template UpdateBlockParams<bTrans, bFormat>(j);
+            }
+            if (this->block_.params_.singleCoreM > 0 && this->block_.params_.singleCoreN > 0) {
+                this->block_.template CalcGMOffset<aTrans, bTrans, scaleType, bFormat>();
+                if ASCEND_IS_AIC {
+                    mm.SetSingleShape(this->block_.params_.singleCoreM, this->block_.params_.singleCoreN,
+                                      this->tilingData_->matmulTiling.singleCoreK);
+                    if (this->block_.offset_.batchCOffset * this->block_.params_.round + j > 0) {
+                        this->WaitForVector();
+                    }
+                    MMCompute();
+                    this->NotifyVector();
+                }
+                isVecSetSyncCom = true;
+                if ASCEND_IS_AIV {
+                    this->WaitForCube();
+                    this->DequantCompute();
+                    this->NotifyCube();
+                }
+            }
+        }
+    }
+    // 由于vec最后一次会通过NotifyCube多发一次硬同步，所以cube侧需要额外加一次硬同步
+    if ASCEND_IS_AIC {
+        if (this->block_.offset_.batchCOffset == this->tilingData_->params.batchC - 1 && isVecSetSyncCom) {
+            this->WaitForVector();
+        }
+    }
+}
+
+LOCAL_TEMPLATE_CLASS_MIX_PARAMS
+__aicore__ inline void QuantBmmPertokenAL1FullLoad<LOCAL_TEMPLATE_FUNC_MIX_PARAMS>::MMCompute()
+{
+    mm.SetTensorA(al1Local_, aTrans);
+    mm.SetTensorB(this->bGlobal_[this->block_.offset_.offsetB], bTrans);
+    if (static_cast<bool>(this->tilingData_->matmulTiling.isBias) && !this->isBiasEpilogue_) {
+        mm.SetBias(this->biasGlobal_[this->block_.offset_.offsetBias]);
+    }
+
+    if (isMMultiCore_) {
+        // MDL模板，L1输入场景默认al1M=M，分核全载需要通过设置SetOrgShape指定al1M=singleCoreM
+        mm.SetOrgShape(this->block_.params_.singleCoreM, this->block_.tilingData_->matmulTiling.N,
+                       this->block_.tilingData_->matmulTiling.Ka);
+    }
+    mm.Iterate();
+    mm.GetTensorC(this->l0cOutUb_, 0, true);
+}
+
+} // namespace QuantBatchMatmulV3

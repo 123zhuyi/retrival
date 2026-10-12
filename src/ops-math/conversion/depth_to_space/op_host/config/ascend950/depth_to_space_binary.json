@@ -1,0 +1,1017 @@
+{
+    "op_type": "DepthToSpace",
+    "op_list": [
+      {
+        "bin_filename": "DepthToSpace_float32_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_float32_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_float16_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_float16_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int8_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int8",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int8",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int8_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int8",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int8",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int16_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int16_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int32_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int32",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int32_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int32",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint8_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint8_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint16_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint16_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint32_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint32",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint32",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint32_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint32",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint32",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint64_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint64",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint64",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_uint64_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint64",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint64",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int64_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int64",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int64",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_int64_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int64",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int64",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_bfloat16_NCHW",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "NCHW",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "DepthToSpace_bfloat16_NHWC",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "NHWC",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatFixed"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "block_size",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "mode",
+            "dtype": "string",
+            "value": null
+          },
+          {
+            "name": "data_format",
+            "dtype": "string",
+            "value": null
+          }
+        ]
+      }
+    ]
+  }

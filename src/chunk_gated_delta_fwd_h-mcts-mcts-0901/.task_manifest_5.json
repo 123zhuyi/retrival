@@ -1,0 +1,104 @@
+{
+  "op_name": "chunk_gated_delta_fwd_h",
+  "round_index": 5,
+  "work_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-5",
+  "baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/global_baseline",
+  "algorithm": "mcts",
+  "algorithm_reference": ".claude/references/algorithms/mcts/round.md",
+  "algorithm_params": {
+    "c_uct": 1.414,
+    "c_pw": 2.0,
+    "alpha": 0.5,
+    "failure_threshold": 3,
+    "reward_output_error": -2,
+    "reward_compile_error": -3
+  },
+  "round_strategy": "exploration",
+  "analysis_policy": "pattern_entry",
+  "hypothesis": "MCTS selects the virtual root for a new expansion.",
+  "direction": "",
+  "evidence_sources": [
+    "mcts_tree"
+  ],
+  "mode": "A",
+  "arch": "ascend910b1",
+  "input_files": {
+    "task_desc": "/home/l30083907/cannbot-skills_5171_old/plugins-community/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.py",
+    "task_json": "/home/l30083907/cannbot-skills_5171_old/plugins-community/plugins-official/triton-op-generator/chunk_gated_delta_fwd_h_mc.json",
+    "gpu_kernel_ref": null,
+    "gpu_perf_csv": null
+  },
+  "config": {
+    "target_speedup": 5,
+    "max_rounds": 10,
+    "initial_worker_timeout": 7200,
+    "max_worker_timeout": 28800,
+    "npu_device_id": null,
+    "npu_idle": {
+      "aicore": 1.0,
+      "aivector": 1.0,
+      "npu_util": 1.0,
+      "hbm": 10.0
+    },
+    "algorithms": {
+      "naive": {
+        "enabled": true,
+        "params": {}
+      },
+      "mcts": {
+        "enabled": true,
+        "params": {
+          "c_uct": 1.414,
+          "c_pw": 2.0,
+          "alpha": 0.5,
+          "failure_threshold": 3,
+          "reward_output_error": -2,
+          "reward_compile_error": -3
+        }
+      },
+      "fusion-search": {
+        "enabled": true,
+        "params": {
+          "max_routes": 3,
+          "min_expected_benefit": 0.05,
+          "enable_math_transforms": true,
+          "route_timeout": 3600,
+          "crossover_rate": 0.7,
+          "mutation_rate": 0.15,
+          "elite_count": 1,
+          "exploration_count": 1
+        }
+      }
+    }
+  },
+  "is_recovery": false,
+  "worker_reference": ".claude/references/algorithms/mcts/round.md",
+  "lineage_summary": [
+    {
+      "round_index": 5,
+      "round_dir": "opt-round-5",
+      "direction": "",
+      "best_speedup": 0.0,
+      "direction_yield": null,
+      "hypothesis": "MCTS selects the virtual root for a new expansion.",
+      "parent_round_dir": null
+    }
+  ],
+  "experience_file": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/operator_experience.md",
+  "global_baseline_dir": "/home/l30083907/cannbot-skills_5171_old/plugins-community/triton-optimizer-multi-agent/triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/global_baseline",
+  "global_baseline_speedup": 1.0,
+  "parent_round_journal": null,
+  "mcts_parent_id": "root",
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "visit_count": 4,
+      "mean_reward": 1.9083141136668365,
+      "status": "active",
+      "error_type": "none",
+      "description": "virtual root"
+    }
+  ],
+  "mcts_pending_expansion": true
+}

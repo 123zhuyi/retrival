@@ -1,0 +1,61 @@
+diff --git a/mlir/include/mlir/Dialect/Transform/IR/TransformOps.td b/mlir/include/mlir/Dialect/Transform/IR/TransformOps.td
+index b946fc887586..9c490d547d12 100644
+--- a/mlir/include/mlir/Dialect/Transform/IR/TransformOps.td
++++ b/mlir/include/mlir/Dialect/Transform/IR/TransformOps.td
+@@ -331,10 +331,14 @@ def ApplyPatternsOp : TransformDialectOp<"apply_patterns",
+   }];
+ 
+   let arguments = (ins
+-    TransformHandleTypeInterface:$target,
+-    UnitAttr:$apply_cse,
++    TransformHandleTypeInterface:$target, UnitAttr:$apply_cse,
+     DefaultValuedAttr<I64Attr, "static_cast<uint64_t>(-1)">:$max_iterations,
+-    DefaultValuedAttr<I64Attr, "static_cast<uint64_t>(-1)">:$max_num_rewrites);
++    DefaultValuedAttr<I64Attr, "static_cast<uint64_t>(-1)">:$max_num_rewrites
++#ifdef BSPUB_DAVINCI_BISHENGIR
++    ,OptionalAttr<StrArrayAttr>:$disable_patterns);
++#else
++    );
++#endif
+   let results = (outs);
+   let regions = (region MaxSizedRegion<1>:$patterns);
+ 
+diff --git a/mlir/lib/Dialect/SCF/IR/SCF.cpp b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+index 4de8dacc0edb..b34faa19750f 100644
+--- a/mlir/lib/Dialect/SCF/IR/SCF.cpp
++++ b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+@@ -923,6 +923,12 @@ static std::optional<int64_t> computeConstDiff(Value l, Value u) {
+ struct SimplifyTrivialLoops : public OpRewritePattern<ForOp> {
+   using OpRewritePattern<ForOp>::OpRewritePattern;
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  SimplifyTrivialLoops(MLIRContext *context) : OpRewritePattern(context) {
++    this->setDebugName("SimplifyTrivialLoops");
++  }
++#endif
++
+   LogicalResult matchAndRewrite(ForOp op,
+                                 PatternRewriter &rewriter) const override {
+     // If the upper bound is the same as the lower bound, the loop does not
+diff --git a/mlir/lib/Dialect/Transform/IR/TransformOps.cpp b/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
+index c4238080533b..6bb26af3e29d 100644
+--- a/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
++++ b/mlir/lib/Dialect/Transform/IR/TransformOps.cpp
+@@ -395,7 +395,17 @@ DiagnosedSilenceableFailure transform::ApplyPatternsOp::applyToOne(
+   GreedyRewriteConfig config;
+   config.listener =
+       static_cast<RewriterBase::Listener *>(rewriter.getListener());
++
++#if BSPUB_DAVINCI_BISHENGIR
++  SmallVector<std::string> disablePatterns;
++  if (getDisablePatterns()) {
++    for (Attribute attr : cast<ArrayAttr>(*getDisablePatterns()))
++      disablePatterns.push_back(cast<StringAttr>(attr).str());
++  }
++  FrozenRewritePatternSet frozenPatterns(std::move(patterns), disablePatterns);
++#else
+   FrozenRewritePatternSet frozenPatterns(std::move(patterns));
++#endif
+ 
+   config.maxIterations = getMaxIterations() == static_cast<uint64_t>(-1)
+                              ? GreedyRewriteConfig::kNoLimit

@@ -1,0 +1,121 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file add_layer_norm_quant_base.h
+ * \brief
+ */
+
+#ifndef ADD_LAYER_NORM_QUANT_BASE_CLASS_H_
+#define ADD_LAYER_NORM_QUANT_BASE_CLASS_H_
+
+#include "add_layer_norm_quant_helper.h"
+#include "reduce_common.h"
+
+#define IS_BIAS_ELEWISE ((TILING_KEY % 10) == 1)
+#define IS_BIAS_BROADCAST ((TILING_KEY % 10) == 2)
+
+template <typename T, int TILING_KEY, int BUFFER_NUM = 1>
+class KernelAddLayerNormQuantBase {
+public:
+    __aicore__ inline KernelAddLayerNormQuantBase() {}
+
+    template <typename TilingDataT>
+    __aicore__ inline void InitBaseParams(const TilingDataT* tiling)
+    {
+        this->numCore = tiling->numCore;
+        this->numLastDim = tiling->numLastDim;
+        this->numFirstDim = tiling->numFirstDim;
+        this->firstDimPerCore = tiling->firstDimPerCore;
+        this->firstDimPerCoreTail = tiling->firstDimPerCoreTail;
+        this->firstDimPerTime = tiling->firstDimPerTime;
+        this->lastDimPerTime = tiling->lastDimPerTime;
+        this->aveNum = tiling->aveFactor;
+        this->eps = tiling->eps;
+        this->isXOut = (tiling->isXOut == 1);
+        this->numLastDimAligned = tiling->numLastDimAlign;
+        this->numLastDimRoundUp32 = tiling->numLastDimAlign32;
+        if (block_idx != this->numCore - 1) {
+            this->rowWork = this->firstDimPerCore;
+            this->rowStep = this->firstDimPerTime;
+            this->rowTail_ = tiling->rowTailPerBlock;
+        } else {
+            this->rowWork = this->firstDimPerCoreTail;
+            this->rowStep = tiling->firstDimPerTimeTail;
+            this->rowTail_ = tiling->rowTailLastBlock;
+        }
+
+        this->gmOffset_ = tiling->gmOffset;
+
+        this->mulLoopFp32 = tiling->mulLoopFp32;
+        this->mulTailFp32 = tiling->mulTailFp32;
+        this->dstRepStrideFp32 = tiling->dstRepStrideFp32;
+        this->isPerTensor = (tiling->isPerTensor == 1);
+    }
+
+    __aicore__ inline void InitInGlobalTensors(GM_ADDR x1, GM_ADDR x2, GM_ADDR gamma, GM_ADDR beta, GM_ADDR bias)
+    {
+        uint64_t coreOffset = static_cast<uint64_t>(block_idx) * this->gmOffset_;
+        x1Gm.SetGlobalBuffer((__gm__ T*)(x1) + coreOffset);
+        x2Gm.SetGlobalBuffer((__gm__ T*)(x2) + coreOffset);
+        if constexpr (IS_BIAS_ELEWISE) {
+            biasGm.SetGlobalBuffer((__gm__ T*)(bias) + coreOffset);
+        } else if constexpr (IS_BIAS_BROADCAST) {
+            biasGm.SetGlobalBuffer((__gm__ T*)bias);
+        }
+        gammaGm.SetGlobalBuffer((__gm__ T*)gamma);
+        betaGm.SetGlobalBuffer((__gm__ T*)beta);
+    }
+
+    __aicore__ inline void InitOutGlobalTensors(GM_ADDR y1, GM_ADDR y2, GM_ADDR x)
+    {
+        uint64_t coreOffset = static_cast<uint64_t>(block_idx) * this->gmOffset_;
+        y1Gm.SetGlobalBuffer((__gm__ int8_t*)(y1) + coreOffset);
+        y2Gm.SetGlobalBuffer((__gm__ int8_t*)(y2) + coreOffset);
+        xGm.SetGlobalBuffer((__gm__ T*)(x) + coreOffset);
+    }
+
+    __aicore__ inline void InitWorkSpaceGlobalTensors(GM_ADDR workspace) {}
+
+protected:
+    GlobalTensor<T> x1Gm, x2Gm, gammaGm, betaGm, biasGm, xGm;
+    GlobalTensor<int8_t> y1Gm, y2Gm;
+
+    uint32_t numCore = 0;
+    uint32_t numLastDim = 0;
+    uint32_t numFirstDim = 0;
+    uint32_t firstDimPerCore = 0;
+    uint32_t firstDimPerCoreTail = 0;
+    uint32_t firstDimPerTime = 0;
+    uint32_t lastDimPerTime = 0;
+    float eps = 0.0f;
+    float aveNum = 0.0f;
+    bool isXOut = false;
+
+    uint64_t gmOffset_ = 0;
+    uint32_t rowTail_ = 0;
+    uint32_t rowStep = 0;
+    uint32_t rowWork = 0;
+
+    uint32_t mulLoopFp32 = 0;
+    uint32_t mulTailFp32 = 0;
+    uint8_t dstRepStrideFp32 = 0;
+
+    uint64_t repsFp32 = 0;
+    uint64_t offsetsFp32 = 0;
+    uint64_t remsFp32 = 0;
+
+    bool lastDimPad = false;
+    size_t numLastDimAligned = 0;
+    size_t numLastDimRoundUp32 = 0;
+    bool isPerTensor = false;
+};
+
+#endif // __ADD_LAYER_NORM_QUANT_BASE_CLASS_H_

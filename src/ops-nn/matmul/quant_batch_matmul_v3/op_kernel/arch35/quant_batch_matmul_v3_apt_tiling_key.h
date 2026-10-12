@@ -1,0 +1,332 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file quant_batch_matmul_v3_apt_tiling_key.h
+ * \brief
+ */
+#pragma once
+
+#if defined(__NPU_ARCH__)
+#include "../../inc/macro.h"
+#else
+#include "../../../../common/inc/op_kernel/macro.h"
+#endif
+
+#include "ascendc/host_api/tiling/template_argument.h"
+
+#if defined(__CCE_AICORE__)
+#if ASC_DEVKIT_MAJOR >= 9
+#include "kernel_basic_intf.h"
+#else
+#include "kernel_operator.h"
+#endif
+#endif
+
+#if __FIXED_POINT_ONLY_CUBE_TO_L0C__
+#define IS_BLAZE false
+#elif defined(ASC_DEVKIT_MAJOR) && defined(ASC_DEVKIT_MINOR) && ASC_DEVKIT_MAJOR >= 9 && ASC_DEVKIT_MINOR > 0
+#define IS_BLAZE true
+#else
+#define IS_BLAZE false
+#endif
+
+#if !__CUBE_S8S4_S4S4__ && defined(ORIG_DTYPE_X1) && defined(ORIG_DTYPE_X2) && defined(DT_INT4) && \
+    ORIG_DTYPE_X1 == DT_INT4 && ORIG_DTYPE_X2 == DT_INT4
+#define IS_A4W4I
+#undef DTYPE_X1
+#undef DTYPE_X2
+#undef ORIG_DTYPE_X1
+#undef ORIG_DTYPE_X2
+#define DTYPE_X1 int8_t
+#define DTYPE_X2 int8_t
+#define ORIG_DTYPE_X1 DT_INT8
+#define ORIG_DTYPE_X2 DT_INT8
+#endif
+
+namespace QuantBatchMatmulV3Arch35TilingKey {
+
+#if (defined(ORIG_DTYPE_X1) && defined(ORIG_DTYPE_SCALE))
+#define SUPPORT_PERBLOCK             \
+    (ORIG_DTYPE_SCALE == DT_FLOAT && \
+     (ORIG_DTYPE_X1 == DT_HIFLOAT8 || ORIG_DTYPE_X1 == DT_FLOAT8_E4M3FN || ORIG_DTYPE_X1 == DT_FLOAT8_E5M2))
+#else
+#define SUPPORT_PERBLOCK false
+#endif
+
+#if defined(ORIG_DTYPE_X1) && defined(ORIG_DTYPE_X2) && defined(ORIG_DTYPE_SCALE) && defined(DT_FLOAT8_E4M3FN) && \
+    defined(DT_FLOAT8_E5M2) && defined(DT_FLOAT4_E2M1) && defined(DT_FLOAT8_E8M0)
+#define QBMMV3_IS_MX_DTYPE_TPL                                                                                    \
+    ((ORIG_DTYPE_X1 == DT_FLOAT8_E4M3FN || ORIG_DTYPE_X1 == DT_FLOAT8_E5M2 || ORIG_DTYPE_X1 == DT_FLOAT4_E2M1) && \
+     (ORIG_DTYPE_X2 == DT_FLOAT8_E4M3FN || ORIG_DTYPE_X2 == DT_FLOAT8_E5M2 || ORIG_DTYPE_X2 == DT_FLOAT4_E2M1) && \
+     ORIG_DTYPE_SCALE == DT_FLOAT8_E8M0)
+#else
+#define QBMMV3_IS_MX_DTYPE_TPL false
+#endif
+
+#if IS_BLAZE
+#define SUPPORT_MX_WITHOUT_BATCH_TILING_KEY QBMMV3_IS_MX_DTYPE_TPL
+#else
+#define SUPPORT_MX_WITHOUT_BATCH_TILING_KEY false
+#endif
+
+// This is the compile-time upper bound for non-MX per-tensor StreamK. Host tiling further validates optional
+// scale/bias inputs, batch, and the all-SK requirement. Keep the dtype-family guards independent because some
+// INT8 compile environments do not define FP8 dtype macros.
+#if defined(ORIG_DTYPE_X1) && defined(ORIG_DTYPE_X2) && defined(ORIG_DTYPE_SCALE) && defined(ORIG_DTYPE_Y) && \
+    defined(DT_INT8) && defined(DT_UINT64) && defined(DT_INT64) && defined(DT_FLOAT) && defined(DT_BF16) &&   \
+    defined(DT_FLOAT16)
+#define QBMMV3_IS_INT8_PERTENSOR_STREAMK_TPL                                  \
+    ((ORIG_DTYPE_X1 == DT_INT8) && (ORIG_DTYPE_X2 == DT_INT8) &&              \
+     ((((ORIG_DTYPE_SCALE == DT_UINT64) || (ORIG_DTYPE_SCALE == DT_INT64)) && \
+       ((ORIG_DTYPE_Y == DT_FLOAT16) || (ORIG_DTYPE_Y == DT_BF16))) ||        \
+      (((ORIG_DTYPE_SCALE == DT_FLOAT) || (ORIG_DTYPE_SCALE == DT_BF16)) && ORIG_DTYPE_Y == DT_BF16)))
+#else
+#define QBMMV3_IS_INT8_PERTENSOR_STREAMK_TPL false
+#endif
+
+#if defined(ORIG_DTYPE_X1) && defined(ORIG_DTYPE_X2) && defined(ORIG_DTYPE_SCALE) && defined(ORIG_DTYPE_Y) &&  \
+    defined(DT_UINT64) && defined(DT_INT64) && defined(DT_FLOAT) && defined(DT_BF16) && defined(DT_FLOAT16) && \
+    defined(DT_HIFLOAT8) && defined(DT_FLOAT8_E4M3FN) && defined(DT_FLOAT8_E5M2)
+#define QBMMV3_IS_FP8_PERTENSOR_STREAMK_TPL                                                                   \
+    ((((ORIG_DTYPE_X1 == DT_HIFLOAT8) && (ORIG_DTYPE_X2 == DT_HIFLOAT8)) ||                                   \
+      (((ORIG_DTYPE_X1 == DT_FLOAT8_E4M3FN) || (ORIG_DTYPE_X1 == DT_FLOAT8_E5M2)) &&                          \
+       ((ORIG_DTYPE_X2 == DT_FLOAT8_E4M3FN) || (ORIG_DTYPE_X2 == DT_FLOAT8_E5M2)))) &&                        \
+     ((ORIG_DTYPE_SCALE == DT_UINT64) || (ORIG_DTYPE_SCALE == DT_INT64) || (ORIG_DTYPE_SCALE == DT_FLOAT)) && \
+     ((ORIG_DTYPE_Y == DT_FLOAT16) || (ORIG_DTYPE_Y == DT_BF16) || (ORIG_DTYPE_Y == DT_FLOAT)))
+#else
+#define QBMMV3_IS_FP8_PERTENSOR_STREAMK_TPL false
+#endif
+
+#if defined(FORMAT_X2) && defined(FORMAT_ND) && defined(FORMAT_FRACTAL_NZ)
+#define SUPPORT_NON_MX_STREAMK_TILING_KEY                                                                        \
+    (!QBMMV3_IS_MX_DTYPE_TPL && (QBMMV3_IS_INT8_PERTENSOR_STREAMK_TPL || QBMMV3_IS_FP8_PERTENSOR_STREAMK_TPL) && \
+     (FORMAT_X2 == FORMAT_ND || FORMAT_X2 == FORMAT_FRACTAL_NZ))
+#else
+#define SUPPORT_NON_MX_STREAMK_TILING_KEY false
+#endif
+
+// Keep the existing non-MX Cube ND/API-level classification independent from StreamK key selection.
+#if defined(__CCE_AICORE__) && defined(ORIG_DTYPE_SCALE) && defined(FORMAT_X2) && defined(FORMAT_ND) && \
+    defined(DT_UINT64) && defined(DT_INT64) && defined(DT_FLOAT) && defined(DT_BF16)
+#define QBMMV3_IS_NON_MX_CUBE_ND_TPL                                                                   \
+    (!QBMMV3_IS_MX_DTYPE_TPL &&                                                                        \
+     (ORIG_DTYPE_SCALE == DT_UINT64 || ORIG_DTYPE_SCALE == DT_INT64 || ORIG_DTYPE_SCALE == DT_FLOAT || \
+      ORIG_DTYPE_SCALE == DT_BF16) &&                                                                  \
+     FORMAT_X2 == FORMAT_ND)
+#else
+#define QBMMV3_IS_NON_MX_CUBE_ND_TPL false
+#endif
+
+#if (!defined(__FIXED_POINT_ONLY_CUBE_TO_L0C__) || !__FIXED_POINT_ONLY_CUBE_TO_L0C__) && defined(ASC_DEVKIT_MAJOR) && \
+    defined(ASC_DEVKIT_MINOR) && ASC_DEVKIT_MAJOR >= 9 && ASC_DEVKIT_MINOR > 0 && defined(ORIG_DTYPE_X1) &&           \
+    defined(ORIG_DTYPE_X2) && defined(ORIG_DTYPE_SCALE) && defined(FORMAT_X2) && defined(FORMAT_FRACTAL_NZ) &&        \
+    defined(DT_FLOAT8_E4M3FN) && defined(DT_INT8) && defined(DT_HIFLOAT8) && defined(DT_FLOAT) && defined(DT_BF16)
+#define SUPPORT_MIX_WITHOUT_BATCH_TILING_KEY                                                                   \
+    (((ORIG_DTYPE_X1 == DT_FLOAT8_E4M3FN || ORIG_DTYPE_X1 == DT_HIFLOAT8) &&                                   \
+      (ORIG_DTYPE_X2 == DT_FLOAT8_E4M3FN || ORIG_DTYPE_X2 == DT_HIFLOAT8) && (ORIG_DTYPE_SCALE == DT_FLOAT) && \
+      ORIG_DTYPE_Y != DT_INT32) ||                                                                             \
+     (ORIG_DTYPE_X1 == DT_INT8 && ORIG_DTYPE_X2 == DT_INT8 && ORIG_DTYPE_Y == DT_BF16 &&                       \
+      (ORIG_DTYPE_SCALE == DT_FLOAT || ORIG_DTYPE_SCALE == DT_BF16))) &&                                       \
+        FORMAT_X2 == FORMAT_FRACTAL_NZ&& ORIG_DTYPE_X1 == ORIG_DTYPE_X2
+#else
+#define SUPPORT_MIX_WITHOUT_BATCH_TILING_KEY false
+#endif
+
+#if defined(__CCE_AICORE__) && __FIXED_POINT_ONLY_CUBE_TO_L0C__ && defined(ORIG_DTYPE_X1) && defined(ORIG_DTYPE_X2) && \
+    defined(ORIG_DTYPE_SCALE) && defined(FORMAT_X2) && defined(DT_INT8) && defined(DT_UINT64) && defined(DT_INT64) &&  \
+    defined(DT_FLOAT) && defined(DT_BF16) && defined(FORMAT_ND)
+#define QBMMV3_IS_FIXED_POINT_CUBE_ND_INT8_TPL                                                         \
+    ((ORIG_DTYPE_X1 == DT_INT8) && (ORIG_DTYPE_X2 == DT_INT8) &&                                       \
+     (ORIG_DTYPE_SCALE == DT_UINT64 || ORIG_DTYPE_SCALE == DT_INT64 || ORIG_DTYPE_SCALE == DT_FLOAT || \
+      ORIG_DTYPE_SCALE == DT_BF16) &&                                                                  \
+     (FORMAT_X2 == FORMAT_ND))
+#else
+#define QBMMV3_IS_FIXED_POINT_CUBE_ND_INT8_TPL false
+#endif
+
+#if defined(__CCE_AICORE__) && defined(FORMAT_X2) && defined(FORMAT_FRACTAL_NZ)
+#define QBMMV3_IS_NON_MX_WEIGHT_NZ_TPL (!QBMMV3_IS_MX_DTYPE_TPL && FORMAT_X2 == FORMAT_FRACTAL_NZ)
+#else
+#define QBMMV3_IS_NON_MX_WEIGHT_NZ_TPL false
+#endif
+
+// Kernel type 11 is shared by the original MX StreamK path and the non-MX per-tensor StreamK path above.
+#define SUPPORT_STREAMK_TILING_KEY (SUPPORT_MX_WITHOUT_BATCH_TILING_KEY || SUPPORT_NON_MX_STREAMK_TILING_KEY)
+
+// Batch Mode
+#define TPL_WITH_BATCH 0
+#define TPL_WITHOUT_BATCH 1
+
+// Kernel Type
+#define TPL_NO_VEC_EPILOGUE_WITH_MMAPI 0
+#define TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI 1
+#define TPL_VEC_EPILOGUE_WITH_MMAPI 2
+#define TPL_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI 3
+#define TPL_VEC_EPILOGUE_WITH_CUSTOM_MM 4
+#define TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOABL1_WITH_MMAPI 5
+#define TPL_NO_VEC_EPILOGUE_WITH_BMMAPI 6
+#define TPL_NO_VEC_EPILOGUE_WITH_BMMAPI_NO_BATCH_OUT 7
+#define TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOBL1_WITH_MMAPI 8
+#define TPL_NO_VEC_EPILOGUE_WITH_MMAPI_MX_L0C_PINGPONG 9
+#define TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI_MX_L0C_PINGPONG 10
+#define TPL_VEC_EPILOGUE_STREAMK_WITH_MMAPI 11
+
+// API Level
+#define TPL_API_LEVEL_HIGH 0
+#define TPL_API_LEVEL_BASIC 1
+#define TPL_API_LEVEL_BLAZE 2
+
+ASCENDC_TPL_ARGS_DECL(
+    QuantBatchMatmulV3, ASCENDC_TPL_UINT_DECL(ATRANS, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_LIST, 0, 1),
+    ASCENDC_TPL_UINT_DECL(BTRANS, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_LIST, 0, 1),
+    ASCENDC_TPL_UINT_DECL(BATCHMODE, ASCENDC_TPL_4_BW, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH, TPL_WITHOUT_BATCH),
+    ASCENDC_TPL_UINT_DECL(KERNELTYPE, ASCENDC_TPL_8_BW, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                          TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI, TPL_VEC_EPILOGUE_WITH_MMAPI,
+                          TPL_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI, TPL_VEC_EPILOGUE_WITH_CUSTOM_MM,
+                          TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOABL1_WITH_MMAPI, TPL_NO_VEC_EPILOGUE_WITH_BMMAPI,
+                          TPL_NO_VEC_EPILOGUE_WITH_BMMAPI_NO_BATCH_OUT, TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOBL1_WITH_MMAPI,
+                          TPL_NO_VEC_EPILOGUE_WITH_MMAPI_MX_L0C_PINGPONG,
+                          TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI_MX_L0C_PINGPONG,
+                          TPL_VEC_EPILOGUE_STREAMK_WITH_MMAPI),
+    ASCENDC_TPL_UINT_DECL(APILEVEL, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_HIGH, TPL_API_LEVEL_BASIC,
+                          TPL_API_LEVEL_BLAZE));
+
+ASCENDC_TPL_SEL(
+#if ((!defined(__CCE_AICORE__)) || (defined(ORIG_DTYPE_SCALE) && defined(DT_FLOAT) && defined(DT_BF16) && \
+                                    (ORIG_DTYPE_SCALE == DT_FLOAT || ORIG_DTYPE_SCALE == DT_BF16)))
+#if (SUPPORT_MIX_WITHOUT_BATCH_TILING_KEY == 1)
+    ASCENDC_TPL_ARGS_SEL( // kernel type {2, 3} * batch mode {0, 1} * ATRANS {0} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_MIX_AIC_1_2), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH, TPL_WITHOUT_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BLAZE)),
+#endif
+    ASCENDC_TPL_ARGS_SEL( // kernel type {2, 3} * ATRANS {0, 1} * BTRANS {0, 1} * APILEVEL {0}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_MIX_AIC_1_2), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH), // Batch Mode 只有0
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_HIGH)),
+#endif
+#if ((!defined(__CCE_AICORE__)) || (SUPPORT_PERBLOCK))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {4} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_MIX_AIC_1_2), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH), // Batch Mode 只有0
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_VEC_EPILOGUE_WITH_CUSTOM_MM),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BASIC)),
+#endif
+#if ((!defined(__CCE_AICORE__)) || (SUPPORT_MX_WITHOUT_BATCH_TILING_KEY))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {0, 1} * batch mode {1} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITHOUT_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BLAZE)),
+#endif
+#if ((!defined(__CCE_AICORE__)) || (SUPPORT_STREAMK_TILING_KEY))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {11}: AIC split-K workspace + AIV scale/bias epilogue
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_MIX_AIC_1_2), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITHOUT_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_VEC_EPILOGUE_STREAMK_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BLAZE)),
+#endif
+#if (!defined(__CCE_AICORE__) || __FIXED_POINT_ONLY_CUBE_TO_L0C__)
+    ASCENDC_TPL_ARGS_SEL( // kernel type {6, 7} * batch mode {0} * api level {0} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_BMMAPI,
+                             TPL_NO_VEC_EPILOGUE_WITH_BMMAPI_NO_BATCH_OUT),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_HIGH)),
+#endif
+#if (!defined(__CCE_AICORE__) || (__FIXED_POINT_ONLY_CUBE_TO_L0C__ && !QBMMV3_IS_FIXED_POINT_CUBE_ND_INT8_TPL))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {0, 1, 5, 8} * api level {0} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH), // Batch Mode 只有0
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOABL1_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOBL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_HIGH)),
+#endif
+#if (!defined(__CCE_AICORE__) || (__FIXED_POINT_ONLY_CUBE_TO_L0C__ && QBMMV3_IS_FIXED_POINT_CUBE_ND_INT8_TPL))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {0, 1, 8} * api level {1} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH), // Batch Mode 只有0
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOBL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BASIC)),
+#endif
+#if ((!defined(__CCE_AICORE__)) || \
+     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510) && IS_BLAZE && QBMMV3_IS_MX_DTYPE_TPL))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {9, 10} * batch mode {0, 1} * api level {2} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH, TPL_WITHOUT_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI_MX_L0C_PINGPONG,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI_MX_L0C_PINGPONG),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BLAZE)),
+#endif
+#if ((!defined(__CCE_AICORE__)) ||                                   \
+     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510) && IS_BLAZE && \
+      (QBMMV3_IS_MX_DTYPE_TPL || QBMMV3_IS_NON_MX_CUBE_ND_TPL || QBMMV3_IS_NON_MX_WEIGHT_NZ_TPL)))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {0, 1} * api level {2} * ATRANS {0, 1} * BTRANS {0, 1}
+#ifdef IS_A4W4I
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_MIX_AIC_1_2),
+#else
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY),
+#endif
+        ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BLAZE)),
+#endif
+#if ((!defined(__CCE_AICORE__)) || \
+     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510) && (QBMMV3_IS_MX_DTYPE_TPL || QBMMV3_IS_NON_MX_CUBE_ND_TPL)))
+    ASCENDC_TPL_ARGS_SEL( // kernel type {0, 1} * api level {1} * ATRANS {0, 1} * BTRANS {0, 1}
+#ifdef IS_A4W4I
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_MIX_AIC_1_2),
+#else
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY),
+#endif
+        ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_BASIC)),
+#endif
+#if (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510) && !QBMMV3_IS_MX_DTYPE_TPL && !QBMMV3_IS_NON_MX_CUBE_ND_TPL)
+    ASCENDC_TPL_ARGS_SEL( // kernel type {0, 1} * api level {0} * ATRANS {0, 1} * BTRANS {0, 1}
+        ASCENDC_TPL_KERNEL_TYPE_SEL(ASCENDC_TPL_AIC_ONLY), ASCENDC_TPL_UINT_SEL(ATRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BTRANS, ASCENDC_TPL_UI_LIST, 0, 1),
+        ASCENDC_TPL_UINT_SEL(BATCHMODE, ASCENDC_TPL_UI_LIST, TPL_WITH_BATCH),
+        ASCENDC_TPL_UINT_SEL(KERNELTYPE, ASCENDC_TPL_UI_LIST, TPL_NO_VEC_EPILOGUE_WITH_MMAPI,
+                             TPL_NO_VEC_EPILOGUE_CUSTOM_GMTOAL1_WITH_MMAPI),
+        ASCENDC_TPL_UINT_SEL(APILEVEL, ASCENDC_TPL_UI_LIST, TPL_API_LEVEL_HIGH)),
+#endif
+);
+#undef QBMMV3_IS_NON_MX_WEIGHT_NZ_TPL
+#undef QBMMV3_IS_FIXED_POINT_CUBE_ND_INT8_TPL
+#undef QBMMV3_IS_NON_MX_CUBE_ND_TPL
+#undef QBMMV3_IS_MX_DTYPE_TPL
+} // namespace QuantBatchMatmulV3Arch35TilingKey

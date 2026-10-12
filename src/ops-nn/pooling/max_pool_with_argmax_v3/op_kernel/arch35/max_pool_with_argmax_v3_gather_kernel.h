@@ -1,0 +1,547 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file max_pool_with_argmax_v3_gather_kernel.h
+ * \brief
+ */
+#ifndef MAX_POOL_WITH_ARGMAX_V3_GATHER_KERNEL_H_
+#define MAX_POOL_WITH_ARGMAX_V3_GATHER_KERNEL_H_
+
+#include "max_pool_with_argmax_v3_base.h"
+#include "pool_utils/arch35/index/max_pool_with_argmax_index.h"
+#include "pool_utils/arch35/index/pool_index_without_pad_align.h"
+#include "pool_utils/arch35/data_move/pool_calc_buffer_data_move.h"
+
+namespace MaxPoolWithArgmaxV3GatherNameSpace {
+using namespace AscendC;
+constexpr uint32_t BUFFER_NUM = 2;
+constexpr int64_t HELPER_BUFFER_SIZE = 1024;
+constexpr int64_t THREE_DIM = 3;
+constexpr int64_t RATIO = 2;
+constexpr uint16_t B32 = 4;
+
+template <typename T1, typename T2, const uint32_t IS_PAD = 0>
+class MaxPoolWithArgmaxV3GatherKernel {
+public:
+    __aicore__ inline MaxPoolWithArgmaxV3GatherKernel(TPipe& pipeIn,
+                                                      const MaxPoolWithArgmaxV3GatherTilingData& tilingData)
+        : pipe_(pipeIn), tilingData_(tilingData){};
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, GM_ADDR argmax);
+    __aicore__ inline void Process();
+
+private:
+    __aicore__ inline void ScalarCompute(int64_t loopNum);
+    __aicore__ inline void ProcessPerLoop();
+    __aicore__ inline void CopyIn();
+    __aicore__ inline void Compute();
+    __aicore__ inline void CopyOut();
+    __aicore__ inline void DupAndCopyToCalcBuffer(__ubuf__ T1* dstAddr, __ubuf__ T1* srcAddr);
+    __aicore__ inline void ProcessW(__ubuf__ T1* computeAddr, __ubuf__ T1* maxValueAddr, int32_t hOffset,
+                                    uint16_t wStrideOffset, Reg::RegTensor<int32_t>& indexReg, uint16_t hKernel,
+                                    uint16_t wKernel, uint16_t repeatElem, int32_t outputOffset,
+                                    Reg::RegTensor<int32_t>& maxIndexReg, uint32_t hDilation, uint32_t wDilation);
+    __aicore__ inline void SingleRowGather(__ubuf__ T1* computeAddr, __ubuf__ T1* maxValueAddr,
+                                           __ubuf__ T2* argmaxAddr);
+    __aicore__ inline void MultiRowGather(__ubuf__ T1* computeAddr, __ubuf__ T1* maxValueAddr, __ubuf__ T2* argmaxAddr);
+    __aicore__ inline void MultiNcGather(__ubuf__ T1* computeAddr, __ubuf__ T1* maxValueAddr, __ubuf__ T2* argmaxAddr);
+
+private:
+    TPipe& pipe_;
+    const MaxPoolWithArgmaxV3GatherTilingData& tilingData_;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inputQue_;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> maxValueQue_;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> argmaxQue_;
+    TBuf<TPosition::VECCALC> inputCalcBuff_;
+
+    GlobalTensor<T1> xGm_;
+    GlobalTensor<T1> yGm_;
+    GlobalTensor<T2> argmaxGm_;
+
+    uint32_t blockIdx_ = 0;
+    int64_t highAxisActual_ = 0;
+    int64_t hOutputActual_ = 0;
+    int64_t wOutputActual_ = 0;
+    int64_t curCoreProcessNum_ = 0;
+    int64_t hInputActualPad_ = 0;
+    int64_t wInputActualPad_ = 0;
+    int64_t wInputActualAlignedPad_ = 0;
+    int64_t leftOffsetToInputLeft_ = 0;
+    int64_t rightOffsetToInputRight_ = 0;
+    int64_t topOffsetToInputTop_ = 0;
+    int64_t downOffsetToInputDown_ = 0;
+
+    int64_t highAxisIndex_ = 0;
+    int64_t hAxisIndex_ = 0;
+    int64_t wAxisIndex_ = 0;
+
+    int64_t highInputAxisOffset_ = 0;
+    int64_t hInputAxisOffset_ = 0;
+    int64_t wInputAxisOffset_ = 0;
+
+    int64_t hInputActualNoPad_ = 0;
+    int64_t wInputActualNoPad_ = 0;
+    int64_t wOutputActualAligned_ = 0;
+
+    constexpr static int32_t blockSize_ = platform::GetUbBlockSize();
+    constexpr static int64_t maxDataNumOneBlock_ = blockSize_ / sizeof(T1) >= blockSize_ / sizeof(T2) ?
+                                                       blockSize_ / sizeof(T1) :
+                                                       blockSize_ / sizeof(T2);
+    constexpr static uint16_t vlT2_ = platform::GetVRegSize() / sizeof(T2);
+    constexpr static uint16_t vlT1_ = platform::GetVRegSize() / sizeof(T1);
+};
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::Init(GM_ADDR x, GM_ADDR y, GM_ADDR argmax)
+{
+    blockIdx_ = GetBlockIdx();
+    if (blockIdx_ >= tilingData_.usedCoreNum) {
+        return;
+    }
+    curCoreProcessNum_ = (blockIdx_ + 1 == tilingData_.usedCoreNum) ? tilingData_.tailCoreProcessNum :
+                                                                      tilingData_.normalCoreProcessNum;
+    xGm_.SetGlobalBuffer((__gm__ T1*)x);
+    yGm_.SetGlobalBuffer((__gm__ T1*)y);
+    argmaxGm_.SetGlobalBuffer((__gm__ T2*)argmax);
+
+    pipe_.InitBuffer(inputQue_, BUFFER_NUM, tilingData_.inputBufferSize);
+    if constexpr (IS_PAD == 1) {
+        pipe_.InitBuffer(inputCalcBuff_, tilingData_.inputBufferSize);
+    }
+    pipe_.InitBuffer(maxValueQue_, BUFFER_NUM, tilingData_.maxValueBufferSize);
+    pipe_.InitBuffer(argmaxQue_, BUFFER_NUM, tilingData_.argmaxBufferSize);
+    return;
+}
+
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::Process()
+{
+    if (blockIdx_ >= tilingData_.usedCoreNum) {
+        return;
+    }
+    for (int64_t loopNum = 0; loopNum < curCoreProcessNum_; loopNum++) {
+        ScalarCompute(loopNum);
+        ProcessPerLoop();
+    }
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::ScalarCompute(int64_t loopNum)
+{
+    int64_t baseBlockIdx = blockIdx_ * tilingData_.normalCoreProcessNum + loopNum;
+    highAxisIndex_ = baseBlockIdx / (tilingData_.hOutputOuter * tilingData_.wOutputOuter);
+    highAxisActual_ = highAxisIndex_ == (tilingData_.highAxisOuter - 1) ? tilingData_.highAxisTail :
+                                                                          tilingData_.highAxisInner;
+    int64_t tempTail = baseBlockIdx % (tilingData_.hOutputOuter * tilingData_.wOutputOuter);
+
+    hAxisIndex_ = tempTail / tilingData_.wOutputOuter;
+    hOutputActual_ = hAxisIndex_ == (tilingData_.hOutputOuter - 1) ? tilingData_.hOutputTail : tilingData_.hOutputInner;
+
+    wAxisIndex_ = tempTail % tilingData_.wOutputOuter;
+    wOutputActual_ = wAxisIndex_ == (tilingData_.wOutputOuter - 1) ? tilingData_.wOutputTail : tilingData_.wOutputInner;
+    wOutputActualAligned_ = CeilDivision(wOutputActual_, maxDataNumOneBlock_) * maxDataNumOneBlock_;
+
+    hInputActualPad_ = (hOutputActual_ - 1) * tilingData_.hStride + (tilingData_.hKernel - 1) * tilingData_.hDilation +
+                       1;
+    wInputActualPad_ = (wOutputActual_ - 1) * tilingData_.wStride + (tilingData_.wKernel - 1) * tilingData_.wDilation +
+                       1;
+
+    wInputActualAlignedPad_ = CeilDivision(wInputActualPad_, blockSize_ / sizeof(T1)) * (blockSize_ / sizeof(T1));
+
+    int64_t inputPlaneSize = tilingData_.hInput * tilingData_.wInput;
+    highInputAxisOffset_ = highAxisIndex_ * tilingData_.highAxisInner * inputPlaneSize;
+    hInputAxisOffset_ = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.hStride * tilingData_.wInput;
+    wInputAxisOffset_ = wAxisIndex_ * tilingData_.wOutputInner * tilingData_.wStride;
+    if constexpr (IS_PAD == 1) {
+        int64_t tRelBoundaryDistance = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.hStride -
+                                       tilingData_.padTop;
+
+        int64_t dRelBoundaryDistance = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.hStride +
+                                       (hOutputActual_ - 1) * tilingData_.hStride + tilingData_.hKernel -
+                                       tilingData_.hInput - tilingData_.padTop;
+
+        int64_t lRelBoundaryDistance = wAxisIndex_ * tilingData_.wOutputInner * tilingData_.wStride -
+                                       tilingData_.padLeft;
+
+        int64_t rRelBoundaryDistance = wAxisIndex_ * tilingData_.wOutputInner * tilingData_.wStride +
+                                       (wOutputActual_ - 1) * tilingData_.wStride + tilingData_.wKernel -
+                                       tilingData_.wInput - tilingData_.padLeft;
+        leftOffsetToInputLeft_ = lRelBoundaryDistance >= 0 ? 0 : -lRelBoundaryDistance;
+        rightOffsetToInputRight_ = rRelBoundaryDistance >= 0 ? rRelBoundaryDistance : 0;
+        topOffsetToInputTop_ = tRelBoundaryDistance >= 0 ? 0 : -tRelBoundaryDistance;
+        downOffsetToInputDown_ = dRelBoundaryDistance >= 0 ? dRelBoundaryDistance : 0;
+
+        hInputActualNoPad_ = hInputActualPad_ - topOffsetToInputTop_ - downOffsetToInputDown_;
+        wInputActualNoPad_ = wInputActualPad_ - leftOffsetToInputLeft_ - rightOffsetToInputRight_;
+        hInputAxisOffset_ = topOffsetToInputTop_ == 0 ? hInputAxisOffset_ - tilingData_.padTop * tilingData_.wInput : 0;
+
+        wInputAxisOffset_ = leftOffsetToInputLeft_ == 0 ? wInputAxisOffset_ - tilingData_.padLeft : 0;
+    }
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::ProcessPerLoop()
+{
+    CopyIn();
+    Compute();
+    CopyOut();
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::CopyIn()
+{
+    LocalTensor<T1> xLocal = inputQue_.AllocTensor<T1>();
+    int64_t xGmOffset = highInputAxisOffset_ + hInputAxisOffset_ + wInputAxisOffset_;
+
+    LoopModeParams loopModeParamsT1;
+    loopModeParamsT1.loop1Size = highAxisActual_;
+    loopModeParamsT1.loop2Size = 1;
+    loopModeParamsT1.loop1SrcStride = tilingData_.hInput * tilingData_.wInput * sizeof(T1);
+    loopModeParamsT1.loop2SrcStride = 0;
+    loopModeParamsT1.loop1DstStride = hInputActualPad_ * wInputActualAlignedPad_ * sizeof(T1);
+    loopModeParamsT1.loop2DstStride = 0;
+
+    SetLoopModePara(loopModeParamsT1, DataCopyMVType::OUT_TO_UB);
+    DataCopyPadExtParams<T1> paramsT1 = {false, 0, 0, 0};
+    DataCopyExtParams copyOutParamT1;
+    if constexpr (IS_PAD == 1) {
+        copyOutParamT1.blockCount = static_cast<uint16_t>(hInputActualNoPad_);
+        copyOutParamT1.blockLen = static_cast<uint32_t>(wInputActualNoPad_ * sizeof(T1));
+        copyOutParamT1.srcStride = static_cast<uint32_t>((tilingData_.wInput - wInputActualNoPad_) * sizeof(T1));
+        copyOutParamT1.dstStride = 0;
+        copyOutParamT1.rsv = 0;
+    } else {
+        copyOutParamT1.blockCount = static_cast<uint16_t>(hInputActualPad_);
+        copyOutParamT1.blockLen = static_cast<uint32_t>(wInputActualPad_ * sizeof(T1));
+        copyOutParamT1.srcStride = static_cast<uint32_t>((tilingData_.wInput - wInputActualPad_) * sizeof(T1));
+        copyOutParamT1.dstStride = 0;
+        copyOutParamT1.rsv = 0;
+    }
+    DataCopyPad(xLocal, xGm_[xGmOffset], copyOutParamT1, paramsT1);
+    inputQue_.EnQue(xLocal);
+    ResetLoopModePara(DataCopyMVType::OUT_TO_UB);
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::DupAndCopyToCalcBuffer(__ubuf__ T1* dstAddr,
+                                                                                               __ubuf__ T1* srcAddr)
+{
+    uint16_t loopCols = wInputActualNoPad_ / vlT1_;
+    uint16_t tailCols = wInputActualNoPad_ - loopCols * vlT1_;
+    uint32_t wInputActualNoPadAlign = CeilDivision(wInputActualNoPad_, blockSize_ / sizeof(T1)) * blockSize_ /
+                                      sizeof(T1);
+    uint32_t dstBatchStride = hInputActualPad_ * wInputActualAlignedPad_;
+    uint32_t totalInput = tilingData_.highAxisInner * hInputActualPad_ * wInputActualAlignedPad_;
+    uint16_t loopDup = totalInput / vlT1_;
+    uint32_t tailDup = totalInput - loopDup * vlT1_;
+    uint32_t dstRowOffset = topOffsetToInputTop_;
+    uint32_t dstColOffset = leftOffsetToInputLeft_;
+    __VEC_SCOPE__
+    {
+        PoolUtils::Compute::DupBufferNegInfCommon<T1>(dstAddr, vlT1_, loopDup, tailDup);
+        PoolUtils::DataMove::CopyToCalcBuffer2DCommon<T1>(
+            dstAddr, srcAddr, highAxisActual_, hInputActualNoPad_, loopCols, tailCols, vlT1_, dstBatchStride,
+            wInputActualNoPadAlign, dstBatchStride, wInputActualAlignedPad_, dstRowOffset, dstColOffset);
+    }
+    return;
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::Compute()
+{
+    LocalTensor<T1> inputLocal = inputQue_.DeQue<T1>();
+    LocalTensor<T1> caclBuffLocal;
+    __ubuf__ T1* inputBuffAddr;
+    __ubuf__ T1* inputQueAddr = (__ubuf__ T1*)inputLocal.GetPhyAddr();
+    __ubuf__ T1* computeAddr = inputQueAddr;
+    if constexpr (IS_PAD == 1) {
+        caclBuffLocal = inputCalcBuff_.Get<T1>();
+        inputBuffAddr = (__ubuf__ T1*)caclBuffLocal.GetPhyAddr();
+        DupAndCopyToCalcBuffer(inputBuffAddr, inputQueAddr);
+        computeAddr = inputBuffAddr;
+    }
+    LocalTensor<T1> maxValueLocal = maxValueQue_.AllocTensor<T1>();
+    LocalTensor<T2> argmaxLocal = argmaxQue_.AllocTensor<T2>();
+    __ubuf__ T1* maxValueAddr = (__ubuf__ T1*)maxValueLocal.GetPhyAddr();
+    __ubuf__ T2* argmaxAddr = (__ubuf__ T2*)argmaxLocal.GetPhyAddr();
+    if (wOutputActual_ * RATIO > vlT2_) {
+        SingleRowGather(computeAddr, maxValueAddr, argmaxAddr);
+    } else if (hOutputActual_ * wOutputActual_ * RATIO > vlT2_) {
+        MultiRowGather(computeAddr, maxValueAddr, argmaxAddr);
+    } else {
+        MultiNcGather(computeAddr, maxValueAddr, argmaxAddr);
+    }
+
+    inputQue_.FreeTensor(inputLocal);
+    maxValueQue_.EnQue(maxValueLocal);
+    argmaxQue_.EnQue(argmaxLocal);
+    return;
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::ProcessW(
+    __ubuf__ T1* computeAddr, __ubuf__ T1* maxValueAddr, int32_t hOffset, uint16_t wStrideOffset,
+    Reg::RegTensor<int32_t>& indexReg, uint16_t hKernel, uint16_t wKernel, uint16_t repeatElem, int32_t outputOffset,
+    Reg::RegTensor<int32_t>& maxIndexReg, uint32_t hDilation, uint32_t wDilation)
+{
+    Reg::RegTensor<int32_t> indexWithOffset;
+    Reg::RegTensor<T1> calcReg;
+    Reg::RegTensor<int32_t> calcMaxIndexReg;
+    uint32_t maskCount = repeatElem;
+    Reg::MaskReg allMaskU32 = Reg::CreateMask<int32_t, Reg::MaskPattern::ALL>();
+    Reg::MaskReg gatherMask = Reg::UpdateMask<T1>(maskCount);
+    Reg::RegTensor<T1> maxReg;
+    Reg::MaskReg neMask;
+    Reg::MaskReg gtMask;
+    Reg::MaskReg tmpMask;
+    Reg::UnalignRegForStore u0;
+
+    __ubuf__ T1* maxValueAddrLocal = maxValueAddr + outputOffset;
+    PoolUtils::Compute::DuplicateNegInfReg<T1>(maxReg);
+    Reg::Adds(maxIndexReg, indexReg, hOffset, allMaskU32);
+    for (uint16_t i = 0; i < hKernel; i++) {
+        for (uint16_t j = 0; j < wKernel; j++) {
+            int32_t relIndex = i * wStrideOffset * hDilation + j * wDilation;
+            int32_t offset = static_cast<int32_t>(hOffset + relIndex);
+            Reg::Adds(indexWithOffset, indexReg, offset, allMaskU32);
+            if constexpr (std::is_same<T1, float>::value) {
+                Reg::Gather(calcReg, computeAddr, (Reg::RegTensor<uint32_t>&)indexWithOffset, gatherMask);
+            } else {
+                Reg::RegTensor<uint16_t> indexConvert;
+                Reg::Pack(indexConvert, indexWithOffset);
+                Reg::Gather(calcReg, computeAddr, indexConvert, gatherMask);
+            }
+            Reg::Compare<T1, CMPMODE::GT>(gtMask, calcReg, maxReg, gatherMask);
+            Reg::Compare<T1, CMPMODE::NE>(neMask, calcReg, calcReg, gatherMask);
+            Reg::Or(gtMask, gtMask, neMask, gatherMask);
+            if constexpr (sizeof(int32_t) / sizeof(T1) == 1) {
+                Reg::Select(maxIndexReg, indexWithOffset, maxIndexReg, gtMask);
+            } else {
+                Reg::UnPack(tmpMask, gtMask);
+                Reg::Select(maxIndexReg, indexWithOffset, maxIndexReg, tmpMask);
+            }
+            Reg::Max(maxReg, maxReg, calcReg, gatherMask);
+        }
+    }
+    Reg::StoreUnAlign(maxValueAddrLocal, maxReg, u0, repeatElem);
+    Reg::StoreUnAlignPost(maxValueAddrLocal, u0, 0);
+    return;
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::SingleRowGather(__ubuf__ T1* computeAddr,
+                                                                                        __ubuf__ T1* maxValueAddr,
+                                                                                        __ubuf__ T2* argmaxAddr)
+{
+    uint16_t loopW = wOutputActual_ / vlT2_;
+    uint16_t repeatsElem = vlT2_;
+    uint16_t tailRepeatsElem = wOutputActual_ - loopW * vlT2_;
+    if (tailRepeatsElem == 0) {
+        loopW = loopW - 1;
+        tailRepeatsElem = repeatsElem;
+    }
+    uint16_t hKernel = tilingData_.hKernel;
+    uint16_t wKernel = tilingData_.wKernel;
+    uint32_t hStride = tilingData_.hStride;
+    uint32_t wStride = tilingData_.wStride;
+    T2 left = wAxisIndex_ * tilingData_.wOutputInner * tilingData_.wStride - tilingData_.padLeft;
+    T2 hIndexBase = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.hStride - tilingData_.padTop;
+    T2 wInput = tilingData_.wInput;
+    uint32_t highAxisActual = highAxisActual_;
+    uint32_t hOutputActual = hOutputActual_;
+    uint32_t wOutputActual = wOutputActual_;
+    uint32_t hInputActualPad = hInputActualPad_;
+    uint32_t wInputActualAlignedPad = wInputActualAlignedPad_;
+    uint32_t wOutputActualAligned = wOutputActualAligned_;
+    uint32_t hDilation = tilingData_.hDilation;
+    uint32_t wDilation = tilingData_.wDilation;
+    for (uint16_t nc = 0; nc < static_cast<uint16_t>(highAxisActual); nc++) {
+        __VEC_SCOPE__
+        {
+            Reg::RegTensor<int32_t> indexReg;
+            Reg::RegTensor<int32_t> maxIndexReg;
+            Reg::RegTensor<T2> maxIndexConvertReg;
+            Reg::UnalignRegForStore u1;
+            Reg::Arange(indexReg, static_cast<int32_t>(0));
+            Reg::MaskReg preg = Reg::CreateMask<T1, Reg::MaskPattern::ALL>();
+            Reg::Muls(indexReg, indexReg, static_cast<int32_t>(wStride), preg);
+            int32_t ncInputOffset = nc * hInputActualPad * wInputActualAlignedPad;
+            int32_t ncOutputOffset = nc * hOutputActual * wOutputActual;
+            __ubuf__ T2* argmaxAddrLocal = argmaxAddr + ncOutputOffset;
+            for (uint16_t hLoop = 0; hLoop < static_cast<uint16_t>(hOutputActual); hLoop++) {
+                for (uint16_t wLoop = 0; wLoop < loopW; wLoop++) {
+                    int32_t wOffset = ncInputOffset + hLoop * wInputActualAlignedPad * hStride +
+                                      wLoop * repeatsElem * wStride;
+                    int32_t wOutputOffset = ncOutputOffset + hLoop * wOutputActual + wLoop * repeatsElem;
+                    ProcessW(computeAddr, maxValueAddr, wOffset, wInputActualAlignedPad, indexReg, hKernel, wKernel,
+                             repeatsElem, wOutputOffset, maxIndexReg, hDilation, wDilation);
+                    PoolUtils::Index::ConvertIndexWithoutPadAlignCommon<T2, IS_PAD>(maxIndexReg, wInputActualAlignedPad,
+                                                                                    left, wInput, hIndexBase,
+                                                                                    maxIndexConvertReg, ncInputOffset);
+                    Reg::StoreUnAlign(argmaxAddrLocal, maxIndexConvertReg, u1, repeatsElem);
+                    Reg::StoreUnAlignPost(argmaxAddrLocal, u1, 0);
+                }
+                int32_t wOffsetTail = ncInputOffset + hLoop * wInputActualAlignedPad * hStride +
+                                      loopW * repeatsElem * wStride;
+                int32_t wOutputOffsetTail = ncOutputOffset + hLoop * wOutputActual + loopW * repeatsElem;
+                ProcessW(computeAddr, maxValueAddr, wOffsetTail, wInputActualAlignedPad, indexReg, hKernel, wKernel,
+                         tailRepeatsElem, wOutputOffsetTail, maxIndexReg, hDilation, wDilation);
+                PoolUtils::Index::ConvertIndexWithoutPadAlignCommon<T2, IS_PAD>(
+                    maxIndexReg, wInputActualAlignedPad, left, wInput, hIndexBase, maxIndexConvertReg, ncInputOffset);
+                Reg::StoreUnAlign(argmaxAddrLocal, maxIndexConvertReg, u1, tailRepeatsElem);
+                Reg::StoreUnAlignPost(argmaxAddrLocal, u1, 0);
+            }
+        }
+    }
+    return;
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::MultiRowGather(__ubuf__ T1* computeAddr,
+                                                                                       __ubuf__ T1* maxValueAddr,
+                                                                                       __ubuf__ T2* argmaxAddr)
+{
+    uint32_t wOutputActual = wOutputActual_;
+    uint16_t wKernel = tilingData_.wKernel;
+    uint16_t hKernel = tilingData_.hKernel;
+    uint32_t wStride = tilingData_.wStride;
+    uint32_t rate2D = wInputActualAlignedPad_ * tilingData_.hStride;
+    uint16_t hBatchCount = vlT2_ / wOutputActual_;
+    uint16_t hLoopTimes = hOutputActual_ / hBatchCount;
+    uint16_t hTail = hOutputActual_ - hLoopTimes * hBatchCount;
+    if (hTail == 0) {
+        hLoopTimes = hLoopTimes - 1;
+        hTail = hBatchCount;
+    }
+    uint16_t repeatsElem = hBatchCount * wOutputActual_;
+    uint16_t tailRepeatsElem = hTail * wOutputActual_;
+    T2 left = wAxisIndex_ * tilingData_.wOutputInner * tilingData_.wStride - tilingData_.padLeft;
+    T2 hIndexBase = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.hStride - tilingData_.padTop;
+    T2 wInput = tilingData_.wInput;
+    uint32_t highAxisActual = highAxisActual_;
+    uint32_t hInputActualPad = hInputActualPad_;
+    uint32_t wInputActualAlignedPad = wInputActualAlignedPad_;
+    uint32_t wOutputActualAligned = wOutputActualAligned_;
+    uint32_t hOutputActual = hOutputActual_;
+    uint32_t hStride = tilingData_.hStride;
+    uint32_t hDilation = tilingData_.hDilation;
+    uint32_t wDilation = tilingData_.wDilation;
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<int32_t> indexReg;
+        Reg::RegTensor<int32_t> maxIndexReg;
+        Reg::RegTensor<T2> maxIndexConvertReg;
+        Reg::UnalignRegForStore u1;
+        __ubuf__ T2* argmaxAddrLocal = argmaxAddr;
+        PoolUtils::Index::GenGatterIndex2D<int32_t>(indexReg, rate2D, wOutputActual, wStride);
+        for (uint16_t nc = 0; nc < static_cast<uint16_t>(highAxisActual); nc++) {
+            int32_t ncInputOffset = nc * hInputActualPad * wInputActualAlignedPad;
+            for (uint16_t hLoop = 0; hLoop < hLoopTimes; hLoop++) {
+                int32_t wOffset = ncInputOffset + hLoop * hBatchCount * hStride * wInputActualAlignedPad;
+                int32_t wOutputOffset = nc * hOutputActual * wOutputActual + hLoop * hBatchCount * wOutputActual;
+                ProcessW(computeAddr, maxValueAddr, wOffset, wInputActualAlignedPad, indexReg, hKernel, wKernel,
+                         repeatsElem, wOutputOffset, maxIndexReg, hDilation, wDilation);
+                PoolUtils::Index::ConvertIndexWithoutPadAlignCommon<T2, IS_PAD>(
+                    maxIndexReg, wInputActualAlignedPad, left, wInput, hIndexBase, maxIndexConvertReg, ncInputOffset);
+                Reg::StoreUnAlign(argmaxAddrLocal, maxIndexConvertReg, u1, repeatsElem);
+                Reg::StoreUnAlignPost(argmaxAddrLocal, u1, 0);
+            }
+            int32_t wOffsetTail = ncInputOffset + hLoopTimes * hBatchCount * hStride * wInputActualAlignedPad;
+            int32_t wOutputOffsetTail = nc * hOutputActual * wOutputActual + hLoopTimes * hBatchCount * wOutputActual;
+            ProcessW(computeAddr, maxValueAddr, wOffsetTail, wInputActualAlignedPad, indexReg, hKernel, wKernel,
+                     tailRepeatsElem, wOutputOffsetTail, maxIndexReg, hDilation, wDilation);
+            PoolUtils::Index::ConvertIndexWithoutPadAlignCommon<T2, IS_PAD>(
+                maxIndexReg, wInputActualAlignedPad, left, wInput, hIndexBase, maxIndexConvertReg, ncInputOffset);
+            Reg::StoreUnAlign(argmaxAddrLocal, maxIndexConvertReg, u1, tailRepeatsElem);
+            Reg::StoreUnAlignPost(argmaxAddrLocal, u1, 0);
+        }
+    }
+    return;
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::MultiNcGather(__ubuf__ T1* computeAddr,
+                                                                                      __ubuf__ T1* maxValueAddr,
+                                                                                      __ubuf__ T2* argmaxAddr)
+{
+    uint16_t wKernel = tilingData_.wKernel;
+    uint16_t hKernel = tilingData_.hKernel;
+    uint32_t wStride = tilingData_.wStride;
+    uint16_t rate3D = hInputActualPad_ * wInputActualAlignedPad_;
+    uint16_t num2D = hOutputActual_ * wOutputActual_;
+    uint16_t rate2D = tilingData_.hStride * wInputActualAlignedPad_;
+    uint16_t wOutputActual = wOutputActual_;
+    uint16_t eachBatchCount = hOutputActual_ * wOutputActual_;
+    uint16_t ncBatchCount = vlT2_ / eachBatchCount;
+    uint16_t ncLoopTimes = highAxisActual_ / ncBatchCount;
+    uint16_t ncTail = highAxisActual_ - ncLoopTimes * ncBatchCount;
+    if (ncTail == 0) {
+        ncLoopTimes = ncLoopTimes - 1;
+        ncTail = ncBatchCount;
+    }
+    uint16_t repeatsElem = ncBatchCount * eachBatchCount;
+    uint16_t tailRepeatsElem = ncTail * eachBatchCount;
+    T2 left = wAxisIndex_ * tilingData_.wOutputInner * tilingData_.wStride - tilingData_.padLeft;
+    T2 hIndexBase = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.hStride - tilingData_.padTop;
+    T2 wInput = tilingData_.wInput;
+    uint32_t hInputActualPad = hInputActualPad_;
+    uint32_t wInputActualAlignedPad = wInputActualAlignedPad_;
+    uint32_t hOutputActual = hOutputActual_;
+    uint32_t wOutputActualAligned = wOutputActualAligned_;
+    uint32_t hDilation = tilingData_.hDilation;
+    uint32_t wDilation = tilingData_.wDilation;
+    __VEC_SCOPE__
+    {
+        Reg::RegTensor<int32_t> indexReg;
+        Reg::RegTensor<int32_t> maxIndexReg;
+        Reg::RegTensor<T2> maxIndexConvertReg;
+        Reg::UnalignRegForStore u1;
+        __ubuf__ T2* argmaxAddrLocal = argmaxAddr;
+        PoolUtils::Index::GenGatterIndex3D<int32_t>(indexReg, rate3D, num2D, rate2D, wOutputActual, wStride);
+        for (uint16_t nc = 0; nc < ncLoopTimes; nc++) {
+            uint32_t wOffset = nc * ncBatchCount * hInputActualPad * wInputActualAlignedPad;
+            uint32_t wOutputOffset = nc * ncBatchCount * hOutputActual * wOutputActual;
+            ProcessW(computeAddr, maxValueAddr, wOffset, wInputActualAlignedPad, indexReg, hKernel, wKernel,
+                     repeatsElem, wOutputOffset, maxIndexReg, hDilation, wDilation);
+            PoolUtils::Index::ConvertIndexWithoutPadAlignNcCommon<T2, IS_PAD>(maxIndexReg, wInputActualAlignedPad, left,
+                                                                              wInput, hIndexBase, maxIndexConvertReg,
+                                                                              wOffset, num2D, rate3D);
+            Reg::StoreUnAlign(argmaxAddrLocal, maxIndexConvertReg, u1, repeatsElem);
+            Reg::StoreUnAlignPost(argmaxAddrLocal, u1, 0);
+        }
+        uint32_t wOffsetTail = ncLoopTimes * ncBatchCount * hInputActualPad * wInputActualAlignedPad;
+        uint32_t wOutputOffsetTail = ncLoopTimes * ncBatchCount * hOutputActual * wOutputActual;
+        ProcessW(computeAddr, maxValueAddr, wOffsetTail, wInputActualAlignedPad, indexReg, hKernel, wKernel,
+                 tailRepeatsElem, wOutputOffsetTail, maxIndexReg, hDilation, wDilation);
+        PoolUtils::Index::ConvertIndexWithoutPadAlignNcCommon<T2, IS_PAD>(maxIndexReg, wInputActualAlignedPad, left,
+                                                                          wInput, hIndexBase, maxIndexConvertReg,
+                                                                          wOffsetTail, num2D, rate3D);
+        Reg::StoreUnAlign(argmaxAddrLocal, maxIndexConvertReg, u1, tailRepeatsElem);
+        Reg::StoreUnAlignPost(argmaxAddrLocal, u1, 0);
+    }
+    return;
+}
+template <typename T1, typename T2, const uint32_t IS_PAD>
+__aicore__ inline void MaxPoolWithArgmaxV3GatherKernel<T1, T2, IS_PAD>::CopyOut()
+{
+    LocalTensor<T1> maxValueLocal = maxValueQue_.DeQue<T1>();
+    LocalTensor<T2> argmaxLocal = argmaxQue_.DeQue<T2>();
+    int64_t outputPlaneSize = tilingData_.hOutput * tilingData_.wOutput;
+    int64_t highOutputAxisOffset = highAxisIndex_ * tilingData_.highAxisInner * outputPlaneSize;
+    int64_t hOutputAxisOffset = hAxisIndex_ * tilingData_.hOutputInner * tilingData_.wOutput;
+    int64_t wOutputAxisOffset = wAxisIndex_ * tilingData_.wOutputInner;
+    int64_t outputGmOffset = highOutputAxisOffset + hOutputAxisOffset + wOutputAxisOffset;
+
+    DataCopyExtParams copyOutParamT1 = {
+        static_cast<uint16_t>(1), static_cast<uint32_t>(highAxisActual_ * hOutputActual_ * wOutputActual_ * sizeof(T1)),
+        static_cast<uint32_t>(0), static_cast<uint32_t>(0), static_cast<uint32_t>(0)};
+
+    DataCopyPad(yGm_[outputGmOffset], maxValueLocal, copyOutParamT1);
+    DataCopyExtParams copyOutParamT2 = {
+        static_cast<uint16_t>(1), static_cast<uint32_t>(highAxisActual_ * hOutputActual_ * wOutputActual_ * sizeof(T2)),
+        static_cast<uint32_t>(0), static_cast<uint32_t>(0), static_cast<uint32_t>(0)};
+    DataCopyPad(argmaxGm_[outputGmOffset], argmaxLocal, copyOutParamT2);
+    maxValueQue_.FreeTensor(maxValueLocal);
+    argmaxQue_.FreeTensor(argmaxLocal);
+    return;
+}
+} // namespace MaxPoolWithArgmaxV3GatherNameSpace
+#endif

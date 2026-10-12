@@ -1,0 +1,418 @@
+{
+    "op_type": "HistogramV2",
+    "op_list": [
+      {
+        "bin_filename": "HistogramV2Float32",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      },
+      {
+        "bin_filename": "HistogramV2Int32",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      },
+      {
+        "bin_filename": "HistogramV2Int8",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      },
+      {
+        "bin_filename": "HistogramV2UInt8",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      },
+      {
+        "bin_filename": "HistogramV2Int16",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "int16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "int16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      },
+      {
+        "bin_filename": "HistogramV2Int64",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "int64",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      },
+      {
+        "bin_filename": "HistogramV2Fp16",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "min",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "max",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+            {
+                "name": "bins",
+                "dtype": "int",
+                "value": 100
+            },
+            {
+                "name": "y_dtype",
+                "dtype": "int",
+                "value": 3
+            }
+        ]
+      }
+    ]
+  }

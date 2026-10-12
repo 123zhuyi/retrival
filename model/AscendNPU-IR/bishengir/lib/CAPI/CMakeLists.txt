@@ -1,0 +1,5 @@
+if(BISHENGIR_BUILD_STANDALONE_IR_ONLY)
+    return()
+endif()
+add_subdirectory(Dialect)
+add_subdirectory(RegisterEverything)

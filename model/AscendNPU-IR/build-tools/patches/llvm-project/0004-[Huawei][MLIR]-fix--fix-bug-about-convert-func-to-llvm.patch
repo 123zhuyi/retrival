@@ -1,0 +1,26 @@
+diff --git a/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp b/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp
+index 9cb9353e81d2..f0bce337de73 100644
+--- a/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp
++++ b/mlir/lib/Conversion/FuncToLLVM/FuncToLLVM.cpp
+@@ -523,6 +523,21 @@ struct CallOpInterfaceLowering : public ConvertOpToLLVMPattern<CallOpType> {
+         return failure();
+     }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    if (this->getTypeConverter()->getOptions().useBarePtrCallConv) {
++      auto canUseBarePtr =
++          llvm::all_of(callOp->getOperands(), [&](mlir::Value operand) {
++            if (auto memrefTy = dyn_cast<BaseMemRefType>(operand.getType())) {
++              return this->getTypeConverter()->canConvertToBarePtr(memrefTy);
++            }
++            return true;
++          });
++      if (!canUseBarePtr) {
++        return failure();
++      }
++    }
++#endif
++
+     if (useBarePtrCallConv) {
+       for (auto it : callOp->getOperands()) {
+         Type operandType = it.getType();

@@ -1,0 +1,138 @@
+{
+  "round_index": 2,
+  "algorithm": "mcts",
+  "baseline_dir": "opt-round-1",
+  "global_baseline_dir": "global_baseline",
+  "global_baseline_speedup": 1.0,
+  "round_strategy": "exploration",
+  "analysis_policy": "pattern_entry",
+  "hypothesis": "MCTS expands high-reward node opt-round-1. Parent used hand-tuned BV heuristic (BV=64 if BT<=64 else 32). Empirical sweep over all 8 shapes shows BV=64 is fastest on every shape incl. cs=128; fix = uniform BV=min(64,V).",
+  "direction": "V-tile (BV) size correction for chunk-recurrence kernel: uniform BV=min(64,V) replacing parent cs-dependent heuristic (BV=64 if BT<=64 else 32)",
+  "evidence_sources": [
+    "mcts_tree",
+    "parent_round_perf",
+    "model_knowledge",
+    "offline_bv_sweep"
+  ],
+  "target_speedup": 5,
+  "status": "completed",
+  "success": true,
+  "best_speedup": 7.3312,
+  "target_reached": true,
+  "optimized": true,
+  "phase4_entered": true,
+  "effective_metric_source": "kernel",
+  "perf_method": "profiler",
+  "skill_path": ".claude/skills/triton-op-verifier",
+  "perf_data": {
+    "total_cases": 8,
+    "passed_cases": 8,
+    "failed_cases": 0,
+    "benchmark_failed_cases": 0,
+    "avg_latency_ms": 2.0091,
+    "speedup_vs_torch": 7.3312,
+    "nan_indices": [],
+    "inf_indices": [],
+    "zero_indices": [],
+    "negative_indices": [],
+    "none_indices": [],
+    "per_shape_results": [
+      {
+        "case_idx": 1,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 0.4336,
+        "speedup_vs_torch": 13.985,
+        "error_type": null
+      },
+      {
+        "case_idx": 2,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 0.2522,
+        "speedup_vs_torch": 14.5948,
+        "error_type": null
+      },
+      {
+        "case_idx": 3,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 5.1703,
+        "speedup_vs_torch": 4.9705,
+        "error_type": null
+      },
+      {
+        "case_idx": 4,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 2.9924,
+        "speedup_vs_torch": 5.1707,
+        "error_type": null
+      },
+      {
+        "case_idx": 5,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 1.509,
+        "speedup_vs_torch": 6.7209,
+        "error_type": null
+      },
+      {
+        "case_idx": 6,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 0.8939,
+        "speedup_vs_torch": 6.4298,
+        "error_type": null
+      },
+      {
+        "case_idx": 7,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 13.616,
+        "speedup_vs_torch": 6.3304,
+        "error_type": null
+      },
+      {
+        "case_idx": 8,
+        "status": "pass",
+        "shape_desc": null,
+        "impl_avg_latency_ms": 8.5424,
+        "speedup_vs_torch": 5.8146,
+        "error_type": null
+      }
+    ]
+  },
+  "iter_count": 1,
+  "opt_iter_count": 1,
+  "gen_iterations": 1,
+  "opt_iterations": 1,
+  "mcts_parent_id": "opt-round-1",
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "mean_reward": 1.740308267636976,
+      "visit_count": 1,
+      "description": "virtual root"
+    },
+    {
+      "node_id": "opt-round-1",
+      "depth": 1,
+      "mean_reward": 1.740308267636976,
+      "visit_count": 1,
+      "description": "pattern: custom (fused chunk-recurrence)"
+    }
+  ],
+  "mcts_pending_expansion": true,
+  "design_summary": "Round 2 expansion of opt-round-1. Fused chunk-recurrence kernel body preserved; host V-tile BV made uniform BV=min(64,V). Empirical BV sweep over all 8 shapes proved BV=64 fastest on every shape (1.46-1.72x on the four cs=128 cases where parent ran BV=32).",
+  "key_fixes": [
+    "Replaced parent BV heuristic '64 if BT<=64 else 32' with uniform BV=min(64,V)",
+    "Kept D6 min() guard and V%BV==0 assertion; all shapes V=128 -> BV=64, NVT=2"
+  ],
+  "bottlenecks_observed": [
+    "cs=128 shapes were V-tile-suboptimal (BV=32): only 2.9-3.5x in parent",
+    "BV=128 never faster than BV=64 (UB pressure, D5)",
+    "Triton-Ascend num_warps autotune unsupported; manual BV autotune reproduces BV=64 with runtime cost -> not used"
+  ]
+}

@@ -1,0 +1,153 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+index 326cb8e3de3c..ceaaedfb9a24 100644
+--- a/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
++++ b/mlir/include/mlir/Dialect/Linalg/IR/LinalgExtensions.h
+@@ -32,6 +32,8 @@ bool isSplatDense(Value value);
+ std::optional<Value> createConstantFromDenseSplat(Value value,
+                                                   PatternRewriter &rewriter);
+ 
++void cloneRegion(Operation *op, IRMapping &mapping, PatternRewriter &rewriter);
++
+ template <typename OpType>
+ struct SimplifySplatDenseForBinary : public OpRewritePattern<OpType> {
+   using OpRewritePattern<OpType>::OpRewritePattern;
+@@ -139,26 +141,9 @@ struct InlineDenseSplatToGenericRegion : public OpRewritePattern<OpType> {
+       }
+     }
+ 
+-    // We can infer the shape from any of the LinalgOp results because we deal
+-    // with simple elemwise
+-    auto currentOpResShape =
+-        op->getResultTypes()[0].template cast<ShapedType>().getShape();
+     // Step 3. Travese operations in block and convert scalar into shaped
+     // tensor.
+-    for (auto &opInBlock : block.getOperations()) {
+-      if (opInBlock.hasTrait<OpTrait::IsTerminator>()) {
+-        continue;
+-      }
+-
+-      auto *newOp = rewriter.clone(opInBlock, mapping);
+-      for (auto [newRes, oldRes] :
+-           llvm::zip(newOp->getResults(), opInBlock.getResults())) {
+-        auto newType = RankedTensorType::get(currentOpResShape,
+-                                             getElementTypeOrSelf(newRes));
+-        newRes.setType(newType);
+-        mapping.map(oldRes, newRes);
+-      }
+-    }
++    cloneRegion(op, mapping, rewriter);
+ 
+     // Step 4. replace res with yieldop res.
+     auto *terminator = block.getTerminator();
+@@ -175,6 +160,69 @@ struct InlineDenseSplatToGenericRegion : public OpRewritePattern<OpType> {
+   }
+ };
+ 
++template <typename OpType>
++struct RefactorRedundantReduceLikeOp : OpRewritePattern<OpType> {
++public:
++  // move out operations inside operation for unchanging shape reduce op
++  // example:
++  //
++  // linalg.reduce ins(%arg0) outs(%arg1) dimensions = []
++  //   (%in, %init) {
++  //     %0 = arith.addf %in, %init
++  //     %1 = arith.mulf %in, %0
++  //     linalg.yield %1
++  //   }
++  //
++  // to
++  //
++  // %0 = arith.addf %arg0, %arg1
++  // %1 = arith.mulf %arg0, %0
++
++  using OpRewritePattern<OpType>::OpRewritePattern;
++  LogicalResult matchAndRewrite(OpType reduceOp,
++                                PatternRewriter &rewriter) const override {
++    if (!reduceOp.getDimensions().empty())
++      return rewriter.notifyMatchFailure(
++          reduceOp, "input and init should have same shape");
++
++    OpBuilder::InsertionGuard guard(rewriter);
++    rewriter.setInsertionPoint(reduceOp);
++
++    Block &block = reduceOp->getRegions().front().getBlocks().front();
++
++    // create mapping from block argument to input/inits
++    IRMapping newOperandsMap;
++    auto inputs = reduceOp.getDpsInputs();
++    auto results = reduceOp.getDpsInits();
++    auto arguments = block.getArguments();
++    assert(arguments.size() == inputs.size() + results.size());
++    int cnt = 0;
++    for (Value in : inputs) {
++      newOperandsMap.map(block.getArgument(cnt++), in);
++    }
++    for (Value res : results) {
++      newOperandsMap.map(block.getArgument(cnt++), res);
++    }
++
++    // note: we will infer the return types for every cloned operations
++    cloneRegion(reduceOp, newOperandsMap, rewriter);
++
++    // get replacement from mapping and do replacement
++    Operation *terminator = block.getTerminator();
++    assert(terminator);
++    assert(isa<linalg::YieldOp>(terminator));
++    linalg::YieldOp yieldOp = cast<linalg::YieldOp>(terminator);
++    for (auto [res, yieldOpr] :
++         llvm::zip(reduceOp->getResults(), yieldOp->getOperands())) {
++      assert(newOperandsMap.contains(yieldOpr) && "Operand is not mapped");
++      rewriter.replaceAllUsesWith(res, newOperandsMap.lookup(yieldOpr));
++    }
++
++    rewriter.eraseOp(reduceOp);
++    return success();
++  }
++};
++
+ } // namespace linalg
+ } // namespace mlir
+ 
+diff --git a/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp b/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp
+index de0ffb00be11..b95ac7d49416 100644
+--- a/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp
++++ b/mlir/lib/Dialect/Linalg/IR/LinalgExtensions.cpp
+@@ -63,3 +63,37 @@ mlir::linalg::createConstantFromDenseSplat(Value value,
+   }
+   return rewriter.create<arith::ConstantOp>(loc, elemType, attr);
+ }
++
++void mlir::linalg::cloneRegion(Operation *opWithRegion, IRMapping &mapping,
++                               PatternRewriter &rewriter) {
++  for (Region &region : opWithRegion->getRegions()) {
++    for (Block &block : region.getBlocks()) {
++      block.walk([&](Operation *op) {
++        if (op->hasTrait<OpTrait::IsTerminator>())
++          return;
++
++        Operation *newOp = rewriter.clone(*op, mapping);
++
++        // set operands new types
++        // to convert scalar into shaped tensor for operation like
++        // arith.sitofp.
++        // For example,
++        // %1 = "arith.sitofp"(%arg0) : (i64) -> bf16
++        // that should be
++        // %1 = arith.sitofp %arg0 : tensor<i64> to tensor<bf16>
++        for (auto [i, resType] :
++             llvm::enumerate(opWithRegion->getResultTypes())) {
++          auto currentOpResShape = resType.cast<ShapedType>().getShape();
++
++          for (auto [newRes, oldRes] :
++               llvm::zip(newOp->getResults(), op->getResults())) {
++            auto newType = RankedTensorType::get(currentOpResShape,
++                                                 getElementTypeOrSelf(newRes));
++            newRes.setType(newType);
++            mapping.map(oldRes, newRes);
++          }
++        }
++      });
++    }
++  }
++}

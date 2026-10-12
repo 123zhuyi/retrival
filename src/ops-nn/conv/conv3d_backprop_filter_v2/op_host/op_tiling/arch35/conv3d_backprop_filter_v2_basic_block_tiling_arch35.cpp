@@ -1,0 +1,1412 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv3d_backprop_filter_v2_basic_block_tiling_arch35.cpp
+ * \brief
+ */
+
+#include "conv3d_backprop_filter_v2_basic_block_tiling_arch35.h"
+#include <map>
+#include <numeric>
+#include <util/math_util.h>
+#include <graph/utils/type_utils.h>
+#include <platform/soc_spec.h>
+#include "error_util.h"
+#include "op_host/tiling_templates_registry.h"
+#include "common/op_host/op_tiling/conv_platform_util.h"
+#include "common/op_host/op_tiling/conv_math_util.h"
+#include "conv/conv3d_backprop_filter_v2/op_kernel/arch35/conv3d_backprop_filter_v2/conv3d_backprop_filter_v2_tiling_data.h"
+#include "conv/conv3d_backprop_filter_v2/op_kernel/arch35/conv3d_backprop_filter_v2/conv3d_backprop_filter_v2_tiling_key.h"
+#include "conv/common/op_host/op_tiling/convbp_tiling_debug_util.h"
+#include "runtime_kb_api.h"
+#include "conv/common/op_host/op_tiling/arch35/conv_base_numblocks_decision.h"
+#include "op_common/op_host/util/platform_util.h"
+
+using Ops::NN::Optiling::RecursiveSum;
+using namespace optiling::conv_ops_tiling;
+
+namespace {
+constexpr size_t Y_INDEX = 2;
+constexpr size_t FILTER_INDEX = 0;
+constexpr size_t OUTPUT_BP_INDEX = 0;
+constexpr size_t FILTER_SIZE_INDEX = 1;
+const int32_t kFilterSizeDim = 1;
+const int32_t kConv3DbpDim = 5;
+const int32_t kPadsDim = 6;
+const int32_t strideIndex = 0;
+const int32_t dilationIndex = 2;
+const int32_t groupIndex = 3;
+const int32_t enabelHF32Index = 3;
+} // namespace
+
+namespace Ops {
+namespace NN {
+namespace Conv {
+bool Conv3DDWV2BasicBlockTilingArch35::IsSocVersion91095() { return platformInfo_.npuArch == NpuArch::DAV_3510; }
+
+bool Conv3DDWV2BasicBlockTilingArch35::CheckVectorCoreNum()
+{
+    if (!IsSocVersion91095()) {
+        return true;
+    }
+
+    auto platformInfoPtr = context_->GetPlatformInfo();
+    OP_CHECK_IF(platformInfoPtr == nullptr, OP_LOGE(opName_, "platformInfoPtr is null"), return false);
+    auto ascendcPlatform = platform_ascendc::PlatformAscendC(platformInfoPtr);
+    uint64_t aivCoreCount = ascendcPlatform.GetCoreNumAiv();
+    uint64_t aicCoreCount = ascendcPlatform.GetCoreNumAic();
+    if (aicCoreCount == 0) {
+        OP_LOGE(opName_, "CheckVectorCoreNum failed, aicCoreCount is 0");
+        return false;
+    }
+    if (aivCoreCount < aicCoreCount * AIC_AIV_RATIO_1_2) {
+        OP_LOGE(opName_, "CheckVectorCoreNum failed, aivCoreCount[%lu] and aicCoreCount[%lu] ratio is less than 2:1",
+                aivCoreCount, aicCoreCount);
+        return false;
+    }
+    return true;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::Reset()
+{
+    OP_TILING_CHECK(
+        EOK != memset_s(context_->GetRawTilingData()->GetData(), context_->GetRawTilingData()->GetCapacity(), 0,
+                        context_->GetRawTilingData()->GetCapacity()),
+        CUBE_INNER_ERR_REPORT(opName_, "Fail to clear tiling data"), return);
+    libApiWorkSpaceSize_ = 0U;
+    opName_ = nullptr;
+}
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::SetPlatformCompileInfo()
+{
+    OP_TILING_CHECK(context_ == nullptr, CUBE_INNER_ERR_REPORT(opName_, "context is null"), return ge::GRAPH_FAILED);
+
+    opName_ = context_->GetNodeName();
+    auto compileInfoPtr = context_->GetCompileInfo<Conv3DBackpropV2CompileInfo>();
+    OP_TILING_CHECK(compileInfoPtr == nullptr, CUBE_INNER_ERR_REPORT(opName_, "compileInfoPtr is null"),
+                    return ge::GRAPH_FAILED);
+
+    OP_TILING_CHECK(compileInfoPtr->core_num <= 0,
+                    CUBE_INNER_ERR_REPORT(opName_, "core_num is invalid, core_num: %u", compileInfoPtr->core_num),
+                    return ge::GRAPH_FAILED);
+
+    platformInfo_.socVersion = compileInfoPtr->shortSocVersion;
+    platformInfo_.core_num = compileInfoPtr->core_num;
+    platformInfo_.l0a_size = compileInfoPtr->l0a_size;
+    platformInfo_.l0b_size = compileInfoPtr->l0b_size;
+    platformInfo_.l0c_size = compileInfoPtr->l0c_size;
+    platformInfo_.l1_size = compileInfoPtr->l1_size;
+    platformInfo_.ub_size = compileInfoPtr->ub_size;
+    platformInfo_.npuArch = compileInfoPtr->npuArch;
+    OP_LOGD(
+        opName_,
+        "get platform info success: core_num:%u, l0a_size:%lu, l0b_size:%lu, l0c_size:%lu, l1_size:%lu, ub_size:%lu",
+        platformInfo_.core_num, platformInfo_.l0a_size, platformInfo_.l0b_size, platformInfo_.l0c_size,
+        platformInfo_.l1_size, platformInfo_.ub_size);
+
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::GetPlatformInfo() { return ge::GRAPH_SUCCESS; }
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::GetWorkspaceSize() { return ge::GRAPH_SUCCESS; }
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::GetShapeAttrsInfo()
+{
+    if (SetPlatformCompileInfo() != ge::GRAPH_SUCCESS) {
+        return ge::GRAPH_FAILED;
+    }
+
+    if (!IsSocVersion91095()) {
+        return ge::GRAPH_SUCCESS;
+    }
+
+    if (!SetConv3dBpFilterV2RunInfo(context_, runInfo_)) {
+        OP_LOGE(opName_, "SetConv3dBpFilterV2RunInfo failed.");
+        return ge::GRAPH_FAILED;
+    }
+
+    isHiF8Flag_ = runInfo_.a_dtype == ge::DT_HIFLOAT8 && runInfo_.b_dtype == ge::DT_HIFLOAT8 &&
+                  runInfo_.c_dtype == ge::DT_FLOAT;
+    if (!CheckAttrs() || !CheckFormat() || !CheckKernelSize()) {
+        OP_LOGE(context_->GetNodeName(), "params is invalid");
+        return ge::GRAPH_FAILED;
+    }
+    dtypeByte_ = runInfo_.a_dtype_bytes;
+    bool splitWSupportedDType = (dtypeByte_ == ge::GetSizeByDataType(ge::DT_BF16)) ||
+                                (dtypeByte_ == ge::GetSizeByDataType(ge::DT_FLOAT16)) ||
+                                (dtypeByte_ == ge::GetSizeByDataType(ge::DT_FLOAT));
+    enableSplitW = enableSplitW && splitWSupportedDType;
+    tilingData_.dwTiling.channelSize = runInfo_.k0;
+    tilingData_.dwTiling.m0 = BLOCK_CUBE;
+    tilingData_.dwTiling.k0 = runInfo_.k0;
+    tilingData_.dwTiling.n0 = BLOCK_CUBE;
+    tilingData_.dwTiling.hf32Flag = runInfo_.hf32Flag;
+    tilingData_.dwTiling.group = runInfo_.groups;
+
+    CalcRealGroup();
+    conv_bp_v2_kernel::TConv3DDwTiling& dwt = tilingData_.dwTiling;
+    SetShapeTiling(dwt);
+    SetAttrTiling(dwt);
+    SetBasicBlockAttrsTiling();
+
+    TilingValueDwArch35 tilingParams;
+    InitTilingValue(tilingParams);
+    SetTilingValue(dwt, tilingParams);
+    return ge::GRAPH_SUCCESS;
+}
+
+int32_t Conv3DDWV2BasicBlockTilingArch35::CalcRealGroupMagFactor(int32_t groups)
+{
+    int64_t mag_factor0 = MathUtil::Lcm(runInfo_.ci / groups, BLOCK_CUBE) / (runInfo_.ci / groups);
+    int64_t mag_factor1 = MathUtil::Lcm(runInfo_.co / groups, BLOCK_CUBE) / (runInfo_.co / groups);
+    return static_cast<int32_t>(std::min(MathUtil::Lcm(mag_factor0, mag_factor1), static_cast<int64_t>(groups)));
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::CalcRealGroup()
+{
+    int32_t groups = static_cast<int32_t>(tilingData_.dwTiling.group);
+    if (groups <= 1 || (deterNotSupportFormat_ || format_.filterFormat != ge::FORMAT_NCDHW)) {
+        disableGroupEnlarge();
+        return;
+    }
+
+    runInfo_.mag_factor = CalcRealGroupMagFactor(groups);
+    // 判断扩维因子
+    if (runInfo_.mag_factor <= 1) {
+        disableGroupEnlarge();
+        return;
+    }
+
+    int64_t ciPerGroup = runInfo_.mag_factor * runInfo_.ci / groups;
+    int64_t coPerGroup = runInfo_.mag_factor * runInfo_.co / groups;
+    ciPerGroup = Ops::Base::CeilAlign(ciPerGroup, static_cast<int64_t>(BLOCK_CUBE));
+    coPerGroup = Ops::Base::CeilAlign(coPerGroup, static_cast<int64_t>(BLOCK_CUBE));
+    if (!CanEnableGroupEnlarge(groups, ciPerGroup, coPerGroup)) {
+        disableGroupEnlarge();
+        return;
+    }
+
+    // 使能扩维方案
+    runInfo_.cin1_g = Ops::Base::CeilDiv(static_cast<int32_t>(runInfo_.mag_factor * runInfo_.ci / groups), BLOCK_CUBE);
+    runInfo_.cout1_g = Ops::Base::CeilDiv(static_cast<int32_t>(runInfo_.mag_factor * runInfo_.co / groups), BLOCK_CUBE);
+    runInfo_.real_g = static_cast<int32_t>((groups + runInfo_.mag_factor - 1) / runInfo_.mag_factor);
+    // 扩维标识，默认0：不扩维，1：扩维
+    blockTiling_.groupEnlarge = true;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::CanEnableGroupEnlarge(int32_t groups, int64_t ciPerGroup, int64_t coPerGroup)
+{
+    // 先计算是否超过l0c大小
+    bool exceedL0cSize = static_cast<uint64_t>(ciPerGroup) * coPerGroup * runInfo_.kh * runInfo_.kw * C04_COUT_SIZE >
+                         platformInfo_.l0c_size;
+    if (exceedL0cSize) {
+        return false;
+    }
+
+    uint32_t blockBaseM = static_cast<uint32_t>(coPerGroup);
+    uint32_t blockBaseN = static_cast<uint32_t>(ciPerGroup * runInfo_.kh * runInfo_.kw);
+    mmInfo_.kValue = Ops::Base::CeilAlign(static_cast<uint64_t>(runInfo_.ho) * runInfo_.wo,
+                                          static_cast<uint64_t>(tilingData_.dwTiling.channelSize));
+
+    // 验证baseK
+    uint32_t blockBaseK = GetBaseK(blockBaseM, blockBaseN);
+    if (blockBaseK == 0U) {
+        return false;
+    }
+    uint32_t useBaseN = static_cast<uint32_t>(ciPerGroup * runInfo_.kh * runInfo_.kw);
+
+    // kd != 1 或者 nValue( = cinG * hk * wk) 和 OUT_ALIGN_BYTE
+    // 不对齐的时，kernel侧的搬运是按stride=8对齐搬运的，tiling判断是否超UB时候useBaseN需要对齐 OUT_ALIGN_BYTE
+    if (runInfo_.kd != 1 ||
+        ((static_cast<uint64_t>(runInfo_.ci) / groups * runInfo_.kh * runInfo_.kw) % OUT_ALIGN_BYTE) != 0) {
+        useBaseN = ciPerGroup * Ops::Base::CeilAlign(static_cast<uint32_t>(runInfo_.kh * runInfo_.kw), OUT_ALIGN_BYTE);
+    }
+    // 计算是否超UB大小
+    bool exceedUbSize = (blockBaseN + useBaseN) * blockBaseM * FP32_DATA_SIZE + Ops::Base::GetVRegSize(context_) >
+                        platformInfo_.ub_size;
+    // 需要确保扩维后基本块能全载
+    bool exceedBasicBlock = (blockBaseM > BASIC_BLOCK_SIZE_256) || (blockBaseN > BASIC_BLOCK_SIZE_256);
+    // 需要确保扩维后不超L1大小，如果超过L1大小，需要调整基本块，导致和kernel侧重排逻辑不兼容
+    BasicBlockTilingParamsArch35 blockTilingTmp = blockTiling_;
+    blockTilingTmp.blockBaseM = blockBaseM;
+    blockTilingTmp.blockBaseN = blockBaseN;
+    blockTilingTmp.blockBaseK = blockBaseK;
+    blockTilingTmp.splitWi = runInfo_.wi;
+    blockTilingTmp.splitWo = runInfo_.wo;
+    if (exceedUbSize || exceedBasicBlock || IsCurBlockL1Invalid(blockTilingTmp)) {
+        return false;
+    }
+    return true;
+}
+
+// 不使能扩维方案
+void Conv3DDWV2BasicBlockTilingArch35::disableGroupEnlarge()
+{
+    runInfo_.mag_factor = 1;
+    int32_t groups = static_cast<int32_t>(tilingData_.dwTiling.group);
+    runInfo_.cin1_g = Ops::Base::CeilDiv(static_cast<int32_t>(runInfo_.ci / groups), BLOCK_CUBE);
+    runInfo_.cout1_g = Ops::Base::CeilDiv(static_cast<int32_t>(runInfo_.co / groups), BLOCK_CUBE);
+    runInfo_.real_g = groups;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::SetBasicBlockAttrsTiling()
+{
+    mmInfo_.mValue = static_cast<uint64_t>(runInfo_.cout1_g) * static_cast<uint64_t>(BLOCK_CUBE);
+    mmInfo_.nValue = static_cast<uint64_t>(runInfo_.kh) * runInfo_.kw * runInfo_.cin1_g *
+                     static_cast<uint64_t>(BLOCK_CUBE);
+    if (!IsSocVersion91095()) {
+        mmInfo_.nValue *= runInfo_.kd;
+    }
+    mmInfo_.kValue = static_cast<uint64_t>(runInfo_.ho) * runInfo_.wo;
+    blockTiling_.usedCoreNum = platformInfo_.core_num;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::IsCapable()
+{
+    // 基本块MN,MK,NK模板是streamk的子集，用streamk实现基本块模板
+    return false;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::UpdateSingleCoreInfo()
+{
+    // 搬运对齐时默认向下取整，避免越过基本块运算导致重新触发L1载入
+    blockTiling_.singleCoreM = blockTiling_.blockBaseM;
+
+    uint64_t l1Cin1 = std::max(blockTiling_.blockBaseN / (runInfo_.kh * runInfo_.kw * BLOCK_CUBE), 1U);
+    if (blockTiling_.isSplitKernelHW) {
+        l1Cin1 = 1ULL; // 切kernel需要保证ll1只包含一个hwk16
+    }
+    blockTiling_.singleCoreN = l1Cin1 * runInfo_.kh * runInfo_.kw * BLOCK_CUBE;
+    blockTiling_.singleCoreK = mmInfo_.kValue;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::InitBaseBlock()
+{
+    if (mmInfo_.mValue > BASIC_BLOCK_SIZE_256) {
+        blockTiling_.blockBaseM = Ops::Base::CeilAlign(
+            mmInfo_.mValue / Ops::Base::CeilDiv(mmInfo_.mValue, static_cast<uint64_t>(BASIC_BLOCK_SIZE_256)),
+            static_cast<uint64_t>(BLOCK_CUBE));
+    } else {
+        blockTiling_.blockBaseM = Ops::Base::CeilAlign(mmInfo_.mValue, static_cast<uint64_t>(BLOCK_CUBE));
+    }
+
+    if (mmInfo_.nValue > BASIC_BLOCK_SIZE_256) {
+        blockTiling_.blockBaseN = Ops::Base::CeilAlign(
+            mmInfo_.nValue / Ops::Base::CeilDiv(mmInfo_.nValue, static_cast<uint64_t>(BASIC_BLOCK_SIZE_256)),
+            static_cast<uint64_t>(BLOCK_CUBE));
+    } else {
+        blockTiling_.blockBaseN = Ops::Base::CeilAlign(mmInfo_.nValue, static_cast<uint64_t>(BLOCK_CUBE));
+    }
+
+    uint64_t alignedHkWk = runInfo_.kw * runInfo_.kh;
+    alignedHkWk = (alignedHkWk == KERNEL_HW_9) ? (alignedHkWk * static_cast<uint64_t>(BLOCK_CUBE)) :
+                                                 static_cast<uint64_t>(BLOCK_CUBE);
+    if (blockTiling_.blockBaseN > alignedHkWk) {
+        blockTiling_.blockBaseN = static_cast<uint32_t>(blockTiling_.blockBaseN / alignedHkWk * alignedHkWk);
+    }
+    uint64_t l1Cin1 = std::max(blockTiling_.blockBaseN / (runInfo_.kh * runInfo_.kw * BLOCK_CUBE), 1U);
+    blockTiling_.blockBaseN = std::min(static_cast<uint64_t>(blockTiling_.blockBaseN),
+                                       l1Cin1 * runInfo_.kh * runInfo_.kw * BLOCK_CUBE);
+
+    if (blockTiling_.blockBaseM * blockTiling_.blockBaseN * DB_ON * C04_COUT_SIZE <= platformInfo_.l0c_size) {
+        blockTiling_.dbL0C = DB_ON;
+    }
+
+    blockTiling_.blockBaseK = GetBaseK(blockTiling_.blockBaseM, blockTiling_.blockBaseN);
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::GetBaseK(uint64_t baseM, uint64_t baseN)
+{
+    uint64_t fractalSize0 = BLOCK_CUBE;
+    uint64_t blockBaseK = std::min(
+        (platformInfo_.l0a_size / (baseM * dtypeByte_ * DB_ON)) / fractalSize0 * fractalSize0,
+        (platformInfo_.l0b_size / (baseN * dtypeByte_ * DB_ON)) / fractalSize0 * fractalSize0);
+
+    uint64_t alignedKValue = Ops::Base::CeilAlign(mmInfo_.kValue, fractalSize0);
+    if (alignedKValue < blockBaseK) {
+        blockBaseK = alignedKValue;
+    } else {
+        // K在不超过L0约束情况下，优先满足搬运对齐
+        if ((static_cast<uint64_t>(blockTiling_.splitWo) < blockBaseK) &&
+            static_cast<uint64_t>(blockTiling_.splitWo) % fractalSize0 == static_cast<uint64_t>(0)) {
+            blockBaseK = blockBaseK / static_cast<uint64_t>(blockTiling_.splitWo) *
+                         static_cast<uint64_t>(blockTiling_.splitWo);
+        }
+    }
+    return blockBaseK;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::InitBaseMNK()
+{
+    if (IsSocVersion91095()) {
+        InitBaseBlock();
+    }
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::UpdateStepMNK()
+{
+    if (blockTiling_.depthA1 < L1_DEPTH_2) {
+        blockTiling_.dbL1A = DB_OFF;
+    }
+    if (blockTiling_.depthB1 < L1_DEPTH_2) {
+        blockTiling_.dbL1B = DB_OFF;
+    }
+
+    uint64_t baseMK = static_cast<uint64_t>(blockTiling_.blockBaseM) * blockTiling_.blockBaseK;
+    uint64_t baseNK = static_cast<uint64_t>(blockTiling_.blockBaseN) * blockTiling_.blockBaseK;
+    uint64_t aL1Max = baseMK * blockTiling_.depthA1 / blockTiling_.dbL1A;
+    uint64_t bL1Max = baseNK * blockTiling_.depthB1 / blockTiling_.dbL1B;
+
+    uint64_t maxKIter = Ops::Base::CeilDiv(mmInfo_.kValue, static_cast<uint64_t>(blockTiling_.blockBaseK));
+    uint64_t minIter = 1;
+
+    // 根据预置的StepM/StepN初始化StepKa和StepKb, 不超过K方向最大循环次数
+    blockTiling_.stepKa = std::max(std::min(aL1Max / baseMK, maxKIter), minIter);
+    blockTiling_.stepKb = std::max(std::min(bL1Max / baseNK, maxKIter), minIter);
+
+    if (blockTiling_.stepKa > blockTiling_.stepKb) {
+        blockTiling_.stepKa = std::max(blockTiling_.stepKa / blockTiling_.stepKb, 1U) * blockTiling_.stepKb;
+    }
+    if (blockTiling_.stepKb > blockTiling_.stepKa) {
+        blockTiling_.stepKb = std::max(blockTiling_.stepKb / blockTiling_.stepKa, 1U) * blockTiling_.stepKa;
+    }
+}
+
+// 按照2的幂进行衰减，从shrinkSplitWoStart开始，shrinkSplitWoStart从128开始
+bool Conv3DDWV2BasicBlockTilingArch35::ShrinkSplitWOIAndTryTiling(int32_t shrinkSplitWoStart)
+{
+    int32_t k0Nums = shrinkSplitWoStart / static_cast<int32_t>(tilingData_.dwTiling.k0);
+    while (IsCurBlockL1Invalid() && k0Nums >= 1) {
+        blockTiling_.splitWo = k0Nums * static_cast<int32_t>(tilingData_.dwTiling.k0);
+        blockTiling_.tailWo = runInfo_.wo % blockTiling_.splitWo;
+        blockTiling_.splitWi = GetWiCal(blockTiling_.splitWo, blockTiling_.isSplitKernelHW);
+        blockTiling_.tailWi = GetWiCal(blockTiling_.tailWo, blockTiling_.isSplitKernelHW);
+        InitBaseMNK();
+        SetStepK4SplitMN();
+        k0Nums = k0Nums >> 1;
+    }
+
+    return IsCurBlockL1Invalid();
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::trySplitKernelHW()
+{
+    blockTiling_.isSplitKernelHW = true; // 更新isSplitKernelHW必须要更新blockTiling_.splitWi参数
+    blockTiling_.splitWi = GetWiCal(blockTiling_.splitWo, blockTiling_.isSplitKernelHW);
+    blockTiling_.tailWi = GetWiCal(blockTiling_.tailWo, blockTiling_.isSplitKernelHW);
+
+    InitBaseMNK();
+    SetStepK4SplitMN();
+
+    return IsCurBlockL1Invalid();
+}
+
+// tiling无效，返回true，否则返回true
+bool Conv3DDWV2BasicBlockTilingArch35::trySplitWo()
+{
+    if (!enableSplitW) {
+        return true;
+    }
+
+    return ShrinkSplitWOIAndTryTiling(SPLIT_WO_SIZE);
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::trySplitKernelAndWo()
+{
+    // 直接将wo切块成k0，splitkernel标志置true
+    blockTiling_.isSplitKernelHW = true;
+    if (enableSplitW) {
+        // 切Wi/Wo的NDHWC格式没有支持，通过enableSplitW进行拦截
+        blockTiling_.splitWo = static_cast<int32_t>(tilingData_.dwTiling.k0);
+        blockTiling_.tailWo = runInfo_.wo % blockTiling_.splitWo;
+        blockTiling_.splitWi = GetWiCal(blockTiling_.splitWo, blockTiling_.isSplitKernelHW);
+        blockTiling_.tailWi = GetWiCal(blockTiling_.tailWo, blockTiling_.isSplitKernelHW);
+    }
+
+    InitBaseMNK();
+    SetStepK4SplitMN();
+
+    return IsCurBlockL1Invalid();
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::checkLargeSpecs()
+{
+    constexpr int32_t MAX_KERNEL_H = 255;
+    constexpr int32_t MAX_KERNEL_W = 255;
+    constexpr int32_t MAX_DILATION_H = 255;
+    constexpr int32_t MAX_DILATION_W = 255;
+    constexpr int32_t MAX_STRIDE_H = 63;
+    constexpr int32_t MAX_STRIDE_W = 63;
+    constexpr int32_t MAX_PADDING_W = 255;
+    constexpr int32_t MAX_PADDING_H = 255;
+    constexpr int32_t LOAD3D_KSTART_MAX = 65535;
+
+    if (runInfo_.kh > MAX_KERNEL_H || runInfo_.kw > MAX_KERNEL_W || runInfo_.dilation_h > MAX_DILATION_H ||
+        runInfo_.dilation_w > MAX_DILATION_W || runInfo_.stride_h > MAX_STRIDE_H || runInfo_.stride_w > MAX_STRIDE_W ||
+        runInfo_.pad_l > MAX_PADDING_W || runInfo_.pad_r > MAX_PADDING_W || runInfo_.pad_u > MAX_PADDING_H ||
+        runInfo_.pad_d > MAX_PADDING_H) {
+        return true;
+    }
+
+    int32_t load3dK = runInfo_.kh * runInfo_.kw * runInfo_.k0;
+    if (load3dK > LOAD3D_KSTART_MAX + 1) {
+        // load3d使用kStartPt标识k方向load3d指定提取的偏移量,kExtension标识提取的长度
+        // 当使用load3d沿着k方向滑动到最右侧时,kStartPt+kExtension达到最大,等于k轴大小
+        // 即kStartPt+kExtension=k0*hk*wk
+        // 假设kExtension为最小值1
+        // 那么一旦k轴长度(即 k0*hk*wk)> 65536
+        // kStartPt就有可能大于65535
+        // 超出kStartPt的上限导致翻转
+        // 因此k轴大小超过65536时也按超大kernel做切分处理
+        OP_LOGD(opName_, "the kernel is too large, may exceed load3d kStartPt limit");
+        return true;
+    }
+
+    return false;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::tryNormalTiling()
+{
+    InitBaseMNK();
+    SetStepK4SplitMN();
+
+    return IsCurBlockL1Invalid();
+}
+
+/*********************************************************************************************************************
+函数tiling成功，则返回True，否则返回false
+先判断是否是超过LOAD3D指令限制，根据返回值走入不同的分支；
+非LOAD3D指令限制：尝试streamK普通tiling,如果未超过L1，则tiling成功；
+                 反之，则进行切W，如果未超过L1，则tiling成功；
+                 反之,同时切Kernel和W，理论上能够成功，不成功则返回失败；
+LOAD3D指令限制：尝试切Kernel，将isSplitKernelHW标识设置为1，进行streamK tiling，如果未超过L1，则tiling成功；
+               反之,同时切Kernel和W，理论上能够成功，不成功则返回失败；
+**********************************************************************************************************************/
+bool Conv3DDWV2BasicBlockTilingArch35::MultiCoreSplitMN()
+{
+    blockTiling_.iterateOrder = mmInfo_.mValue > mmInfo_.nValue ? 1U : 0U;
+    bool tilingFailedFlag = true;
+    if (!checkLargeSpecs()) {
+        tilingFailedFlag = tryNormalTiling();
+    } else {
+        tilingFailedFlag = trySplitKernelHW();
+    }
+
+    if (!tilingFailedFlag) {
+        return true;
+    }
+
+    // 无法满足L1容量要求，先检查规格，如果规格未超LOAD3D指令限制，则尝试切W
+    if (!checkLargeSpecs() && !trySplitWo()) {
+        return true;
+    }
+
+    // 无法满足L1容量，尝试同时进行切kernel和切W
+    return !trySplitKernelAndWo();
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::SetStepK4SplitMN()
+{
+    blockTiling_.dbL1A = DB_ON;
+    blockTiling_.dbL1B = DB_ON;
+
+    // L1配比算法，按照16个块往下进行对称阶梯衰减
+    bool offDBL1 = false;
+    uint32_t depthA1 = L1_DEPTH_16;
+    uint32_t depthB1 = L1_DEPTH_16;
+    while (depthA1 >= 1U && depthB1 >= 1U) {
+        blockTiling_.depthA1 = depthA1;
+        blockTiling_.depthB1 = depthB1;
+        UpdateStepMNK();
+        if (!IsCurBlockL1Invalid()) {
+            break;
+        }
+        depthA1 = depthA1 > STEP_2 ? (depthA1 - STEP_2) : (depthA1 - 1);
+        depthB1 = depthB1 > STEP_2 ? (depthB1 - STEP_2) : (depthB1 - 1);
+        if ((depthA1 <= L1_DEPTH_2 || depthB1 <= L1_DEPTH_2) && !offDBL1) {
+            offDBL1 = true;
+            blockTiling_.dbL1A = DB_OFF;
+            blockTiling_.dbL1B = DB_OFF;
+            depthA1 = L1_DEPTH_16;
+            depthB1 = L1_DEPTH_16;
+        }
+    }
+
+    // 合法性兜底，防止w一次要搬运的过大，直接超L1
+    if (IsCurBlockL1Invalid()) {
+        ShrinkBaseBlock();
+        UpdateStepMNK();
+    }
+
+    UpdateSingleCoreInfo();
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::CalculateL1SizeGap()
+{
+    uint64_t al1LoadSize = CalAL1Bound(blockTiling_) * static_cast<uint64_t>(dtypeByte_);
+    uint64_t bl1LoadSize = CalBL1Bound(blockTiling_) * static_cast<uint64_t>(dtypeByte_);
+    uint64_t deltaL1LoadSize = (al1LoadSize + bl1LoadSize > platformInfo_.l1_size) ?
+                                   al1LoadSize + bl1LoadSize - platformInfo_.l1_size :
+                                   0;
+    return deltaL1LoadSize;
+}
+
+uint32_t Conv3DDWV2BasicBlockTilingArch35::CalculateBl1Cin1CopyLen(uint32_t newBaseN)
+{
+    uint32_t kernelHW = static_cast<uint32_t>(runInfo_.kh * runInfo_.kw);
+    // 当前方案通过修改L1->L0搬运方式，FP32:C0=8,一次搬运2C0
+    // HIFP8:C0=32,一次搬运C0/2;所以均满足16对齐，与DTYPE无关，故写死BLOCK_CUBE
+    uint32_t bL1N = Ops::Base::CeilDiv(newBaseN, AscendC::BLOCK_CUBE);
+    uint32_t bL1Cin1CopyLen = Ops::Base::CeilDiv(bL1N, kernelHW); // 向上取整，拖尾时默认多搬一行
+    if (kernelHW > bL1N && kernelHW % bL1N != 0U) {
+        ++bL1Cin1CopyLen; // 此时bL1Cin1CopyLen为1, 每个基本块不足一行，考虑拖尾最多搬两行
+    } else if (NUM_HALF * bL1N % kernelHW != 0) {
+        ++bL1Cin1CopyLen; // 除了尾块是0.5，其他场景都要搬2行
+    }
+    return bL1Cin1CopyLen;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::ShrinkBlockBaseK()
+{
+    // k方向减小
+    uint64_t fractalSize0 = BLOCK_CUBE;
+    uint64_t deltaL1LoadSize = CalculateL1SizeGap();
+    // 基本块K方向每减小C0, L1A装载大小减小deltaAl1PerC0
+    uint64_t deltaAl1PerC0 = static_cast<uint64_t>(blockTiling_.blockBaseM) * fractalSize0 *
+                             static_cast<uint64_t>(dtypeByte_);
+
+    uint32_t bL1Cin1CopyLen = CalculateBl1Cin1CopyLen(blockTiling_.blockBaseN);
+    // 基本块K方向每减小C0, L1B装载大小减小deltaAl1PerC0, 本身这个过程是阶跃的, 此处做线性处理
+    uint64_t deltaBl1PerC0 = Ops::Base::CeilDiv(
+        bL1Cin1CopyLen * BLOCK_CUBE * blockTiling_.splitWi * runInfo_.stride_h * fractalSize0 * dtypeByte_,
+        static_cast<uint64_t>(blockTiling_.splitWo));
+    // 线性处理后, deltaBl1PerC0一定不小于实际每C0减小, 所以c0ShrinkCount不会大于实际需减小C0数量
+    uint64_t c0ShrinkCount = Ops::Base::CeilDiv(deltaL1LoadSize, deltaAl1PerC0 + deltaBl1PerC0);
+    uint64_t newBaseK = 0;
+    if (blockTiling_.blockBaseK > c0ShrinkCount * fractalSize0) {
+        newBaseK = blockTiling_.blockBaseK - c0ShrinkCount * fractalSize0;
+    }
+    if (newBaseK >= fractalSize0) {
+        blockTiling_.blockBaseK = newBaseK;
+        while (blockTiling_.blockBaseK > fractalSize0 && IsCurBlockL1Invalid()) {
+            blockTiling_.blockBaseK -= fractalSize0;
+            if (blockTiling_.blockBaseK <= static_cast<uint32_t>(blockTiling_.splitWo) &&
+                (static_cast<uint32_t>(blockTiling_.splitWo) % blockTiling_.blockBaseK == 0U ||
+                 static_cast<uint64_t>(blockTiling_.splitWo) % fractalSize0 != static_cast<uint64_t>(0))) {
+                break;
+            }
+        }
+        if (!IsCurBlockL1Invalid()) {
+            return true;
+        }
+    } else {
+        blockTiling_.blockBaseK = fractalSize0;
+    }
+    return false;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::ShrinkBlockBaseMN()
+{
+    uint64_t kernelHW = static_cast<uint64_t>(runInfo_.kh * runInfo_.kw);
+    // M和N方向减小, 首先让M和N大小平齐
+    while (blockTiling_.blockBaseM > BLOCK_CUBE && blockTiling_.blockBaseM > blockTiling_.blockBaseN &&
+           IsCurBlockL1Invalid()) {
+        blockTiling_.blockBaseM -= BLOCK_CUBE;
+    }
+    while (blockTiling_.blockBaseN > BLOCK_CUBE && blockTiling_.blockBaseN > blockTiling_.blockBaseM &&
+           IsCurBlockL1Invalid()) {
+        blockTiling_.blockBaseN -= BLOCK_CUBE;
+    }
+    if (!IsCurBlockL1Invalid()) {
+        return;
+    }
+    uint64_t deltaAl1PerC0 = static_cast<uint64_t>(blockTiling_.blockBaseK) * BLOCK_CUBE * dtypeByte_;
+    int32_t hoCal = 0;
+    int32_t kBl1Size = static_cast<int32_t>(blockTiling_.blockBaseK * blockTiling_.stepKb);
+    if (kBl1Size % blockTiling_.splitWo == 0 || blockTiling_.splitWo % kBl1Size == 0) {
+        hoCal = Ops::Base::CeilDiv(kBl1Size, blockTiling_.splitWo);
+    } else if (kBl1Size > blockTiling_.splitWo) {
+        hoCal = kBl1Size / blockTiling_.splitWo + NUM_HALF;
+    } else {
+        hoCal = NUM_HALF;
+    }
+    uint64_t hiCal = 0;
+    if (!blockTiling_.isSplitKernelHW) {
+        hiCal = (hoCal - 1) * runInfo_.stride_h + (runInfo_.kh - 1) * runInfo_.dilation_h + 1;
+    } else {
+        hiCal = hoCal + static_cast<uint64_t>(runInfo_.kh - 1) * runInfo_.dilation_h;
+    }
+
+    // 与K方向减小采用同样思路, 做线性化处理
+    uint64_t deltaBl1PerC0 = Ops::Base::CeilDiv(hiCal * blockTiling_.splitWi * BLOCK_CUBE * dtypeByte_, kernelHW);
+    uint64_t deltaL1LoadSize = CalculateL1SizeGap();
+    uint32_t c0ShrinkCount = Ops::Base::CeilDiv(deltaL1LoadSize, deltaAl1PerC0 + deltaBl1PerC0);
+    if (static_cast<uint64_t>(blockTiling_.blockBaseM) < (c0ShrinkCount + 1) * BLOCK_CUBE) {
+        blockTiling_.blockBaseM = BLOCK_CUBE;
+        blockTiling_.blockBaseN = BLOCK_CUBE;
+        return;
+    }
+    blockTiling_.blockBaseM -= (c0ShrinkCount * BLOCK_CUBE);
+    blockTiling_.blockBaseN = blockTiling_.blockBaseM;
+    uint32_t bL1Cin1CopyLen = CalculateBl1Cin1CopyLen(blockTiling_.blockBaseN);
+
+    while (blockTiling_.blockBaseM > BLOCK_CUBE && IsCurBlockL1Invalid()) {
+        uint32_t newBl1Cin1CopyLen = CalculateBl1Cin1CopyLen(blockTiling_.blockBaseM); // 向上取整，拖尾时默认多搬一行
+        if (newBl1Cin1CopyLen < bL1Cin1CopyLen) {
+            blockTiling_.blockBaseN = blockTiling_.blockBaseM;
+            bL1Cin1CopyLen = newBl1Cin1CopyLen;
+        } else {
+            blockTiling_.blockBaseM -= BLOCK_CUBE;
+        }
+    }
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::ShrinkBaseBlock()
+{
+    if (ShrinkBlockBaseK()) {
+        return;
+    }
+    ShrinkBlockBaseMN();
+
+    // M方向回调
+    uint64_t fractalSize0 = BLOCK_CUBE;
+    uint64_t al1LoadSize = CalAL1Bound(blockTiling_) * static_cast<uint64_t>(dtypeByte_) * blockTiling_.dbL1A;
+    uint64_t bl1LoadSize = CalBL1Bound(blockTiling_) * static_cast<uint64_t>(dtypeByte_) * blockTiling_.dbL1B;
+    uint64_t deltaL1LoadSize = platformInfo_.l1_size - al1LoadSize - bl1LoadSize;
+    uint64_t deltaAl1PerC0M = blockTiling_.blockBaseK * BLOCK_CUBE * dtypeByte_;
+    uint64_t c0compensateCountM = deltaL1LoadSize / deltaAl1PerC0M;
+    uint64_t cL0Max = platformInfo_.l0c_size / dtypeByte_ / DB_ON;
+    uint64_t newBaseMc = std::max(cL0Max / blockTiling_.blockBaseN / BLOCK_CUBE, static_cast<uint64_t>(1)) * BLOCK_CUBE;
+    blockTiling_.blockBaseM = std::min(blockTiling_.blockBaseM + c0compensateCountM * BLOCK_CUBE, mmInfo_.mValue);
+    blockTiling_.blockBaseM = std::min(newBaseMc, static_cast<uint64_t>(blockTiling_.blockBaseM));
+    // K方向回调
+    uint32_t validBaseK = blockTiling_.blockBaseK;
+    while (!IsCurBlockL1Invalid()) {
+        validBaseK = blockTiling_.blockBaseK;
+        blockTiling_.blockBaseK += fractalSize0;
+    }
+    blockTiling_.blockBaseK = validBaseK;
+
+    uint64_t aL0Max = platformInfo_.l0a_size / dtypeByte_ / DB_ON;
+    uint64_t bL0Max = platformInfo_.l0b_size / dtypeByte_ / DB_ON;
+
+    uint64_t alignedKValue = Ops::Base::CeilAlign(mmInfo_.kValue, fractalSize0);
+    // 根据调小后的BaseM和BaseN调大BaseK
+    uint64_t newBaseKa = std::max(aL0Max / blockTiling_.blockBaseM / fractalSize0, static_cast<uint64_t>(1)) *
+                         fractalSize0;
+    uint64_t newBaseKb = std::max(bL0Max / blockTiling_.blockBaseN / fractalSize0, static_cast<uint64_t>(1)) *
+                         fractalSize0;
+    uint64_t newBaseK = std::min(std::min(newBaseKa, newBaseKb), alignedKValue);
+    blockTiling_.blockBaseK = std::min(newBaseK, static_cast<uint64_t>(blockTiling_.blockBaseK));
+    // K在不超过L0约束情况下，优先满足搬运对齐
+    if (static_cast<uint32_t>(blockTiling_.splitWo) < blockTiling_.blockBaseK &&
+        static_cast<uint64_t>(blockTiling_.splitWo) % fractalSize0 == static_cast<uint64_t>(0)) {
+        blockTiling_.blockBaseK = blockTiling_.blockBaseK / static_cast<uint32_t>(blockTiling_.splitWo) *
+                                  static_cast<uint32_t>(blockTiling_.splitWo);
+    }
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::IsCurBlockL1Invalid() { return IsCurBlockL1Invalid(blockTiling_); }
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::IsCurBlockL1Invalid(const BasicBlockTilingParamsArch35& blockTiling)
+{
+    uint64_t al1LoadSize = CalAL1Bound(blockTiling) * static_cast<uint64_t>(dtypeByte_) * blockTiling.dbL1A;
+    uint64_t bl1LoadSize = CalBL1Bound(blockTiling) * static_cast<uint64_t>(dtypeByte_) * blockTiling.dbL1B;
+    bool invalidL1LoadSize = al1LoadSize + bl1LoadSize > platformInfo_.l1_size;
+
+    return invalidL1LoadSize;
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::CalAL1Bound(const BasicBlockTilingParamsArch35& blockTiling)
+{
+    if (blockTiling.splitWo == runInfo_.wo) {
+        // 不切与原生逻辑保持一致
+        return static_cast<uint64_t>(blockTiling.stepKa) * blockTiling.blockBaseK * blockTiling.blockBaseM;
+    }
+
+    uint64_t aL1SizeSplitWo = CalAL1BoundSplitWo(blockTiling, blockTiling.splitWo);
+    uint64_t aL1TailWo = 0;
+    if (blockTiling.tailWo) {
+        aL1TailWo = CalAL1BoundSplitWo(blockTiling, blockTiling.tailWo);
+    }
+
+    return (aL1SizeSplitWo > aL1TailWo) ? (aL1SizeSplitWo) : (aL1TailWo);
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::CalAL1BoundSplitWo(const BasicBlockTilingParamsArch35& blockTiling,
+                                                              int32_t currentSplitWo)
+{
+    int32_t hoCal = 0;
+    int32_t kAl1Size = static_cast<int32_t>(blockTiling.blockBaseK * blockTiling.stepKa);
+    if (kAl1Size % currentSplitWo == 0 || currentSplitWo % kAl1Size == 0) {
+        hoCal = Ops::Base::CeilDiv(kAl1Size, currentSplitWo);
+    } else if (kAl1Size > currentSplitWo) {
+        hoCal = kAl1Size / currentSplitWo + NUM_HALF;
+    } else {
+        hoCal = NUM_HALF;
+    }
+    uint64_t hw = Ops::Base::CeilAlign(static_cast<uint64_t>(hoCal * currentSplitWo),
+                                       static_cast<uint64_t>(BLOCK_CUBE));
+    return hw * blockTiling.blockBaseM;
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::CalBL1Bound(const BasicBlockTilingParamsArch35& blockTiling)
+{
+    uint64_t bL1SizeSplitWo = CalBL1BoundSplitWo(blockTiling, blockTiling.splitWo, blockTiling.splitWi);
+    uint64_t bL1TailWo = 0;
+    if (blockTiling.tailWo) {
+        bL1TailWo = CalBL1BoundSplitWo(blockTiling, blockTiling.tailWo, blockTiling.tailWi);
+    }
+
+    return (bL1SizeSplitWo > bL1TailWo) ? (bL1SizeSplitWo) : (bL1TailWo);
+}
+
+int32_t Conv3DDWV2BasicBlockTilingArch35::GetHiCal(const BasicBlockTilingParamsArch35& blockTiling,
+                                                   int32_t currentSplitWo, bool isSplitKernelHW)
+{
+    if (currentSplitWo == 0) {
+        return -1;
+    }
+    int32_t hoCal = 0;
+    int32_t kBl1Size = static_cast<int32_t>(blockTiling.blockBaseK * blockTiling.stepKb);
+    if (kBl1Size % currentSplitWo == 0 || currentSplitWo % kBl1Size == 0) {
+        hoCal = Ops::Base::CeilDiv(kBl1Size, currentSplitWo);
+    } else if (kBl1Size > currentSplitWo) {
+        hoCal = kBl1Size / currentSplitWo + NUM_HALF;
+    } else {
+        hoCal = NUM_HALF;
+    }
+    int32_t hiCal = 0;
+    if (!isSplitKernelHW) {
+        hiCal = (hoCal - 1) * runInfo_.stride_h + (runInfo_.kh - 1) * runInfo_.dilation_h + 1;
+    } else {
+        hiCal = hoCal;
+    }
+
+    return hiCal;
+}
+
+int32_t Conv3DDWV2BasicBlockTilingArch35::GetWiCal(int32_t splitWo, bool isSplitKernelHW)
+{
+    int32_t splitWi = 0;
+    if (!isSplitKernelHW) {
+        splitWi = (splitWo - 1) * runInfo_.stride_w + (runInfo_.kw - 1) * runInfo_.dilation_w + 1;
+    } else {
+        splitWi = splitWo;
+    }
+
+    return splitWi;
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::CalBL1BoundSplitWo(const BasicBlockTilingParamsArch35& blockTiling,
+                                                              int32_t currentSplitWo, int32_t currentSplitWi)
+{
+    int32_t hiCal = GetHiCal(blockTiling, currentSplitWo, blockTiling.isSplitKernelHW);
+    uint32_t kernelHW = static_cast<uint32_t>(runInfo_.kh * runInfo_.kw);
+    uint32_t bL1N = Ops::Base::CeilDiv(blockTiling.blockBaseN, AscendC::BLOCK_CUBE);
+    uint32_t bL1Cin1CopyLen = Ops::Base::CeilDiv(bL1N, kernelHW); // 向上取整，拖尾时默认多搬一行
+    if (kernelHW > bL1N && kernelHW % bL1N != 0U) {
+        ++bL1Cin1CopyLen; // 此时bL1Cin1CopyLen为1, 每个基本块不足一行，考虑拖尾最多搬两行
+    } else if (NUM_HALF * bL1N % kernelHW != 0) {
+        ++bL1Cin1CopyLen; // 除了尾块是0.5，其他场景都要搬2行
+    }
+
+    uint64_t singleCoreCin = std::max(static_cast<uint64_t>(blockTiling.blockBaseN) /
+                                          (runInfo_.kh * runInfo_.kw * BLOCK_CUBE),
+                                      static_cast<uint64_t>(1)) *
+                             BLOCK_CUBE;
+    uint64_t bL1Size = static_cast<uint64_t>(hiCal) * currentSplitWi *
+                       std::min(singleCoreCin, static_cast<uint64_t>(bL1Cin1CopyLen) * BLOCK_CUBE);
+    return bL1Size;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::GetTilingFromRepo()
+{
+    std::shared_ptr<void> filterArgs = nullptr;
+    std::size_t filterArgsSize = 0;
+    if (!GetTilingFilterArgs(filterArgs, filterArgsSize)) {
+        return false;
+    }
+
+    std::shared_ptr<tuningtiling::TuningTilingDef> tuningTiling = nullptr;
+    auto compileInfo = context_->GetCompileInfo<Conv3DBackpropV2CompileInfo>();
+    OP_TILING_CHECK(compileInfo == nullptr, CUBE_INNER_ERR_REPORT("Conv3DBackpropFilterV2", "compileInfo is null"),
+                    return false);
+    const std::string& socVersion = compileInfo->soc_version;
+    OP_LOGD(context_, "socVersion = %s, core_num = %u", socVersion.c_str(), platformInfo_.core_num);
+    uint32_t ret = Ops::NN::QueryBank(filterArgs.get(), filterArgsSize, "Conv3DBackpropFilterV2", socVersion,
+                                      platformInfo_.core_num, tuningTiling);
+    if (ret != 0 || tuningTiling == nullptr) {
+        OP_LOGD(context_->GetNodeName(),
+                "Conv3DBackpropFilterV2 AscendC: get tiling from knowledge_tiling failed, ret = %u.", ret);
+        return false;
+    }
+
+    return TranslateTunerTiling(tuningTiling);
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::GetTilingFilterArgs(std::shared_ptr<void>& filterArgs,
+                                                           std::size_t& filterArgsSize)
+{
+    std::shared_ptr<tuningtiling::Conv3DBackpropFilterArgs> conv3DBackpropFilter = nullptr;
+    try {
+        conv3DBackpropFilter = std::make_shared<tuningtiling::Conv3DBackpropFilterArgs>();
+    } catch (const std::bad_alloc& e) {
+        OP_LOGE(context_, "Failed to allocate memory for Conv3DBackpropFilterArgs, error: %s", e.what());
+        return false;
+    }
+
+    conv3DBackpropFilter->batch = runInfo_.batch;
+    conv3DBackpropFilter->groups = runInfo_.groups;
+    conv3DBackpropFilter->co = runInfo_.co;
+    conv3DBackpropFilter->ci = runInfo_.ci;
+    conv3DBackpropFilter->dout = runInfo_.dout;
+    conv3DBackpropFilter->wo = runInfo_.wo;
+    conv3DBackpropFilter->ho = runInfo_.ho;
+    conv3DBackpropFilter->wi = runInfo_.wi;
+    conv3DBackpropFilter->hi = runInfo_.hi;
+    conv3DBackpropFilter->di = runInfo_.di;
+    conv3DBackpropFilter->kw = runInfo_.kw;
+    conv3DBackpropFilter->kh = runInfo_.kh;
+    conv3DBackpropFilter->kd = runInfo_.kd;
+    conv3DBackpropFilter->stride_w = runInfo_.stride_w;
+    conv3DBackpropFilter->stride_h = runInfo_.stride_h;
+    conv3DBackpropFilter->stride_d = runInfo_.stride_d;
+    conv3DBackpropFilter->pad_l = runInfo_.pad_l;
+    conv3DBackpropFilter->pad_r = runInfo_.pad_r;
+    conv3DBackpropFilter->pad_u = runInfo_.pad_u;
+    conv3DBackpropFilter->pad_d = runInfo_.pad_d;
+    conv3DBackpropFilter->pad_f = runInfo_.pad_f;
+    conv3DBackpropFilter->pad_b = runInfo_.pad_b;
+    conv3DBackpropFilter->dilation_w = runInfo_.dilation_w;
+    conv3DBackpropFilter->dilation_h = runInfo_.dilation_h;
+    conv3DBackpropFilter->dilation_d = runInfo_.dilation_d;
+    conv3DBackpropFilter->hf32Flag = runInfo_.hf32Flag;
+    conv3DBackpropFilter->a_dtype = runInfo_.a_dtype;
+    conv3DBackpropFilter->b_dtype = runInfo_.b_dtype;
+    conv3DBackpropFilter->c_dtype = runInfo_.c_dtype;
+    conv3DBackpropFilter->a_dtype_bytes = runInfo_.a_dtype_bytes;
+    conv3DBackpropFilter->b_dtype_bytes = runInfo_.b_dtype_bytes;
+    conv3DBackpropFilter->c_dtype_bytes = runInfo_.c_dtype_bytes;
+    conv3DBackpropFilter->fmapFormat = format_.fmapFormat;
+    conv3DBackpropFilter->dedyFormat = format_.dedyFormat;
+    conv3DBackpropFilter->filterFormat = format_.filterFormat;
+
+    filterArgs = conv3DBackpropFilter;
+    filterArgsSize = sizeof(tuningtiling::Conv3DBackpropFilterArgs);
+
+    return true;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::TranslateTunerTiling(tuningtiling::TuningTilingDefPtr& tuningTiling)
+{
+    auto tunerTiling = std::static_pointer_cast<tuningtiling::Conv3DBackpropFilterTunerTiling>(tuningTiling);
+    if (tunerTiling == nullptr) {
+        return false;
+    }
+    TranslateRunInfoData();
+    TranslateTuningData(tunerTiling);
+    return true;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::TranslateRunInfoData()
+{
+    // Map runInfo_ fields into dwTiling so downstream kernel code can use them
+    tilingData_.dwTiling.batch = static_cast<uint32_t>(runInfo_.batch);
+    tilingData_.dwTiling.cout = static_cast<uint32_t>(runInfo_.co);
+    tilingData_.dwTiling.cin = static_cast<uint32_t>(runInfo_.ci);
+    tilingData_.dwTiling.dout = static_cast<uint32_t>(runInfo_.dout);
+    tilingData_.dwTiling.wo = static_cast<uint32_t>(runInfo_.wo);
+    tilingData_.dwTiling.ho = static_cast<uint32_t>(runInfo_.ho);
+    tilingData_.dwTiling.wi = static_cast<uint32_t>(runInfo_.wi);
+    tilingData_.dwTiling.hi = static_cast<uint32_t>(runInfo_.hi);
+    tilingData_.dwTiling.di = static_cast<uint32_t>(runInfo_.di);
+
+    // kernel sizes
+    tilingData_.dwTiling.wk = static_cast<uint32_t>(runInfo_.kw);
+    tilingData_.dwTiling.hk = static_cast<uint32_t>(runInfo_.kh);
+    tilingData_.dwTiling.dk = static_cast<uint32_t>(runInfo_.kd);
+
+    // strides
+    tilingData_.dwTiling.strideW = static_cast<uint32_t>(runInfo_.stride_w);
+    tilingData_.dwTiling.strideH = static_cast<uint32_t>(runInfo_.stride_h);
+    tilingData_.dwTiling.strideD = static_cast<uint32_t>(runInfo_.stride_d);
+
+    // padding (map left/right/up/down/front/back)
+    tilingData_.dwTiling.padLeft = static_cast<uint32_t>(runInfo_.pad_l);
+    tilingData_.dwTiling.padRight = static_cast<uint32_t>(runInfo_.pad_r);
+    tilingData_.dwTiling.padUp = static_cast<uint32_t>(runInfo_.pad_u);
+    tilingData_.dwTiling.padDown = static_cast<uint32_t>(runInfo_.pad_d);
+    tilingData_.dwTiling.padFront = static_cast<uint32_t>(runInfo_.pad_f);
+    tilingData_.dwTiling.padBack = static_cast<uint32_t>(runInfo_.pad_b);
+
+    // dilations
+    tilingData_.dwTiling.dilationW = static_cast<uint32_t>(runInfo_.dilation_w);
+    tilingData_.dwTiling.dilationH = static_cast<uint32_t>(runInfo_.dilation_h);
+    tilingData_.dwTiling.dilationD = static_cast<uint32_t>(runInfo_.dilation_d);
+
+    // groups and flags
+    tilingData_.dwTiling.group = static_cast<uint32_t>(runInfo_.groups);
+    tilingData_.dwTiling.hf32Flag = static_cast<uint32_t>(runInfo_.hf32Flag);
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::TranslateTuningData(
+    std::shared_ptr<tuningtiling::Conv3DBackpropFilterTunerTiling> tunerTiling)
+{
+    conv_bp_v2_kernel::TConv3DDwTiling& dwt = tilingData_.dwTiling;
+    dwt.cin1G = tunerTiling->cin1G;
+    dwt.cout1G = tunerTiling->cout1G;
+    dwt.realGroup = tunerTiling->realGroup;
+    dwt.channelSize = tunerTiling->channelSize;
+    dwt.al0Pbuffer = tunerTiling->al0Pbuffer;
+    dwt.bl0Pbuffer = tunerTiling->bl0Pbuffer;
+    dwt.cl0Pbuffer = tunerTiling->cl0Pbuffer;
+    dwt.al1Pbuffer = tunerTiling->al1Pbuffer;
+    dwt.bl1Pbuffer = tunerTiling->bl1Pbuffer;
+    dwt.baseM = tunerTiling->baseM;
+    dwt.baseK = tunerTiling->baseK;
+    dwt.baseN = tunerTiling->baseN;
+    dwt.m0 = tunerTiling->m0;
+    dwt.k0 = tunerTiling->k0;
+    dwt.n0 = tunerTiling->n0;
+    dwt.stepKa = tunerTiling->stepKa;
+    dwt.stepKb = tunerTiling->stepKb;
+    dwt.iterateOrder = tunerTiling->iterateOrder;
+    dwt.bl1Bound = tunerTiling->bl1Bound;
+    dwt.al1Bound = tunerTiling->al1Bound;
+    dwt.singleCoreDk = tunerTiling->singleCoreDk;
+    dwt.singleCoreGroup = tunerTiling->singleCoreGroup;
+    dwt.singleCoreCout = tunerTiling->singleCoreCout;
+    dwt.singleCoreHo = tunerTiling->singleCoreHo;
+    dwt.splitWo = tunerTiling->splitWo;
+    dwt.singleCoreBatch = tunerTiling->singleCoreBatch;
+    dwt.singleCoreCin = tunerTiling->singleCoreCin;
+    dwt.singleCoreBatchDout = tunerTiling->singleCoreBatchDout;
+    dwt.streamkType = tunerTiling->streamkType;
+    dwt.usedCoreNum = tunerTiling->usedCoreNum;
+    dwt.singleCoreM = tunerTiling->singleCoreM;
+    dwt.singleCoreN = tunerTiling->singleCoreN;
+    dwt.singleCoreK = tunerTiling->singleCoreK;
+    blockTiling_.coreBindDirection = tunerTiling->coreBindDirection;
+    blockTiling_.isSplitKernelHW = tunerTiling->isSplitKernelHW;
+    blockTiling_.groupEnlarge = tunerTiling->groupEnlarge;
+}
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::DoOpTiling()
+{
+    // 默认使用子类的Conv3DBackpropFilterV2StreamKTiling的DoOpTiling
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::DoLibApiTiling()
+{
+    if (isGetTilingFromRepo) {
+        return ge::GRAPH_SUCCESS;
+    }
+    conv_bp_v2_kernel::TConv3DDwTiling& dwt = tilingData_.dwTiling;
+    dwt.usedCoreNum = blockTiling_.usedCoreNum;
+    dwt.singleCoreM = blockTiling_.singleCoreM;
+    dwt.singleCoreN = blockTiling_.singleCoreN;
+    dwt.singleCoreK = blockTiling_.singleCoreK;
+    dwt.singleCoreBatchDout = blockTiling_.singleCoreBatchDout;
+    dwt.streamkType = blockTiling_.streamkType;
+    dwt.singleCoreHo = static_cast<uint32_t>(blockTiling_.singleCoreK / runInfo_.wo);
+    dwt.baseM = blockTiling_.blockBaseM;
+    dwt.baseN = blockTiling_.blockBaseN;
+    dwt.baseK = blockTiling_.blockBaseK;
+    dwt.stepKa = blockTiling_.stepKa;
+    dwt.stepKb = blockTiling_.stepKb;
+    dwt.iterateOrder = blockTiling_.iterateOrder;
+    dwt.al1Pbuffer = blockTiling_.dbL1A;
+    dwt.bl1Pbuffer = blockTiling_.dbL1B;
+    dwt.cl0Pbuffer = blockTiling_.dbL0C;
+    tilingData_.dwTiling.bl1Bound = CalBL1Bound(blockTiling_);
+    tilingData_.dwTiling.al1Bound = CalAL1Bound(blockTiling_);
+    dwt.singleCoreCout = blockTiling_.singleCoreM;
+    dwt.splitWo = static_cast<uint32_t>(blockTiling_.splitWo);
+
+    uint64_t l1Cin1 = std::max(blockTiling_.singleCoreN / (runInfo_.kh * runInfo_.kw * BLOCK_CUBE),
+                               static_cast<uint64_t>(1));
+    dwt.singleCoreCin = l1Cin1 * BLOCK_CUBE;
+
+    if (!CheckVectorCoreNum()) {
+        CUBE_INNER_ERR_REPORT(context_->GetNodeName(), "check vector coreNum failed.");
+        return ge::GRAPH_FAILED;
+    }
+    PrintBasickBlockTilingData();
+    return ge::GRAPH_SUCCESS;
+}
+
+uint64_t Conv3DDWV2BasicBlockTilingArch35::GetTilingKey() const
+{
+    const uint64_t tilingKey = GET_TPL_TILING_KEY(blockTiling_.coreBindDirection, blockTiling_.isSplitKernelHW,
+                                                  blockTiling_.groupEnlarge, 0, 0);
+    OP_LOGD(context_->GetNodeName(), "tilingKey is: [%lu]", tilingKey);
+    OP_LOGD(context_->GetNodeName(), "coreBindDirection is: [%u], isSplitKernelHW is: [%u], groupEnlarge is: [%u]",
+            blockTiling_.coreBindDirection, blockTiling_.isSplitKernelHW, blockTiling_.groupEnlarge);
+    return tilingKey;
+}
+
+ge::graphStatus Conv3DDWV2BasicBlockTilingArch35::PostTiling()
+{
+    size_t tilingData_size = sizeof(conv_bp_v2_kernel::Conv3DBackpropFilterV2TilingData);
+    OP_LOGD(opName_, "final tiling data size: %zu", tilingData_size);
+
+    OP_TILING_CHECK(tilingData_size % sizeof(uint64_t) != 0,
+                    CUBE_INNER_ERR_REPORT(opName_, "tiling data size[%zu] not aligned to 8", tilingData_size),
+                    return ge::GRAPH_FAILED);
+    errno_t ret = memcpy_s(context_->GetRawTilingData()->GetData(), context_->GetRawTilingData()->GetCapacity(),
+                           &tilingData_, tilingData_size);
+    if (ret != EOK) {
+        OP_LOGE(context_->GetNodeName(), "memcpy_s failed, ret=%d", ret);
+        return ge::GRAPH_FAILED;
+    }
+
+    context_->SetBlockDim(tilingData_.dwTiling.usedCoreNum);
+    context_->GetRawTilingData()->SetDataSize(tilingData_size);
+    // kernel使用CrossCoreSetFlag接口的模式0，建议开启batchmode模式，使算子独占全部所需核资源，否则多流场景可能导致死锁
+    context_->SetScheduleMode(1);
+    return ge::GRAPH_SUCCESS;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::CheckAttrs()
+{
+    bool isFp16Flag = runInfo_.a_dtype == ge::DT_FLOAT16 && runInfo_.b_dtype == ge::DT_FLOAT16 &&
+                      runInfo_.c_dtype == ge::DT_FLOAT;
+    bool isFp32Flag = runInfo_.a_dtype == ge::DT_FLOAT && runInfo_.b_dtype == ge::DT_FLOAT &&
+                      runInfo_.c_dtype == ge::DT_FLOAT;
+    bool isBf16Flag = runInfo_.a_dtype == ge::DT_BF16 && runInfo_.b_dtype == ge::DT_BF16 &&
+                      runInfo_.c_dtype == ge::DT_FLOAT;
+    isDeterSupportDType_ = isFp16Flag || isBf16Flag;
+    OP_CHECK_IF(!(isHiF8Flag_ || isFp16Flag || isFp32Flag || isBf16Flag),
+                OP_LOGE_FOR_INVALID_DTYPES_WITH_REASON(
+                    opName_, "x, out_backprop, and y",
+                    (ge::TypeUtils::DataTypeToSerialString(runInfo_.a_dtype) + ", " +
+                     ge::TypeUtils::DataTypeToSerialString(runInfo_.b_dtype) + " and " +
+                     ge::TypeUtils::DataTypeToSerialString(runInfo_.c_dtype))
+                        .c_str(),
+                    "The dtypes of x and out_backprop must be within the range {DT_HIFLOAT8, DT_FLOAT16, DT_FLOAT, "
+                    "DT_BF16}, the dtype of y must be DT_FLOAT"),
+                return false);
+
+    OP_CHECK_IF(isHiF8Flag_ && runInfo_.groups != 1,
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                    opName_, "group", std::to_string(runInfo_.groups).c_str(),
+                    "The value of group must be 1, when the dtype of x and out_backprop is DT_HIFLOAT8"),
+                return false);
+
+    OP_CHECK_IF(runInfo_.groups < 1 || runInfo_.groups > UINT16_MAX,
+                OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+                    opName_, "group", std::to_string(runInfo_.groups).c_str(),
+                    FormatString("The value of group must be range [1, %d]", UINT16_MAX).c_str()),
+                return false);
+    return true;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::CheckFormat()
+{
+    const auto fmapDesc = context_->GetInputDesc(OUTPUT_BP_INDEX);
+    OP_TILING_CHECK(fmapDesc == nullptr, CUBE_INNER_ERR_REPORT("Conv3DBackpropFilterV2", "fmap_desc is null"),
+                    return false);
+    format_.fmapFormat = static_cast<ge::Format>(ge::GetPrimaryFormat(fmapDesc->GetStorageFormat()));
+    const auto dedyDesc = context_->GetInputDesc(Y_INDEX);
+    OP_TILING_CHECK(dedyDesc == nullptr, CUBE_INNER_ERR_REPORT("Conv3DBackpropFilterV2", "dedyDesc is null"),
+                    return false);
+    format_.dedyFormat = static_cast<ge::Format>(ge::GetPrimaryFormat(dedyDesc->GetStorageFormat()));
+    const auto filterDesc = context_->GetOutputDesc(FILTER_INDEX);
+    OP_TILING_CHECK(filterDesc == nullptr, CUBE_INNER_ERR_REPORT("Conv3DBackpropFilterV2", "filterDesc is null"),
+                    return false);
+    format_.filterFormat = static_cast<ge::Format>(ge::GetPrimaryFormat(filterDesc->GetStorageFormat()));
+
+    // NDHWC/DHWCN格式下D维度大于1，进行拦截
+    bool isNo2DFilterFormat = (format_.filterFormat == ge::FORMAT_NDHWC || format_.filterFormat == ge::FORMAT_DHWCN) &&
+                              (runInfo_.kd != 1 || runInfo_.di != 1 || runInfo_.dout != 1);
+    if (isNo2DFilterFormat) {
+        OP_LOGD(opName_, "When filterFormat is NDHWC or DHWCN , Daxis  Greater 1, no support streamK");
+    }
+    deterNotSupportFormat_ = (format_.fmapFormat != ge::FORMAT_NCDHW && format_.fmapFormat != ge::FORMAT_NDHWC) ||
+                             (format_.dedyFormat != ge::FORMAT_NCDHW && format_.dedyFormat != ge::FORMAT_NDHWC) ||
+                             isNo2DFilterFormat;
+
+    enableSplitW = (format_.fmapFormat == ge::FORMAT_NCDHW && format_.dedyFormat == ge::FORMAT_NCDHW) ||
+                   (format_.fmapFormat == ge::FORMAT_NDHWC && format_.dedyFormat == ge::FORMAT_NDHWC);
+    OP_CHECK_IF(
+        isHiF8Flag_ && deterNotSupportFormat_,
+        OP_LOGE_FOR_INVALID_FORMATS_WITH_REASON(opName_, "fmap, dedy and filter",
+                                                (ge::TypeUtils::FormatToSerialString(format_.fmapFormat) + ", " +
+                                                 ge::TypeUtils::FormatToSerialString(format_.dedyFormat) + " and " +
+                                                 ge::TypeUtils::FormatToSerialString(format_.filterFormat))
+                                                    .c_str(),
+                                                "The formats of fmap and dedy must be within the range {NCDHW, NDHWC}, "
+                                                "the format of filter must be NCDHW, when datatype is HiF8"),
+        return false);
+    return true;
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::CheckKernelSize()
+{
+    int64_t totalPadingD = static_cast<int64_t>(runInfo_.pad_f) + runInfo_.pad_b;
+    int64_t totalPadingH = static_cast<int64_t>(runInfo_.pad_u) + runInfo_.pad_d;
+    int64_t totalPadingW = static_cast<int64_t>(runInfo_.pad_l) + runInfo_.pad_r;
+
+    int64_t kdMax = (runInfo_.di + totalPadingD - 1) / runInfo_.dilation_d + 1;
+    int64_t khMax = (runInfo_.hi + totalPadingH - 1) / runInfo_.dilation_h + 1;
+    int64_t kwMax = (runInfo_.wi + totalPadingW - 1) / runInfo_.dilation_w + 1;
+
+    // kernel大小判断
+    OP_CHECK_IF(
+        runInfo_.kd > kdMax,
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+            opName_, "D of filter", std::to_string(runInfo_.kd).c_str(),
+            FormatString(
+                "The value of D of filter must be less than (Din + PaddingHead + PaddingTail -1) / DilationD + 1 = %ld",
+                kdMax)
+                .c_str()),
+        return false);
+    OP_CHECK_IF(
+        runInfo_.kh > khMax,
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(
+            opName_, "H of filter", std::to_string(runInfo_.kh).c_str(),
+            FormatString(
+                "The value of H of filter must be less than (Hin + PaddingUp + PaddingDown -1) / DilationH + 1 = %ld",
+                khMax)
+                .c_str()),
+        return false);
+    OP_CHECK_IF(
+        runInfo_.kw > kwMax,
+        OP_LOGE_FOR_INVALID_VALUE_WITH_REASON(opName_, "W of filter", std::to_string(runInfo_.kw).c_str(),
+                                              FormatString("The value of W of filter must be less than (Win + "
+                                                           "PaddingLeft + PaddingRight -1) / DilationW + 1 = %ld",
+                                                           kwMax)
+                                                  .c_str()),
+        return false);
+    return true;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::SetShapeTiling(conv_bp_v2_kernel::TConv3DDwTiling& dwt)
+{
+    // shape
+    dwt.batch = runInfo_.batch;
+    dwt.cin = runInfo_.ci;
+    dwt.cout = runInfo_.co;
+    dwt.cin1G = runInfo_.cin1_g;
+    dwt.cout1G = runInfo_.cout1_g;
+    dwt.dout = runInfo_.dout;
+    dwt.ho = runInfo_.ho; // dedy h
+    dwt.wo = runInfo_.wo; // dedy o
+    dwt.di = runInfo_.di;
+    dwt.hi = runInfo_.hi;
+    dwt.wi = runInfo_.wi;
+    dwt.dk = runInfo_.kd;
+    dwt.hk = runInfo_.kh;
+    dwt.wk = runInfo_.kw;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::SetAttrTiling(conv_bp_v2_kernel::TConv3DDwTiling& dwt)
+{
+    // attr
+    dwt.realGroup = runInfo_.real_g;
+    dwt.strideD = runInfo_.stride_d;
+    dwt.strideH = runInfo_.stride_h;
+    dwt.strideW = runInfo_.stride_w;
+    dwt.padFront = runInfo_.pad_f;
+    dwt.padBack = runInfo_.pad_b;
+    dwt.padUp = runInfo_.pad_u;
+    dwt.padDown = runInfo_.pad_d;
+    dwt.padLeft = runInfo_.pad_l;
+    dwt.padRight = runInfo_.pad_r;
+    dwt.dilationD = runInfo_.dilation_d;
+    dwt.dilationH = runInfo_.dilation_h;
+    dwt.dilationW = runInfo_.dilation_w;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::InitTilingValue(TilingValueDwArch35& tilingParams)
+{
+    // singleCore
+    tilingParams.singleCoreBatch = 1U;
+    tilingParams.singleCoreGroup = 1U;
+
+    // InitTilingValue_1982_diff_1971可能需要修改baseN
+    tilingParams.baseN = BLOCK_CUBE;
+    tilingParams.singleCoreHo = static_cast<uint32_t>(runInfo_.ho);
+
+    // 由于format差异和随路转换1982和1971对于tilingParams中参数不同处理函数
+    const auto fmapDesc = context_->GetInputDesc(0);
+    OP_TILING_CHECK(fmapDesc == nullptr, CUBE_INNER_ERR_REPORT("Conv3DBackpropFilterV2", "fmap_desc is null"), return);
+
+    // cin1G,cout1G在group和非group场景都需要赋值
+    int64_t ciPerRealGroup = static_cast<int64_t>(runInfo_.ci);
+    int64_t coPerRealGroup = static_cast<int64_t>(runInfo_.co);
+    if (tilingData_.dwTiling.group > 1U) {
+        ciPerRealGroup = runInfo_.mag_factor * runInfo_.ci / tilingData_.dwTiling.group;
+        coPerRealGroup = runInfo_.mag_factor * runInfo_.co / tilingData_.dwTiling.group;
+    }
+    tilingData_.dwTiling.cin1G = static_cast<uint32_t>(ciPerRealGroup);
+    tilingData_.dwTiling.cout1G = static_cast<uint32_t>(coPerRealGroup);
+    tilingParams.singleCoreDk = 1U;
+    InitCalTilingValue(tilingParams);
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::InitCalTilingValue(TilingValueDwArch35& tilingParams)
+{
+    // L0
+    tilingParams.baseM = BLOCK_CUBE;
+    tilingParams.baseK = tilingData_.dwTiling.k0;
+    // step
+    tilingParams.stepKa = 1U;
+    tilingParams.stepKb = 1U;
+    // pingpong buffer
+    tilingParams.al0Pbuffer = DB_ON;         // 默认开
+    tilingParams.bl0Pbuffer = DB_ON;         // 默认开
+    constexpr uint32_t DBMAXL0BSIZE = 32512; // (65536 - 512) / 2
+    if (isHiF8Flag_ && tilingParams.baseK * tilingParams.baseN > DBMAXL0BSIZE) {
+        tilingParams.bl0Pbuffer = 1U;
+    }
+    tilingParams.cl0Pbuffer = 1U;
+    tilingParams.al1Pbuffer = 1U;
+    tilingParams.bl1Pbuffer = 1U;
+
+    tilingParams.iterateOrder = 1U;
+    tilingParams.bl1Bound = static_cast<uint32_t>(runInfo_.bl1_bound);
+    tilingParams.al1Bound = tilingParams.baseM * tilingParams.baseK * tilingParams.stepKa;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::SetTilingValue(conv_bp_v2_kernel::TConv3DDwTiling& dwt,
+                                                      const TilingValueDwArch35& tilingParams)
+{
+    // singleCore
+    dwt.singleCoreBatch = tilingParams.singleCoreBatch;
+    dwt.singleCoreGroup = tilingParams.singleCoreGroup;
+    dwt.singleCoreCout = tilingParams.singleCoreCout;
+    dwt.singleCoreCin = tilingParams.singleCoreCin;
+    dwt.singleCoreDk = tilingParams.singleCoreDk;
+    dwt.singleCoreHo = tilingParams.singleCoreHo;
+    dwt.splitWo = dwt.wo;
+
+    // L0
+    dwt.baseM = tilingParams.baseM;
+    dwt.baseK = tilingParams.baseK;
+    dwt.baseN = tilingParams.baseN;
+    // step
+    dwt.stepKa = tilingParams.stepKa;
+    dwt.stepKb = tilingParams.stepKb;
+    // pingpong buffer
+    dwt.al0Pbuffer = tilingParams.al0Pbuffer;
+    dwt.bl0Pbuffer = tilingParams.bl0Pbuffer;
+    dwt.cl0Pbuffer = tilingParams.cl0Pbuffer;
+    dwt.al1Pbuffer = tilingParams.al1Pbuffer;
+    dwt.bl1Pbuffer = tilingParams.bl1Pbuffer;
+    // iterateOrder
+    dwt.iterateOrder = tilingParams.iterateOrder;
+    dwt.bl1Bound = tilingParams.bl1Bound;
+    dwt.al1Bound = tilingParams.al1Bound;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::PrintTilingData()
+{
+    conv_bp_v2_kernel::TConv3DDwTiling& tiling = tilingData_.dwTiling;
+    std::stringstream ss;
+    // 删除shape stride dilation 相关打印 pads下移
+    ss << " cin1G: " << tiling.cin1G << " cout1G: " << tiling.cout1G << " group: " << tiling.group
+       << " realGroup: " << tiling.realGroup << " channelSize: " << tiling.channelSize
+       << " al0Pbuffer: " << tiling.al0Pbuffer << " bl0Pbuffer: " << tiling.bl0Pbuffer
+       << " cl0Pbuffer: " << tiling.cl0Pbuffer << " al1Pbuffer: " << tiling.al1Pbuffer
+       << " bl1Pbuffer: " << tiling.bl1Pbuffer << " baseM: " << tiling.baseM << " baseK: " << tiling.baseK
+       << " baseN: " << tiling.baseN << " m0: " << tiling.m0 << " k0: " << tiling.k0 << " n0: " << tiling.n0
+       << " stepKa: " << tiling.stepKa << " stepKb: " << tiling.stepKb << " iterateOrder: " << tiling.iterateOrder
+       << " al1Bound: " << tiling.al1Bound << " bl1Bound: " << tiling.bl1Bound << " hf32Flag: " << tiling.hf32Flag
+       << " singleCoreDk: " << tiling.singleCoreDk << " singleCoreGroup: " << tiling.singleCoreGroup
+       << " singleCoreCout: " << tiling.singleCoreCout << " singleCoreHo: " << tiling.singleCoreHo
+       << " splitWo: " << tiling.splitWo << " singleCoreBatch: " << tiling.singleCoreBatch
+       << " singleCoreCin: " << tiling.singleCoreCin << " singleCoreBatchDout: " << tiling.singleCoreBatchDout
+       << " streamkType: " << tiling.streamkType << " usedCoreNum: " << tiling.usedCoreNum
+       << " singleCoreM: " << tiling.singleCoreM << " singleCoreN: " << tiling.singleCoreN
+       << " singleCoreK: " << tiling.singleCoreK;
+    OP_LOGI(opName_, "api tiling: %s", ss.str().c_str());
+    PrintInputsAttrs(tiling);
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::PrintFormatData()
+{
+    std::stringstream ss;
+    ss << " fmapFormat: " << static_cast<int>(format_.fmapFormat)
+       << " dedyFormat: " << static_cast<int>(format_.dedyFormat)
+       << " filterFormat: " << static_cast<int>(format_.filterFormat);
+    OP_LOGD(opName_, "format data: %s", ss.str().c_str());
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::PrintRunInfoData()
+{
+    std::stringstream ss;
+    ss << "batch: " << runInfo_.batch << " co: " << runInfo_.co << " ci: " << runInfo_.ci
+       << " cout1_g: " << runInfo_.cout1_g << " cin1_g: " << runInfo_.cin1_g << " dout: " << runInfo_.dout
+       << " ho: " << runInfo_.ho << " wo: " << runInfo_.wo << " hi: " << runInfo_.hi << " wi: " << runInfo_.wi
+       << " di: " << runInfo_.di << " kd: " << runInfo_.kd << " kh: " << runInfo_.kh << " kw: " << runInfo_.kw
+       << " real_g: " << runInfo_.real_g << " stride_d: " << runInfo_.stride_d << " stride_h: " << runInfo_.stride_h
+       << " stride_w: " << runInfo_.stride_w << " pad_f: " << runInfo_.pad_f << " pad_b: " << runInfo_.pad_b
+       << " pad_u: " << runInfo_.pad_u << " pad_d: " << runInfo_.pad_d << " pad_l: " << runInfo_.pad_l
+       << " pad_r: " << runInfo_.pad_r << " dilation_d: " << runInfo_.dilation_d
+       << " dilation_h: " << runInfo_.dilation_h << " dilation_w: " << runInfo_.dilation_w << " ci1: " << runInfo_.ci1
+       << " groups: " << runInfo_.groups << " mag_factor: " << runInfo_.mag_factor << " k0: " << runInfo_.k0
+       << " m0: " << runInfo_.m0 << " n0: " << runInfo_.n0 << " hf32Flag: " << runInfo_.hf32Flag
+       << " a_dtype: " << static_cast<int>(runInfo_.a_dtype) << " b_dtype: " << static_cast<int>(runInfo_.b_dtype)
+       << " c_dtype: " << static_cast<int>(runInfo_.c_dtype) << " a_dtype_bytes: " << runInfo_.a_dtype_bytes
+       << " b_dtype_bytes: " << runInfo_.b_dtype_bytes << " c_dtype_bytes: " << runInfo_.c_dtype_bytes;
+    OP_LOGD(opName_, "runInfo Data: %s", ss.str().c_str());
+}
+
+bool Conv3DDWV2BasicBlockTilingArch35::PrintInputsAttrs(conv_bp_v2_kernel::TConv3DDwTiling& tiling)
+{
+    auto inputInfo = GetTensorInfo(context_, OUTPUT_BP_INDEX, true, kConv3DbpDim);
+    auto filterSizesInfo = GetTensorInfo(context_, FILTER_SIZE_INDEX, true, kFilterSizeDim); // dw filter_size dim 1
+    auto outBackpropInfo = GetTensorInfo(context_, Y_INDEX, true, kConv3DbpDim);
+    auto outputInfo = GetTensorInfo(context_, FILTER_INDEX, false, kConv3DbpDim);
+
+    OP_LOGD(opName_,
+            "input shape: %s, format: %s, dtype: %s; filter_sizes shape: %s, format: %s, dtype: %s; out_backprop "
+            "shape: %s, format: %s, dtype: %s; output shape: %s, format: %s, dtype: %s;",
+            DebugString(inputInfo.shape).c_str(), ge::TypeUtils::FormatToSerialString(inputInfo.format).c_str(),
+            ge::TypeUtils::DataTypeToSerialString(inputInfo.dtype).c_str(), DebugString(filterSizesInfo.shape).c_str(),
+            ge::TypeUtils::FormatToSerialString(filterSizesInfo.format).c_str(),
+            ge::TypeUtils::DataTypeToSerialString(filterSizesInfo.dtype).c_str(),
+            DebugString(outBackpropInfo.shape).c_str(),
+            ge::TypeUtils::FormatToSerialString(outBackpropInfo.format).c_str(),
+            ge::TypeUtils::DataTypeToSerialString(outBackpropInfo.dtype).c_str(), DebugString(outputInfo.shape).c_str(),
+            ge::TypeUtils::FormatToSerialString(outputInfo.format).c_str(),
+            ge::TypeUtils::DataTypeToSerialString(outputInfo.dtype).c_str());
+
+    auto stridesShape = GetAttrVector(context_, strideIndex, kConv3DbpDim, "strides"); // stride idx 0
+    // pads打印需要修改，可能从padding获取
+    std::vector<int64_t> padsShape{tiling.padFront, tiling.padBack, tiling.padUp,
+                                   tiling.padDown,  tiling.padLeft, tiling.padRight};
+    auto dilationsShape = GetAttrVector(context_, dilationIndex, kConv3DbpDim, "dilations"); // dilation idx 2
+
+    auto attrs = context_->GetAttrs();
+    const auto groups = attrs->GetAttrPointer<int64_t>(groupIndex);       // groups idx 3
+    const auto enableHf32 = attrs->GetAttrPointer<bool>(enabelHF32Index); // enable_hf32 idx 5
+    OP_CHECK_IF(groups == nullptr, OP_LOGE(opName_, "get groups from context fail."), return false);
+
+    OP_LOGD(opName_, "Attrs stride: %s, pads: %s, dilation: %s, groups: %ld, enable_hf32: %d.",
+            DebugString(stridesShape).c_str(), DebugString(padsShape).c_str(), DebugString(dilationsShape).c_str(),
+            *groups, *enableHf32);
+    return true;
+}
+
+void Conv3DDWV2BasicBlockTilingArch35::PrintBasickBlockTilingData()
+{
+    PrintFormatData();
+    PrintRunInfoData();
+    PrintTilingData();
+}
+} // namespace Conv
+} // namespace NN
+} // namespace Ops

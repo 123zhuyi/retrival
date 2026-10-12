@@ -1,0 +1,195 @@
+{
+    "op_type": "AccumulateNV2",
+    "op_list": [
+      {
+        "bin_filename": "AccumulateNV2_float16_bin",
+        "inputs": [
+            [
+            {
+                "name": "x",
+                "index": 0,
+                "dtype": "float16",
+                "format": "ND",
+                "paramType": "dynamic",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+          ]
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "N",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "AccumulateNV2_float32_bin",
+        "inputs": [
+            [
+            {
+                "name": "x",
+                "index": 0,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "dynamic",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+          ]
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "N",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "AccumulateNV2_int32_bin",
+        "inputs": [
+            [
+            {
+                "name": "x",
+                "index": 0,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "dynamic",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+          ]
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "N",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "AccumulateNV2_int8_bin",
+        "inputs": [
+            [
+            {
+                "name": "x",
+                "index": 0,
+                "dtype": "int8",
+                "format": "ND",
+                "paramType": "dynamic",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+          ]
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "int8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "N",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "AccumulateNV2_uint8_bin",
+        "inputs": [
+            [
+            {
+                "name": "x",
+                "index": 0,
+                "dtype": "uint8",
+                "format": "ND",
+                "paramType": "dynamic",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+          ]
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "uint8",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "N",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+      }
+    ]
+}

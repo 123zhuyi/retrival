@@ -1,0 +1,293 @@
+diff --git a/mlir/lib/Dialect/SCF/TransformOps/SCFTransformOps.cpp b/mlir/lib/Dialect/SCF/TransformOps/SCFTransformOps.cpp
+index c4a55c302d0a..2402437c50f8 100644
+--- a/mlir/lib/Dialect/SCF/TransformOps/SCFTransformOps.cpp
++++ b/mlir/lib/Dialect/SCF/TransformOps/SCFTransformOps.cpp
+@@ -8,6 +8,7 @@
+ 
+ #include "mlir/Dialect/SCF/TransformOps/SCFTransformOps.h"
+ 
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
+ #include "mlir/Dialect/Affine/IR/AffineOps.h"
+ #include "mlir/Dialect/Affine/LoopUtils.h"
+@@ -456,6 +457,38 @@ void transform::TakeAssumedBranchOp::getEffects(
+ // LoopFuseSiblingOp
+ //===----------------------------------------------------------------------===//
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++
++static bool isProducerConsumedImpl(Operation *target, Operation *source,
++                                   DenseSet<Value> &visited) {
++  if (!target || !source) {
++    return false;
++  }
++  for (Value targetResult : target->getResults()) {
++    if (visited.contains(targetResult)) {
++      continue;
++    }
++    visited.insert(targetResult);
++    // dfs check if any of the target result users is consumed by source op
++    bool consumed =
++        llvm::any_of(targetResult.getUsers(), [&](Operation *resultUser) {
++          return source->isAncestor(resultUser) ||
++                 isProducerConsumedImpl(resultUser, source, visited);
++        });
++    if (consumed) {
++      return true;
++    }
++  }
++  return false;
++}
++
++static bool isProducerConsumed(Operation *target, Operation *source) {
++  DenseSet<Value> visited;
++  return isProducerConsumedImpl(target, source, visited);
++}
++
++#endif
++
+ /// Check if `target` and `source` are siblings, in the context that `target`
+ /// is being fused into `source`.
+ ///
+@@ -479,6 +512,13 @@ static DiagnosedSilenceableFailure isOpSibling(Operation *target,
+   if (target->isBeforeInBlock(source)) {
+     // Since `target` is before `source`, all users of results of `target`
+     // need to be dominated by `source`.
++
++#if BSPUB_DAVINCI_BISHENGIR
++    if (!isProducerConsumed(/*producer=*/target, /*consumer=*/source)) {
++      return DiagnosedSilenceableFailure::success();
++    }
++#endif
++
+     for (Operation *user : target->getUsers()) {
+       if (!domInfo.properlyDominates(source, user, /*enclosingOpOk=*/false)) {
+         return emitSilenceableFailure(target)
+@@ -489,6 +529,11 @@ static DiagnosedSilenceableFailure isOpSibling(Operation *target,
+   } else {
+     // Since `target` is after `source`, all values used by `target` need
+     // to dominate `source`.
++#if BSPUB_DAVINCI_BISHENGIR
++    if (!isProducerConsumed(/*producer=*/source, /*consumer=*/target)) {
++      return DiagnosedSilenceableFailure::success();
++    }
++#endif
+ 
+     // Check if operands of `target` are dominated by `source`.
+     for (Value operand : target->getOperands()) {
+diff --git a/mlir/lib/Dialect/SCF/Utils/Utils.cpp b/mlir/lib/Dialect/SCF/Utils/Utils.cpp
+index c0ee9d2afe91..d6cb74961bb1 100644
+--- a/mlir/lib/Dialect/SCF/Utils/Utils.cpp
++++ b/mlir/lib/Dialect/SCF/Utils/Utils.cpp
+@@ -12,6 +12,7 @@
+ 
+ #include "mlir/Dialect/SCF/Utils/Utils.h"
+ #include "mlir/Analysis/SliceAnalysis.h"
++#include "mlir/Config/mlir-config.h"
+ #include "mlir/Dialect/Arith/IR/Arith.h"
+ #include "mlir/Dialect/Arith/Utils/Utils.h"
+ #include "mlir/Dialect/Func/IR/FuncOps.h"
+@@ -30,6 +31,10 @@
+ #include "llvm/Support/MathExtras.h"
+ #include <cstdint>
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++#include "mlir/IR/Dominance.h"
++#endif
++
+ using namespace mlir;
+ 
+ #define DEBUG_TYPE "scf-utils"
+@@ -294,7 +299,8 @@ static Value ceilDivPositive(OpBuilder &builder, Location loc, Value dividend,
+ }
+ 
+ /// Returns the trip count of `forOp` if its' low bound, high bound and step are
+-/// constants, or optional otherwise. Trip count is computed as ceilDiv(highBound
++/// constants, or optional otherwise. Trip count is computed as
++/// ceilDiv(highBound
+ /// - lowBound, step).
+ static std::optional<int64_t> getConstantTripCount(scf::ForOp forOp) {
+   std::optional<int64_t> lbCstOp = getConstantIntValue(forOp.getLowerBound());
+@@ -889,6 +895,12 @@ LogicalResult mlir::coalescePerfectlyNestedSCFForLoops(scf::ForOp op) {
+   SmallVector<scf::ForOp> loops;
+   getPerfectlyNestedLoops(loops, op);
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  if (loops.size() == 1) {
++    return success();
++  }
++#endif
++
+   // Look for a band of loops that can be coalesced, i.e. perfectly nested
+   // loops with bounds defined above some loop.
+ 
+@@ -1262,6 +1274,69 @@ TileLoops mlir::extractFixedOuterLoops(scf::ForOp rootForOp,
+   return tileLoops;
+ }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++/// Check if all target users properly dominate source op.
++static bool isTargetUsersProperlyDominateSource(Operation *target,
++                                                Operation *source) {
++  DominanceInfo domInfo(source);
++  if (target->isBeforeInBlock(source)) {
++    return !llvm::any_of(target->getUsers(), [&](Operation *user) {
++      return !domInfo.properlyDominates(source, user, /*enclosingOpOk=*/false);
++    });
++  }
++  return true;
++}
++
++static void cloneUsersRecursively(Value from, Value to, RewriterBase &rewriter,
++                                  SetVector<Operation *> &cloned,
++                                  IRMapping &mapping, int level) {
++  assert(level <= 100 && "too many clones!");
++  for (OpOperand &userOperand : from.getUses()) {
++    Operation *userOp = userOperand.getOwner();
++    if (!userOp) {
++      continue;
++    }
++    if (userOp->hasTrait<OpTrait::IsTerminator>()) {
++      rewriter.modifyOpInPlace(userOp, [&]() { userOperand.set(to); });
++      continue;
++    }
++    Operation *clonedUserOp = rewriter.clone(*userOp, mapping);
++    cloned.insert(userOp);
++    for (size_t i = 0; i < userOp->getNumResults(); ++i) {
++      cloneUsersRecursively(userOp->getResult(i), clonedUserOp->getResult(i),
++                            rewriter, cloned, mapping, level + 1);
++    }
++  }
++}
++
++/// adjust target loop users by cloning them after fusedLoop
++static void adjustProducerLoopUsers(Operation *producer, Operation *consumer,
++                                    Operation *fusedLoop,
++                                    RewriterBase &rewriter,
++                                    IRMapping &mapping) {
++  // The adjustment for consumer loop users is only necessary if consumer is
++  // before producer in block, and these exists target users that do not
++  // dominate source properly.
++  if (consumer->isBeforeInBlock(producer) ||
++      isTargetUsersProperlyDominateSource(producer, consumer)) {
++    return;
++  }
++  rewriter.setInsertionPointAfter(fusedLoop);
++  SetVector<Operation *> cloned;
++
++  for (size_t i = 0; i < producer->getNumResults(); ++i) {
++    Value producerResult = producer->getResult(i);
++    Value fusedResult = fusedLoop->getResult(i);
++    cloneUsersRecursively(producerResult, fusedResult, rewriter, cloned,
++                          mapping, 0);
++  }
++
++  for (Operation *op : llvm::reverse(cloned)) {
++    rewriter.eraseOp(op);
++  }
++}
++#endif
++
+ scf::ForallOp mlir::fuseIndependentSiblingForallLoops(scf::ForallOp target,
+                                                       scf::ForallOp source,
+                                                       RewriterBase &rewriter) {
+@@ -1273,12 +1348,23 @@ scf::ForallOp mlir::fuseIndependentSiblingForallLoops(scf::ForallOp target,
+   llvm::append_range(fusedOuts, target.getOutputs());
+   llvm::append_range(fusedOuts, source.getOutputs());
+ 
++  // Create a new scf.forall op.
++  // If source loop before target, the fused loop will be after target loop.
++  // If target loop before source, the fused loop will be after source loop.
++#if BSPUB_DAVINCI_BISHENGIR
++  if (source->isBeforeInBlock(target)) {
++    rewriter.setInsertionPointAfter(target);
++  } else if (target->isBeforeInBlock(source)) {
++    rewriter.setInsertionPointAfter(source);
++  }
++#else
+   // Create a new scf.forall op after the source loop.
+   rewriter.setInsertionPointAfter(source);
++#endif
++
+   scf::ForallOp fusedLoop = rewriter.create<scf::ForallOp>(
+       source.getLoc(), source.getMixedLowerBound(), source.getMixedUpperBound(),
+       source.getMixedStep(), fusedOuts, source.getMapping());
+-
+   // Map control operands.
+   IRMapping mapping;
+   mapping.map(target.getInductionVars(), fusedLoop.getInductionVars());
+@@ -1307,6 +1393,17 @@ scf::ForallOp mlir::fuseIndependentSiblingForallLoops(scf::ForallOp target,
+   for (Operation &op : sourceTerm.getYieldingOps())
+     rewriter.clone(op, mapping);
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  if (source->isBeforeInBlock(target))
++    adjustProducerLoopUsers(/*producer=*/source, /*consumer=*/target, fusedLoop,
++                            rewriter, mapping);
++  else if (target->isBeforeInBlock(source))
++    adjustProducerLoopUsers(/*producer=*/target, /*consumer=*/source, fusedLoop,
++                            rewriter, mapping);
++  else
++    llvm_unreachable("source and target loop must be in same parent block");
++#endif
++
+   // Replace old loops by substituting their uses by results of the fused loop.
+   rewriter.replaceOp(target, fusedLoop.getResults().take_front(numTargetOuts));
+   rewriter.replaceOp(source, fusedLoop.getResults().take_back(numSourceOuts));
+@@ -1325,13 +1422,24 @@ scf::ForOp mlir::fuseIndependentSiblingForLoops(scf::ForOp target,
+   llvm::append_range(fusedInitArgs, target.getInitArgs());
+   llvm::append_range(fusedInitArgs, source.getInitArgs());
+ 
++  // Create a new scf.for op (with scf.yield terminator
++  // (without arguments) only in case its init_args is empty).
++  // If source loop before target, the fused loop will be after target loop.
++  // If target loop before source, the fused loop will be after source loop.
++#if BSPUB_DAVINCI_BISHENGIR
++  if (source->isBeforeInBlock(target)) {
++    rewriter.setInsertionPointAfter(target);
++  } else if (target->isBeforeInBlock(source)) {
++    rewriter.setInsertionPointAfter(source);
++  }
++#else
+   // Create a new scf.for op after the source loop (with scf.yield terminator
+   // (without arguments) only in case its init_args is empty).
+   rewriter.setInsertionPointAfter(source);
++#endif
+   scf::ForOp fusedLoop = rewriter.create<scf::ForOp>(
+       source.getLoc(), source.getLowerBound(), source.getUpperBound(),
+       source.getStep(), fusedInitArgs);
+-
+   // Map original induction variables and operands to those of the fused loop.
+   IRMapping mapping;
+   mapping.map(target.getInductionVar(), fusedLoop.getInductionVar());
+@@ -1357,6 +1465,17 @@ scf::ForOp mlir::fuseIndependentSiblingForLoops(scf::ForOp target,
+   if (!yieldResults.empty())
+     rewriter.create<scf::YieldOp>(source.getLoc(), yieldResults);
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++  if (source->isBeforeInBlock(target))
++    adjustProducerLoopUsers(/*producer=*/source, /*consumer=*/target, fusedLoop,
++                            rewriter, mapping);
++  else if (target->isBeforeInBlock(source))
++    adjustProducerLoopUsers(/*producer=*/target, /*consumer=*/source, fusedLoop,
++                            rewriter, mapping);
++  else
++    llvm_unreachable("source and target loop must be in same parent block");
++#endif
++
+   // Replace old loops by substituting their uses by results of the fused loop.
+   rewriter.replaceOp(target, fusedLoop.getResults().take_front(numTargetOuts));
+   rewriter.replaceOp(source, fusedLoop.getResults().take_back(numSourceOuts));
+diff --git a/mlir/test/Dialect/SCF/transform-loop-fuse-sibling.mlir b/mlir/test/Dialect/SCF/transform-loop-fuse-sibling.mlir
+index 54dd2bdf953c..8d91fa77d2ba 100644
+--- a/mlir/test/Dialect/SCF/transform-loop-fuse-sibling.mlir
++++ b/mlir/test/Dialect/SCF/transform-loop-fuse-sibling.mlir
+@@ -1,6 +1,8 @@
+ // RUN: mlir-opt %s -transform-interpreter --cse --canonicalize -split-input-file -verify-diagnostics | FileCheck %s
+ // RUN: mlir-opt %s -transform-interpreter -split-input-file -verify-diagnostics | FileCheck %s --check-prefix CHECK-NOCLEANUP
+ 
++// UNSUPPORTED: bspub_davinci_bishengir
++
+ // CHECK: func.func @fuse_1st_for_into_2nd([[A:%.*]]: {{.*}}, [[B:%.*]]: {{.*}}
+ func.func @fuse_1st_for_into_2nd(%A: tensor<128xf32>, %B: tensor<128xf32>) -> (tensor<128xf32>, tensor<128xf32>) {
+   // CHECK-DAG: [[C0:%.*]] = arith.constant 0 : index

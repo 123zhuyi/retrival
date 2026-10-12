@@ -1,0 +1,46 @@
+diff --git a/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp b/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp
+index 87464ccb7172..22c414186f3e 100644
+--- a/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp
++++ b/mlir/lib/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.cpp
+@@ -336,6 +336,21 @@ struct ExpandShapeOpInterface
+     if (failed(buffer))
+       return failure();
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    auto memrefType = cast<MemRefType>(buffer->getType());
++    // Deduce memref expand shape type
++    FailureOr<MemRefType> maybeResultType =
++        memref::ExpandShapeOp::computeExpandedType(
++            memrefType, tensorResultType.getShape(),
++            expandShapeOp.getReassociationIndices());
++    if (failed(maybeResultType))
++      return failure();
++
++    replaceOpWithNewBufferizedOp<memref::ExpandShapeOp>(
++        rewriter, op, *maybeResultType, *buffer,
++        expandShapeOp.getReassociationAttr(), expandShapeOp.getOutputShape(),
++        expandShapeOp.getStaticOutputShape());
++#else
+     // Memref result type is inferred by the builder based on reassociation
+     // indices and result shape.
+     // TODO: Instead of inferring the output shape argument of
+@@ -344,6 +359,7 @@ struct ExpandShapeOpInterface
+     replaceOpWithNewBufferizedOp<memref::ExpandShapeOp>(
+         rewriter, op, tensorResultType.getShape(), *buffer,
+         expandShapeOp.getReassociationIndices());
++#endif
+     return success();
+   }
+ };
+diff --git a/mlir/test/Dialect/Tensor/bufferize.mlir b/mlir/test/Dialect/Tensor/bufferize.mlir
+index 3a3c8af15e6e..e7d15bcbb35a 100644
+--- a/mlir/test/Dialect/Tensor/bufferize.mlir
++++ b/mlir/test/Dialect/Tensor/bufferize.mlir
+@@ -1,5 +1,7 @@
+ // RUN: mlir-opt %s --one-shot-bufferize="dialect-filter=tensor,bufferization copy-before-write unknown-type-conversion=identity-layout-map" -cse -split-input-file | FileCheck %s
+ 
++// UNSUPPORTED: bspub_davinci_bishengir
++
+ // CHECK-LABEL:   func @dim(
+ // CHECK-SAME:              %[[TENSOR:.*]]: tensor<*xf32>,
+ // CHECK-SAME:              %[[INDEX:.*]]: index) -> index {

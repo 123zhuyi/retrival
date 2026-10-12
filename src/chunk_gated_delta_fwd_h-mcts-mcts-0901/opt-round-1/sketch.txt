@@ -1,0 +1,75 @@
+# @architecture_decision("single-fused-recurrence-kernel", reason="符合 template/gated-delta-net.md D1/D2/D3/D7：S[K,V] per-program 持全 K、V-tile 分核，chunk 维 kernel 内串行，全程 fp32，launch 带 multibuffer/unit_flag；本轮实证 tl.dot(input_precision='ieee') 逐位复刻 CANN fp32 语义（含 +Inf 溢出 mask）")
+# @architecture_decision("host-preflatten-layout", reason="输入重排为 [B*HV, T, D] 连续布局（k 的 hv->hk 映射用 index_select），kernel 内纯平铺指针算术，规避 block_ptr/大偏移 program_id 编译坑（本算子历史实证）")
+
+sketch chunk_gated_delta_fwd_h {
+  symbols: B, HK, HV, T, K, V, BT(chunk_size), NT;   # NT = ceil(T/BT) per sequence
+  tensors:
+    k[B, HK, T, K]: bf16;      # key, shared across head groups (HV/HK group map)
+    w[B, HV, T, K]: bf16;      # write/erase
+    u[B, HV, T, V]: bf16;      # value
+    g[B, HV, T]: f32;          # chunk-local cumsum decay (always <= 0)
+    cu_seqlens[N+1]: i64;      # varlen segment boundaries (None for dense)
+    S_out[B, HV, NT, K, V]: bf16;   # per-chunk PRE-update states
+    v_new_out[B, HV, T, V]: bf16;
+
+  # ---- host prologue (data movement only, no compute) ----
+  # k_hv = k.index_select(1, arange(HV) // (HV//HK))      -> [B, HV, T, K]
+  # wf  = w.view(B*HV, T, K).contiguous()                 -> flat [BH, T, K]
+  # uf  = u.view(B*HV, T, V).contiguous()
+  # gf  = g.view(B*HV, T).contiguous()                    (f32, no cast)
+  # Sf  = S_out.view(B*HV, NT, K, V).contiguous(); vnf = v_new_out.view(B*HV, T, V)
+  # BV = 64 if BT <= 64 else 32          # D5: UB control (cs=128 needs BV=32)
+  # BV = min(BV, V)                      # D6 protection
+  # grid = (B*HV*(V/BV),)  dense | (N*HV*(V/BV),)  varlen
+
+  constexpr: BT=chunk_size, BK=K(=128), BV, NVT=V/BV, IS_VARLEN
+
+  @llm_hint("parallel", "coreidx")     # D1: grid over (batch*head*V-tile); chunk dim serial below
+  for pid in range(grid_size):
+
+    # decode: i_vt = pid % NVT; i_bh = pid // NVT (dense)
+    #         varlen: i_s = i_bh // HV (seq), i_h = i_bh % HV;
+    #                 bos/eos = load cu_seqlens[i_s], cu_seqlens[i_s+1]
+    #                 boh (chunk offset) = sum_{s<i_s} ceil(len_s/BT)  @llm_hint("unroll", "tiny N<=4 loop, int32 math only")
+
+    # ---- persistent state tile: full K, V-tile slice (D1) ----
+    S = alloc([BK, BV], dtype=f32, llm_hint=["fastest", "accumulator", "init_zero"])
+    offs_k = arange(BK); offs_v = i_vt*BV + arange(BV)
+
+    @llm_hint("pipeline", "multibuffer+unit_flag launch options (D7)")
+    for i_c in range(NT_seq):                    # D2: serial chunk recurrence
+      # ---- 1) store PRE-update state (bf16), rows = all K, cols = V-tile ----
+      store(S.to(bf16) -> Sf[i_bh, boh+i_c, offs_k, offs_v])   # row-contiguous cols
+
+      # ---- 2) load chunk operands (native dtype -> cast f32 in-register; bf16->f32 exact) ----
+      offs_t = i_c*BT + arange(BT); mask_t = offs_t < T_seq   # tail chunk guard
+      w_t = load(wf[i_bh, offs_t, offs_k], mask=mask_t, other=0)  -> cast f32   # [BT, K]
+      u_t = load(uf[i_bh, offs_t, offs_v], mask=mask_t, other=0)  -> cast f32   # [BT, BV]
+      g_t = load(gf[i_bh, offs_t], mask=mask_t, other=0)           # f32 [BT]
+      k_t = load(kf[i_bh, offs_t, offs_k], mask=mask_t, other=0)  -> cast f32   # [BT, K]
+
+      # ---- 3) g_last = g at last VALID position: idx = min((i_c+1)*BT, T_seq) - 1 (scalar load) ----
+      g_last = load(gf[i_bh, idx_last])          # scalar f32
+
+      # ---- 4) v_new = u - w @ S   *** MUST be ieee fp32 dot (empirical: hf32/bf16 inputs violate tolerance ~1M/4M; ieee matches CANN bit-level incl. +Inf mask) ----
+      gemm(w_t, S, acc=vn)      # tl.dot(w_t, S, input_precision="ieee"), fp32 acc, shape [BT, BV]
+      sub(u_t, vn, vn)          # v_new = u - w@S
+      store(vn.to(bf16) -> vnf[i_bh, offs_t, offs_v], mask=mask_t)
+
+      # ---- 5) decay weights (D4: separate exps; g monotone <=0 so exp in (0,1]) ----
+      d = exp(g_last - g_t)     # [BT] per-row decay to chunk end
+      e_last = exp(g_last)      # scalar
+
+      # ---- 6) update = v_new * d[:,None]; S = S*e_last + k_t^T @ update ----
+      mul(vn, d[:, None], upd)
+      gemm(trans(k_t), upd, acc=S_next)   # tl.dot(k_t^T, upd, input_precision="ieee"); [K, BT]@[BT, BV]
+      mul(S, e_last, S)                   # decay prior state first, then accumulate
+      add(S, S_next, S)
+      # NOTE (order): golden computes S*exp(g_last) + k^T@update — two ieee dots per chunk; masked rows contribute exactly 0 because k_t/u_t/w_t are 0-filled (never NaN/Inf seeds)
+}
+# 优化点备注：
+# 1. 精度红线（不可协商）：两个 gemm 必须 fp32 ieee；S/累加全程 fp32；仅 store 时 cast bf16。
+# 2. BLOCK_L = BT（每 chunk 单子块；禁子块循环 — 历史实证第二次迭代读错数据）。cs=128 时 BV=32 控 UB。
+# 3. varlen 不用 host .item()：bos/eos 在 kernel 内 load，boh 用 kernel 内小循环累加。
+# 4. 多输出三件套：S(pre-update)/v_new/None(final_state 本任务恒 None)。
+# 5. 密集与 varlen 共用一个 kernel，IS_VARLEN 为 constexpr 编译期分支（零运行时开销）。

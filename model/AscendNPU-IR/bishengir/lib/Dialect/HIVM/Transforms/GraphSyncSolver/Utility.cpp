@@ -1,0 +1,576 @@
+//===------------- Utility.cpp ---- Graph Sync Solver ---------------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/Utility.h"
+#include "bishengir/Dialect/HACC/Utils/Utils.h"
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/SyncSolverIR.h"
+#include "bishengir/Dialect/Utils/Util.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/Utils/StaticValueUtils.h"
+#include "mlir/IR/Value.h"
+#include "llvm/Support/CheckedArithmetic.h"
+#include "llvm/Support/ErrorHandling.h"
+#include <cstdint>
+#include <numeric>
+#include <tuple>
+#include <utility>
+#include <vector>
+
+using namespace mlir;
+using namespace hivm::syncsolver;
+
+int ConflictPair::globalIdCounter = 0;
+int EventIdNode::globalIdCounter = 0;
+
+std::string UnitFlagInfo::str() const {
+  std::string unitFlag = UnitFlagInfoBase::str();
+  if (conflictPairIdAsSet != -1) {
+    std::string idStr;
+    llvm::raw_string_ostream ss(idStr);
+    ss << "conflictPairIdAsSet(" << conflictPairIdAsSet << ")";
+    unitFlag += (!unitFlag.empty() ? " " : "") + ss.str();
+  }
+  if (conflictPairIdAsWait != -1) {
+    std::string idStr;
+    llvm::raw_string_ostream ss(idStr);
+    ss << "conflictPairIdAsWait(" << conflictPairIdAsWait << ")";
+    unitFlag += (!unitFlag.empty() ? " " : "") + ss.str();
+  }
+  return unitFlag;
+}
+
+std::string Occurrence::str() const {
+  std::string ret;
+  llvm::raw_string_ostream ss(ret);
+  ss << std::string(depth, ' ');
+  ss << op->id << ' ' << syncIrIndex << ' ' << startIndex << ' ' << endIndex
+     << '\n';
+  ss << op->str(depth, /*recursive=*/false);
+  std::string unitFlag = unitFlagInfo.str();
+  if (!unitFlag.empty()) {
+    ss << '\n' << std::string(depth + 2, ' ') << unitFlag;
+  }
+  return ss.str();
+}
+
+Occurrence *Occurrence::getParentWithOp(OperationBase *op, bool assertExists) {
+  assert(op != nullptr);
+  Occurrence *occ = this;
+  while (occ != nullptr) {
+    if (occ->op == op) {
+      return occ;
+    }
+    occ = occ->parentOcc;
+  }
+  assert(!assertExists);
+  return nullptr;
+}
+
+Occurrence *Occurrence::getParentWithOp(Operation *op, bool assertExists) {
+  assert(op != nullptr);
+  Occurrence *occ = this;
+  while (occ != nullptr) {
+    if (occ->op != nullptr && occ->op->op == op) {
+      return occ;
+    }
+    occ = occ->parentOcc;
+  }
+  assert(!assertExists);
+  return nullptr;
+}
+
+Occurrence *Occurrence::getNthParent(int dist) {
+  Occurrence *occ = this;
+  while (dist--) {
+    assert(occ != nullptr);
+    occ = occ->parentOcc;
+  }
+  assert(occ != nullptr);
+  return occ;
+}
+
+std::pair<Occurrence *, Occurrence *> Occurrence::getLCAPair(Occurrence *occ1,
+                                                             Occurrence *occ2) {
+  assert(occ1 != nullptr && occ2 != nullptr);
+  int depth1 = occ1->depth;
+  int depth2 = occ2->depth;
+  if (depth1 < depth2) {
+    occ2 = occ2->getNthParent(depth2 - depth1);
+  } else if (depth1 > depth2) {
+    occ1 = occ1->getNthParent(depth1 - depth2);
+  }
+  while (occ1->parentOcc != occ2->parentOcc) {
+    occ1 = occ1->parentOcc;
+    occ2 = occ2->parentOcc;
+  }
+  assert(occ1 != occ2);
+  return std::make_pair(occ1, occ2);
+}
+
+Occurrence *Occurrence::getParentloop(Occurrence *occ) {
+  assert(occ != nullptr);
+  Occurrence *cur = occ->parentOcc;
+  while (cur != nullptr && !isa<Loop>(cur->op)) {
+    cur = cur->parentOcc;
+  }
+  return cur;
+}
+
+Occurrence *Occurrence::getParentCondition(Occurrence *occ) {
+  assert(occ != nullptr);
+  Occurrence *cur = occ->parentOcc;
+  while (cur != nullptr && !isa<Condition>(cur->op)) {
+    cur = cur->parentOcc;
+  }
+  return cur;
+}
+
+Occurrence *Occurrence::getUnlikelyParentCondition(Occurrence *occ) {
+  assert(occ != nullptr && occ->op != nullptr);
+  if (auto *parentConditionOp =
+          OperationBase::getUnlikelyParentCondition(occ->op)) {
+    return occ->getParentWithOp(parentConditionOp, /*assertExists=*/true);
+  }
+  return nullptr;
+}
+
+bool Occurrence::isAncestor(Occurrence *occ) {
+  return occ == this || isProperAncestor(occ);
+}
+
+bool Occurrence::isProperAncestor(Occurrence *occ) {
+  return this->syncIrIndex < occ->syncIrIndex &&
+         occ->syncIrIndex < this->syncIrEndIndex;
+}
+
+llvm::SmallVector<Occurrence *> Occurrence::getAllParents() {
+  llvm::SmallVector<Occurrence *> collectedParents;
+  Occurrence *occ = this->parentOcc;
+  while (occ != nullptr) {
+    collectedParents.push_back(occ);
+    occ = occ->parentOcc;
+  }
+  return collectedParents;
+}
+
+llvm::SmallVector<OperationBase *> OperationBase::getAllParents() {
+  llvm::SmallVector<OperationBase *> collectedParents;
+  OperationBase *op = this->parentOp;
+  while (op != nullptr) {
+    collectedParents.push_back(op);
+    op = op->parentOp;
+  }
+  return collectedParents;
+}
+
+bool OperationBase::sameScope(OperationBase *op1, OperationBase *op2) {
+  assert(op1->parentOp != nullptr);
+  assert(op2->parentOp != nullptr);
+  return op1->parentOp == op2->parentOp;
+}
+
+int OperationBase::getDepth() const {
+  int ret = 0;
+  const OperationBase *op = this;
+  while (op != nullptr) {
+    op = op->parentOp;
+    ret++;
+  }
+  return ret;
+}
+
+OperationBase *OperationBase::getParentWithOp(Operation *op,
+                                              bool assertExists) {
+  assert(op != nullptr);
+  OperationBase *opBase = this;
+  while (opBase != nullptr) {
+    if (opBase->op == op) {
+      return opBase;
+    }
+    if (opBase->cubeAnchorInfo.has_value()) {
+      if (opBase->cubeAnchorInfo->anchorBefore != nullptr &&
+          opBase->cubeAnchorInfo->anchorAfter != nullptr) {
+        if (opBase->cubeAnchorInfo->anchorBefore->op == op &&
+            opBase->cubeAnchorInfo->anchorAfter->op == op) {
+          return opBase;
+        }
+      }
+    }
+    if (opBase->vectorAnchorInfo.has_value()) {
+      if (opBase->vectorAnchorInfo->anchorBefore != nullptr &&
+          opBase->vectorAnchorInfo->anchorAfter != nullptr) {
+        if (opBase->vectorAnchorInfo->anchorBefore->op == op &&
+            opBase->vectorAnchorInfo->anchorAfter->op == op) {
+          return opBase;
+        }
+      }
+    }
+    opBase = opBase->parentOp;
+  }
+  assert(!assertExists);
+  return nullptr;
+}
+
+OperationBase *OperationBase::getNthParent(int dist) {
+  OperationBase *op = this;
+  while (dist--) {
+    assert(op != nullptr);
+    op = op->parentOp;
+  }
+  return op;
+}
+
+std::pair<OperationBase *, OperationBase *>
+OperationBase::getLCAPair(OperationBase *op1, OperationBase *op2) {
+  assert(op1 != nullptr && op2 != nullptr);
+  int depth1 = op1->getDepth();
+  int depth2 = op2->getDepth();
+  if (depth1 < depth2) {
+    op2 = op2->getNthParent(depth2 - depth1);
+  } else if (depth1 > depth2) {
+    op1 = op1->getNthParent(depth1 - depth2);
+  }
+  while (op1->parentOp != op2->parentOp) {
+    op1 = op1->parentOp;
+    op2 = op2->parentOp;
+  }
+  assert(op1 != nullptr && op2 != nullptr);
+  assert(op1->parentOp == op2->parentOp);
+  return std::make_pair(op1, op2);
+}
+
+OperationBase *OperationBase::getParentloop(OperationBase *op) {
+  assert(op != nullptr);
+  OperationBase *cur = op->parentOp;
+  while (cur != nullptr && !isa<Loop>(cur)) {
+    cur = cur->parentOp;
+  }
+  return cur;
+}
+
+OperationBase *OperationBase::getParentCondition(OperationBase *op) {
+  assert(op != nullptr);
+  OperationBase *cur = op->parentOp;
+  while (cur != nullptr && !isa<Condition>(cur)) {
+    cur = cur->parentOp;
+  }
+  return cur;
+}
+
+bool OperationBase::isProperAncestor(OperationBase *op) {
+  assert(op != nullptr);
+  int depth1 = this->getDepth();
+  int depth2 = op->getDepth();
+  if (depth1 >= depth2) {
+    return false;
+  }
+  return op->getNthParent(depth2 - depth1) == this;
+}
+
+OperationBase *OperationBase::getUnlikelyParentCondition(OperationBase *op) {
+  assert(op != nullptr);
+  auto *cur = OperationBase::getParentCondition(op);
+  while (cur != nullptr) {
+    auto *conditionOp = dyn_cast<Condition>(cur);
+    assert(conditionOp != nullptr);
+    if (conditionOp->isUnlikely &&
+        conditionOp->getTrueScope()->isProperAncestor(op)) {
+      return cur;
+    }
+    cur = OperationBase::getParentCondition(cur);
+  }
+  return nullptr;
+}
+
+namespace mlir::hivm::syncsolver {
+
+// Return the hardware-available EVENT ids for a given (setPipe, waitPipe) pair.
+// Respects reserved ids for special pipe pairs and returns a vector of usable
+// ids.
+int64_t getHWAvailableEventIdNum(SyncMode syncMode, hivm::PIPE setPipe,
+                                 hivm::PIPE waitPipe) {
+  if (syncMode == SyncMode::INTRA_CORE_SYNC) {
+    const llvm::DenseMap<std::tuple<PIPE, PIPE>, int64_t> reservedEventIdNum = {
+        {{hivm::PIPE::PIPE_S, hivm::PIPE::PIPE_V}, 1},
+        {{hivm::PIPE::PIPE_S, hivm::PIPE::PIPE_MTE2}, 1},
+        {{hivm::PIPE::PIPE_S, hivm::PIPE::PIPE_MTE3}, 1},
+        {{hivm::PIPE::PIPE_V, hivm::PIPE::PIPE_S}, 1},
+        {{hivm::PIPE::PIPE_V, hivm::PIPE::PIPE_MTE2}, 1},
+        {{hivm::PIPE::PIPE_V, hivm::PIPE::PIPE_MTE3}, 1},
+        {{hivm::PIPE::PIPE_M, hivm::PIPE::PIPE_FIX}, 1},
+        {{hivm::PIPE::PIPE_MTE2, hivm::PIPE::PIPE_S}, 1},
+        {{hivm::PIPE::PIPE_MTE2, hivm::PIPE::PIPE_V}, 1},
+        {{hivm::PIPE::PIPE_MTE3, hivm::PIPE::PIPE_S}, 1},
+        {{hivm::PIPE::PIPE_FIX, hivm::PIPE::PIPE_M}, 1},
+    };
+    int64_t eventIdNum = INTRA_CORE_EVENT_ID_NUM;
+    eventIdNum -= reservedIntraCoreEventIdNum;
+    auto it = reservedEventIdNum.find({setPipe, waitPipe});
+    if (it != reservedEventIdNum.end()) {
+      eventIdNum -= it->second;
+    }
+    return eventIdNum;
+  } else if (syncMode == SyncMode::CROSS_CORE_SYNC) {
+    int64_t eventIdNum = CROSS_CORE_EVENT_ID_NUM;
+    eventIdNum -= reservedCrossCoreEventIdNum;
+    return eventIdNum;
+  } else if (syncMode == SyncMode::TEST_INTRA_CORE_MODE) {
+    int64_t eventIdNum = TEST_INTRA_CORE_EVENT_ID_NUM;
+    return eventIdNum;
+  } else if (syncMode == SyncMode::TEST_CROSS_CORE_MODE) {
+    int64_t eventIdNum = TEST_CROSS_CORE_EVENT_ID_NUM;
+    return eventIdNum;
+  }
+  llvm::report_fatal_error("getHWAvailableEventIdNum: unhandled SyncMode");
+}
+
+SmallVector<int64_t> getHWAvailableEventIds(SyncMode syncMode,
+                                            hivm::PIPE setPipe,
+                                            hivm::PIPE waitPipe) {
+  if (syncMode == SyncMode::INTRA_CORE_SYNC) {
+    const llvm::DenseMap<std::tuple<PIPE, PIPE>, int64_t> reservedEventIdNum = {
+        {{hivm::PIPE::PIPE_S, hivm::PIPE::PIPE_V}, 1},
+        {{hivm::PIPE::PIPE_S, hivm::PIPE::PIPE_MTE2}, 1},
+        {{hivm::PIPE::PIPE_S, hivm::PIPE::PIPE_MTE3}, 1},
+        {{hivm::PIPE::PIPE_V, hivm::PIPE::PIPE_S}, 1},
+        {{hivm::PIPE::PIPE_V, hivm::PIPE::PIPE_MTE2}, 1},
+        {{hivm::PIPE::PIPE_V, hivm::PIPE::PIPE_MTE3}, 1},
+        {{hivm::PIPE::PIPE_M, hivm::PIPE::PIPE_FIX}, 1},
+        {{hivm::PIPE::PIPE_MTE2, hivm::PIPE::PIPE_S}, 1},
+        {{hivm::PIPE::PIPE_MTE2, hivm::PIPE::PIPE_V}, 1},
+        {{hivm::PIPE::PIPE_MTE3, hivm::PIPE::PIPE_S}, 1},
+        {{hivm::PIPE::PIPE_FIX, hivm::PIPE::PIPE_M}, 1},
+    };
+    int64_t eventIdNum = INTRA_CORE_EVENT_ID_NUM;
+    eventIdNum -= reservedIntraCoreEventIdNum;
+    auto it = reservedEventIdNum.find({setPipe, waitPipe});
+    if (it != reservedEventIdNum.end()) {
+      eventIdNum -= it->second;
+    }
+    SmallVector<int64_t> hwAvailableEventIds(eventIdNum);
+    std::iota(hwAvailableEventIds.begin(), hwAvailableEventIds.end(),
+              static_cast<int64_t>(0));
+    return hwAvailableEventIds;
+  } else if (syncMode == SyncMode::CROSS_CORE_SYNC) {
+    int64_t eventIdNum = CROSS_CORE_EVENT_ID_NUM;
+    eventIdNum -= reservedCrossCoreEventIdNum;
+    SmallVector<int64_t> hwAvailableEventIds(eventIdNum);
+    std::iota(hwAvailableEventIds.begin(), hwAvailableEventIds.end(),
+              static_cast<int64_t>(0));
+    return hwAvailableEventIds;
+  } else if (syncMode == SyncMode::TEST_INTRA_CORE_MODE) {
+    int64_t eventIdNum = TEST_INTRA_CORE_EVENT_ID_NUM;
+    SmallVector<int64_t> availableEventIds(eventIdNum);
+    std::iota(availableEventIds.begin(), availableEventIds.end(),
+              static_cast<int64_t>(0));
+    return availableEventIds;
+  } else if (syncMode == SyncMode::TEST_CROSS_CORE_MODE) {
+    int64_t eventIdNum = TEST_CROSS_CORE_EVENT_ID_NUM;
+    SmallVector<int64_t> availableEventIds(eventIdNum);
+    std::iota(availableEventIds.begin(), availableEventIds.end(),
+              static_cast<int64_t>(0));
+    return availableEventIds;
+  }
+  llvm::report_fatal_error("getHWAvailableEventIds: unhandled SyncMode");
+}
+
+std::optional<int64_t> getStaticLoopCount(LoopLikeOpInterface forOp) {
+  if (!isa<scf::ForOp>(forOp)) {
+    return std::nullopt;
+  }
+  auto lb = forOp.getSingleLowerBound();
+  auto ub = forOp.getSingleUpperBound();
+  auto step = forOp.getSingleStep();
+  if (!lb.has_value() || !ub.has_value() || !step.has_value()) {
+    return std::nullopt;
+  }
+  return constantTripCount(lb.value(), ub.value(), step.value());
+}
+
+// Build a Value that is true for the first iteration of the given scf::ForOp.
+// Inserted at the start of the loop body and compares induction var with lower.
+Value getIsFirstIterationValue(scf::ForOp forOp, Location loc,
+                               IRRewriter &rewriter) {
+  OpBuilder::InsertionGuard guard(rewriter);
+  rewriter.setInsertionPointToStart(forOp.getBody());
+  Value lowerBound = forOp.getLowerBound();
+  Value currentInd = forOp.getInductionVar();
+  Value isFirstIter = rewriter.create<arith::CmpIOp>(
+      loc, arith::CmpIPredicate::eq, lowerBound, currentInd);
+  return isFirstIter;
+}
+
+// Build a Value that is true for the last iteration of the given scf::ForOp.
+// Compares next induction value with the upper bound.
+Value getIsLastIterationValue(scf::ForOp forOp, Location loc,
+                              IRRewriter &rewriter) {
+  OpBuilder::InsertionGuard guard(rewriter);
+  rewriter.setInsertionPointToStart(forOp.getBody());
+  Value upperBound = forOp.getUpperBound();
+  Value step = forOp.getStep();
+  Value currentInd = forOp.getInductionVar();
+  Value nextInd = rewriter.create<arith::AddIOp>(loc, currentInd, step);
+  Value isLastIter = rewriter.create<arith::CmpIOp>(
+      loc, arith::CmpIPredicate::sge, nextInd, upperBound);
+  return isLastIter;
+}
+
+// Convert a Value to its string representation for debugging/logging.
+std::string op2str(Value val) {
+  std::string printBuffer;
+  llvm::raw_string_ostream os(printBuffer);
+  val.print(os);
+  return os.str();
+}
+
+// Convert an Operation pointer to its string representation.
+std::string op2str(Operation *op) {
+  std::string printBuffer;
+  llvm::raw_string_ostream os(printBuffer);
+  op->print(os);
+  return os.str();
+}
+
+// Despite the legacy name, accepts both scf::ForOp and scf::WhileOp ancestors.
+// scf.while is supported by the multi-buffer pipeline via the alloca-based
+// MultiBufferLoopAdapter (see HIVM/Utils/MultiBufferLoopAdapter.h). Other
+// LoopLike ops (scf.parallel, scf.forall, ...) still bail out.
+bool checkAllParentLoopsAreForLoops(Operation *op) {
+  while (op != nullptr) {
+    auto parLoop = op->getParentOfType<LoopLikeOpInterface>();
+    if (parLoop != nullptr && !isa<scf::ForOp, scf::WhileOp>(parLoop)) {
+      return false;
+    }
+    op = parLoop;
+  }
+  return true;
+}
+
+Value getValueOrCreateCastToI64(IRRewriter &rewriter, Location loc, Value val) {
+  assert(isa<OpResult>(val));
+  OpBuilder::InsertionGuard guard(rewriter);
+  rewriter.setInsertionPointAfterValue(val);
+  if (!val.getType().isInteger(64)) {
+    if (val.getType().isIndex()) {
+      val = rewriter.create<arith::IndexCastOp>(
+          loc, rewriter.getIntegerType(64), val);
+    } else if (val.getType().isInteger()) {
+      val = rewriter.create<arith::ExtSIOp>(loc, rewriter.getIntegerType(64),
+                                            val);
+    } else {
+      llvm::report_fatal_error("unhandled casting type");
+    }
+  }
+  return val;
+}
+
+hivm::TCoreType getOppositeCoreType(hivm::TCoreType coreType) {
+  switch (coreType) {
+  case hivm::TCoreType::CUBE:
+    return hivm::TCoreType::VECTOR;
+  case hivm::TCoreType::VECTOR:
+    return hivm::TCoreType::CUBE;
+  case hivm::TCoreType::CUBE_OR_VECTOR:
+    return hivm::TCoreType::CUBE_OR_VECTOR;
+  case hivm::TCoreType::CUBE_AND_VECTOR:
+    return hivm::TCoreType::CUBE_AND_VECTOR;
+  }
+}
+
+bool isEmptyScope(Scope *scope) {
+  for (auto &childOp : scope->body) {
+    if (isa<RWOperation>(childOp.get())) {
+      return false;
+    }
+    if (auto *childScope = dyn_cast<Scope>(childOp.get())) {
+      if (!isEmptyScope(childScope)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool isWorkSpaceFuncArgument(func::FuncOp funcOp, BlockArgument funcArg) {
+  return hacc::utils::isKernelArg(funcOp, funcArg.getArgNumber(),
+                                  hacc::KernelArgType::kWorkspace);
+}
+
+llvm::SmallVector<int64_t> getAddresses(const llvm::SmallVector<Value> &addrs) {
+  llvm::SmallVector<int64_t> offsets;
+  for (auto addr : addrs) {
+    if (auto constOp = dyn_cast<arith::ConstantOp>(addr.getDefiningOp())) {
+      auto baseAddr =
+          static_cast<int64_t>(cast<IntegerAttr>(constOp.getValue()).getInt());
+      int64_t baseAddrInBits = baseAddr * utils::kBitsToByte;
+      offsets.push_back(baseAddrInBits);
+    } else {
+      offsets.push_back(ShapedType::kDynamic);
+    }
+  }
+  return offsets;
+}
+
+FailureOr<bool>
+areOverlappingStaticSlices(const HyperrectangularSlice &slice1,
+                           const HyperrectangularSlice &slice2) {
+  auto offsets1 = slice1.getMixedOffsets();
+  auto sizes1 = slice1.getMixedSizes();
+  auto strides1 = slice1.getMixedStrides();
+  auto offsets2 = slice2.getMixedOffsets();
+  auto sizes2 = slice2.getMixedSizes();
+  auto strides2 = slice2.getMixedStrides();
+  if (offsets1.size() != sizes1.size() || offsets1.size() != strides1.size() ||
+      offsets1.size() != offsets2.size() || sizes1.size() != sizes2.size() ||
+      strides1.size() != strides2.size()) {
+    return failure();
+  }
+
+  bool foundDynamicValue = false;
+  for (size_t i = 0; i < offsets1.size(); ++i) {
+    auto offset1 = getConstantIntValue(offsets1[i]);
+    auto size1 = getConstantIntValue(sizes1[i]);
+    auto stride1 = getConstantIntValue(strides1[i]);
+    auto offset2 = getConstantIntValue(offsets2[i]);
+    auto size2 = getConstantIntValue(sizes2[i]);
+    auto stride2 = getConstantIntValue(strides2[i]);
+    if (!offset1 || !size1 || !stride1 || !offset2 || !size2 || !stride2 ||
+        *size1 < 0 || *size2 < 0 || *stride1 <= 0 || *stride2 <= 0) {
+      foundDynamicValue = true;
+      continue;
+    }
+    if (*size1 == 0 || *size2 == 0) {
+      return false;
+    }
+    auto end1 = llvm::checkedMulAdd(*size1, *stride1, *offset1);
+    auto end2 = llvm::checkedMulAdd(*size2, *stride2, *offset2);
+    if (!end1 || !end2) {
+      foundDynamicValue = true;
+      continue;
+    }
+    if (*end1 <= *offset2 || *end2 <= *offset1) {
+      return false;
+    }
+  }
+  if (foundDynamicValue) {
+    return failure();
+  }
+  return true;
+}
+
+} // namespace mlir::hivm::syncsolver

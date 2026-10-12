@@ -1,0 +1,653 @@
+# aclnnQuantConvolution
+
+[📄 查看源码](https://gitcode.com/cann/ops-nn/tree/master/conv/convolution_forward)
+
+## 产品支持情况
+
+<!-- npu="950" id1 -->
+- <term>Ascend 950PR/Ascend 950DT</term>：支持
+<!-- end id1 -->
+<!-- npu="A3" id2 -->
+- <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>：支持
+<!-- end id2 -->
+<!-- npu="910b" id3 -->
+- <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>：支持
+<!-- end id3 -->
+<!-- npu="310b" id4 -->
+- <term>Atlas 200I/500 A2 推理产品</term>：不支持
+<!-- end id4 -->
+<!-- npu="310p" id5 -->
+- <term>Atlas 推理系列产品</term>：不支持
+<!-- end id5 -->
+<!-- npu="910" id6 -->
+- <term>Atlas 训练系列产品</term>：不支持
+<!-- end id6 -->
+
+## 功能说明
+
+- 接口功能：完成per-channel量化的2D、3D卷积计算，其中卷积计算过程与aclnnConvolution接口一致。
+
+- 计算公式：
+  我们假定输入（input）的shape是 $(N, C_{\text{in}}, D, H, W)$，weight的shape是 $(C_{\text{out}}, C_{\text{in}}, K_d, K_h, K_w)$，scale的shape是 $(C_{\text{out}})$，bias的shape是 $C_{\text{out}}$，输出（output）的shape是 $(N, C_{\text{out}}, D_{\text{out}}, H_{\text{out}}, W_{\text{out}})$，其中 $N$ 表示批次大小（batch size），$C$ 是通道数，$D$、$H$ 和 $W$ 分别是样本的深度、高度和宽度，$K_d$、$K_h$ 和 $K_w$ 分别是卷积核的深度、高度和宽度，那输出将被表示为：
+
+  $$
+  \text{output}(N_i, C_{\text{out}_j}, D_{\text{out}}, H_{\text{out}}, W_{\text{out}}) = \left[\sum_{k = 0}^{C_{\text{in}} - 1} \text{weight}(C_{\text{out}_j}, k) \star \text{input}(N_i, k)\right] \times \text{scale}(C_{\text{out}_j}) + \text{bias}(C_{\text{out}_j})
+  $$
+
+  其中，$\star$ 表示卷积计算，根据卷积输入的维度，卷积的类型（空洞卷积、分组卷积）而定。$N$ 代表批次大小（batch size），$C$ 代表通道数，$D$、$H$ 和 $W$ 分别代表深度、高度和宽度，相应输出维度的计算公式如下：
+
+  $$
+  D_{\text{out}}=[(D + 2 \times padding[0] - dilation[0] \times (K_d - 1) - 1 ) / stride[0]] + 1 \\
+  H_{\text{out}}=[(H + 2 \times padding[1] - dilation[1] \times (K_h - 1) - 1 ) / stride[1]] + 1 \\
+  W_{\text{out}}=[(W + 2 \times padding[2] - dilation[2] \times (K_w - 1) - 1 ) / stride[2]] + 1
+  $$
+
+## 函数原型
+
+每个算子分为<a href="../../../docs/zh/context/two_phase_api.md">两段式接口</a>，必须先调用aclnnQuantConvolutionGetWorkspaceSize接口获取计算所需workspace大小以及包含了算子计算流程的执行器，再调用aclnnQuantConvolution接口执行计算。
+
+```cpp
+aclnnStatus aclnnQuantConvolutionGetWorkspaceSize(
+    const aclTensor       *input,
+    const aclTensor       *weight,
+    const aclTensor       *bias,
+    const aclTensor       *scale,
+    const aclTensor       *offset,
+    const aclIntArray     *stride,
+    const aclIntArray     *padding,
+    const aclIntArray     *dilation,
+    bool                   transposed,
+    const aclIntArray     *outputPadding,
+    int64_t                groups,
+    int32_t                offsetx,
+    const char            *roundMode,
+    aclTensor             *output,
+    uint64_t              *workspaceSize,
+    aclOpExecutor         **executor)
+```
+
+```cpp
+aclnnStatus aclnnQuantConvolution(
+    void            *workspace,
+    const uint64_t   workspaceSize,
+    aclOpExecutor   *executor,
+    aclrtStream      stream)
+```
+
+## aclnnQuantConvolutionGetWorkspaceSize
+
+- **参数说明**
+
+  <table>
+  <tr>
+  <th style="width:220px">参数名</th>
+  <th style="width:120px">输入/输出</th>
+  <th style="width:300px">描述</th>
+  <th style="width:400px">使用说明</th>
+  <th style="width:212px">数据类型</th>
+  <th style="width:120px">数据格式</th>
+  <th style="width:145px">维度（shape）</th>
+  <th style="width:145px">非连续Tensor</th>
+  </tr>
+  <tr>
+  <td>input（aclTensor*）</td>
+  <td>输入</td>
+  <td>公式中的input，表示卷积输入。</td>
+  <td><ul><li>不支持空Tensor。</li><li>数据类型与weight的数据类型需满足数据类型推导规则（参见<a href="../../../docs/zh/context/deduction_relationship.md">互推导关系</a>）。</li><li>input、weight、output的维度需要相同。</li><li>N≥0，C≥1，D≥0，H≥0，W≥0。</li></ul></td>
+  <td>INT8、FLOAT8_E4M3FN、HIFLOAT8</td>
+  <td>NCHW、NCDHW</td>
+  <td>4-5</td>
+  <td style="text-align:center">√</td>
+  </tr>
+  <tr>
+  <td>weight（aclTensor*）</td>
+  <td>输入</td>
+  <td>公式中的weight，表示卷积权重。</td>
+  <td><ul><li>不支持空Tensor。</li><li>数据类型与input的数据类型需满足数据类型推导规则（参见<a href="../../../docs/zh/context/deduction_relationship.md">互推导关系</a>）。</li><li>其shape的C维度需要与input的C维度保持一致。</li><li>所有维度≥1。</li></ul></td>
+  <td>INT8、FLOAT8_E4M3FN、HIFLOAT8</td>
+  <td>NCHW、NCDHW</td>
+  <td>4-5</td>
+  <td style="text-align:center">√</td>
+  </tr>
+  <tr>
+  <td>bias（aclTensor*）</td>
+  <td>输入</td>
+  <td>公式中的bias，表示卷积偏置。</td>
+  <td>一维且与weight第一维相等。</td>
+  <td>BFLOAT16、FLOAT16、FLOAT、INT32</td>
+  <td>ND</td>
+  <td>1</td>
+  <td style="text-align:center">√</td>
+  </tr>
+  <tr>
+  <td>scale（aclTensor*）</td>
+  <td>输入</td>
+  <td>公式中的scale，表示量化参数。</td>
+  <td>一维且与weight第一维相等。</td>
+  <td>FLOAT、INT64、UINT64</td>
+  <td>ND</td>
+  <td>1</td>
+  <td style="text-align:center">√</td>
+  </tr>
+  <tr>
+  <td>offset（aclTensor*）</td>
+  <td>输入</td>
+  <td>预留量化参数。</td>
+  <td>目前暂不支持，传入空指针nullptr即可。</td>
+  <td>-</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>stride（aclIntArray*）</td>
+  <td>输入</td>
+  <td>卷积扫描步长。</td>
+  <td><ul><li>2D场景下数组长度=2，3D场景下数组长度=3。</li><li>strideH和strideW应在 [1,63] 范围内。</li><li>conv3d场景下strideD应在 [1,1000000] 范围内。</li></ul></td>
+  <td>INT64</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>padding（aclIntArray*）</td>
+  <td>输入</td>
+  <td>对input的填充。</td>
+  <td><ul><li>值应≥0。</li><li>paddingH和paddingW应在 [0,255] 范围内。</li><li>conv3d场景下paddingD应在 [0,1000000] 范围内。</li></ul></td>
+  <td>INT64</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>dilation（aclIntArray*）</td>
+  <td>输入</td>
+  <td>卷积核中元素的间隔。</td>
+  <td><ul><li>2D场景下数组长度=2，3D场景下数组长度=3。</li><li>值应>0。</li><li>dilationH和dilationW应在 [1,255] 范围内。</li><li>conv3d场景下dilationD应在 [1,1000000] 范围内。</li></ul></td>
+  <td>INT64</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>transposed（bool）</td>
+  <td>输入</td>
+  <td>预留参数。表示是否为转置量化卷积。</td>
+  <td>目前暂不支持，传入false即可。</td>
+  <td>BOOL</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>outputPadding（aclIntArray*）</td>
+  <td>输入</td>
+  <td>预留参数。表示转置卷积情况下，对输出所有边的填充。</td>
+  <td>非转置卷积情况下，忽略该属性配置。目前暂不支持，传入空指针nullptr即可。</td>
+  <td>INT64</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>groups（int64_t）</td>
+  <td>输入</td>
+  <td>表示从输入通道到输出通道的块链接个数。</td>
+  <td>值≥1，且满足groups*weight的C维度=input的C维度。</td>
+  <td>INT64</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>offsetx（int32_t）</td>
+  <td>输入</td>
+  <td>表示量化因子。</td>
+  <td>[-128,127] 或0。</td>
+  <td>INT32</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>roundMode（char*）</td>
+  <td>输入</td>
+  <td>表示取整模式。</td>
+  <td>rint、round或nullptr。</td>
+  <td>CHAR*</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>output（aclTensor*）</td>
+  <td>输出</td>
+  <td>公式中的output，表示卷积输出。</td>
+  <td><ul><li>不支持空Tensor输出。</li><li>其shape满足卷积的推导规则。</li><li>通道数等于weight第一维，其他维度≥0。</li></ul></td>
+  <td>BFLOAT16、FLOAT16、FLOAT、FLOAT8_E4M3FN、HIFLOAT8</td>
+  <td>NCHW、NCDHW</td>
+  <td>4-5</td>
+  <td style="text-align:center">√</td>
+  </tr>
+  <tr>
+  <td>workspaceSize（uint64_t*）</td>
+  <td>输出</td>
+  <td>返回需要在Device侧申请的workspace大小。</td>
+  <td>-</td>
+  <td>-</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  <tr>
+  <td>executor（aclOpExecutor**）</td>
+  <td>输出</td>
+  <td>返回op执行器，包含算子计算流程。</td>
+  <td>-</td>
+  <td>-</td>
+  <td>-</td>
+  <td>-</td>
+  <td style="text-align:center">-</td>
+  </tr>
+  </table>
+
+- **返回值**
+
+  aclnnStatus：返回状态码，具体参见 <a href="../../../docs/zh/context/aclnn_return_code.md">aclnn返回码</a>。
+
+  一段接口完成入参校验，出现以下场景时报错：
+
+  <table style="undefined;table-layout: fixed; width: 1430px"><colgroup>
+    <col style="width:250px">
+    <col style="width:130px">
+    <col style="width:1050px">
+    </colgroup>
+   <thead>
+  <tr>
+  <td>返回值</td>
+  <td>错误码</td>
+  <td>描述</td>
+  </tr></thead>
+  <tr>
+  <td align="left">ACLNN_ERR_PARAM_NULLPTR</td>
+  <td align="left">161001</td>
+  <td align="left">传入的指针类型入参是空指针。</td>
+  </tr>
+  <tr>
+  <td rowspan="10" align="left">ACLNN_ERR_PARAM_INVALID</td>
+  <td rowspan="10" align="left">161002</td>
+  <td align="left">input、weight、bias、scale、offset、output数据类型和数据格式不在支持的范围之内。</td>
+  </tr>
+  <tr><td align="left">stride、padding、dilation输入shape不对。</td></tr>
+  <tr><td align="left">groups输入不对的情况。</td></tr>
+  <tr><td align="left">scale和bias输入shape不对。</td></tr>
+  <tr><td align="left">output的shape不满足infershape结果。</td></tr>
+  <tr><td align="left">传入tensor中任意维度为零的均不满足要求。</td></tr>
+  <tr><td align="left">input空间尺度在padding操作后小于weight（经过dilation扩张（如存在dilation>1的情况））的空间尺度。</td></tr>
+  <tr><td align="left">weight和input通道数不满足要求。</td></tr>
+  <tr><td align="left">stride、dilation小于0情况下不满足要求。</td></tr>
+  <tr><td align="left">当前处理器不支持卷积。</td></tr>
+  <tr>
+  <td align="left">ACLNN_ERR_INNER_NULLPTR</td>
+  <td align="left">561103</td>
+  <td align="left">API内部校验错误，通常由于输入数据或属性的规格不在支持的范围之内导致。</td>
+  </tr>
+  <tr>
+  <td align="left">ACLNN_ERR_RUNTIME_ERROR</td>
+  <td align="left">361001</td>
+  <td align="left">API调用npu runtime的接口异常，如SocVersion不支持。</td>
+  </tr>
+  </table>
+
+## aclnnQuantConvolution
+
+- **参数说明**
+
+  <table>
+  <tr>
+  <th style="width:120px">参数名</th>
+  <th style="width:80px">输入/输出</th>
+  <th>描述</th>
+  </tr>
+  <tr>
+  <td>workspace</td>
+  <td>输入</td>
+  <td>在Device侧申请的workspace内存地址。</td>
+  </tr>
+  <tr>
+  <td>workspaceSize</td>
+  <td>输入</td>
+  <td>在Device侧申请的workspace大小，由第一段接口aclnnQuantConvolutionGetWorkspaceSize获取。</td>
+  </tr>
+  <tr>
+  <td>executor</td>
+  <td>输入</td>
+  <td>op执行器，包含了算子计算流程。</td>
+  </tr>
+  <tr>
+  <td>stream</td>
+  <td>输入</td>
+  <td>指定执行任务的Stream。</td>
+  </tr>
+  </table>
+
+- **返回值**
+
+  aclnnStatus：返回状态码，具体参见 <a href="../../../docs/zh/context/aclnn_return_code.md">aclnn返回码</a>。
+
+## 约束说明
+
+- 确定性计算
+  - aclnnQuantConvolution默认确定性实现。
+
+<table style="undefined;table-layout: fixed; width: 1000px"><colgroup>
+    <col style="width:150px">
+    <col style="width:700px">
+    </colgroup>
+   <thead>
+    <tr>
+     <th>约束类型</th>
+     <!-- npu="A3,910b" id7 -->
+     <th><term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term></th>
+     <!-- end id7 -->
+   </tr>
+   </thead>
+   <tbody>
+   <tr>
+     <th scope="row">input、weight</th>
+     <td>
+        input、weight数据类型不支持FLOAT8_E4M3FN、HIFLOAT8，数据格式不支持NCHW。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">bias</th>
+     <td>
+          bias数据类型不支持INT32，会转成FLOAT参与计算。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">scale</th>
+     <td>
+          scale数据类型不支持INT64、UINT64。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">padding</th>
+     <td>
+          padding的数组长度需要等于3。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">groups</th>
+     <td>
+          groups数值必须为1。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">offsetx</th>
+     <td>
+          offsetx暂不支持，传入0值即可。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">roundMode</th>
+     <td>
+          roundMode暂不支持，传入空指针nullptr。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">output</th>
+     <td>
+          output数据类型支持BFLOAT16、FLOAT16，数据格式仅支持NCDHW。
+     </td>
+   </tr>
+   <tr>
+     <th scope="row">其他约束</th>
+     <td>
+        <ul>
+          <li>算子仅支持在推理场景下调用。</li>
+          <li>仅支持正向三维卷积。</li>
+          <li>input、weight、bias、scale中每一组tensor的每一维大小都应小于1000000。</li>
+        </ul>
+     </td>
+   </tr>
+   </tbody>
+  </table>
+
+## 调用示例
+
+示例代码如下，仅供参考，具体编译和执行过程请参考[编译与运行样例](../../../docs/zh/context/compile_and_run_sample.md)。
+
+不同产品型号请参考使用不同的main函数。
+
+```cpp
+#include <iostream>
+#include <memory>
+#include <vector>
+#include "acl/acl.h"
+#include "aclnnop/aclnn_quant_convolution.h"
+
+#define CHECK_RET(cond, return_expr) \
+  do {                               \
+    if (!(cond)) {                   \
+      return_expr;                   \
+    }                                \
+  } while (0)
+
+#define CHECK_FREE_RET(cond, return_expr) \
+  do {                                    \
+    if (!(cond)) {                        \
+      Finalize(deviceId, stream);         \
+      return_expr;                        \
+    }                                     \
+  } while (0)
+
+#define LOG_PRINT(message, ...)      \
+  do {                               \
+    printf(message, ##__VA_ARGS__);  \
+  } while (0)
+
+int64_t GetShapeSize(const std::vector<int64_t>& shape) {
+  int64_t shape_size = 1;
+  for (auto i: shape) {
+    shape_size *= i;
+  }
+  return shape_size;
+}
+
+int Init(int32_t deviceId, aclrtStream* stream) {
+  // 固定写法，资源初始化
+  auto ret = aclInit(nullptr);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclInit failed. ERROR: %d\n", ret); return ret);
+  ret = aclrtSetDevice(deviceId);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSetDevice failed. ERROR: %d\n", ret); return ret);
+  ret = aclrtCreateStream(stream);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtCreateStream failed. ERROR: %d\n", ret); return ret);
+  return 0;
+}
+
+template <typename T>
+int CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                    aclDataType dataType, aclTensor** tensor) {
+  auto size = GetShapeSize(shape) * sizeof(T);
+  // 调用aclrtMalloc申请device侧内存
+  auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+
+  // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+  ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+  // 计算连续tensor的strides
+  std::vector<int64_t> strides(shape.size(), 1);
+  for (int64_t i = shape.size() - 2; i >= 0; i--) {
+    strides[i] = shape[i + 1] * strides[i + 1];
+  }
+
+  // 调用aclCreateTensor接口创建aclTensor
+  *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_NCDHW,
+                            shape.data(), shape.size(), *deviceAddr);
+  return 0;
+}
+
+template <typename T>
+int CreateAclTensorND(const std::vector<T>& hostData, const std::vector<int64_t>& shape, void** deviceAddr,
+                      aclDataType dataType, aclTensor** tensor) {
+  auto size = GetShapeSize(shape) * sizeof(T);
+  // 调用aclrtMalloc申请device侧内存
+  auto ret = aclrtMalloc(deviceAddr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMalloc failed. ERROR: %d\n", ret); return ret);
+
+  // 调用aclrtMemcpy将host侧数据拷贝到device侧内存上
+  ret = aclrtMemcpy(*deviceAddr, size, hostData.data(), size, ACL_MEMCPY_HOST_TO_DEVICE);
+  CHECK_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtMemcpy failed. ERROR: %d\n", ret); return ret);
+
+  // 计算连续tensor的strides
+  std::vector<int64_t> strides(shape.size(), 1);
+  for (int64_t i = shape.size() - 2; i >= 0; i--) {
+    strides[i] = shape[i + 1] * strides[i + 1];
+  }
+
+  // 调用aclCreateTensor接口创建aclTensor
+  *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                            shape.data(), shape.size(), *deviceAddr);
+  return 0;
+}
+
+void Finalize(int32_t deviceId, aclrtStream& stream)
+{
+  aclrtDestroyStream(stream);
+  aclrtResetDevice(deviceId);
+  aclFinalize();
+}
+
+int aclnnQuantConvolutionTest(int32_t deviceId, aclrtStream& stream, std::vector<aclDataType> dtypesInfo)
+{
+  auto ret = Init(deviceId, &stream);
+  // check根据自己的需要处理
+  CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("Init acl failed. ERROR: %d\n", ret); return ret);
+
+  // 2. 构造输入与输出，需要根据API的接口自定义构造
+  std::vector<int64_t> shapeInput = {2, 2, 32, 32, 32};
+  std::vector<int64_t> shapeWeight = {2, 2, 3, 3, 3};
+  std::vector<int64_t> shapeScale = {2};
+  std::vector<int64_t> shapeBias = {2};
+  std::vector<int64_t> shapeResult = {2, 2, 32, 32, 32};
+  std::vector<int64_t> convStrides;
+  std::vector<int64_t> convPads;
+  std::vector<int64_t> convDilations;
+
+  void* deviceDataA = nullptr;
+  void* deviceDataB = nullptr;
+  void* deviceDataScale = nullptr;
+  void* deviceDataBias = nullptr;
+  void* deviceDataResult = nullptr;
+
+  aclTensor* input = nullptr;
+  aclTensor* weight = nullptr;
+  aclTensor* scale= nullptr;
+  aclTensor* bias= nullptr;
+  aclTensor* result = nullptr;
+  std::vector<int8_t> inputData(GetShapeSize(shapeInput), 1);
+  std::vector<int8_t> weightData(GetShapeSize(shapeWeight), 1);
+  std::vector<float> biasData(GetShapeSize(shapeBias), 1);
+  std::vector<float> scaleData(GetShapeSize(shapeScale), 1);
+  std::vector<uint16_t> outputData(GetShapeSize(shapeResult), 1);
+  convStrides = {1, 1, 1};
+  convPads = {1, 1, 1};
+  convDilations = {1, 1, 1};
+  aclDataType inputDtype = dtypesInfo[0];
+  aclDataType weightDtype = dtypesInfo[1];
+  aclDataType biasDtype = dtypesInfo[2];
+  aclDataType scaleDtype = dtypesInfo[3];
+  aclDataType outputDtype = dtypesInfo[4];
+  // 创建input aclTensor
+  ret = CreateAclTensor(inputData, shapeInput, &deviceDataA, inputDtype, &input);
+  std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> inputTensorPtr(input, aclDestroyTensor);
+  std::unique_ptr<void, aclError (*)(void *)> deviceDataAPtr(deviceDataA, aclrtFree);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, return ret);
+
+  // 创建weight aclTensor
+  ret = CreateAclTensor(weightData, shapeWeight, &deviceDataB, weightDtype, &weight);
+  std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> weightTensorPtr(weight, aclDestroyTensor);
+  std::unique_ptr<void, aclError (*)(void *)> deviceDataBPtr(deviceDataB, aclrtFree);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, return ret);
+
+    // 创建scale
+  ret = CreateAclTensorND(scaleData, shapeScale, &deviceDataScale, scaleDtype, &scale);
+  std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> scaleTensorPtr(scale, aclDestroyTensor);
+  std::unique_ptr<void, aclError (*)(void *)> deviceDataScalePtr(deviceDataScale, aclrtFree);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, return ret);
+
+    // 创建bias
+  ret = CreateAclTensorND(biasData, shapeBias, &deviceDataBias, biasDtype, &bias);
+  std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> biasTensorPtr(bias, aclDestroyTensor);
+  std::unique_ptr<void, aclError (*)(void *)> deviceDataBiasPtr(deviceDataBias, aclrtFree);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, return ret);
+
+  // 创建out aclTensor
+  ret = CreateAclTensor(outputData, shapeResult, &deviceDataResult, outputDtype, &result);
+  std::unique_ptr<aclTensor, aclnnStatus (*)(const aclTensor *)> outputTensorPtr(result, aclDestroyTensor);
+  std::unique_ptr<void, aclError (*)(void *)> deviceDataResultPtr(deviceDataResult, aclrtFree);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, return ret);
+
+  aclIntArray *strides = aclCreateIntArray(convStrides.data(), 3);
+  std::unique_ptr<aclIntArray, aclnnStatus (*)(const aclIntArray *)> stridesPtr(strides, aclDestroyIntArray);
+  CHECK_FREE_RET(strides != nullptr, return ACL_ERROR_INTERNAL_ERROR);
+  aclIntArray *pads = aclCreateIntArray(convPads.data(), 3);
+  std::unique_ptr<aclIntArray, aclnnStatus (*)(const aclIntArray *)> padsPtr(pads, aclDestroyIntArray);
+  CHECK_FREE_RET(pads != nullptr, return ACL_ERROR_INTERNAL_ERROR);
+  aclIntArray *dilations = aclCreateIntArray(convDilations.data(), 3);
+  std::unique_ptr<aclIntArray, aclnnStatus (*)(const aclIntArray *)> dilationsPtr(dilations, aclDestroyIntArray);
+  CHECK_FREE_RET(dilations != nullptr, return ACL_ERROR_INTERNAL_ERROR);
+
+  // 3. 调用CANN算子库API，需要修改为具体的API
+  uint64_t workspaceSize = 0;
+  aclOpExecutor* executor;
+  // 调用aclnnConvolution第一段接口
+  ret = aclnnQuantConvolutionGetWorkspaceSize(input, weight, bias, scale, nullptr, strides, pads, dilations,
+                                              false, nullptr, 1, 0, nullptr, result, &workspaceSize, &executor);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantConvolutionGetWorkspaceSize failed. ERROR: %d\n", ret); return ret);
+  // 根据第一段接口计算出的workspaceSize申请device内存
+  void* workspaceAddr = nullptr;
+  std::unique_ptr<void, aclError (*)(void *)> workspaceAddrPtr(nullptr, aclrtFree);
+  if (workspaceSize > 0) {
+    ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("allocate workspace failed. ERROR: %d\n", ret); return ret);
+    workspaceAddrPtr.reset(workspaceAddr);
+  }
+  // 调用aclnnConvolution第二段接口
+  ret = aclnnQuantConvolution(workspaceAddr, workspaceSize, executor, stream);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantConvolution failed. ERROR: %d\n", ret); return ret);
+
+  // 4.（固定写法）同步等待任务执行结束
+  ret = aclrtSynchronizeStream(stream);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclrtSynchronizeStream failed. ERROR: %d\n", ret); return ret);
+
+  // 5. 获取输出的值，将device侧内存上的结果拷贝至host侧，需要根据具体API的接口定义修改
+  auto size = GetShapeSize(shapeResult);
+  std::vector<uint16_t> resultData(size, 0);
+  ret = aclrtMemcpy(resultData.data(), resultData.size() * sizeof(resultData[0]), deviceDataResult,
+                    size * sizeof(uint16_t), ACL_MEMCPY_DEVICE_TO_HOST);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("copy result from device to host failed. ERROR: %d\n", ret); return ret);
+  for (int64_t i = 0; i < size; i++) {
+    LOG_PRINT("result[%ld] is: %d\n", i, resultData[i]);
+  }
+
+  return ACL_SUCCESS;
+}
+
+int main() {
+  // 1.（固定写法）device/stream初始化，参考acl API手册
+  // 根据自己的实际device填写deviceId
+  int32_t deviceId = 0;
+  aclrtStream stream;
+  std::vector<aclDataType> dtypesInfo = {aclDataType::ACL_INT8, aclDataType::ACL_INT8, aclDataType::ACL_FLOAT,
+    aclDataType::ACL_FLOAT, aclDataType::ACL_BF16}; // 分别是input/weight/bias/scale/output的datatype
+  auto ret = aclnnQuantConvolutionTest(deviceId, stream, dtypesInfo);
+  CHECK_FREE_RET(ret == ACL_SUCCESS, LOG_PRINT("aclnnQuantConvolutionTest failed. ERROR: %d\n", ret); return ret);
+
+  Finalize(deviceId, stream);
+  return 0;
+}
+```

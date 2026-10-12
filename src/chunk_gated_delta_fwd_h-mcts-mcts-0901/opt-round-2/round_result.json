@@ -1,0 +1,53 @@
+{
+  "round_index": 2,
+  "status": "success",
+  "algorithm": "mcts",
+  "best_speedup": 7.3312,
+  "target_reached": true,
+  "improvement_made": true,
+  "phase4_entered": true,
+  "optimized": true,
+  "effective_metric_source": "kernel",
+  "direction": "V-tile (BV) size correction for chunk-recurrence kernel: uniform BV=min(64,V) replacing parent cs-dependent heuristic (BV=64 if BT<=64 else 32)",
+  "hypothesis": "MCTS expands high-reward node opt-round-1 (mean reward 1.7403, visits 1). Parent used hand-tuned BV heuristic (BV=64 when BT<=64 else 32) which leaves headroom on chunk_size=128 shapes. Empirical sweep over all 8 shapes shows BV=64 is fastest on every shape incl. cs=128; fix = uniform BV=min(64,V).",
+  "round_strategy": "exploration",
+  "work_dir": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-2",
+  "error": null,
+  "mcts_parent_id": "opt-round-1",
+  "mcts_pending_expansion": true,
+  "mcts_selection_path": [
+    {
+      "node_id": "root",
+      "depth": 0,
+      "mean_reward": 1.740308267636976,
+      "visit_count": 1,
+      "description": "virtual root"
+    },
+    {
+      "node_id": "opt-round-1",
+      "depth": 1,
+      "mean_reward": 1.740308267636976,
+      "visit_count": 1,
+      "description": "pattern: custom (fused chunk-recurrence: per-(b,h) flat serial chunk loop, S[K,V] fp32 register-resident, V-tile grid split, seq-in-grid varlen)"
+    }
+  ],
+  "design_summary": "Round 2 MCTS expansion of opt-round-1. Fused chunk-recurrence kernel body preserved byte-for-byte; host V-tile BV made uniform BV=min(64,V). Offline empirical BV sweep of the actual parent kernel over all 8 task shapes (dense+varlen, cs 64/128) disproved the parent cs-dependent heuristic: BV=64 is fastest on EVERY shape, giving 1.46-1.72x on the four cs=128 cases where parent ran BV=32.",
+  "iter_count": 1,
+  "opt_iter_count": 1,
+  "key_fixes": [
+    "Replaced parent BV heuristic '64 if BT<=64 else 32' with uniform BV=min(64,V)",
+    "Kept D6 min() guard and V%BV==0 assertion; all shapes V=128 -> BV=64, NVT=2",
+    "Preserved fp32-ieee dot precision and multibuffer=True/unit_flag=True launch (D7)"
+  ],
+  "bottlenecks_observed": [
+    "cs=128 shapes were V-tile-suboptimal (BV=32) in parent: only 2.9-3.5x per-shape speedup",
+    "BV=128 never faster than BV=64 (UB pressure, D5)",
+    "Triton-Ascend num_warps/num_stages autotune unsupported; manual BV autotune reproduces BV=64 with ~7s/shape runtime cost -> not used",
+    "Residual cost is inherent serial chunk recurrence (grid parallelized by B*HV*NVT)"
+  ],
+  "artifacts": {
+    "summary_json": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-2/summary.json",
+    "report_md": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-2/report.md",
+    "final_code": "triton_ascend_output/chunk_gated_delta_fwd_h-mcts-mcts-0901/opt-round-2/chunk_gated_delta_fwd_h_generated.py"
+  }
+}

@@ -1,0 +1,32 @@
+diff --git a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+index ec890aa2a6ca..45fddfe52d1d 100644
+--- a/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
++++ b/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+@@ -2625,11 +2625,27 @@ computeCollapsedLayoutMap(MemRefType srcType,
+   }
+ 
+   // Validate that each reassociation group is contiguous.
++#ifdef BSPUB_DAVINCI_BISHENGIR
++  int64_t startIdx = 0;
++  for (int64_t i = 0; i < srcShape.size(); i++) {
++    if (srcShape[i] != 1) {
++      break;
++    }
++    startIdx++;
++  }
++#endif
++
+   unsigned resultStrideIndex = resultStrides.size() - 1;
+   for (const ReassociationIndices &reassoc : llvm::reverse(reassociation)) {
+     auto trailingReassocs = ArrayRef<int64_t>(reassoc).drop_front();
+     auto stride = SaturatedInteger::wrap(resultStrides[resultStrideIndex--]);
+     for (int64_t idx : llvm::reverse(trailingReassocs)) {
++#ifdef BSPUB_DAVINCI_BISHENGIR
++      if (idx - 1 < startIdx) {
++        // skip the leading one dim
++        continue;
++      }
++#endif
+       stride = stride * SaturatedInteger::wrap(srcShape[idx]);
+ 
+       // Both source and result stride must have the same static value. In that

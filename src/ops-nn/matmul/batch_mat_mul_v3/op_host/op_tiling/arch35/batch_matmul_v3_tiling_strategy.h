@@ -1,0 +1,60 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file batch_matmul_v3_tiling_strategy.h
+ * \brief
+ */
+#pragma once
+
+#include <map>
+#include <vector>
+#include <cstdint>
+
+#include "tiling/platform/platform_ascendc.h"
+#include "op_host/tiling_base.h"
+
+namespace optiling {
+namespace batch_matmul_v3_advanced {
+namespace strategy {
+constexpr int32_t BATCH_MATMUL_INPUT_K_EQUAL_ZERO = 0;
+constexpr int32_t BATCH_MATMUL_TO_MUL = 1;
+constexpr int32_t BATCH_STREAM_K = 2;
+constexpr int32_t MERGE_BATCH_BASICAPI = 3;
+constexpr int32_t ITER_BATCH_BROADCAST_BASICAPI = 4;
+constexpr int32_t ITER_BATCH_BASICAPI = 5;
+constexpr int32_t ITER_BATCH = 6;
+constexpr int32_t AL1_FULL_LOAD_BASIC = 7;
+constexpr int32_t BL1_FULL_LOAD_BASIC = 8;
+constexpr int32_t ASW_BASIC = 9;
+constexpr int32_t BASE = 999;
+
+const static std::map<NpuArch, std::vector<int32_t>> BatchMatMulV3PrioritiesMap = {
+    {NpuArch::DAV_3510,
+     {strategy::BATCH_MATMUL_INPUT_K_EQUAL_ZERO, strategy::BATCH_MATMUL_TO_MUL, strategy::BATCH_STREAM_K,
+      strategy::MERGE_BATCH_BASICAPI, strategy::ITER_BATCH_BROADCAST_BASICAPI, strategy::ITER_BATCH_BASICAPI,
+      strategy::ITER_BATCH, strategy::AL1_FULL_LOAD_BASIC, strategy::BL1_FULL_LOAD_BASIC, strategy::ASW_BASIC,
+      strategy::BASE}},
+    {NpuArch::DAV_RESV,
+     {strategy::ITER_BATCH_BASICAPI, strategy::AL1_FULL_LOAD_BASIC,
+      strategy::BL1_FULL_LOAD_BASIC, strategy::ASW_BASIC, strategy::BASE}},
+};
+
+inline std::vector<int32_t> GetBatchMatMulV3Priorities(NpuArch NpuArch)
+{
+    std::vector<int32_t> priorities = {};
+    if (BatchMatMulV3PrioritiesMap.find(NpuArch) != BatchMatMulV3PrioritiesMap.end()) {
+        priorities = BatchMatMulV3PrioritiesMap.at(NpuArch);
+    }
+    return priorities;
+};
+} // namespace strategy
+} // namespace batch_matmul_v3_advanced
+} // namespace optiling

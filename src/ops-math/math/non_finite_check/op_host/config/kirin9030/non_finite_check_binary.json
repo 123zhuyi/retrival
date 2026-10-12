@@ -1,0 +1,63 @@
+{
+    "op_type": "NonFiniteCheck",
+    "op_list": [
+        {
+            "bin_filename": "NonFiniteCheck_22c6cd7d046431fb1e629779a5c7503c",
+            "inputs": [
+                [
+                    {
+                        "name": "tensor_list",
+                        "index": 0,
+                        "dtype": "float32",
+                        "format": "ND",
+                        "paramType": "dynamic",
+                        "shape": [
+                            -2
+                        ]
+                    }
+                ]
+            ],
+            "outputs": [
+                {
+                    "name": "found_flag",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ]
+        },
+        {
+            "bin_filename": "NonFiniteCheck_b00b5b8dcbe651280b41d3a59d7c4d8e",
+            "inputs": [
+                [
+                    {
+                        "name": "tensor_list",
+                        "index": 0,
+                        "dtype": "float16",
+                        "format": "ND",
+                        "paramType": "dynamic",
+                        "shape": [
+                            -2
+                        ]
+                    }
+                ]
+            ],
+            "outputs": [
+                {
+                    "name": "found_flag",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ]
+        }
+    ]
+}

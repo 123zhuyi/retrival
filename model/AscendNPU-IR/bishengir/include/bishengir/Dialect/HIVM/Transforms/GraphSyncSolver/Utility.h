@@ -1,0 +1,708 @@
+//===------------- Utility.h ---- Graph Sync Solver -----------------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+#ifndef BISHENG_DIALECT_HIVM_TRANSFORMS_GRAPHSYNCSOLVER_UTILITY_H
+#define BISHENG_DIALECT_HIVM_TRANSFORMS_GRAPHSYNCSOLVER_UTILITY_H
+
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/CorePipeInfo.h"
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/MemInfoTree.h"
+#include "bishengir/Dialect/HIVM/Transforms/GraphSyncSolver/SyncSolverIR.h"
+
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/Transforms/UnitFlagInfoBase.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/IR/Iterators.h"
+#include "mlir/IR/Location.h"
+#include "mlir/Interfaces/ValueBoundsOpInterface.h"
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/LogicalResult.h"
+#include <deque>
+
+#define INTRA_CORE_EVENT_ID_NUM (int64_t)8
+#define CROSS_CORE_EVENT_ID_NUM (int64_t)16
+#define TEST_INTRA_CORE_EVENT_ID_NUM (int64_t)8
+#define TEST_CROSS_CORE_EVENT_ID_NUM (int64_t)999
+
+namespace mlir::hivm::syncsolver {
+const int64_t blockAllIntraSyncFlagId1 = 15;
+const int64_t blockAllIntraSyncFlagId2 = 14;
+const int64_t reservedCrossCoreEventIdNum = 2;
+const int64_t reservedIntraCoreEventIdNum = 0;
+} // namespace mlir::hivm::syncsolver
+
+using SyncMap = llvm::MapVector<
+    mlir::hivm::syncsolver::OperationBase *,
+    std::deque<std::unique_ptr<mlir::hivm::syncsolver::SyncOp>>>;
+using SyncBeforeAfterMap = std::pair<SyncMap, SyncMap>;
+
+namespace mlir::hivm::syncsolver {
+
+struct Occurrence;
+struct EventIdNode;
+
+enum SyncMode {
+  INTRA_CORE_SYNC,
+  CROSS_CORE_SYNC,
+  TEST_INTRA_CORE_MODE,
+  TEST_CROSS_CORE_MODE,
+};
+
+enum class SyncSolverVersion {
+  V1,
+  V2,
+};
+
+struct SyncSolverOptions {
+  // Synchronization mode.
+  const SyncMode syncMode;
+
+  // Architecture is memory based (A2/A3).
+  const bool isMemBasedArch;
+
+  // Architecture is register based (A5).
+  const bool isRegBasedArch;
+
+  // Decompose MMAD L1 ops into simpler ops for better sync handling.
+  bool decomposeMmadl1Op{false};
+
+  // Enable unit-flag feature handling.
+  bool enableUnitFlagFeature{false};
+
+  // Always use scalar pipe as waiting pipe in sync pairs.
+  bool alwaysUsePipeSAsWaitingPipe{false};
+
+  // Consider outer backward-sync pairs optimization.
+  bool considerOuterBackwardSyncPairs{true};
+
+  // Try merging backward sync pairs and moving them to an outer scope.
+  bool moveOutAndMergeBackwardSyncPairs{true};
+
+  // Disable multi-event-id usage for barrier-all pipe pairs.
+  bool disableMultiEventIdForBarrierAllPairs{true};
+
+  // Reuse existing sync pairs to save event ids.
+  bool reuseSyncPairToSaveEventIds{false};
+
+  // Repeat the same flag-id for multi-id pairs.
+  bool enableRepeatFlagIdFeat{false};
+
+  // Ignore workspace function arguments.
+  bool intraCoreIgnoreWorkSpaceFunctionArguments{false};
+
+  // Use disjoint direct subviews to refine memory conflicts.
+  bool enableSubviewConflictRefinement{true};
+
+  // Build unrolled sync IR.
+  bool buildUnrolledSyncIR{true};
+
+  // Ignore non-anchor ops when building sync IR.
+  bool ignoreNonAnchorOps{false};
+
+  // Skip unrolling anchor ops.
+  bool skipUnrollingAnchorOps{true};
+
+  // Enable block-all mode.
+  bool enableBlockAllMode{false};
+
+  // Enable CV patterns.
+  bool enableCVPatterns{false};
+
+  // Process EventId nodes in program order and rotate IDs between allocations.
+  bool roundRobinEventIds{false};
+
+  // Select which SyncSolver implementation to use.
+  SyncSolverVersion solverVersion{SyncSolverVersion::V1};
+
+  SyncSolverOptions(SyncMode syncMode, bool isMemBasedArch, bool isRegBasedArch)
+      : syncMode(syncMode), isMemBasedArch(isMemBasedArch),
+        isRegBasedArch(isRegBasedArch) {
+    decomposeMmadl1Op = isIntraCoreMode();
+    alwaysUsePipeSAsWaitingPipe =
+        !isTestMode() && isCrossCoreMode() && isMemBasedArch;
+    reuseSyncPairToSaveEventIds = isIntraCoreMode();
+    enableRepeatFlagIdFeat = isCrossCoreMode();
+  }
+
+  bool isCrossCoreMode() const {
+    return syncMode == SyncMode::CROSS_CORE_SYNC ||
+           syncMode == SyncMode::TEST_CROSS_CORE_MODE;
+  }
+
+  bool isIntraCoreMode() const {
+    return syncMode == SyncMode::INTRA_CORE_SYNC ||
+           syncMode == SyncMode::TEST_INTRA_CORE_MODE;
+  }
+
+  bool isTestMode() const {
+    return syncMode == SyncMode::TEST_INTRA_CORE_MODE ||
+           syncMode == SyncMode::TEST_CROSS_CORE_MODE;
+  }
+};
+
+struct Occurrence;
+
+struct SetWaitPairInfo {
+  Occurrence *setOcc{nullptr};
+  Occurrence *waitOcc{nullptr};
+  bool isOpForwardPair{false};
+  bool isSetWaitBackwardPair{false};
+  bool isCVPreloading{false};
+  bool isCVPipelining{false};
+};
+
+class UnitFlagInfo : public UnitFlagInfoBase {
+public:
+  Occurrence *linkedElementAsSet{nullptr};
+  Occurrence *linkedElementAsWait{nullptr};
+  int64_t conflictPairIdAsSet{-1};
+  int64_t conflictPairIdAsWait{-1};
+
+public:
+  UnitFlagInfo() = default;
+  ~UnitFlagInfo() override = default;
+
+  explicit UnitFlagInfo(const UnitFlagInfoBase &other)
+      : UnitFlagInfoBase(other) {}
+
+  void reset() {
+    UnitFlagInfoBase::reset();
+    linkedElementAsSet = nullptr;
+    linkedElementAsWait = nullptr;
+    conflictPairIdAsSet = -1;
+    conflictPairIdAsWait = -1;
+  }
+
+  std::string str() const;
+
+  void merge(const UnitFlagInfo &other, Occurrence *occ1, Occurrence *occ2,
+             bool asSet = true, bool asWait = true) {
+    UnitFlagInfoBase::merge(other, asSet, asWait);
+    if (asSet && occ2 != nullptr) {
+      linkedElementAsSet = occ2;
+    }
+    if (asWait && occ1 != nullptr) {
+      linkedElementAsWait = occ1;
+    }
+  }
+};
+
+struct Occurrence {
+  OperationBase *op{nullptr};
+  Occurrence *parentOcc{nullptr};
+  int depth{-1};
+  int syncIrIndex{-1};
+  int syncIrEndIndex{-1};
+  int startIndex{-1};
+  int endIndex{-1};
+  int loopSplitIndex{-1};
+  bool hasUnitFlagFeat{false};
+  UnitFlagInfo unitFlagInfo;
+  llvm::SmallVector<Occurrence *> childOccs;
+  MemInfoTree memInfoTree1;
+  MemInfoTree memInfoTree2;
+
+  Occurrence(OperationBase *op, Occurrence *parentOcc, int syncIrIndex,
+             int startIndex, int endIdx)
+      : op(op), parentOcc(parentOcc),
+        depth(parentOcc != nullptr ? parentOcc->depth + 1 : 0),
+        syncIrIndex(syncIrIndex), startIndex(startIndex), endIndex(endIdx),
+        memInfoTree1(this, syncIrIndex), memInfoTree2(this, syncIrIndex) {}
+
+  std::string str() const;
+
+  // Walk up parents to find the first ancestor occurrence associated with 'op'.
+  Occurrence *getParentWithOp(Operation *op, bool assertExists = true);
+  Occurrence *getParentWithOp(OperationBase *op, bool assertExists = true);
+
+  // Return the ancestor that is `dist` levels above this occurrence.
+  Occurrence *getNthParent(int dist);
+
+  // Compute/return the pair of sibling occurrences just below their LCA.
+  static std::pair<Occurrence *, Occurrence *> getLCAPair(Occurrence *occ1,
+                                                          Occurrence *occ2);
+
+  template <typename OpTy> Occurrence *getParentOfType() {
+    Occurrence *cur = this->parentOcc;
+    while (cur != nullptr && !isa_and_present<OpTy>(cur->op)) {
+      cur = cur->parentOcc;
+    }
+    return cur;
+  }
+
+  // Find and return the nearest parent occurrence that is a loop.
+  static Occurrence *getParentloop(Occurrence *occ);
+
+  // Find and return the nearest parent occurrence that is a condition.
+  static Occurrence *getParentCondition(Occurrence *occ);
+
+  // Return true if this occurrence is a strict ancestor of `occ`.
+  bool isAncestor(Occurrence *occ);
+  bool isProperAncestor(Occurrence *occ);
+
+  // Collect and return all occurrence parents (in upward order).
+  llvm::SmallVector<Occurrence *> getAllParents();
+
+  static Occurrence *getUnlikelyParentCondition(Occurrence *occ);
+
+  llvm::ArrayRef<Occurrence *> getLoopFirstIterOccs() {
+    assert(isa_and_present<Loop>(op) && loopSplitIndex != -1);
+    int64_t childNum = static_cast<int64_t>(childOccs.size());
+    assert(childNum % 2 == 0);
+    assert(childNum == 2 || childNum == 4);
+    return llvm::ArrayRef(childOccs).slice(0, childNum / 2);
+  }
+
+  llvm::ArrayRef<Occurrence *> getLoopSecondIterOccs() {
+    assert(isa_and_present<Loop>(op) && loopSplitIndex != -1);
+    int64_t childNum = static_cast<int64_t>(childOccs.size());
+    assert(childNum % 2 == 0);
+    assert(childNum == 2 || childNum == 4);
+    return llvm::ArrayRef(childOccs).slice(childNum / 2);
+  }
+
+  void initMemInfoTree1() {
+    if (isa<Loop>(op)) {
+      for (auto childOcc : getLoopSecondIterOccs()) {
+        memInfoTree1.merge(childOcc->memInfoTree1);
+      }
+    } else if (isa<Scope>(op)) {
+      for (auto childOcc : childOccs) {
+        memInfoTree1.merge(childOcc->memInfoTree1);
+      }
+    } else if (auto rwOp = dyn_cast<RWOperation>(op)) {
+      for (auto &readMemInfo : rwOp->readMemInfo) {
+        memInfoTree1.insert(
+            CorePipeInfo(rwOp->coreType,
+                         readMemInfo.pipe.value_or(rwOp->pipeRead)),
+            MemoryEffect::READ, readMemInfo,
+            MemInfoOccElement(this, this->syncIrIndex));
+      }
+      for (auto &writeMemInfo : rwOp->writeMemInfo) {
+        memInfoTree1.insert(
+            CorePipeInfo(rwOp->coreType,
+                         writeMemInfo.pipe.value_or(rwOp->pipeWrite)),
+            MemoryEffect::WRITE, writeMemInfo,
+            MemInfoOccElement(this, this->syncIrIndex));
+      }
+    }
+    DEBUG_WITH_TYPE("hivm-gss-meminfotree", {
+      llvm::dbgs() << "initMemInfoTree1 occIndex=" << syncIrIndex
+                   << ", op=" << (op == nullptr ? "<null>" : op->str(0, false))
+                   << '\n';
+      llvm::dbgs() << memInfoTree1.str(2);
+      llvm::dbgs() << '\n';
+    });
+  }
+
+  void initMemInfoTree2() {
+    if (isa<Loop>(op)) {
+      for (auto childOcc : getLoopFirstIterOccs()) {
+        memInfoTree2.merge(childOcc->memInfoTree2);
+      }
+    } else if (isa<Scope>(op)) {
+      for (auto childOcc : childOccs) {
+        memInfoTree2.merge(childOcc->memInfoTree2);
+      }
+    } else if (auto rwOp = dyn_cast<RWOperation>(op)) {
+      for (auto &readMemInfo : rwOp->readMemInfo) {
+        memInfoTree2.insert(
+            CorePipeInfo(rwOp->coreType,
+                         readMemInfo.pipe.value_or(rwOp->pipeRead)),
+            MemoryEffect::READ, readMemInfo,
+            MemInfoOccElement(this, this->syncIrIndex));
+      }
+      for (auto &writeMemInfo : rwOp->writeMemInfo) {
+        memInfoTree2.insert(
+            CorePipeInfo(rwOp->coreType,
+                         writeMemInfo.pipe.value_or(rwOp->pipeWrite)),
+            MemoryEffect::WRITE, writeMemInfo,
+            MemInfoOccElement(this, this->syncIrIndex));
+      }
+    }
+    DEBUG_WITH_TYPE("hivm-gss-meminfotree", {
+      llvm::dbgs() << "initMemInfoTree2 occIndex=" << syncIrIndex
+                   << ", op=" << (op == nullptr ? "<null>" : op->str(0, false))
+                   << '\n';
+      llvm::dbgs() << memInfoTree2.str(2);
+      llvm::dbgs() << '\n';
+    });
+  }
+
+  void initMemInfoTree() {
+    initMemInfoTree1();
+    initMemInfoTree2();
+  }
+};
+
+struct ConflictPair {
+
+  static int globalIdCounter;
+
+  // Identity + the two conflicting ops
+  const int id;
+  RWOperation *const op1;
+  RWOperation *const op2;
+
+  // Where the set/wait is placed
+  OperationBase *setOp{nullptr};
+  OperationBase *waitOp{nullptr};
+  Occurrence *setOcc{nullptr};
+  Occurrence *waitOcc{nullptr};
+  const CorePipeInfo setCorePipeInfo;
+  const CorePipeInfo waitCorePipeInfo;
+  int startIndex{-1};
+  int endIndex{-1};
+
+  // LCA parents of op1/op2 in the occurrence tree
+  Occurrence *parOcc1{nullptr};
+  Occurrence *parOcc2{nullptr};
+
+  // Backward-sync classification + hoist target
+  bool isOccBackwardPair{false};
+  bool isSetWaitBackwardPair{false};
+  bool isInnerBackwardPair{false};
+  Loop *backwardSyncLoopOp{nullptr};
+  Occurrence *backwardSyncLoopOcc{nullptr};
+
+  // EventIdInfo / SetWaitPairInfo
+  EventIdInfo eventIdInfo;
+  EventIdNode *eventIdNode{nullptr};
+  // When set, GraphSyncSolver must assign this event id for the conflict
+  // (from CustomMacroOp sync_event_slots with an optional pinned event).
+  std::optional<int64_t> pinnedEventId;
+  std::optional<SetWaitPairInfo> setWaitPairInfo;
+
+  // Flags
+  bool isUseless{false};
+  bool dontReuse{false};
+  bool dontCheckForConflict{false};
+  bool couldNotRun{false};
+  bool setOnLastIterOnly{false};
+  bool waitOnFirstIterOnly{false};
+  bool replacedWithUnitFlag{false};
+  bool movedToOuterLoop{false};
+  bool isPersistent{false};
+  bool isErased{false};
+
+  ConflictPair(RWOperation *op1, RWOperation *op2, OperationBase *setOp,
+               OperationBase *waitOp, Occurrence *setOcc, Occurrence *waitOcc,
+               CorePipeInfo setCorePipeInfo, CorePipeInfo waitCorePipeInfo,
+               int startIndex, int endIndex)
+      : id(globalIdCounter++), op1(op1), op2(op2), setOp(setOp), waitOp(waitOp),
+        setOcc(setOcc), waitOcc(waitOcc), setCorePipeInfo(setCorePipeInfo),
+        waitCorePipeInfo(waitCorePipeInfo), startIndex(startIndex),
+        endIndex(endIndex) {};
+
+  bool isBarrier() const { return setCorePipeInfo == waitCorePipeInfo; }
+
+  // Human-readable description of the conflict pair for debug printing.
+  std::string str() const;
+
+  // Update the stored set/wait operation pointers and their indices from
+  // occurrences.
+  void updateSetWaitOccs(Occurrence *setOcc, Occurrence *waitOcc) {
+    if (setOcc != nullptr) {
+      this->setOcc = setOcc;
+      this->setOp = setOcc->op;
+      this->startIndex = setOcc->endIndex;
+    }
+    if (waitOcc != nullptr) {
+      this->waitOcc = waitOcc;
+      this->waitOp = waitOcc->op;
+      this->endIndex = waitOcc->startIndex;
+    }
+  }
+
+  std::unique_ptr<ConflictPair> clone() {
+    auto clonedConflictPair = std::make_unique<ConflictPair>(
+        op1, op2, setOp, waitOp, setOcc, waitOcc, setCorePipeInfo,
+        waitCorePipeInfo, startIndex, endIndex);
+
+    clonedConflictPair->parOcc1 = parOcc1;
+    clonedConflictPair->parOcc2 = parOcc2;
+
+    clonedConflictPair->isOccBackwardPair = isOccBackwardPair;
+    clonedConflictPair->isSetWaitBackwardPair = isSetWaitBackwardPair;
+    clonedConflictPair->isInnerBackwardPair = isInnerBackwardPair;
+    clonedConflictPair->backwardSyncLoopOp = backwardSyncLoopOp;
+    clonedConflictPair->backwardSyncLoopOcc = backwardSyncLoopOcc;
+
+    clonedConflictPair->eventIdInfo = eventIdInfo;
+    clonedConflictPair->eventIdNode = eventIdNode;
+    clonedConflictPair->pinnedEventId = pinnedEventId;
+    clonedConflictPair->setWaitPairInfo = setWaitPairInfo;
+
+    clonedConflictPair->isUseless = isUseless;
+    clonedConflictPair->dontReuse = dontReuse;
+    clonedConflictPair->dontCheckForConflict = dontCheckForConflict;
+    clonedConflictPair->couldNotRun = couldNotRun;
+    clonedConflictPair->setOnLastIterOnly = setOnLastIterOnly;
+    clonedConflictPair->waitOnFirstIterOnly = waitOnFirstIterOnly;
+    clonedConflictPair->replacedWithUnitFlag = replacedWithUnitFlag;
+    clonedConflictPair->movedToOuterLoop = movedToOuterLoop;
+    clonedConflictPair->isPersistent = isPersistent;
+    clonedConflictPair->isErased = isErased;
+    return clonedConflictPair;
+  }
+
+  std::unique_ptr<ConflictPair> clone(Occurrence *setOcc, Occurrence *waitOcc) {
+    auto clonedConflictPair = this->clone();
+    clonedConflictPair->updateSetWaitOccs(setOcc, waitOcc);
+    return clonedConflictPair;
+  }
+};
+
+struct EventIdNode {
+public:
+  const int64_t id{-1};
+  ConflictPair *const initConflictPair;
+  const int64_t eventIdNum;
+  const bool reversePriority;
+
+private:
+  static int globalIdCounter;
+  llvm::SmallVector<int64_t> eventIds;
+  llvm::DenseMap<ConflictPair *, int64_t> conflictPairs;
+
+public:
+  EventIdNode(ConflictPair *conflictPair, int64_t eventIdNum,
+              bool reversePriority)
+      : id(globalIdCounter++), initConflictPair(conflictPair),
+        eventIdNum(eventIdNum), reversePriority(reversePriority) {
+    insertConflictPair(conflictPair);
+  }
+
+  std::unique_ptr<EventIdNode> clone() {
+    auto clonedNode = std::make_unique<EventIdNode>(
+        initConflictPair, eventIdNum, reversePriority);
+    clonedNode->eventIds = eventIds;
+    clonedNode->conflictPairs = conflictPairs;
+    return clonedNode;
+  }
+
+  void insertConflictPair(ConflictPair *conflictPair) {
+    conflictPairs[conflictPair] += 1;
+  }
+
+  void eraseConflictPair(ConflictPair *conflictPair) {
+    if (!(conflictPairs[conflictPair] -= 1)) {
+      conflictPairs.erase(conflictPair);
+    }
+  }
+
+  const llvm::SmallVector<int64_t> &getEventIds() { return eventIds; }
+
+  void setEventIds(const llvm::SmallVector<int64_t> &newEventIds) {
+    eventIds = newEventIds;
+  }
+
+  std::string str(bool printConflictPairs = true) {
+    std::string ret = "EventIdNode" + std::to_string(id) + "[";
+    ret += "eventIdNum(" + std::to_string(eventIdNum) + ")";
+    ret += ", ";
+    ret += "revPri(" + std::to_string(reversePriority) + ")";
+    ret += ", ";
+    ret += "eventIds(";
+    for (auto eventId : eventIds) {
+      ret += std::to_string(eventId) + ", ";
+    }
+    ret += ")";
+    ret += "]\n";
+    if (printConflictPairs) {
+      for (auto [conflictPair, frq] : conflictPairs) {
+        assert(frq > 0);
+        ret += std::string(2, ' ') + conflictPair->str() + "\n";
+      }
+    }
+    ret.pop_back();
+    return ret;
+  }
+};
+
+struct MmadL1SyncArgs {
+  MmadL1SyncArgs() = default;
+  MmadL1SyncArgs(Value l0WaitL1AEvent, Value l0WaitL1BEvent,
+                 Value l1AWaitL0Event, Value l1BWaitL0Event, Value kLoopDBCond,
+                 Value bwdPipeMPipeMTE1Event0, Value bwdPipeMPipeMTE1Event1)
+      : l0WaitL1AEvent(l0WaitL1AEvent), l0WaitL1BEvent(l0WaitL1BEvent),
+        l1AWaitL0Event(l1AWaitL0Event), l1BWaitL0Event(l1BWaitL0Event),
+        kLoopDBCond(kLoopDBCond),
+        bwdPipeMPipeMTE1Event0(bwdPipeMPipeMTE1Event0),
+        bwdPipeMPipeMTE1Event1(bwdPipeMPipeMTE1Event1) {}
+
+  Value l0WaitL1AEvent;
+  Value l0WaitL1BEvent;
+  Value l1AWaitL0Event;
+  Value l1BWaitL0Event;
+  Value kLoopDBCond;
+  Value bwdPipeMPipeMTE1Event0;
+  Value bwdPipeMPipeMTE1Event1;
+};
+
+template <typename T> struct UnionFind {
+public:
+  UnionFind() {};
+  ~UnionFind() = default;
+
+private:
+  llvm::DenseMap<T, T> parent;
+
+public:
+  T find(T x) {
+    auto [it, isInserted] = parent.insert({x, x});
+    if (isInserted || it->second == x) {
+      return x;
+    }
+    return it->second = find(it->second);
+  }
+
+  bool join(T a, T b) {
+    a = find(a);
+    b = find(b);
+    if (a == b) {
+      return false;
+    }
+    // TODO : Can have some check to balance the union-set
+    parent[a] = b;
+    return true;
+  }
+};
+
+struct MmadMxL1SyncArgs {
+  MmadMxL1SyncArgs() = default;
+
+  // Wait side (MTE2→MTE1) — each stream independent
+  Value l0WaitL1AEvent;      // Wait A
+  Value l0WaitL1ScaleAEvent; // Wait ScaleA
+  Value l0WaitL1BEvent;      // Wait B
+  Value l0WaitL1ScaleBEvent; // Wait ScaleB
+
+  // Set side (MTE1→MTE2) — each stream independent
+  Value l1AWaitL0Event;      // Set A
+  Value l1ScaleAWaitL0Event; // Set ScaleA
+  Value l1BWaitL0Event;      // Set B
+  Value l1ScaleBWaitL0Event; // Set ScaleB
+};
+
+// Return hardware-available EVENT ids for a given (setPipe, waitPipe) pair.
+int64_t
+getHWAvailableEventIdNum(SyncMode syncMode,
+                         hivm::PIPE setPipe = hivm::PIPE::PIPE_UNASSIGNED,
+                         hivm::PIPE waitPipe = hivm::PIPE::PIPE_UNASSIGNED);
+
+llvm::SmallVector<int64_t>
+getHWAvailableEventIds(SyncMode syncMode,
+                       hivm::PIPE setPipe = hivm::PIPE::PIPE_UNASSIGNED,
+                       hivm::PIPE waitPipe = hivm::PIPE::PIPE_UNASSIGNED);
+
+std::optional<int64_t> getStaticLoopCount(LoopLikeOpInterface forOp);
+
+// Create a boolean Value that is true for the first iteration of `forOp`.
+Value getIsFirstIterationValue(scf::ForOp forOp, Location loc,
+                               IRRewriter &rewriter);
+
+// Create a boolean Value that is true for the last iteration of `forOp`.
+Value getIsLastIterationValue(scf::ForOp forOp, Location loc,
+                              IRRewriter &rewriter);
+
+// Helper to stringify a Value to std::string for logging.
+std::string op2str(Value val);
+
+// Helper to stringify an Operation pointer to std::string for logging.
+std::string op2str(Operation *op);
+
+// Verify that all loop-like parents of `op` are SCF ForOps (returns true if
+// so).
+bool checkAllParentLoopsAreForLoops(Operation *op);
+
+// Cast `val` to i64 type if it is not already.
+Value getValueOrCreateCastToI64(IRRewriter &rewriter, Location loc, Value val);
+
+hivm::TCoreType getOppositeCoreType(hivm::TCoreType coreType);
+
+// Find the unique_ptr in `container` that owns `ptr`.
+template <typename Container, typename T>
+auto findUniquePtr(Container &container, T *ptr) {
+  return llvm::find_if(
+      container, [ptr](const std::unique_ptr<T> &p) { return p.get() == ptr; });
+}
+
+template <typename OpTy>
+llvm::FailureOr<std::pair<OpTy, OpTy>> getFirstLastOp(Operation *parentOp) {
+  OpTy firstOp{nullptr};
+  OpTy lastOp{nullptr};
+  parentOp->walk<WalkOrder::PreOrder, ForwardIterator>([&](OpTy op) {
+    firstOp = op;
+    return WalkResult::interrupt();
+  });
+  if (firstOp == nullptr) {
+    return llvm::failure();
+  }
+  parentOp->walk<WalkOrder::PostOrder, ReverseIterator>([&](OpTy op) {
+    lastOp = op;
+    return WalkResult::interrupt();
+  });
+  assert(lastOp != nullptr);
+  return std::make_pair(firstOp, lastOp);
+}
+
+// Variadic version of getFirstLastOp that matches any of OpTys without a full
+// tree traversal — uses interrupt() to stop at the first/last match.
+template <typename... OpTys>
+llvm::FailureOr<std::pair<Operation *, Operation *>>
+getFirstLastOpOfTypes(Operation *parentOp) {
+  Operation *firstOp = nullptr;
+  Operation *lastOp = nullptr;
+  parentOp->walk<WalkOrder::PreOrder, ForwardIterator>([&](Operation *op) {
+    if (isa<OpTys...>(op)) {
+      firstOp = op;
+      return WalkResult::interrupt();
+    }
+    return WalkResult::advance();
+  });
+  if (firstOp == nullptr) {
+    return llvm::failure();
+  }
+  parentOp->walk<WalkOrder::PostOrder, ReverseIterator>([&](Operation *op) {
+    if (isa<OpTys...>(op)) {
+      lastOp = op;
+      return WalkResult::interrupt();
+    }
+    return WalkResult::advance();
+  });
+  assert(lastOp != nullptr);
+  return std::make_pair(firstOp, lastOp);
+}
+
+bool isEmptyScope(Scope *scope);
+
+bool isWorkSpaceFuncArgument(func::FuncOp funcOp, BlockArgument funcArg);
+
+llvm::SmallVector<int64_t> getAddresses(const llvm::SmallVector<Value> &addrs);
+
+// Return true if the slices are statically known to overlap, false if a static
+// dimension proves that they are disjoint, and failure if the result depends
+// on a dynamic offset, size, or stride.
+FailureOr<bool> areOverlappingStaticSlices(const HyperrectangularSlice &slice1,
+                                           const HyperrectangularSlice &slice2);
+
+} // namespace mlir::hivm::syncsolver
+
+#endif // BISHENG_DIALECT_HIVM_TRANSFORMS_GRAPHSYNCSOLVER_UTILITY_H

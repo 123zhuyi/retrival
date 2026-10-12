@@ -1,0 +1,252 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file conv_api_tiling_base.cpp
+ * \brief
+ */
+
+#include "conv_api_tiling_base.h"
+#include <cstdint>
+#include <unordered_set>
+#include <sstream>
+
+using namespace std;
+
+namespace conv_tiling {
+ConvTilingBase::ConvTilingBase(const PlatformInfo& platform)
+{
+    platformInfo.npuArch = platform.npuArch;
+    platformInfo.isCubeVectorFuse = platform.isCubeVectorFuse;
+    platformInfo.l1Size = platform.l1Size;
+    platformInfo.l0ASize = platform.l0ASize;
+    platformInfo.l0BSize = platform.l0BSize;
+    platformInfo.l0CSize = platform.l0CSize;
+    platformInfo.ubSize = platform.ubSize;
+    platformInfo.btSize = platform.btSize;
+    platformInfo.fbSize = platform.fbSize;
+    platformInfo.aivPerAic = platform.aivPerAic;
+}
+
+void ConvTilingBase::SetNodeType(string inType) { nodeType = inType; }
+
+void ConvTilingBase::InferCubeInfo()
+{
+    cubeInfo.m0 = CUBE_MKN_TAB.GetMKN(descInfo.fMapType.dtype, MKN_M_INDEX);
+    cubeInfo.k0 = CUBE_MKN_TAB.GetMKN(descInfo.weightType.dtype, MKN_K_INDEX);
+    cubeInfo.n0 = CUBE_MKN_TAB.GetMKN(descInfo.fMapType.dtype, MKN_N_INDEX);
+    cubeInfo.biasType = CUBE_TYPE_TAB.ToBiasType(descInfo.fMapType.dtype);
+    cubeInfo.madType = CUBE_TYPE_TAB.ToMadType(descInfo.fMapType.dtype);
+}
+
+int64_t ConvTilingBase::CheckTilingRes()
+{
+    if (outputOrder == static_cast<int8_t>(OutputOrder::M) && (l1TilingInfo.mAL1 == 0 || l0TilingInfo.mL0 == 0)) {
+        OP_LOGE(nodeType, "Check tiling res failed: mAL1: %lu, mL0: %lu.", l1TilingInfo.mAL1, l0TilingInfo.mL0);
+        return -1;
+    }
+    if (outputOrder == static_cast<int8_t>(OutputOrder::HW) &&
+        (l1TilingInfo.hoAL1 == 0 || l1TilingInfo.woAL1 == 0 || l0TilingInfo.hoL0 == 0 || l0TilingInfo.woL0 == 0)) {
+        OP_LOGE(nodeType, "Check tiling res failed: hoAL1: %lu, woAL1: %lu, hoL0: %lu, woL0: %lu.", l1TilingInfo.hoAL1,
+                l1TilingInfo.woAL1, l0TilingInfo.hoL0, l0TilingInfo.woL0);
+        return -1;
+    }
+
+    if (l1TilingInfo.kAL1 == 0 || l1TilingInfo.kBL1 == 0 || l1TilingInfo.nBL1 == 0) {
+        OP_LOGE(nodeType, "Check tiling res failed: kAL1: %lu, kBL1: %lu, nBL1: %lu.", l1TilingInfo.kAL1,
+                l1TilingInfo.kBL1, l1TilingInfo.nBL1);
+        return -1;
+    }
+
+    if (l0TilingInfo.kL0 == 0 || l0TilingInfo.nL0 == 0) {
+        OP_LOGE(nodeType, "Check tiling res failed: kL0: %lu, nL0: %lu.", l0TilingInfo.kL0, l0TilingInfo.nL0);
+        return -1;
+    }
+
+    return 0;
+}
+
+uint32_t ConvTilingBase::GetBandWidthCof() const
+{
+    if (descInfo.weightType.format == ConvFormat::FRACTAL_Z ||
+        descInfo.weightType.format == ConvFormat::FRACTAL_Z_C04 ||
+        descInfo.weightType.format == ConvFormat::FRACTAL_Z_3D) {
+        return 1;
+    }
+
+    if (descInfo.fMapType.format == ConvFormat::NCHW || descInfo.fMapType.format == ConvFormat::NCDHW) {
+        return BAND_WIDTH_COEFF;
+    }
+    return 1;
+}
+
+bool ConvTilingBase::CheckQuantUniqueAttr()
+{
+    if (quantConvFlag) {
+        ConvDtype fMapDtype = descInfo.fMapType.dtype;
+        ConvDtype outputDtype = descInfo.outputType.dtype;
+        if (attrInfo.offsetx != 0 && (fMapDtype == ConvDtype::HIFLOAT8 || fMapDtype == ConvDtype::FLOAT8_E4M3FN)) {
+            OP_LOGE(nodeType, "Only support offsetX = 0 in hif8 or fp8 mode, actually is %d", attrInfo.offsetx);
+            return false;
+        }
+        if (outputDtype == ConvDtype::HIFLOAT8) {
+            if (attrInfo.roundMode != conv_tiling::ROUND_MODE_ROUND) {
+                OP_LOGE(nodeType, "Only support round in hif8 dtype, actually is %d", attrInfo.roundMode);
+                return false;
+            }
+        } else if (outputDtype == ConvDtype::INT8 || outputDtype == ConvDtype::FLOAT8_E4M3FN) {
+            if (attrInfo.roundMode != conv_tiling::ROUND_MODE_RINT) {
+                OP_LOGE(nodeType, "Only support rint in not_hif8 dtype, actually is %d", attrInfo.roundMode);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool ConvTilingBase::CheckGroups()
+{
+    if (attrInfo.groups <= 0) {
+        OP_LOGE(nodeType, "Illegal attrs have set: groups=%d which must > 0.", attrInfo.groups);
+        return false;
+    }
+    if (optGroupFlag) { // this->optGroupFlag
+        if (shapeInfo.singleGroups <= 0) {
+            OP_LOGE(nodeType, "Illegal attrs have set: singleGroups=%ld which must > 0.", shapeInfo.singleGroups);
+            return false;
+        }
+        if (shapeInfo.enlarge <= 0) {
+            OP_LOGE(nodeType, "Illegal attrs have set: enlarge=%d which must > 0.", shapeInfo.enlarge);
+            return false;
+        }
+        if (shapeInfo.singleGroupOpt <= 0) {
+            OP_LOGE(nodeType, "Input illegal singleGroupOpt: %ld, which must > 0.", shapeInfo.singleGroupOpt);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ConvTilingBase::CheckDtype()
+{
+    vector<ConvDtype> paramsType;
+    if (hasBias) {
+        paramsType = {descInfo.fMapType.dtype, descInfo.weightType.dtype, descInfo.biasType.dtype,
+                      descInfo.outputType.dtype};
+    } else {
+        paramsType = {descInfo.fMapType.dtype, descInfo.weightType.dtype, descInfo.outputType.dtype};
+    }
+    auto supportedTypesList = GetSupportedDataTypes();
+    for (uint64_t kindsId = 0; kindsId < supportedTypesList.size(); ++kindsId) {
+        if (supportedTypesList[kindsId].size() == 0) {
+            continue;
+        }
+        if (IsEqual(paramsType, supportedTypesList[kindsId], supportedTypesList[kindsId].size())) {
+            return true;
+        }
+    }
+    if (hasBias) {
+        OP_LOGE(nodeType, "unSupported params data type [fmap, weight, bias, output]: [%s, %s, %s, %s].",
+                DTYPE_TO_STR.at(descInfo.fMapType.dtype).c_str(), DTYPE_TO_STR.at(descInfo.weightType.dtype).c_str(),
+                DTYPE_TO_STR.at(descInfo.biasType.dtype).c_str(), DTYPE_TO_STR.at(descInfo.outputType.dtype).c_str());
+    } else {
+        OP_LOGE(nodeType, "unSupported params data type [fmap, weight, output]: [%s, %s, %s].",
+                DTYPE_TO_STR.at(descInfo.fMapType.dtype).c_str(), DTYPE_TO_STR.at(descInfo.weightType.dtype).c_str(),
+                DTYPE_TO_STR.at(descInfo.outputType.dtype).c_str());
+    }
+    return false;
+}
+
+vector<vector<ConvDtype>> ConvTilingBase::GetSupportedDataTypes() const
+{
+    vector<vector<ConvDtype>> res;
+    if (hasBias) {
+        // [fmap, weight, bias, output]
+        if (extendConvFlag || quantConvFlag) {
+            res = EXTENDCONV_QUANTCONV_SUPPORTED_TYPES_WITH_BIAS;
+        } else {
+            res = CONV_SUPPORTED_TYPES_WITH_BIAS;
+        }
+    } else {
+        // [fmap, weight, output]
+        if (extendConvFlag || quantConvFlag) {
+            res = EXTENDCONV_QUANTCONV_SUPPORTED_TYPES_WITHOUT_BIAS;
+        } else {
+            res = CONV_SUPPORTED_TYPES_WITHOUT_BIAS;
+        }
+    }
+
+    return res;
+}
+
+bool ConvTilingBase::CheckLoad3DLimits()
+{
+    auto LogHelper = [this](const std::string& paramName, const std::string& actualValue, const std::string& reason) {
+        if (platformInfo.isCubeVectorFuse) {
+            OP_LOGE_FOR_INVALID_SHAPE_WITH_REASON(nodeType.c_str(), paramName.c_str(), actualValue.c_str(),
+                                                  reason.c_str());
+        } else {
+            OP_LOGD(nodeType, "%s AscendC: %s", nodeType.c_str(), reason.c_str());
+        }
+    };
+
+    if (static_cast<uint32_t>(attrInfo.strideH) > LOAD3D_MAX_STRIDE_H_W ||
+        static_cast<uint32_t>(attrInfo.strideW) > LOAD3D_MAX_STRIDE_H_W) {
+        std::stringstream ssActual, ssReason;
+        ssActual << "strideH=" << attrInfo.strideH << ", strideW=" << attrInfo.strideW;
+        ssReason << "Attrs does not satisfy Load3D's limits: strideH=" << attrInfo.strideH
+                 << ", strideW=" << attrInfo.strideW << ", which must <= " << LOAD3D_MAX_STRIDE_H_W;
+        LogHelper("strides", ssActual.str(), ssReason.str());
+        return false;
+    }
+    if (static_cast<uint32_t>(attrInfo.dilationH) > LOAD3D_MAX_DILATION_H_W ||
+        static_cast<uint32_t>(attrInfo.dilationW) > LOAD3D_MAX_DILATION_H_W) {
+        std::stringstream ssActual, ssReason;
+        ssActual << "dilationH=" << attrInfo.dilationH << ", dilationW=" << attrInfo.dilationW;
+        ssReason << "Attrs does not satisfy Load3D's limits: dilationH=" << attrInfo.dilationH
+                 << ", dilationW=" << attrInfo.dilationW << ", which must <= " << LOAD3D_MAX_DILATION_H_W;
+        LogHelper("dilations", ssActual.str(), ssReason.str());
+        return false;
+    }
+    if (static_cast<uint32_t>(attrInfo.padLeft) > LOAD3D_MAX_PAD ||
+        static_cast<uint32_t>(attrInfo.padRight) > LOAD3D_MAX_PAD ||
+        static_cast<uint32_t>(attrInfo.padTop) > LOAD3D_MAX_PAD ||
+        static_cast<uint32_t>(attrInfo.padBottom) > LOAD3D_MAX_PAD) {
+        std::stringstream ssActual, ssReason;
+        ssActual << "padTop=" << attrInfo.padTop << ", padBottom=" << attrInfo.padBottom
+                 << ", padLeft=" << attrInfo.padLeft << ", padRight=" << attrInfo.padRight;
+        ssReason << "Attrs does not satisfy Load3D's limits: padTop=" << attrInfo.padTop
+                 << ", padBottom=" << attrInfo.padBottom << ", padLeft=" << attrInfo.padLeft
+                 << ", padRight=" << attrInfo.padRight << ", which must <= " << LOAD3D_MAX_PAD;
+        LogHelper("pads", ssActual.str(), ssReason.str());
+        return false;
+    }
+    if (static_cast<uint64_t>(shapeInfo.orgkH) > LOAD3D_MAX_FILTER_H_W ||
+        static_cast<uint64_t>(shapeInfo.orgkW) > LOAD3D_MAX_FILTER_H_W) {
+        std::stringstream ssActual, ssReason;
+        ssActual << "kh=" << shapeInfo.orgkH << ", kw=" << shapeInfo.orgkW;
+        ssReason << "Weight shape does not satisfy Load3D's limits: kh=" << shapeInfo.orgkH
+                 << ", kw=" << shapeInfo.orgkW << ", which must <= " << LOAD3D_MAX_FILTER_H_W;
+        LogHelper("filter", ssActual.str(), ssReason.str());
+        return false;
+    }
+    auto k0 = CUBE_MKN_TAB.GetMKN(descInfo.weightType.dtype, MKN_K_INDEX);
+    uint64_t tmpkHWSize = static_cast<uint64_t>(shapeInfo.orgkH) * static_cast<uint64_t>(shapeInfo.orgkW) * k0;
+    if (tmpkHWSize > LOAD3D_MAX_DDR2L1_SIZE) {
+        std::stringstream ssActual, ssReason;
+        ssActual << "kH*kW*k0=" << tmpkHWSize;
+        ssReason << "Weight shape does not satisfy Load3D's limits: kH*kW*k0=" << tmpkHWSize
+                 << ", which must <= " << LOAD3D_MAX_DDR2L1_SIZE;
+        LogHelper("filter", ssActual.str(), ssReason.str());
+        return false;
+    }
+    return true;
+}
+} // namespace conv_tiling

@@ -1,0 +1,228 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/**
+ * NOTE: Portions of this code were AI-generated and have been
+ * technically reviewed for functional accuracy and security
+ */
+
+/**
+ * \file inv_grad_tiling.cpp
+ * \brief InvGrad tiling implementation (arch35)
+ *
+ * Tiling strategy:
+ *   1. Multi-core: divide total elements evenly across AI Cores
+ *   2. UB: divide per-core elements into UB-sized chunks
+ *   3. Buffer layout (unified for all dtypes):
+ *      yQueue(1)  = ubFactor * sizeof(T)
+ *      dyQueue(1) = ubFactor * sizeof(T)
+ *      outQueue(1)= ubFactor * sizeof(T)
+ *      tmpBuf1    = ubFactor * sizeof(float)   (fp32 intermediate yy / yFloat)
+ *      tmpBuf2    = ubFactor * sizeof(float)   (fp32 intermediate dyFloat)
+ *
+ * Unified formula for all dtypes:
+ *   bytesPerElem = 3 * sizeof(T) + 2 * sizeof(float)
+ *   ubFactor = FloorAlign(ubSize / bytesPerElem, ubBlockSize)
+ *
+ * Shape/dtype equality between y and dy is enforced here. InferShape only
+ * copies y.shape to dx.shape.
+ */
+
+#include "register/op_def_registry.h"
+#include "op_common/log/log.h"
+#include "op_common/op_host/util/math_util.h"
+#include "op_common/op_host/util/platform_util.h"
+#include "../op_kernel/inv_grad_tiling_data.h"
+#include "../op_kernel/inv_grad_tiling_key.h"
+
+namespace optiling {
+
+using Ops::Base::CeilDiv;
+using Ops::Base::FloorAlign;
+
+constexpr uint32_t WS_SYS_SIZE = 0U;
+
+static const gert::Shape g_vec_1_shape = {1};
+
+static inline const gert::Shape EnsureNotScalar(const gert::Shape& in_shape)
+{
+    if (in_shape.GetDimNum() == 0) {
+        return g_vec_1_shape;
+    }
+    return in_shape;
+}
+
+static ge::graphStatus GetPlatformInfo(gert::TilingContext* context, uint64_t& ubSize, int64_t& coreNum)
+{
+    fe::PlatFormInfos* platformInfoPtr = context->GetPlatformInfo();
+    OP_CHECK_NULL_WITH_CONTEXT(context, platformInfoPtr);
+    auto ascendcPlatform = platform_ascendc::PlatformAscendC(platformInfoPtr);
+    coreNum = ascendcPlatform.GetCoreNumAiv();
+    OP_CHECK_IF(coreNum == 0, OP_LOGE(context, "coreNum is 0"), return ge::GRAPH_FAILED);
+    ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, ubSize);
+    OP_CHECK_IF(ubSize == 0, OP_LOGE(context, "ubSize is 0"), return ge::GRAPH_FAILED);
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus GetShapeInfo(gert::TilingContext* context, int64_t& totalElements, ge::DataType& dataType)
+{
+    // ----- y (input 0) -----
+    auto yStorage = context->GetInputShape(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, yStorage);
+    auto yShape = EnsureNotScalar(yStorage->GetStorageShape());
+    totalElements = yShape.GetShapeSize();
+
+    auto yDesc = context->GetInputDesc(0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, yDesc);
+    dataType = yDesc->GetDataType();
+
+    const std::set<ge::DataType> supportedDtype = {ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_BF16};
+    if (supportedDtype.count(dataType) == 0) {
+        OP_LOGE(context, "InvGrad: unsupported y dtype %d", static_cast<int>(dataType));
+        return ge::GRAPH_FAILED;
+    }
+
+    // ----- dy (input 1) -----
+    auto dyStorage = context->GetInputShape(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, dyStorage);
+    auto dyShape = EnsureNotScalar(dyStorage->GetStorageShape());
+
+    auto dyDesc = context->GetInputDesc(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, dyDesc);
+    ge::DataType dyDataType = dyDesc->GetDataType();
+
+    // dtype must match
+    if (dyDataType != dataType) {
+        OP_LOGE(
+            context, "InvGrad: y dtype %d != dy dtype %d", static_cast<int>(dataType), static_cast<int>(dyDataType));
+        return ge::GRAPH_FAILED;
+    }
+
+    // shape must match exactly (no broadcast)
+    if (dyShape.GetDimNum() != yShape.GetDimNum()) {
+        OP_LOGE(context, "InvGrad: y.dimNum %zu != dy.dimNum %zu", yShape.GetDimNum(), dyShape.GetDimNum());
+        return ge::GRAPH_FAILED;
+    }
+    for (size_t i = 0; i < yShape.GetDimNum(); ++i) {
+        if (yShape.GetDim(i) != dyShape.GetDim(i)) {
+            OP_LOGE(
+                context, "InvGrad: y.shape[%zu] %ld != dy.shape[%zu] %ld", i, yShape.GetDim(i), i, dyShape.GetDim(i));
+            return ge::GRAPH_FAILED;
+        }
+    }
+
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus GetWorkspaceSize(gert::TilingContext* context)
+{
+    size_t* currentWorkspace = context->GetWorkspaceSizes(1);
+    OP_CHECK_NULL_WITH_CONTEXT(context, currentWorkspace);
+    currentWorkspace[0] = WS_SYS_SIZE;
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus InvGradTilingFunc(gert::TilingContext* context)
+{
+    // 1. Get platform info
+    uint64_t ubSize = 0;
+    int64_t coreNum = 0;
+    OP_CHECK_IF(
+        GetPlatformInfo(context, ubSize, coreNum) != ge::GRAPH_SUCCESS, OP_LOGE(context, "GetPlatformInfo error"),
+        return ge::GRAPH_FAILED);
+
+    // 2. Get shape info + y/dy equality check
+    int64_t totalElements = 0;
+    ge::DataType dataType = ge::DT_FLOAT;
+    OP_CHECK_IF(
+        GetShapeInfo(context, totalElements, dataType) != ge::GRAPH_SUCCESS, OP_LOGE(context, "GetShapeInfo error"),
+        return ge::GRAPH_FAILED);
+
+    // 3. Get workspace size (no extra workspace required)
+    OP_CHECK_IF(
+        GetWorkspaceSize(context) != ge::GRAPH_SUCCESS, OP_LOGE(context, "GetWorkspaceSize error"),
+        return ge::GRAPH_FAILED);
+
+    // 4. Compute tiling parameters
+    InvGradTilingData* tiling = context->GetTilingData<InvGradTilingData>();
+    OP_CHECK_NULL_WITH_CONTEXT(context, tiling);
+    OP_CHECK_IF(
+        memset_s(tiling, sizeof(InvGradTilingData), 0, sizeof(InvGradTilingData)) != EOK,
+        OP_LOGE(context, "set tiling data error"), return ge::GRAPH_FAILED);
+
+    // Determine typeSize based on dtype
+    int64_t typeSize = 4;
+    switch (dataType) {
+        case ge::DT_FLOAT:
+            typeSize = 4;
+            break;
+        case ge::DT_FLOAT16:
+            typeSize = 2;
+            break;
+        case ge::DT_BF16:
+            typeSize = 2;
+            break;
+        default:
+            OP_LOGE(context, "InvGrad: unexpected dtype %d", static_cast<int>(dataType));
+            return ge::GRAPH_FAILED;
+    }
+
+    int64_t ubBlockSize = 32 / typeSize; // 32-byte alignment in elements
+
+    // Empty tensor: set blockDim=1, kernel will early return
+    if (totalElements == 0) {
+        tiling->totalElements = 0;
+        tiling->blockFactor = 0;
+        tiling->ubFactor = 0;
+        context->SetBlockDim(1);
+        uint32_t dTypeY = static_cast<uint32_t>(dataType);
+        ASCENDC_TPL_SEL_PARAM(context, dTypeY);
+        return ge::GRAPH_SUCCESS;
+    }
+
+    // Multi-core split
+    int64_t blockFactor = CeilDiv(totalElements, coreNum);
+    blockFactor = ((blockFactor + ubBlockSize - 1) / ubBlockSize) * ubBlockSize;
+    int64_t usedCoreNum = CeilDiv(totalElements, blockFactor);
+
+    // UB split -- unified formula:
+    //   bytesPerElem = 3 * typeSize + 2 * sizeof(float)
+    int64_t bytesPerElem = 3 * typeSize + 2 * static_cast<int64_t>(sizeof(float));
+    int64_t maxElementsPerCopy = static_cast<int64_t>(UINT16_MAX) / typeSize;
+    int64_t ubFactor = FloorAlign(static_cast<int64_t>(ubSize) / bytesPerElem, ubBlockSize);
+    if (ubFactor > maxElementsPerCopy) {
+        ubFactor = FloorAlign(maxElementsPerCopy, ubBlockSize);
+    }
+    OP_CHECK_IF(
+        ubFactor <= 0, OP_LOGE(context, "InvGrad: ubFactor is %ld, UB too small", ubFactor), return ge::GRAPH_FAILED);
+
+    tiling->totalElements = totalElements;
+    tiling->blockFactor = blockFactor;
+    tiling->ubFactor = ubFactor;
+
+    context->SetBlockDim(usedCoreNum);
+
+    // 5. Select TilingKey via dtype
+    uint32_t dTypeY = static_cast<uint32_t>(dataType);
+    ASCENDC_TPL_SEL_PARAM(context, dTypeY);
+
+    return ge::GRAPH_SUCCESS;
+}
+
+static ge::graphStatus TilingParseForInvGrad([[maybe_unused]] gert::TilingParseContext* context)
+{
+    return ge::GRAPH_SUCCESS;
+}
+
+struct InvGradCompileInfo {};
+
+IMPL_OP_OPTILING(InvGrad).Tiling(InvGradTilingFunc).TilingParse<InvGradCompileInfo>(TilingParseForInvGrad);
+
+} // namespace optiling

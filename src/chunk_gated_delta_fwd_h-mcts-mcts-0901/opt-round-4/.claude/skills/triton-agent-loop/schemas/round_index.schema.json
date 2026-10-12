@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Triton Optimizer Multi-Agent Round Index",
+  "description": "Aggregated metadata for all optimization rounds of a single operator.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "round_index",
+      "round_dir",
+      "direction",
+      "hypothesis",
+      "status",
+      "best_speedup",
+      "round_strategy"
+    ],
+    "properties": {
+      "round_index": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Monotonically increasing round number"
+      },
+      "round_dir": {
+        "type": "string",
+        "description": "Directory name for this round, e.g. opt-round-3 or opt-round-3-switch"
+      },
+      "direction": {
+        "type": "string",
+        "description": "Concrete optimization direction executed in this round"
+      },
+      "hypothesis": {
+        "type": "string",
+        "description": "Optimization hypothesis for this round"
+      },
+      "evidence_sources": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Sources that supported the chosen direction"
+      },
+      "analysis_policy": {
+        "type": "string",
+        "enum": ["pattern_entry", "bottleneck_analysis", "ir_supported"],
+        "description": "Evidence depth policy used in this round"
+      },
+      "effective_metric_source": {
+        "type": "string",
+        "enum": ["kernel", "total-op", "mixed"],
+        "description": "Performance metric source"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "success", "failed", "skipped_idle"],
+        "description": "Round completion status"
+      },
+      "best_speedup": {
+        "type": "number",
+        "description": "Best geometric-mean speedup achieved in this round"
+      },
+      "round_strategy": {
+        "type": "string",
+        "enum": ["exploration", "focused_tuning", "structural_change", "stabilization", "plateau_review"],
+        "description": "High-level optimization strategy"
+      },
+      "direction_yield": {
+        "type": ["string", "null"],
+        "enum": ["high", "medium", "low", "failed", null],
+        "description": "Causal quality label for this direction attempt"
+      },
+      "yield_reason": {
+        "type": ["string", "null"],
+        "enum": [
+          "target_reached",
+          "improvement_made",
+          "plateau_after_2_rounds",
+          "no_improvement_vs_baseline",
+          "verify_failed",
+          "idle_round",
+          "timeout",
+          null
+        ],
+        "description": "Reason for the direction_yield classification"
+      },
+      "absolute_gain_vs_baseline": {
+        "type": ["number", "null"],
+        "description": "best_speedup minus the baseline speedup this round started from"
+      },
+      "baseline_dir": {
+        "type": ["string", "null"],
+        "description": "round_dir of the baseline code this round started from"
+      },
+      "consecutive_low_gain_count": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Consecutive low-gain rounds for this direction"
+      },
+      "round_type": {
+        "type": ["string", "null"],
+        "enum": ["active", "idle", null],
+        "description": "active if code changed vs historical best; idle if byte-identical"
+      },
+      "target_speedup": {
+        "type": ["number", "null"],
+        "description": "Target speedup configured for this round"
+      },
+      "design_summary": {
+        "type": ["string", "null"],
+        "description": "One-sentence summary of the design rationale and algorithm sketch for this round"
+      },
+      "iter_count": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Number of coding/verification iterations performed in this round"
+      },
+      "opt_iter_count": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "description": "Number of optimization iterations performed in Phase 4 of this round"
+      },
+      "key_fixes": {
+        "type": ["array", "null"],
+        "items": { "type": "string" },
+        "description": "List of key fixes or workarounds applied during this round"
+      },
+      "bottlenecks_observed": {
+        "type": ["array", "null"],
+        "items": { "type": "string" },
+        "description": "List of observed performance or compile bottlenecks during this round"
+      },
+      "parent_round_journal": {
+        "type": ["string", "null"],
+        "description": "Path to the parent round's detailed journal (round_journal.md)"
+      }
+    }
+  }
+}

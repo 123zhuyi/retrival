@@ -1,0 +1,132 @@
+diff --git a/mlir/lib/Dialect/SCF/IR/SCF.cpp b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+index 3c28588c888b..656d88118ced 100644
+--- a/mlir/lib/Dialect/SCF/IR/SCF.cpp
++++ b/mlir/lib/Dialect/SCF/IR/SCF.cpp
+@@ -2794,6 +2794,118 @@ struct CombineNestedIfs : public OpRewritePattern<IfOp> {
+   }
+ };
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++// Pattern to move outside memref.cast operation
++struct MoveOutMemRefCast : public OpRewritePattern<IfOp> {
++  using OpRewritePattern<IfOp>::OpRewritePattern;
++
++  LogicalResult matchAndRewrite(IfOp ifOp,
++                                PatternRewriter &rewriter) const override {
++    if (ifOp.getNumResults() == 0) {
++      return failure();
++    }
++    auto thenYieldOp = ifOp.thenYield();
++    auto elseYieldOp = ifOp.elseYield();
++    bool changed = false;
++    int idx = -1;
++    for (auto [thenYieldV, elseYieldV] :
++         llvm::zip(thenYieldOp->getOperands(), elseYieldOp->getOperands())) {
++      idx++;
++      auto thenYieldCastOp =
++          dyn_cast_if_present<memref::CastOp>(thenYieldV.getDefiningOp());
++      auto elseYieldCastOp =
++          dyn_cast_if_present<memref::CastOp>(elseYieldV.getDefiningOp());
++      if (thenYieldCastOp == nullptr || elseYieldCastOp == nullptr) {
++        continue;
++      }
++      if (thenYieldCastOp.getSource().getType() !=
++          elseYieldCastOp.getSource().getType()) {
++        continue;
++      }
++
++      changed = true;
++      // update yield value
++      rewriter.modifyOpInPlace(thenYieldOp, [&]() {
++        thenYieldOp->setOperand(static_cast<uint>(idx),
++                                thenYieldCastOp.getSource());
++      });
++      rewriter.modifyOpInPlace(elseYieldOp, [&]() {
++        elseYieldOp->setOperand(static_cast<uint>(idx),
++                                elseYieldCastOp.getSource());
++      });
++      rewriter.modifyOpInPlace(ifOp, [&]() {
++        ifOp->getResult(idx).setType(thenYieldCastOp.getSource().getType());
++      });
++      // insert cast outside
++      rewriter.setInsertionPointAfter(ifOp);
++      IRMapping mapping;
++      mapping.map(thenYieldCastOp.getSource(), ifOp->getResult(idx));
++      auto outSideCastOp = rewriter.clone(*thenYieldCastOp, mapping);
++      rewriter.replaceAllUsesExcept(
++          ifOp->getResult(idx), outSideCastOp->getResult(0), {outSideCastOp});
++    }
++
++    return changed ? success() : failure();
++  }
++};
++#endif
++
++#if BSPUB_DAVINCI_BISHENGIR
++// Pattern to move outside memref.cast operation
++struct MoveOutMemRefCast : public OpRewritePattern<IfOp> {
++  using OpRewritePattern<IfOp>::OpRewritePattern;
++
++  LogicalResult matchAndRewrite(IfOp ifOp,
++                                PatternRewriter &rewriter) const override {
++    if (ifOp.getNumResults() == 0) {
++      return failure();
++    }
++    auto thenYieldOp = ifOp.thenYield();
++    auto elseYieldOp = ifOp.elseYield();
++    bool changed = false;
++    int idx = -1;
++    for (auto [thenYieldV, elseYieldV] :
++         llvm::zip(thenYieldOp->getOperands(), elseYieldOp->getOperands())) {
++      idx++;
++      auto thenYieldCastOp =
++          dyn_cast_if_present<memref::CastOp>(thenYieldV.getDefiningOp());
++      auto elseYieldCastOp =
++          dyn_cast_if_present<memref::CastOp>(elseYieldV.getDefiningOp());
++      if (thenYieldCastOp == nullptr || elseYieldCastOp == nullptr) {
++        continue;
++      }
++      if (thenYieldCastOp.getSource().getType() !=
++          elseYieldCastOp.getSource().getType()) {
++        continue;
++      }
++
++      changed = true;
++      // update yield value
++      rewriter.modifyOpInPlace(thenYieldOp, [&]() {
++        thenYieldOp->setOperand(static_cast<uint>(idx),
++                                thenYieldCastOp.getSource());
++      });
++      rewriter.modifyOpInPlace(elseYieldOp, [&]() {
++        elseYieldOp->setOperand(static_cast<uint>(idx),
++                                elseYieldCastOp.getSource());
++      });
++      rewriter.modifyOpInPlace(ifOp, [&]() {
++        ifOp->getResult(idx).setType(thenYieldCastOp.getSource().getType());
++      });
++      // insert cast outside
++      rewriter.setInsertionPointAfter(ifOp);
++      IRMapping mapping;
++      mapping.map(thenYieldCastOp.getSource(), ifOp->getResult(idx));
++      auto outSideCastOp = rewriter.clone(*thenYieldCastOp, mapping);
++      rewriter.replaceAllUsesExcept(
++          ifOp->getResult(idx), outSideCastOp->getResult(0), {outSideCastOp});
++    }
++
++    return changed ? success() : failure();
++  }
++};
++#endif
++
+ #if BSPUB_DAVINCI_BISHENGIR
+ // Pattern to move in tensor cast operation.
+ // Example of possible optimization after moving in:
+@@ -2901,7 +3013,7 @@ void IfOp::getCanonicalizationPatterns(RewritePatternSet &results,
+               RemoveStaticCondition, RemoveUnusedResults,
+               ReplaceIfYieldWithConditionOrValue>(context);
+ #if BSPUB_DAVINCI_BISHENGIR
+-  results.add<MoveInTensorCast>(context);
++  results.add<MoveInTensorCast, MoveOutMemRefCast>(context);
+ #endif // BSPUB_DAVINCI_BISHENGIR
+ }
+ 

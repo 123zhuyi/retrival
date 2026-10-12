@@ -1,0 +1,46 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file fused_matmul_tiling_key.h
+ * \brief
+ */
+#pragma once
+
+#include <sstream>
+#include "op_host/tiling_key.h"
+#include "fused_matmul_common.h"
+#include "../../../../mat_mul_v3/op_host/op_tiling/arch35/matmul_v3_tiling_key.h"
+
+namespace optiling {
+namespace fused_matmul {
+using namespace matmul_v3_advanced;
+class FusedMatmulTilingKey : public matmul_v3_advanced::MatMulV3TilingKey {
+public:
+    uint64_t GetTilingKey() const override;
+
+    FusedMatmulTilingKey& SetFusedOpType(FusedOpType fusedOpType)
+    {
+        fusedOpType_ = fusedOpType;
+        return *this;
+    }
+
+    FusedMatmulTilingKey& SetInnerPrecise(FusedInnerPrecise innerPrecise)
+    {
+        innerPrecise_ = innerPrecise;
+        return *this;
+    }
+
+protected:
+    FusedOpType fusedOpType_ = FusedOpType::NONE;
+    FusedInnerPrecise innerPrecise_ = FusedInnerPrecise::HIGH_PERFORMANCE;
+};
+} // namespace fused_matmul
+} // namespace optiling

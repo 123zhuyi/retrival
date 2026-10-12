@@ -1,0 +1,1 @@
+add_modules_sources(OPTYPE tanh_grad ACLNNTYPE aclnn_exclude)

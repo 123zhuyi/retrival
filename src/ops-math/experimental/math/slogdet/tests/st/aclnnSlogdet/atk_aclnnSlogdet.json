@@ -1,0 +1,535 @@
+[
+  {
+    "id": 0,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          1,
+          1
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n1_lower",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 1,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          2,
+          2
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n2_scalar_output",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 2,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          3,
+          3
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n3_core",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 3,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          4,
+          4
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n4_small",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 4,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          0,
+          2,
+          2
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "empty_batch",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 5,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          3,
+          2,
+          2
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "batch_3_n2",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 6,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          2,
+          3,
+          2,
+          2
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "batch_2x3_n2",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 7,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          16,
+          16
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n16_medium",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 8,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          32,
+          32
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n32_medium",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 9,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          5,
+          3,
+          3
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "batch_5_n3",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 10,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          3,
+          4,
+          5,
+          2,
+          2
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "high_rank_batch",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 11,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          64,
+          64
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n64_full_boundary",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 12,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          128,
+          128
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n128_blocked_boundary",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 13,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          256,
+          256
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n256_blocked",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  },
+  {
+    "id": 14,
+    "name": "torch.linalg.slogdet",
+    "api_type": "function_aclnnSlogdet",
+    "standard": {
+      "acc": {
+        "single_bm": {
+          "type": "high_performance"
+        }
+      },
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "self",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp32",
+        "shape": [
+          512,
+          512
+        ],
+        "range_values": [
+          -10,
+          10
+        ],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "aclnn_name": "Slogdet",
+    "case_name": "n512_blocked",
+    "aclnn_api_type": "aclnn_slogdet_custom"
+  }
+]

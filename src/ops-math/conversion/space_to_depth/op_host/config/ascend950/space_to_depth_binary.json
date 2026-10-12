@@ -1,0 +1,863 @@
+{
+  "op_type": "SpaceToDepth",
+  "op_list": [
+    {
+      "bin_filename": "SpaceToDepth_float32_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_float32_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_float16_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_float16_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int8_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int8_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int16_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int16_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int32_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int32_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint8_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint8_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint16_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint16_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint32_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint32_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint64_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_uint64_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int64_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_int64_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_bfloat16_NHWC",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "NHWC",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "SpaceToDepth_bfloat16_NCHW",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "NCHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

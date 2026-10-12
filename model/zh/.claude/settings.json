@@ -1,0 +1,53 @@
+{
+    "env": {
+ "ANTHROPIC_BASE_URL": "https://api.kimi.com/coding/",
+"ANTHROPIC_API_KEY": "sk-kimi-CYXGNRBaqr17rsP1XY6imfsZmse7cu2EKfDGAF2GEYShXcRsvW1GAA7mz0UqRCf7",
+"ANTHROPIC_MODEL": "k3",
+        "NON_ANTHROPIC_PLATFORM": "true",
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+    },
+    "permissions": {
+        "allow": [
+            "Bash(mvn:*)",
+            "Bash(git:*)",
+            "Bash(java:*)",
+            "Bash(javac:*)",
+            "Bash(jar:*)",
+            "Bash(dir:*)",
+            "Bash(ls:*)",
+            "Bash(cd:*)",
+            "Bash(find:*)",
+            "Bash(sed:*)",
+            "Bash(mkdir:*)",
+            "Bash(echo:*)",
+            "Bash(cat:*)",
+            "Bash(type:*)",
+            "Bash(scp:*)",
+            "Bash(ssh-copy-id:*)",
+            "Read(**)",
+            "Grep",
+            "Glob",
+            "LS",
+            "Edit",
+            "NotebookRead",
+            "mcp__playwright__browser_click",
+            "mcp__playwright__browser_close",
+            "mcp__playwright__browser_install",
+            "mcp__playwright__browser_navigate",
+            "mcp__playwright__browser_snapshot",
+            "mcp__playwright__browser_tab_list",
+            "mcp__playwright__browser_tab_new",
+            "mcp__playwright__browser_take_screenshot",
+            "mcp__playwright__browser_type"
+        ],
+        "deny": [],
+        "ask": [
+            "Bash(git push:*)",
+            "Bash(rm:*)",
+            "Bash(del:*)"
+        ],
+        "defaultMode": "default"
+    },
+    "skipWebFetchPreflight": true,
+    "skipDangerousModePermissionPrompt": true
+}

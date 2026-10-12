@@ -1,0 +1,44 @@
+diff --git a/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt b/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
+index f82d88ca2467..496aba7512e3 100644
+--- a/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/Linalg/IR/CMakeLists.txt
+@@ -1,9 +1,27 @@
+-set(BS_FEAT_FILES)
++set(BS_FEAT_LINK_LIBS)
+ set(BS_FEAT_OPTIONS)
++list(APPEND BS_FEAT_OPTIONS PARTIAL_SOURCES_INTENDED)
+ if(BSPUB_DAVINCI_BISHENGIR)
+-  list(APPEND BS_FEAT_FILES LinalgExtensions.cpp)
+-else()
+-  list(APPEND BS_FEAT_OPTIONS PARTIAL_SOURCES_INTENDED)
++  add_mlir_dialect_library(BiShengIRLinalgDialectExt
++    LinalgExtensions.cpp
++
++    PARTIAL_SOURCES_INTENDED
++
++    ADDITIONAL_HEADER_DIRS
++    ${MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/Linalg
++
++    DEPENDS
++    MLIRLinalgInterfacesIncGen
++    MLIRLinalgOpsAttributesIncGen
++    MLIRLinalgOpsEnumsIncGen
++    MLIRLinalgOpsIncGen
++    MLIRLinalgStructuredOpsIncGen
++
++    LINK_LIBS PUBLIC
++    MLIRArithDialect
++    MLIRIR
++  )
++  list(APPEND BS_FEAT_LINK_LIBS BiShengIRLinalgDialectExt)
+ endif()
+
+ add_mlir_dialect_library(MLIRLinalgDialect
+@@ -11,7 +29,6 @@ add_mlir_dialect_library(MLIRLinalgDialect
+   LinalgOps.cpp
+   LinalgDialect.cpp
+   ValueBoundsOpInterfaceImpl.cpp
+-  ${BS_FEAT_FILES}
+
+   ADDITIONAL_HEADER_DIRS
+   ${MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/Linalg

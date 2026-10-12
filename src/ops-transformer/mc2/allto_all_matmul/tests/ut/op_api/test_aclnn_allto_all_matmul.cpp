@@ -1,0 +1,374 @@
+/**
+ * This program is free software, you can redistribute it and/or modify.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include <float.h>
+#include <array>
+#include <vector>
+#include "gtest/gtest.h"
+#include <gmock/gmock.h>
+#include "../../../op_api/aclnn_allto_all_matmul.h"
+#include "op_api_ut_common/tensor_desc.h"
+#include "op_api_ut_common/op_api_ut.h"
+#include "opdev/platform.h"
+
+using namespace op;
+using namespace std;
+
+class TestAclnnAlltoAllMatmul : public testing::Test {
+protected:
+    static void SetUpTestCase()
+    {
+        op::SetPlatformNpuArch(NpuArch::DAV_3510);
+        cout << "TestAclnnAlltoAllMatmul SetUp" << endl;
+    }
+
+    static void TearDownTestCase()
+    {
+        op::SetPlatformSocVersion(op::SocVersion::ASCEND910B);
+        cout << "TestAclnnAlltoAllMatmul TearDown" << endl;
+    }
+};
+
+// ut用例结构体
+struct AlltoAllMatmulAclnnTestParam {
+    // 用例名
+    string caseName;
+    // 通信域卡数，ut测试默认为2
+    int world_size;
+    // 数据形状
+    vector<int64_t> x1Shape; // x1数据shape，正常为（BS，H1）
+    vector<int64_t> x2Shape; // x2数据shape，正常为（H1，H2）
+    vector<int64_t> biasShape; // bias数据shape，正常为（H2）
+    vector<int64_t> outputShape; // output数据shape，正常为（BS，H2）
+    vector<int64_t> alltoalloutputShape; // alltoalloutput数据shape，正常为（BS/ranksize，H1*ranksize）
+    // 数据类型
+    aclDataType x1Dtype; // x1数据dtype，仅支持bfloat16和float16
+    aclDataType x2Dtype; // x2数据dtype，仅支持bfloat16和float16
+    aclDataType biasDtype; // bias数据dtype，仅支持float32
+    aclDataType outputDtype; // output数据dtype，支持bfloat16、float16和float32
+    aclDataType alltoalloutputDtype; // alltoalloutput数据dtype，仅支持bfloat16和float16
+    // 数据格式
+    aclFormat x1Format; // x1数据format，仅支持ND
+    aclFormat x2Format; // x2数据format，仅支持ND
+    aclFormat biasFormat; // bias数据format，仅支持ND
+    aclFormat outputFormat; // output数据format，仅支持ND
+    aclFormat alltoalloutputFormat; // alltoalloutputoutput数据format，仅支持ND
+    // 其它属性
+    vector<int64_t> alltoAllAxesOptional; // alltoall数据交换的方向，只能为空或者[-2,-1]
+    char* group; // 通信域标识，字符串，长度要求（0，128）
+    bool transposeX1; // x1是否转置，现不支持为true
+    bool transposeX2; // x2是否转置，为true时x2shape为（H2，H1）
+    // ut用例期望返回状态
+    aclnnStatus aclnnStatusUt; //期望状态
+};
+
+static AlltoAllMatmulAclnnTestParam casesParams[] = {
+    // 正常用例 25条，caseid按照[算子名-x1x2output_dtype-alltoallout_dtype-biasDtype-format-transpose-id]构成，按bias分组
+    // ========================bfloat16 系列（12条）========================
+    // 1. Bias=BF16 (4)
+    {"AclnnAlltoAllMatmul-bf16-bf16-biasbf16-nd-notrans-01", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-null-biasbf16-nd-notrans-02", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-bf16-biasbf16-nd-trans-03", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-null-biasbf16-nd-trans-04", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    // 2. Bias=FLOAT32 (4)
+    {"AclnnAlltoAllMatmul-bf16-bf16-biasf32-nd-notrans-05", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_FLOAT, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-null-biasf32-nd-notrans-06", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_BF16, ACL_BF16, ACL_FLOAT, ACL_BF16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-bf16-biasf32-nd-trans-07", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_FLOAT, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-null-biasf32-nd-trans-08", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {},
+        ACL_BF16, ACL_BF16, ACL_FLOAT, ACL_BF16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    // 3. Bias=Null (4)
+    {"AclnnAlltoAllMatmul-bf16-bf16-biasnull-nd-notrans-09", 2, {256, 64}, {128, 256}, {}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_DT_UNDEFINED, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-null-biasnull-nd-notrans-10", 2, {256, 64}, {128, 256}, {}, {128, 256}, {},
+        ACL_BF16, ACL_BF16, ACL_DT_UNDEFINED, ACL_BF16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-bf16-biasnull-nd-trans-11", 2, {256, 64}, {256, 128}, {}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_DT_UNDEFINED, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-bf16-null-biasnull-nd-trans-12", 2, {256, 64}, {256, 128}, {}, {128, 256}, {},
+        ACL_BF16, ACL_BF16, ACL_DT_UNDEFINED, ACL_BF16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    // ========================float16 系列（12条）========================
+    // 1. Bias=FP16 (4)
+    {"AclnnAlltoAllMatmul-fp16-fp16-biasfp16-nd-notrans-13", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-null-biasfp16-nd-notrans-14", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-fp16-biasfp16-nd-trans-15", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-null-biasfp16-nd-trans-16", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    // 2. Bias=FLOAT32 (4)
+    {"AclnnAlltoAllMatmul-fp16-fp16-biasf32-nd-notrans-17", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-null-biasf32-nd-notrans-18", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-fp16-biasf32-nd-trans-19", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-null-biasf32-nd-trans-20", 2, {256, 64}, {256, 128}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    // 3. Bias=Null (4)
+    {"AclnnAlltoAllMatmul-fp16-fp16-biasnull-nd-notrans-21", 2, {256, 64}, {128, 256}, {}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-null-biasnull-nd-notrans-22", 2, {256, 64}, {128, 256}, {}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-fp16-biasnull-nd-trans-23", 2, {256, 64}, {256, 128}, {}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+    {"AclnnAlltoAllMatmul-fp16-null-biasnull-nd-trans-24", 2, {256, 64}, {256, 128}, {}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, true, ACLNN_SUCCESS},
+	// 空tensor场景 1条
+    {"AclnnAlltoAllMatmul-x1_empty_tensor", 2, {0, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_SUCCESS},
+
+    // 异常用例 23条，caseid按照[error-算子名-异常原因-id]构成
+    // 1. x1 dtype不合法(ACL_INT8)
+    {"error-AclnnAlltoAllMatmul-x1dtype_invalid-01", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_INT8, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 2. x2 dtype不合法 (ACL_UINT8)
+    {"error-AclnnAlltoAllMatmul-x2dtype_invalid-02", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_UINT8, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 3. bias dtype不合法 不等于xdtype或float32(ACL_BF16)
+    {"error-AclnnAlltoAllMatmul-biasdtype_invalid_03", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_BF16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 4. output dtype不合法
+    {"error-AclnnAlltoAllMatmul-outdtype_mismatch-04", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    //5. alltoallout dtype不合法
+    {"error-AclnnAlltoAllMatmul-alltoalloutdtype_unsupport-05", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 6. 空tensor (1)
+    // 6.1 x1有维度为0
+    {"error-AclnnAlltoAllMatmul-x1empty-06", 2, {256, 0}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 6.2 x2有维度为0，first dim
+    {"error-AclnnAlltoAllMatmul-x2empty-07", 2, {256, 64}, {0, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 6.3 x2有维度为0，second dim
+    {"error-AclnnAlltoAllMatmul-x2empty-08", 2, {256, 64}, {128, 0}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 7. format为私有格式(5)
+    {"error-AclnnAlltoAllMatmul-private_fmt1-09", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_FRACTAL_Z, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    {"error-AclnnAlltoAllMatmul-private_fmt2-10", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_FRACTAL_Z, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    {"error-AclnnAlltoAllMatmul-private_fmt3-11", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_FRACTAL_Z, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    {"error-AclnnAlltoAllMatmul-private_fmt4-12", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_FRACTAL_Z, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    {"error-AclnnAlltoAllMatmul-private_fmt5-13", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_FRACTAL_Z,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 8. AlltoAllAxes不合法
+    {"error-AclnnAlltoAllMatmul-invalid_axes-14", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {3, 2, 1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 9. group不合法
+    // 9.1 group为空
+    {"error-AclnnAlltoAllMatmul-group_empty-15", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 9.2 group长度超过128(group自带'\0'，所以超过127就算异常)
+    {"error-AclnnAlltoAllMatmul-group_extralong-16", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567",
+        false, false, ACLNN_ERR_PARAM_INVALID},
+    // 10. transposeX1=true
+    {"error-AclnnAlltoAllMatmul-transx1-17", 2, {64, 256}, {128, 256}, {256}, {128, 256}, {},
+        ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_FLOAT16, ACL_DT_UNDEFINED,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", true, false, ACLNN_ERR_PARAM_INVALID},
+    // 11. shape不合法
+    // 11.1 x1维度不合法
+    {"error-AclnnAlltoAllMatmul-invalid_x1dim-18", 2, {256, 64, 32}, {128, 256}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 11.2 x2维度不合法
+    {"error-AclnnAlltoAllMatmul-invalid_x2dim-19", 2, {256, 64}, {128, 256, 32}, {256}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 11.3 output维度不合法
+    {"error-AclnnAlltoAllMatmul-invalid_outputdim-20", 2, {256, 64}, {128, 256}, {256}, {128, 256, 32}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 11.4 alltoallout维度不合法
+    {"error-AclnnAlltoAllMatmul-invalid_alltoalloutdim-21", 2, {256, 64}, {128, 256}, {256}, {128, 256}, {128, 128, 32},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 11.5 bias维度不合法
+    {"error-AclnnAlltoAllMatmul-invalid_biasdim-22", 2, {256, 64}, {128, 256}, {256, 32}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID},
+    // 11.6 bias shape不合法
+    {"error-AclnnAlltoAllMatmul-mismatch_biasshape-23", 2, {256, 64}, {128, 256}, {32}, {128, 256}, {128, 128},
+        ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16, ACL_BF16,
+        ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND, ACL_FORMAT_ND,
+        {-2, -1}, "ut_test_allto_all_matmul", false, false, ACLNN_ERR_PARAM_INVALID}
+};
+
+static void TestOneParamCase(const AlltoAllMatmulAclnnTestParam& param)
+{
+    std::cout << "run case " << param.caseName << std::endl;
+    // 从结构体list中获取实际用例属性
+    vector<int64_t> x1Shape = param.x1Shape;
+    vector<int64_t> x2Shape = param.x2Shape;
+    vector<int64_t> biasShape = param.biasShape;
+    vector<int64_t> outputShape = param.outputShape;
+    vector<int64_t> alltoalloutShape = param.alltoalloutputShape;
+    aclDataType x1Dtype = param.x1Dtype;
+    aclDataType x2Dtype = param.x2Dtype;
+    aclDataType biasDtype = param.biasDtype;
+    aclDataType outputDtype = param.outputDtype;
+    aclDataType alltoalloutDtype = param.alltoalloutputDtype;
+    aclFormat x1Format = param.x1Format;
+    aclFormat x2Format = param.x2Format;
+    aclFormat biasFormat = param.biasFormat;
+    aclFormat outputFormat = param.outputFormat;
+    aclFormat alltoalloutFormat = param.alltoalloutputFormat;
+    vector<int64_t> axesAcl = param.alltoAllAxesOptional;
+    aclIntArray *alltoAllAxesOptional = aclCreateIntArray(axesAcl.data(), axesAcl.size());
+    const char* group = param.group;
+    bool transposeX1 = param.transposeX1;
+    bool transposeX2 = param.transposeX2;
+    aclnnStatus retStatus = param.aclnnStatusUt;
+    TensorDesc x1 = TensorDesc(x1Shape, x1Dtype, x1Format);
+    TensorDesc x2 = TensorDesc(x2Shape, x2Dtype, x2Format);
+    TensorDesc output = TensorDesc(outputShape, outputDtype, outputFormat);
+    uint64_t workspaceSize = 0;
+    aclnnStatus aclRet;
+    aclOpExecutor* executor = nullptr;
+    if (biasShape.empty() && alltoalloutShape.empty()) {
+        auto ut = OP_API_UT(aclnnAlltoAllMatmul,
+            INPUT(x1, x2, nullptr, alltoAllAxesOptional, group, transposeX1, transposeX2),
+            OUTPUT(output, nullptr));
+        aclRet = ut.TestGetWorkspaceSizeWithNNopbaseInner(&workspaceSize, executor); 
+    } else if (biasShape.empty()) {
+        TensorDesc alltoallout = TensorDesc(alltoalloutShape, alltoalloutDtype, alltoalloutFormat);
+        auto ut = OP_API_UT(aclnnAlltoAllMatmul,
+            INPUT(x1, x2, nullptr, alltoAllAxesOptional, group, transposeX1, transposeX2),
+            OUTPUT(output, alltoallout));
+        aclRet = ut.TestGetWorkspaceSizeWithNNopbaseInner(&workspaceSize, executor);
+    } else if (alltoalloutShape.empty()) {
+        TensorDesc bias = TensorDesc(biasShape, biasDtype, biasFormat);
+        auto ut = OP_API_UT(aclnnAlltoAllMatmul,
+            INPUT(x1, x2, bias, alltoAllAxesOptional, group, transposeX1, transposeX2),
+            OUTPUT(output, nullptr));
+        aclRet = ut.TestGetWorkspaceSizeWithNNopbaseInner(&workspaceSize, executor);
+    } else {
+        TensorDesc bias = TensorDesc(biasShape, biasDtype, biasFormat);
+        TensorDesc alltoallout = TensorDesc(alltoalloutShape, alltoalloutDtype, alltoalloutFormat);
+        auto ut = OP_API_UT(aclnnAlltoAllMatmul,
+                    INPUT(x1, x2, bias, alltoAllAxesOptional, group, transposeX1, transposeX2),
+                    OUTPUT(output, alltoallout));
+        aclRet = ut.TestGetWorkspaceSizeWithNNopbaseInner(&workspaceSize, executor);
+    }
+    if (retStatus == ACLNN_SUCCESS) {
+        EXPECT_NE(aclRet, ACLNN_ERR_PARAM_INVALID);
+    } else {
+        EXPECT_EQ(aclRet, retStatus);
+    }
+    std::cout << "end case " <<  param.caseName << std::endl;
+}
+
+TEST_F(TestAclnnAlltoAllMatmul, casesParams)
+{
+    if (std::size(casesParams) != 0) {
+        uint64_t numCases = sizeof(casesParams) / sizeof(casesParams[0]);
+        for (size_t idx = 0; idx < numCases; idx += 1) {
+            TestOneParamCase(casesParams[idx]);
+        }
+    }
+}

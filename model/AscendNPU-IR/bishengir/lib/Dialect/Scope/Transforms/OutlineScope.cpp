@@ -1,0 +1,284 @@
+//===- OutlineScope.cpp --------- Outline Scope Pass ----------------------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+//
+// This file implements a pass to convert scopeOp to funcOp
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/HIVM/IR/HIVM.h"
+#include "bishengir/Dialect/HIVM/Transforms/TileAndBindSubBlock/Helper.h"
+#include "bishengir/Dialect/HIVM/Utils/Utils.h"
+#include "bishengir/Dialect/Scope/IR/Scope.h"
+#include "bishengir/Dialect/Scope/Transforms/Passes.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/Transform/Interfaces/TransformInterfaces.h"
+#include "mlir/IR/IRMapping.h"
+#include "mlir/IR/SymbolTable.h"
+#include "mlir/IR/Value.h"
+#include "mlir/Pass/Pass.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include <string>
+
+#define DEBUG_TYPE "outline-scope"
+#define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE "]: ")
+#define LDBG(X) LLVM_DEBUG(DBGS() << X << "\n")
+
+namespace mlir {
+#define GEN_PASS_DEF_OUTLINESCOPE
+#include "bishengir/Dialect/Scope/Transforms/Passes.h.inc"
+} // namespace mlir
+
+using namespace mlir;
+using namespace mlir::impl;
+namespace mlir {
+namespace scope {
+
+class OutlineScopePass : public OutlineScopeBase<OutlineScopePass> {
+public:
+  using OutlineScopeBase::OutlineScopeBase;
+  void runOnOperation() final;
+};
+
+class OutlineScopeOp : public OpRewritePattern<scope::ScopeOp> {
+  static bool isExternalToScope(ScopeOp scopeOp, Value val) {
+    if (auto blockArg = dyn_cast<BlockArgument>(val))
+      return !scopeOp->isAncestor(blockArg.getParentRegion()->getParentOp());
+    if (auto *defOp = val.getDefiningOp())
+      return !scopeOp->isAncestor(defOp);
+    return false;
+  }
+
+  static Operation *getConstantLikeDefiningOp(Value val) {
+    auto *defOp = val.getDefiningOp();
+    if (!defOp || !defOp->hasTrait<OpTrait::ConstantLike>()) {
+      return nullptr;
+    }
+    return defOp;
+  }
+
+  const bool outlineMarkedScopesOnly;
+
+  SmallVector<Value> getInputs(ScopeOp scopeOp) const {
+    SetVector<Value> inputs;
+    scopeOp.walk<WalkOrder::PreOrder>([&inputs, &scopeOp, this](Operation *op) {
+      for (auto &opr : op->getOpOperands()) {
+        auto val = opr.get();
+
+        // Skip if defined within scope
+        if (!isExternalToScope(scopeOp, val))
+          continue;
+
+        // External constants are cloned into the outlined function body, so
+        // they do not need to be modeled as function inputs.
+        if (getConstantLikeDefiningOp(val))
+          continue;
+
+        inputs.insert(val);
+      }
+    });
+    return inputs.takeVector();
+  }
+
+  // Mark inputs that are memref has offset with attribute: e.g. %2 =
+  // memref.reinterpret_cast %0 to offset :[%1] ...: memref<?xf32>
+
+  SetVector<Operation *> getExternalConstantLikeOps(ScopeOp scopeOp) const {
+    SetVector<Operation *> constants;
+    // Collect each external ConstantLike producer once so it can be cloned
+    // before the outlined body is replayed.
+    scopeOp.walk<WalkOrder::PreOrder>([&](Operation *op) {
+      for (Value val : op->getOperands()) {
+        if (!isExternalToScope(scopeOp, val))
+          continue;
+        if (Operation *constantOp = getConstantLikeDefiningOp(val))
+          constants.insert(constantOp);
+      }
+    });
+    return constants;
+  }
+
+  FailureOr<func::FuncOp> outlineScope(scope::ScopeOp scopeOp,
+                                       ArrayRef<Value> inputs,
+                                       PatternRewriter &rewriter) const {
+    ModuleOp moduleOp = scopeOp->getParentOfType<ModuleOp>();
+    func::FuncOp parF = scopeOp->getParentOfType<func::FuncOp>();
+    OpBuilder::InsertionGuard insGuard(rewriter);
+    rewriter.setInsertionPoint(parF);
+
+    const std::string prefixFunctionName =
+        scopeOp->getParentOfType<func::FuncOp>().getSymName().str() + "_scope";
+
+    FunctionType funcTy = FunctionType::get(
+        moduleOp.getContext(), TypeRange(inputs), scopeOp->getResultTypes());
+
+    func::FuncOp newFuncOp = rewriter.create<func::FuncOp>(
+        moduleOp->getLoc(), prefixFunctionName, funcTy, scopeOp->getAttrs());
+    // Transfer layout attribute from the defining op of an input to the
+    // outlined function argument, if present.
+    for (auto [idx, input] : llvm::enumerate(inputs)) {
+      if (isa<BlockArgument>(input)) {
+        continue;
+      }
+      auto defOp = input.getDefiningOp();
+      if (!defOp) {
+        continue;
+      }
+      if (auto attr = defOp->getAttr("hivm.fractal_layout")) {
+        newFuncOp.setArgAttr(idx, "hivm.fractal_layout", attr);
+      }
+    }
+
+    SymbolTable symbolTable(moduleOp);
+    FailureOr<StringAttr> scopeFuncName =
+        symbolTable.renameToUnique(newFuncOp, SmallVector<SymbolTable *>());
+    if (failed(scopeFuncName))
+      return failure();
+
+    // Create function body
+    Block *entryBB = newFuncOp.addEntryBlock();
+    rewriter.setInsertionPointToStart(entryBB);
+
+    // Clone operations and replace usages
+    LDBG("pushing outlined operations\n");
+    IRMapping currentMap;
+    for (auto [oldIn, newIn] :
+         llvm::zip_equal(inputs, entryBB->getArguments())) {
+      currentMap.map(oldIn, newIn);
+    }
+
+    // Materialize external constants first so cloned scope ops keep seeing
+    // constant values instead of extra outlined function arguments.
+    for (Operation *constantOp : getExternalConstantLikeOps(scopeOp)) {
+      auto *newConstOp = rewriter.clone(*constantOp, currentMap);
+      for (auto [oldRes, newRes] : llvm::zip_equal(
+               constantOp->getResults(), newConstOp->getResults())) {
+        currentMap.map(oldRes, newRes);
+      }
+    }
+
+    Operation *newScopeReturnOp = nullptr;
+    for (auto it = scopeOp.getRegion().op_begin();
+         it != scopeOp.getRegion().op_end(); ++it) {
+      Operation *op = &*it;
+      LLVM_DEBUG(llvm::dbgs() << "Cloning " << *op << "\n";);
+      auto *newOp = rewriter.clone(*op, currentMap);
+      if (isa<scope::ReturnOp>(op))
+        newScopeReturnOp = &*newOp;
+    }
+
+    if (!newScopeReturnOp)
+      return failure();
+
+    auto funcReturnOp = rewriter.create<func::ReturnOp>(
+        entryBB->front().getLoc(), newScopeReturnOp->getOperands());
+    rewriter.replaceOp(newScopeReturnOp, funcReturnOp);
+    LDBG("created FuncOp for outlined scope\n" << *newFuncOp);
+    return newFuncOp;
+  }
+
+  LogicalResult replaceScopeWithInvoke(scope::ScopeOp scopeOp,
+                                       func::FuncOp funcOp,
+                                       ArrayRef<Value> inputs,
+                                       PatternRewriter &rewriter) const {
+    LDBG("Replacing invoke with callOp");
+    rewriter.setInsertionPoint(scopeOp);
+
+    Location loc = scopeOp->getLoc();
+
+    // For SIMT scopes, wrap the call in an scf.if guard that checks
+    // get_sub_block_idx() == 0. Also apply this guard when sub-block tiling
+    // was reverted in TileAndBindSubBlockPass: the reverted function only
+    // produces valid results on sub-block 0, so the call must be guarded the
+    // same way as a SIMT scope.
+    auto mod = scopeOp->getParentOfType<ModuleOp>();
+    bool subBlockTilingReverted =
+        mod && mod->hasAttr(hivm::kTileAndBindSubBlockRevertedAttrName);
+    if (hivm::util::isSIMTVF(scopeOp) && subBlockTilingReverted) {
+      LDBG("Wrapping SIMT scope call in scf.if guard");
+
+      // Build condition: get_sub_block_idx() == 0
+      auto subBlockIdxOp =
+          rewriter.create<hivm::GetSubBlockIdxOp>(loc, rewriter.getI64Type());
+      Value subBlockIndex =
+          rewriter
+              .create<arith::IndexCastOp>(loc, rewriter.getIndexType(),
+                                          subBlockIdxOp.getResult())
+              .getResult();
+      Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
+      Value cond = rewriter.create<arith::CmpIOp>(loc, rewriter.getI1Type(),
+                                                  arith::CmpIPredicate::eq,
+                                                  subBlockIndex, zero);
+
+      // Create scf.if with the call inside
+      auto ifOp = rewriter.create<scf::IfOp>(loc, scopeOp->getResultTypes(),
+                                             cond, /*withElseRegion=*/false);
+      ifOp->setAttr("limit_sub_block_id0", rewriter.getUnitAttr());
+      rewriter.setInsertionPointToStart(ifOp.thenBlock());
+      rewriter.create<func::CallOp>(loc, funcOp, inputs);
+
+      // Replace scope op with if op results
+      rewriter.replaceOp(scopeOp, ifOp.getResults());
+    } else {
+      func::CallOp callOp = rewriter.create<func::CallOp>(loc, funcOp, inputs);
+      LDBG("created callOp: " << callOp);
+      rewriter.replaceOp(scopeOp, callOp);
+    }
+
+    return success();
+  }
+
+public:
+  explicit OutlineScopeOp(MLIRContext *context, bool outlineMarkedScopesOnly)
+      : OpRewritePattern<scope::ScopeOp>(context),
+        outlineMarkedScopesOnly(outlineMarkedScopesOnly) {}
+
+  LogicalResult matchAndRewrite(scope::ScopeOp scopeOp,
+                                PatternRewriter &rewriter) const override {
+    if (outlineMarkedScopesOnly && !scopeOp->hasAttr("outline"))
+      return failure();
+    SmallVector<Value> inputs = getInputs(scopeOp);
+    FailureOr<func::FuncOp> newFuncOp = outlineScope(scopeOp, inputs, rewriter);
+    if (failed(newFuncOp))
+      return failure();
+    if (failed(replaceScopeWithInvoke(scopeOp, newFuncOp.value(), inputs,
+                                      rewriter)))
+      return failure();
+    return success();
+  }
+};
+
+void OutlineScopePass::runOnOperation() {
+  ModuleOp module = getOperation();
+  RewritePatternSet patterns(&getContext());
+
+  patterns.add<OutlineScopeOp>(&getContext(), outlineMarkedScopesOnly);
+
+  if (failed(applyPatternsGreedily(module, std::move(patterns)))) {
+    signalPassFailure();
+  }
+}
+
+std::unique_ptr<Pass>
+createOutlineScopePass(const OutlineScopeOptions &options) {
+  return std::make_unique<OutlineScopePass>(options);
+}
+
+} // namespace scope
+} // namespace mlir

@@ -1,0 +1,181 @@
+[
+  {
+    "round_index": 1,
+    "round_dir": "opt-round-1",
+    "algorithm": "mcts",
+    "direction": "pattern: custom",
+    "hypothesis": "Initial LLM-driven exploration for chunk_gated_delta_fwd_h optimization",
+    "evidence_sources": [
+      "model_knowledge"
+    ],
+    "analysis_policy": "pattern_entry",
+    "effective_metric_source": "kernel",
+    "status": "success",
+    "best_speedup": 0.0,
+    "round_strategy": "exploration",
+    "direction_yield": "high",
+    "yield_reason": "target_reached",
+    "absolute_gain_vs_baseline": 0.0,
+    "absolute_gain_vs_global_baseline": 4.6991,
+    "baseline_dir": "global_baseline",
+    "global_baseline_dir": "global_baseline",
+    "global_baseline_speedup": 1.0,
+    "consecutive_low_gain_count": 0,
+    "round_type": "active",
+    "target_speedup": 5
+  },
+  {
+    "round_index": 2,
+    "round_dir": "opt-round-2",
+    "algorithm": "mcts",
+    "direction": "V-tile (BV) size correction for chunk-recurrence kernel: uniform BV=min(64,V) replacing parent cs-dependent heuristic (BV=64 if BT<=64 else 32)",
+    "hypothesis": "MCTS expands high-reward node opt-round-1 (mean reward 1.7403, visits 1). Parent used hand-tuned BV heuristic (BV=64 when BT<=64 else 32) which leaves headroom on chunk_size=128 shapes. Empirical sweep over all 8 shapes shows BV=64 is fastest on every shape incl. cs=128; fix = uniform BV=min(64,V).",
+    "evidence_sources": [
+      "mcts_tree"
+    ],
+    "analysis_policy": "pattern_entry",
+    "effective_metric_source": "kernel",
+    "status": "success",
+    "best_speedup": 7.3312,
+    "round_strategy": "exploration",
+    "consecutive_low_gain_count": 0,
+    "round_type": "active",
+    "target_speedup": 5,
+    "direction_yield": "high",
+    "yield_reason": "target_reached",
+    "absolute_gain_vs_baseline": 0.0,
+    "absolute_gain_vs_global_baseline": 6.3312,
+    "baseline_dir": "opt-round-1",
+    "global_baseline_dir": "global_baseline",
+    "global_baseline_speedup": 1.0,
+    "design_summary": "Round 2 MCTS expansion of opt-round-1. Fused chunk-recurrence kernel body preserved byte-for-byte; host V-tile BV made uniform BV=min(64,V). Offline empirical BV sweep of the actual parent kernel over all 8 task shapes (dense+varlen, cs 64/128) disproved the parent cs-dependent heuristic: BV=64 is fastest on EVERY shape, giving 1.46-1.72x on the four cs=128 cases where parent ran BV=32.",
+    "iter_count": 1,
+    "opt_iter_count": 1,
+    "key_fixes": [
+      "Replaced parent BV heuristic '64 if BT<=64 else 32' with uniform BV=min(64,V)",
+      "Kept D6 min() guard and V%BV==0 assertion; all shapes V=128 -> BV=64, NVT=2",
+      "Preserved fp32-ieee dot precision and multibuffer=True/unit_flag=True launch (D7)"
+    ],
+    "bottlenecks_observed": [
+      "cs=128 shapes were V-tile-suboptimal (BV=32) in parent: only 2.9-3.5x per-shape speedup",
+      "BV=128 never faster than BV=64 (UB pressure, D5)",
+      "Triton-Ascend num_warps/num_stages autotune unsupported; manual BV autotune reproduces BV=64 with ~7s/shape runtime cost -> not used",
+      "Residual cost is inherent serial chunk recurrence (grid parallelized by B*HV*NVT)"
+    ]
+  },
+  {
+    "round_index": 3,
+    "round_dir": "opt-round-3",
+    "algorithm": "mcts",
+    "direction": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset)",
+    "hypothesis": "MCTS virtual-root pending expansion: independently reconstruct the proven fused chunk-recurrence GDN fwd-H kernel (matching freeze-anchored 6402eb golden semantics, NOT the broken 0c4c01 global baseline), then optimize toward 5x.",
+    "evidence_sources": [
+      "mcts_tree"
+    ],
+    "analysis_policy": "pattern_entry",
+    "effective_metric_source": "kernel",
+    "status": "success",
+    "best_speedup": 6.9508,
+    "round_strategy": "exploration",
+    "consecutive_low_gain_count": 0,
+    "round_type": "active",
+    "target_speedup": 5,
+    "direction_yield": "high",
+    "yield_reason": "target_reached",
+    "absolute_gain_vs_baseline": 0.0,
+    "absolute_gain_vs_global_baseline": 5.9508,
+    "baseline_dir": "global_baseline",
+    "global_baseline_dir": "global_baseline",
+    "global_baseline_speedup": 1.0,
+    "design_summary": "Independent reconstruction of the fused chunk-recurrence GDN fwd-H kernel against the 6402eb golden: S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split (num_seq*HV, 2), GQA head-group select, in-kernel varlen seq-prefix chunk offsets, multibuffer/unit_flag launch, fp32-ieee dots. Verify 8/8; geomean 6.95x (target 5x reached).",
+    "iter_count": 1,
+    "opt_iter_count": 1,
+    "key_fixes": [
+      "Re-anchored baseline golden to sha 6402eb (working); global_baseline 0c4c01 torch golden is broken on varlen crash / dense NaN",
+      "In-kernel serial prefix over cu_seqlens for varlen chunk offsets (removed host python for-loop + list.append to satisfy AST Type-3 gate)",
+      "SAFE_CLAMP passed as tl.constexpr (python global not accessible inside @jit)",
+      "int32 scalar loop accumulator for varlen boh (avoid int32->int64 loop-carried type error)",
+      "opt point 1: K,V declared tl.constexpr to fold inner-dim masks (6.87x -> 6.95x)"
+    ],
+    "bottlenecks_observed": [
+      "weakest shapes cases 3/4 (dense B=1,HV=48,T=8192): only 96 programs -> parallel-program-count bound ~4.7x (not addressable without breaking serial recurrence)",
+      "varlen heavy shapes (T=32768) impl 8-14 ms dominated by serial chunk count (256-512 chunks/program)"
+    ]
+  },
+  {
+    "round_index": 4,
+    "round_dir": "opt-round-4",
+    "algorithm": "mcts",
+    "direction": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, GQA head-group index-select, in-kernel varlen seq-prefix chunk offset) — R4 MCTS continuation of the R3 champion (0d543b7e)",
+    "hypothesis": "MCTS expands from node opt-round-3 (mean reward 1.9389, visits 1); R4 re-verifies the R3 champion in a fresh work_dir against the freeze-anchored 6402eb golden and probes the one untested launch variable (num_warps) plus re-confirms the exhaustive 31-point scan has no safe lever on the serial chunk recurrence.",
+    "evidence_sources": [
+      "mcts_tree"
+    ],
+    "analysis_policy": "pattern_entry",
+    "effective_metric_source": "kernel",
+    "status": "success",
+    "best_speedup": 7.1132,
+    "round_strategy": "exploration",
+    "consecutive_low_gain_count": 0,
+    "round_type": "active",
+    "target_speedup": 5,
+    "direction_yield": "high",
+    "yield_reason": "target_reached",
+    "absolute_gain_vs_baseline": 0.0,
+    "absolute_gain_vs_global_baseline": 6.1132,
+    "baseline_dir": "opt-round-3",
+    "global_baseline_dir": "global_baseline",
+    "global_baseline_speedup": 1.0,
+    "design_summary": "R4 MCTS continuation of the R3 champion (sha 0d543b7e): re-anchored baseline to the 6402eb golden in a fresh work_dir, verify 8/8, geomean 7.1132x (target 5x reached). One Phase-4 probe (num_warps 4->8) regressed to 6.79x and was reverted; lever re-analysis confirms the serial chunk recurrence is at its per-step bound and the grid is maximal-safe.",
+    "iter_count": 1,
+    "opt_iter_count": 1,
+    "key_fixes": [
+      "Re-anchored baseline to 6402eb golden in R4 work_dir (freeze mode=user, sha check passed)",
+      "num_warps=8 probe: verify 8/8 but benchmark geomean 6.79x < 7.1132x anchor -> reverted to num_warps=4 (confirms R2/R3 experience: nw=4 optimal)",
+      "Re-confirmed R3 exhaustive 31-point scan has no clean hit on the serial recurrence; per-chunk-step cost uniform (~0.43-1.2us) across dense+varlen -> recurrence-bound"
+    ],
+    "bottlenecks_observed": [
+      "weakest shapes cases 3/4 (dense B=1,HV=48,T=8192): 96 programs -> parallel-program-count bound ~4.7-4.9x; T/chunk axis is strict serial recurrence so it cannot be split safely",
+      "varlen heavy shapes (T=32768) impl 8-14 ms dominated by serial chunk count (256-512 chunks/program)",
+      "num_warps=8 adds per-program sync cost on serial-heavy cases (-8.5% to -9.7% on cases 7/8)"
+    ]
+  },
+  {
+    "round_index": 5,
+    "round_dir": "opt-round-5",
+    "algorithm": "mcts",
+    "direction": "pattern: custom fused chunk-recurrence GDN fwd-H kernel (S[K=128,BV=64] fp32 register-resident, serial in-kernel chunk loop, V-tile grid split, in-kernel GQA key-head map, in-kernel varlen seq-prefix chunk offset) - R5 root-expansion re-anchor vs 6402eb golden; Phase-4 probe multibuffer=False",
+    "hypothesis": "MCTS selects the virtual root for a new expansion. R5 independently re-anchors the documented champion fused chunk-recurrence recipe against the freeze-anchored 6402eb golden (fresh reproducibility anchor under root), then probes ONE genuinely untested launch variable (multibuffer False) to add a new data point.",
+    "evidence_sources": [
+      "mcts_tree"
+    ],
+    "analysis_policy": "pattern_entry",
+    "effective_metric_source": "kernel",
+    "status": "success",
+    "best_speedup": 7.2335,
+    "round_strategy": "exploration",
+    "consecutive_low_gain_count": 0,
+    "round_type": "active",
+    "target_speedup": 5,
+    "direction_yield": null,
+    "yield_reason": null,
+    "absolute_gain_vs_baseline": null,
+    "absolute_gain_vs_global_baseline": null,
+    "baseline_dir": null,
+    "global_baseline_dir": "global_baseline",
+    "global_baseline_speedup": 1.0,
+    "design_summary": "Third MCTS root child: independently re-anchored the champion fused chunk-recurrence GDN fwd-H recipe (S[K=128,BV=64] fp32, serial chunk loop, V-tile grid, in-kernel GQA key-head map, in-kernel varlen prefix) against the freeze-anchored 6402eb golden in a fresh work_dir. AST Type-3 gate required moving the GQA host index_select into the kernel (k_head from pid). Verify 8/8; geomean 7.2335x (target 5x reached). One Phase-4 probe (multibuffer=False) regressed to 6.8053x and was reverted; multibuffer=True confirmed optimal.",
+    "iter_count": 1,
+    "opt_iter_count": 1,
+    "key_fixes": [
+      "Re-anchored baseline to the working 6402eb golden (mode=auto root-expansion reconstruction); global_baseline 0c4c01 is the known-broken varlen/NaN variant and was not used",
+      "Moved GQA key-head map into the kernel (k_head derived from pid) to satisfy the AST Type-3 gate - no host torch.index_select",
+      "Phase-4 multibuffer=False probe: verify 8/8, benchmark 6.8053x < 7.2335x anchor (-5.9%) -> reverted; multibuffer=True confirmed optimal"
+    ],
+    "bottlenecks_observed": [
+      "weak shapes cases 3/4 (B=1,HV=48,T=8192): 96 programs -> parallel-program-count bound ~4.9x; T/chunk axis is strict serial recurrence",
+      "varlen heavy shapes (T=32768, cs 64/128) impl 5.7-6.2x, dominated by serial chunk count (256-512 chunks/program)",
+      "multibuffer=False regresses serial-heavy shapes (no double-buffer prefetch overlap)"
+    ]
+  }
+]

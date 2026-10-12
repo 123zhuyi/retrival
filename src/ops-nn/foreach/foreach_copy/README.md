@@ -1,0 +1,76 @@
+# ForeachCopy
+
+## 产品支持情况
+
+|产品             |  是否支持  |
+|:-------------------------|:----------:|
+|  <term>Ascend 950PR/Ascend 950DT</term>   |     √    |
+|  <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>   |     ×    |
+|  <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |     √    |
+|  <term>Atlas 200I/500 A2 推理产品</term>    |     ×    |
+|  <term>Atlas 推理系列产品</term>    |     ×    |
+|  <term>Atlas 训练系列产品</term>    |     ×    |
+|  <term>Kirin X90 处理器系列产品</term> | √ |
+|  <term>Kirin 9030 处理器系列产品</term> | √ |
+
+## 功能说明
+
+- 算子功能：用于实现两个张量列表内容的复制。
+
+- 计算公式：
+
+  $$
+  x = [{x_0}, {x_1}, ... {x_{n-1}}]\\
+  y = [{y_0}, {y_1}, ... {y_{n-1}}]\\
+  $$
+
+  $$
+  {\rm y}_i = x_i (i=0,1,...n-1)
+  $$
+
+## 参数说明
+
+<table style="undefined;table-layout: fixed; width: 1005px"><colgroup>
+  <col style="width: 170px">
+  <col style="width: 170px">
+  <col style="width: 352px">
+  <col style="width: 213px">
+  <col style="width: 100px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>参数名</th>
+      <th>输入/输出/属性</th>
+      <th>描述</th>
+      <th>数据类型</th>
+      <th>数据格式</th>
+    </tr></thead>
+  <tbody>
+    <tr>
+      <td>x</td>
+      <td>输入</td>
+      <td>表示进行内容复制的输入张量列表，对应公式中的`x`。该参数中所有Tensor的数据类型保持一致。</td>
+      <td>FLOAT32、FLOAT16、INT32、BFLOAT16、INT8、UINT8、INT16、UINT16、UINT32、INT64、DOUBLE、BOOL</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>y</td>
+      <td>输出</td>
+      <td><ul><li>表示进行内容复制的输出张量列表，对应公式中的`y`。</li><li>数据格式与入参`x`的数据格式一致，shape size大于等于入参`x`的shape size。</li><li>该参数中所有Tensor的数据类型保持一致。</li><li>数据类型与入参`x`的数据类型存在一定的对应关系：<ul><li>当入参`x`的数据类型为FLOAT32时，输出的数据类型支持FLOAT16或者BFLOAT16。</li><li>当入参`x`的数据类型为FLOAT16时，输出的数据类型支持FLOAT32。</li><li>当输入`x`的数据类型不为FLOAT32或者FLOAT16时，输出的数据类型需要与输入`x`的数据类型保持一致。</li></ul></li></ul></td>
+      <td>FLOAT32、FLOAT16、INT32、BFLOAT16、INT8、UINT8、INT16、UINT16、UINT32、INT64、DOUBLE、BOOL</td>
+      <td>ND</td>
+    </tr>
+  </tbody></table>
+
+- <term>Kirin X90 处理器系列产品</term>、<term>Kirin 9030 处理器系列产品</term>：不支持BFLOAT16。
+
+## 约束说明
+
+- 输出不支持非连续Tensor。
+
+## 调用说明
+
+| 调用方式   | 样例代码           | 说明                                         |
+| ---------------- | --------------------------- | --------------------------------------------------- |
+| aclnn接口  | [test_aclnn_foreach_copy](examples/test_aclnn_foreach_copy.cpp) | 通过[aclnnForeachCopy](docs/aclnnForeachCopy.md)接口方式调用ForeachCopy算子。 |
+| 图模式 | -  | 通过[算子IR](op_graph/foreach_copy_proto.h)构图方式调用ForeachCopy算子。         |

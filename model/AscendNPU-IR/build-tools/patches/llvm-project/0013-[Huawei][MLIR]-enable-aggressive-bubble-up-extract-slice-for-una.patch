@@ -1,0 +1,144 @@
+diff --git a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+index 2fdca2126b66..ff2a104cf3f6 100644
+--- a/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
++++ b/mlir/include/mlir/Dialect/Linalg/Transforms/Transforms.h
+@@ -1725,8 +1725,19 @@ void populateMoveInitOperandsToInputPattern(RewritePatternSet &patterns);
+ /// Patterns that are used to inline constant operands into linalg generic ops.
+ void populateInlineConstantOperandsPatterns(RewritePatternSet &patterns);
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++struct BubbleUpExtractSliceOptions {
++  bool aggressive{false};
++};
++
++/// Patterns that are used to bubble up extract slice op above linalg op.
++void populateBubbleUpExtractSliceOpPatterns(
++    RewritePatternSet &patterns,
++    const BubbleUpExtractSliceOptions &options = {});
++#else
+ /// Patterns that are used to bubble up extract slice op above linalg op.
+ void populateBubbleUpExtractSliceOpPatterns(RewritePatternSet &patterns);
++#endif
+ 
+ /// Adds patterns that waps tensor.extract_slice(linalg.fill(%cst, %init)) into
+ /// linalg.fill(%cst, tensor.extract_slice(%init)).
+diff --git a/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h b/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h
+index 84d06d456bb6..120c67676c93 100644
+--- a/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h
++++ b/mlir/include/mlir/Dialect/Tensor/Utils/Utils.h
+@@ -60,6 +60,10 @@ bool isCastLikeInsertSliceOp(InsertSliceOp op);
+ /// unit dimensions of the source tensor or extracts the entire source tensor.
+ bool isCastLikeExtractSliceOp(ExtractSliceOp op);
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++bool isOffsetBytesAligned(ExtractSliceOp op, int64_t bytesToAlign);
++#endif
++
+ } // namespace tensor
+ } // namespace mlir
+ 
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index 428422e6e875..9b9daa26258e 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -47,6 +47,11 @@ struct BubbleUpExtractSliceOpPattern
+     : OpRewritePattern<tensor::ExtractSliceOp> {
+   using OpRewritePattern<tensor::ExtractSliceOp>::OpRewritePattern;
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++private:
++  BubbleUpExtractSliceOptions options;
++#endif
++
+   LogicalResult matchAndRewrite(tensor::ExtractSliceOp sliceOp,
+                                 PatternRewriter &rewriter) const final {
+     Value source = sliceOp.getSource();
+@@ -56,12 +61,21 @@ struct BubbleUpExtractSliceOpPattern
+                                          "expected source to be linalg op");
+     }
+ 
++#if BSPUB_DAVINCI_BISHENGIR
++    if (!linalgOp->hasOneUse() &&
++        (!options.aggressive || tensor::isOffsetBytesAligned(sliceOp, 32))) {
++      return rewriter.notifyMatchFailure(
++          sliceOp, "expected single use of linalg op or aggressive bubble up "
++                   "for unaligned extract slice");
++    }
++#else
+     // TODO: we might relax this if we want heuristics to detect that all uses
+     // are small portion of the output.
+     if (!linalgOp->hasOneUse()) {
+       return rewriter.notifyMatchFailure(sliceOp,
+                                          "expected single use of linalg op");
+     }
++#endif
+ 
+     if (linalgOp.getNumDpsInits() != 1) {
+       return rewriter.notifyMatchFailure(sliceOp,
+diff --git a/mlir/lib/Dialect/Tensor/Utils/Utils.cpp b/mlir/lib/Dialect/Tensor/Utils/Utils.cpp
+index 8909c5879774..d5a2cea00ca0 100644
+--- a/mlir/lib/Dialect/Tensor/Utils/Utils.cpp
++++ b/mlir/lib/Dialect/Tensor/Utils/Utils.cpp
+@@ -175,3 +175,61 @@ bool mlir::tensor::isCastLikeExtractSliceOp(ExtractSliceOp op) {
+ 
+   return true;
+ }
++
++#if BSPUB_DAVINCI_BISHENGIR
++static bool hasNonOneStride(const SmallVector<OpFoldResult> &strides) {
++  return llvm::any_of(strides, [](OpFoldResult ofr) {
++    auto intMaybe = getConstantIntValue(ofr);
++    if (!intMaybe.has_value()) {
++      return true;
++    }
++    return intMaybe.value() != 1;
++  });
++}
++
++bool mlir::tensor::isOffsetBytesAligned(tensor::ExtractSliceOp sliceOp,
++                                        int64_t bytesToAlign) {
++  TensorType srcType = cast<TensorType>(sliceOp.getSource().getType());
++  unsigned elemSizeInBytes = srcType.getElementTypeBitWidth() / 8;
++
++  SmallVector<OpFoldResult> offsets = sliceOp.getMixedOffsets();
++  SmallVector<OpFoldResult> sizes = sliceOp.getMixedOffsets();
++  SmallVector<OpFoldResult> strides = sliceOp.getMixedStrides();
++  if (offsets.empty()) {
++    // no offset means zero offset, i.e. aligned
++    return true;
++  }
++  if (hasNonOneStride(strides)) {
++    // strides should only be one
++    return false;
++  }
++  ShapedType shapeType = llvm::cast<ShapedType>(sliceOp.getSource().getType());
++  ArrayRef<int64_t> shapes = shapeType.getShape();
++
++  // init accumOffset to 0
++  // init accumShape to 1
++  // accumOffset[i] = accumOffset[i+1] + offsets[i] * accumShape[i+1]
++  int64_t accumShape = 1;
++  int64_t accumOffset = 0;
++  for (int idx = offsets.size() - 1; idx >= 0; idx--) {
++    auto offsetMaybe = getConstantIntValue(offsets[idx]);
++    if (!offsetMaybe.has_value()) {
++      // offset must be constant to check alignment
++      return false;
++    }
++    int64_t curDimOffset = offsetMaybe.value();
++    accumOffset = accumOffset + curDimOffset * accumShape;
++    if ((accumOffset * elemSizeInBytes) % bytesToAlign != 0) {
++      // accum offset must be bytes aligned
++      return false;
++    }
++    int64_t curShape = shapes[idx];
++    if (ShapedType::isDynamic(curShape)) {
++      // shape size must be constant to check alignment
++      return false;
++    }
++    accumShape = accumShape * curShape;
++  }
++  return true;
++}
++#endif
+\ No newline at end of file

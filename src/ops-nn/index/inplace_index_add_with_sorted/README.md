@@ -1,0 +1,100 @@
+# InplaceIndexAddWithSorted
+
+## 产品支持情况
+
+| 产品                                                         | 是否支持 |
+| :----------------------------------------------------------- | :------: |
+| <term>Ascend 950PR/Ascend 950DT</term>                          |    √   |
+| <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>     |    √     |
+| <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>     |    √     |
+| <term>Atlas 200I/500 A2 推理产品</term>                      |    ×     |
+| <term>Atlas 推理系列产品</term>                             |    ×     |
+| <term>Atlas 训练系列产品</term>                              |    ×   |
+| <term>Kirin X90 处理器系列产品</term>                        |    √   |
+| <term>Kirin 9030 处理器系列产品</term>                       |    √   |
+
+## 功能说明
+
+- 算子功能：将alpha和value相乘，并按照sorted_indices中的顺序，累加到var张量的指定axis维度中。
+
+- 计算公式：
+
+  $$
+  var[indices]+= alpha * updates
+  $$
+
+## 参数说明
+
+<table style="undefined;table-layout: fixed; width: 1250px"><colgroup>
+  <col style="width: 60px">
+  <col style="width: 60px">
+  <col style="width: 200px">
+  <col style="width: 150px">
+  <col style="width: 60px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>参数名</th>
+      <th>输入/输出/属性</th>
+      <th>描述</th>
+      <th>数据类型</th>
+      <th>数据格式</th>
+    </tr></thead>
+  <tbody>
+    <tr>
+      <td>var</td>
+      <td>输入/输出</td>
+      <td>公式中的`var`，表示待被累加的张量。</td>
+      <td>FLOAT、FLOAT16、BFLOAT16、INT32、INT16</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>value</td>
+      <td>输入</td>
+      <td>公式中的`updates`，表示需要加到var上的张量。</td>
+      <td>FLOAT、FLOAT16、BFLOAT16、INT32、INT16</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>sorted_indices</td>
+      <td>输入</td>
+      <td>公式中的`indices`，表示经过排序后的索引。</td>
+      <td>INT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>pos</td>
+      <td>输入</td>
+      <td>表示排序后的索引在原索引序列中的位置。</td>
+      <td>INT32</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>alpha</td>
+      <td>可选输入</td>
+      <td><ul><li>公式中的`alpha`，表示对value的缩放，与value相乘后再累加至var。</li><li>默认值为1.0。</li></ul></td>
+      <td>FLOAT、INT32、INT16</td>
+      <td>ND</td>
+    </tr>
+    <tr>
+      <td>axis</td>
+      <td>属性</td>
+      <td><ul><li>表示指定var在哪一轴相加。</li><li>当前仅支持0。</li></ul></td>
+      <td>int64_t</td>
+      <td>-</td>
+    </tr>
+  </tbody></table>
+
+- Kirin X90/Kirin 9030 处理器系列产品：var和value的数据类型不支持BFLOAT16。
+- Ascend 950PR/Ascend 950DT：var和value的数据类型仅支持FLOAT16和BFLOAT16，alpha的数据类型仅支持FLOAT。
+
+## 约束说明
+
+无
+
+## 调用说明
+
+| 调用方式 | 调用样例                                                                   | 说明                                                           |
+|--------------|------------------------------------------------------------------------|--------------------------------------------------------------|
+| 图模式调用 | [test_geir_inplace_index_add_with_sorted](./examples/test_geir_inplace_index_add_with_sorted.cpp) | 通过[算子IR](./op_graph/inplace_index_add_with_sorted_proto.h)构图方式调用InplaceIndexAddWithSorted算子。 |
+| aclnn调用 | [test_aclnn_index_add](../inplace_scatter_add/examples/test_aclnn_index_add.cpp) | 通过[aclnnIndexAdd](../inplace_scatter_add/docs/aclnnIndexAdd.md)接口方式调用InplaceIndexAddWithSorted算子。 |

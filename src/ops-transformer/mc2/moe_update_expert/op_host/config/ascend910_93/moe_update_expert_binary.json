@@ -1,0 +1,207 @@
+{
+    "op_type": "MoeUpdateExpert",
+    "op_list": [
+        {
+            "bin_filename": "MoeUpdateExpert_int32",
+            "inputs": [
+            {
+                "name": "expert_ids",
+                "index": 0,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "eplb_table",
+                "index": 1,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "expert_scales",
+                "index": 2,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "pruning_threshold",
+                "index": 3,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "active_mask",
+                "index": 4,
+                "dtype": "bool",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            }
+            ],
+            "outputs": [
+            {
+                "name": "balanced_expert_ids",
+                "index": 0,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "balanced_active_mask",
+                "index": 1,
+                "dtype": "bool",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            }
+            ],
+            "attrs": [
+            {
+                "name": "local_rank_id",
+                "dtype": "int",
+                "value": -1
+            },
+            {
+                "name": "world_size",
+                "dtype": "int",
+                "value": -1
+            },
+            {
+                "name": "balance_mode",
+                "dtype": "int",
+                "value": 0
+            }
+            ]
+        },
+        {
+            "bin_filename": "MoeUpdateExpert_int64",
+            "inputs": [
+            {
+                "name": "expert_ids",
+                "index": 0,
+                "dtype": "int64",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "eplb_table",
+                "index": 1,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "expert_scales",
+                "index": 2,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "pruning_threshold",
+                "index": 3,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "active_mask",
+                "index": 4,
+                "dtype": "bool",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            }
+            ],
+            "outputs": [
+            {
+                "name": "balanced_expert_ids",
+                "index": 0,
+                "dtype": "int64",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "balanced_active_mask",
+                "index": 1,
+                "dtype": "bool",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            }
+            ],
+            "attrs": [
+            {
+                "name": "local_rank_id",
+                "dtype": "int",
+                "value": -1
+            },
+            {
+                "name": "world_size",
+                "dtype": "int",
+                "value": -1
+            },
+            {
+                "name": "balance_mode",
+                "dtype": "int",
+                "value": 0
+            }
+            ]
+        }
+    ]
+}

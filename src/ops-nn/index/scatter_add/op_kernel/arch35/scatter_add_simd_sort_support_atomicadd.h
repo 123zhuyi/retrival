@@ -1,0 +1,396 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License")
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file scatter_add_simd_sort_support_atomicadd.h
+ * \brief simd kernel of scatter_add
+ */
+
+#ifndef SCATTER_ADD_SIMD_SORT_SUPPORT_ATOMICADD_H
+#define SCATTER_ADD_SIMD_SORT_SUPPORT_ATOMICADD_H
+
+#include "scatter_add_common.h"
+
+namespace ScatterAdd {
+using namespace AscendC;
+using namespace ScatterAddCommon;
+
+constexpr uint32_t SORT_PADDING = 64;
+constexpr AscendC::Reg::CastTrait castTraitU32U16 = {AscendC::Reg::RegLayout::ZERO, AscendC::Reg::SatMode::NO_SAT,
+                                                     AscendC::Reg::MaskMergeMode::ZEROING};
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+class ScatterAddSIMDSortSupportAtomicAdd {
+public:
+    __aicore__ inline ScatterAddSIMDSortSupportAtomicAdd(const ScatterAddTilingData& tilingData, TPipe& pipe)
+        : tilingData_(tilingData), pipe_(pipe){};
+    __aicore__ inline void Init(GM_ADDR var, GM_ADDR indices, GM_ADDR updates, GM_ADDR varRef, GM_ADDR workspace);
+    __aicore__ inline void Compute();
+    __aicore__ inline void Process();
+    __aicore__ inline uint32_t ProcessIndices(uint64_t blockOffsetindices, uint64_t rowLoop, uint32_t rows);
+    __aicore__ inline void ComputeUpdatesSum(uint64_t cols, uint64_t colsAlign, uint32_t uniqueIdNum);
+    __aicore__ inline void CopyResToGm(uint32_t cols, uint32_t colsAlign, uint64_t ubOffset, uint32_t& uniqueIdNum);
+
+    template <typename VGatherIndexDType>
+    __aicore__ inline void ComputeUpdatesSumRegbase(uint64_t cols, uint64_t colsAlign, uint32_t uniqueIdNum);
+
+private:
+    AscendC::GlobalTensor<T> varGm_;
+    AscendC::GlobalTensor<U> indicesGm_;
+    AscendC::GlobalTensor<T> updatesGm_;
+    AscendC::GlobalTensor<T> varRefGm_;
+
+    TQue<QuePosition::VECIN, 1> updatesQueue_;
+    TQue<QuePosition::VECIN, 1> indicesQueue_;
+    TQue<QuePosition::VECOUT, 1> outQueueRes_;
+    TBuf<QuePosition::VECCALC> castIndicesQue_;
+    TBuf<QuePosition::VECCALC> sortIndicesQue_;
+    TBuf<QuePosition::VECCALC> updatesOriginIdexQue_;
+    TBuf<QuePosition::VECCALC> uniqueIdCountQue_;
+
+    TPipe& pipe_;
+    const ScatterAddTilingData& tilingData_;
+
+    static constexpr uint32_t shiftOffset_ = platform::GetUbBlockSize() / sizeof(CAST_T);
+    static constexpr uint32_t vfLenUpdate_ = VECTOR_LENGTH / sizeof(T);
+};
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+__aicore__ inline void ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType, scatterOp>::Init(
+    GM_ADDR var, GM_ADDR indices, GM_ADDR updates, GM_ADDR varRef, GM_ADDR workspace)
+{
+    varRefGm_.SetGlobalBuffer((__gm__ T*)(varRef));
+    indicesGm_.SetGlobalBuffer((__gm__ U*)(indices));
+    updatesGm_.SetGlobalBuffer((__gm__ T*)(updates));
+
+    pipe_.InitBuffer(indicesQueue_, 1, ops::CeilAlign(tilingData_.ubFactorRow * sizeof(U), UB_AGLIN_VALUE));
+    pipe_.InitBuffer(updatesQueue_, 1,
+                     ops::CeilAlign(tilingData_.ubFactorRow * tilingData_.ubFactorCol * sizeof(T), UB_AGLIN_VALUE));
+    pipe_.InitBuffer(outQueueRes_, 1, tilingData_.ubFactorRow * tilingData_.ubFactorCol * sizeof(T));
+    pipe_.InitBuffer(updatesOriginIdexQue_, ops::CeilAlign(tilingData_.ubFactorRow * sizeof(uint32_t), UB_AGLIN_VALUE));
+    pipe_.InitBuffer(uniqueIdCountQue_,
+                     ops::CeilAlign(tilingData_.ubFactorRow * sizeof(int32_t), UB_AGLIN_VALUE) + SORT_PADDING);
+    if constexpr (castType == CAST_0) {
+        pipe_.InitBuffer(sortIndicesQue_,
+                         ops::CeilAlign(tilingData_.ubFactorRow * sizeof(U), UB_AGLIN_VALUE) + SORT_PADDING);
+    } else {
+        pipe_.InitBuffer(sortIndicesQue_,
+                         ops::CeilAlign(tilingData_.ubFactorRow * sizeof(CAST_T), UB_AGLIN_VALUE) + SORT_PADDING);
+        pipe_.InitBuffer(castIndicesQue_, ops::CeilAlign(tilingData_.ubFactorRow * sizeof(CAST_T), UB_AGLIN_VALUE));
+    }
+}
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+__aicore__ inline uint32_t ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType,
+                                                              scatterOp>::ProcessIndices(uint64_t blockOffsetindices,
+                                                                                         uint64_t rowLoop,
+                                                                                         uint32_t rows)
+{
+    LocalTensor<U> indicesLocal = indicesQueue_.AllocTensor<U>();
+    CopyIn(indicesLocal, indicesGm_, blockOffsetindices + rowLoop * tilingData_.ubFactorRow, 1, rows);
+    indicesQueue_.EnQue<U>(indicesLocal);
+
+    indicesLocal = indicesQueue_.DeQue<U>();
+    LocalTensor<uint32_t> updatesOriginIdxLocal = updatesOriginIdexQue_.Get<uint32_t>();
+    LocalTensor<int32_t> uniqueIdCountLocal = uniqueIdCountQue_.Get<int32_t>();
+    LocalTensor<CAST_T> indicesSortedLocal = sortIndicesQue_.Get<CAST_T>();
+
+    uint32_t uniqueIdNum = 0;
+    if constexpr (castType == CAST_0) {
+        uniqueIdNum = SortAndComputeUniqueIdx<U>(rows, indicesLocal, indicesSortedLocal, uniqueIdCountLocal,
+                                                 updatesOriginIdxLocal);
+    } else {
+        LocalTensor<CAST_T> indicesCastLocal = castIndicesQue_.Get<CAST_T>();
+        IndicesSortCast<U, CAST_T, castType>(indicesLocal, indicesCastLocal, uniqueIdCountLocal, rows);
+        uniqueIdNum = SortAndComputeUniqueIdx<CAST_T>(rows, indicesCastLocal, indicesSortedLocal, uniqueIdCountLocal,
+                                                      updatesOriginIdxLocal);
+    }
+
+    ComputeUniqueIdTimes(uniqueIdCountLocal, uniqueIdNum); // 计算每个indices的重复度存放于uniqueIdCountLocal
+    indicesQueue_.FreeTensor(indicesLocal);
+
+    return uniqueIdNum;
+}
+
+template <typename T, typename VGatherIndexDType, typename VGatherIndexDTypeInt>
+__simd_callee__ inline void ProcessPerUpdateGroup(__ubuf__ T* updatesLocalAddr, __ubuf__ T* resLocalAddr,
+                                                  Reg::MaskReg& maskRegUpdate,
+                                                  Reg::RegTensor<VGatherIndexDTypeInt>& serReg, Reg::AddrReg& addrReg,
+                                                  updateAddParams& params)
+{
+    if constexpr (IsSameType<VGatherIndexDType, uint16_t>::value) {
+        Reg::RegTensor<VGatherIndexDType> initIdsReg, idsReg;
+        Reg::RegTensor<VGatherIndexDType> initIdsReg1;
+        Reg::RegTensor<uint32_t> tmReg;
+        Reg::RegTensor<T> gatherOut;
+        Reg::RegTensor<int16_t> gatherOutInt16; // 用于int8转int16
+        Reg::RegTensor<T> outReg;
+        Reg::MaskReg maskReg = Reg::CreateMask<T, Reg::MaskPattern::ALL>();
+        Reg::MaskReg maskRegU32 = Reg::CreateMask<uint32_t, Reg::MaskPattern::ALL>();
+
+        Reg::Duplicate(outReg, (T)0, maskReg);
+        for (uint16_t pIdx = 0; pIdx < params.segCount; ++pIdx) {
+            Reg::LoadAlign<uint32_t, Reg::LoadDist::DIST_BRC_B32>(tmReg,
+                                                                  params.sortedIdxAddr + (params.outGmIndex + pIdx));
+            Reg::Cast<uint16_t, uint32_t, castTraitU32U16>((Reg::RegTensor<uint16_t>&)tmReg, tmReg, maskRegU32);
+            Reg::Pack<uint16_t, uint32_t, Reg::HighLowPart::HIGHEST>((Reg::RegTensor<uint16_t>&)initIdsReg,
+                                                                     (Reg::RegTensor<uint32_t>&)tmReg);
+            Reg::Pack<uint16_t, uint32_t, Reg::HighLowPart::LOWEST>((Reg::RegTensor<uint16_t>&)initIdsReg1,
+                                                                    (Reg::RegTensor<uint32_t>&)tmReg);
+            Reg::Add(initIdsReg, initIdsReg, initIdsReg1, maskReg);
+            Reg::Muls(idsReg, initIdsReg, params.xPerRowNum, maskRegUpdate);
+            Reg::Add(idsReg, (Reg::RegTensor<VGatherIndexDType>&)serReg, idsReg, maskRegUpdate);
+            Reg::Gather(gatherOut, updatesLocalAddr, idsReg, maskRegUpdate);
+            Reg::Add(outReg, outReg, gatherOut, maskRegUpdate);
+        }
+
+        Reg::StoreAlign(resLocalAddr, outReg, addrReg, maskRegUpdate);
+    } else {
+        Reg::RegTensor<VGatherIndexDType> initIdsReg, idsReg;
+        Reg::RegTensor<T> gatherOut;
+        Reg::RegTensor<T> outReg;
+        Reg::MaskReg maskReg = Reg::CreateMask<T, Reg::MaskPattern::ALL>();
+
+        Reg::Duplicate(outReg, (T)0, maskReg);
+        for (uint16_t pIdx = 0; pIdx < params.segCount; ++pIdx) {
+            Reg::LoadAlign<uint32_t, Reg::LoadDist::DIST_BRC_B32>((Reg::RegTensor<uint32_t>&)initIdsReg,
+                                                                  params.sortedIdxAddr + (params.outGmIndex + pIdx));
+            Reg::Muls(idsReg, initIdsReg, params.xPerRowNum, maskRegUpdate);
+            Reg::Add(idsReg, (Reg::RegTensor<VGatherIndexDType>&)serReg, idsReg, maskRegUpdate);
+            Reg::Gather(gatherOut, updatesLocalAddr, idsReg, maskRegUpdate);
+            Reg::Add(outReg, outReg, gatherOut, maskRegUpdate);
+        }
+
+        Reg::StoreAlign(resLocalAddr, outReg, addrReg, maskRegUpdate);
+    }
+}
+
+template <typename T>
+__simd_callee__ inline void ProcessPerUpdateScalar(__ubuf__ T* resLocalAddr, Reg::MaskReg& maskRegUpdate,
+                                                   Reg::AddrReg& addrReg, updateAddParams& params, T updateScalarValue)
+{
+    Reg::RegTensor<T> addOut;
+    Reg::RegTensor<T> outReg;
+    Reg::MaskReg maskReg = Reg::CreateMask<T, Reg::MaskPattern::ALL>();
+    Reg::Duplicate(outReg, (T)0, maskReg);
+    Reg::Duplicate(addOut, updateScalarValue, maskReg);
+    for (uint16_t pIdx = 0; pIdx < params.segCount; ++pIdx) {
+        Reg::Add(outReg, outReg, addOut, maskRegUpdate);
+    }
+    Reg::StoreAlign(resLocalAddr, outReg, addrReg, maskRegUpdate);
+}
+
+template <typename T, typename VGatherIndexDType, typename VGatherIndexDTypeInt, bool updatesIsScalar>
+__simd_vf__ inline void ComputeUpdatesSumRegbaseVf(__ubuf__ T* updatesLocalAddr,
+                                                   __ubuf__ int32_t* uniqueIdCountLocalAddr, __ubuf__ T* resLocalAddr,
+                                                   __ubuf__ T* resLocalBaseAddr, updateAddParams params, uint64_t cols,
+                                                   uint64_t colsAlign, uint32_t loopPerRow, uint32_t vfLenUpdate,
+                                                   T updateScalarValue, uint32_t uniqueIdNum)
+{
+    int32_t sclar0 = 0;
+    for (uint16_t i = 0; i < (uint16_t)uniqueIdNum; ++i) {
+        Reg::RegTensor<VGatherIndexDTypeInt> serReg;
+        Reg::RegTensor<VGatherIndexDTypeInt> serRegBase;
+        Reg::Arange(serRegBase, (VGatherIndexDTypeInt)sclar0);
+        params.segCount = static_cast<uint16_t>(uniqueIdCountLocalAddr[i]);
+        uint32_t colCount = cols;
+        resLocalAddr = resLocalBaseAddr + i * colsAlign;
+        for (uint16_t j = 0; j < (uint16_t)loopPerRow; ++j) {
+            Reg::MaskReg maskRegUpdate = Reg::UpdateMask<VGatherIndexDType>(colCount);
+            auto addrReg = Reg::CreateAddrReg<T>(j, static_cast<uint16_t>(vfLenUpdate));
+            if constexpr (updatesIsScalar) {
+                ProcessPerUpdateScalar(resLocalAddr, maskRegUpdate, addrReg, params, updateScalarValue);
+            } else {
+                Reg::Adds(serReg, serRegBase, (VGatherIndexDTypeInt)(vfLenUpdate * j), maskRegUpdate);
+                ProcessPerUpdateGroup<T, VGatherIndexDType, VGatherIndexDTypeInt>(
+                    updatesLocalAddr, resLocalAddr, maskRegUpdate, serReg, addrReg, params);
+            }
+        }
+        params.outGmIndex = params.outGmIndex + params.segCount;
+    }
+}
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+template <typename VGatherIndexDType>
+__aicore__ inline void ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType,
+                                                          scatterOp>::ComputeUpdatesSumRegbase(uint64_t cols,
+                                                                                               uint64_t colsAlign,
+                                                                                               uint32_t uniqueIdNum)
+{
+    LocalTensor<uint32_t> updatesOriginIdxLocal = updatesOriginIdexQue_.Get<uint32_t>();
+    LocalTensor<int32_t> uniqueIdCountLocal = uniqueIdCountQue_.Get<int32_t>();
+    LocalTensor<T> updatesLocal = updatesQueue_.DeQue<T>();
+    LocalTensor<T> resLocal = outQueueRes_.AllocTensor<T>();
+
+    T updateScalarValue = updatesLocal(0);
+    uint32_t loopPerRow = (cols + vfLenUpdate_ - 1) / vfLenUpdate_;
+    updateAddParams params;
+    params.xPerRowNum = colsAlign;
+    params.outGmIndex = 0;
+    params.sortedIdxAddr = (__ubuf__ uint32_t*)updatesOriginIdxLocal.GetPhyAddr();
+    using VGatherIndexDTypeInt = std::conditional_t<std::is_same_v<VGatherIndexDType, uint16_t>, int16_t, int32_t>;
+
+    ComputeUpdatesSumRegbaseVf<T, VGatherIndexDType, VGatherIndexDTypeInt, updatesIsScalar>(
+        (__ubuf__ T*)updatesLocal.GetPhyAddr(), (__ubuf__ int32_t*)uniqueIdCountLocal.GetPhyAddr(),
+        (__ubuf__ T*)resLocal.GetPhyAddr(), (__ubuf__ T*)resLocal.GetPhyAddr(), params, cols, colsAlign, loopPerRow,
+        vfLenUpdate_, updateScalarValue, uniqueIdNum);
+
+    outQueueRes_.EnQue<T>(resLocal);
+    if constexpr (updatesIsScalar) {
+        updatesQueue_.EnQue<T>(updatesLocal);
+    } else {
+        updatesQueue_.FreeTensor<T>(updatesLocal);
+    }
+}
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+__aicore__ inline void ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType,
+                                                          scatterOp>::ComputeUpdatesSum(uint64_t cols,
+                                                                                        uint64_t colsAlign,
+                                                                                        uint32_t uniqueIdNum)
+{
+    LocalTensor<uint32_t> updatesOriginIdxLocal = updatesOriginIdexQue_.Get<uint32_t>();
+    LocalTensor<int32_t> uniqueIdCountLocal = uniqueIdCountQue_.Get<int32_t>();
+    LocalTensor<T> updatesLocal = updatesQueue_.DeQue<T>();
+    LocalTensor<T> resLocal = outQueueRes_.AllocTensor<T>();
+    Duplicate(resLocal, static_cast<T>(0), static_cast<int32_t>(uniqueIdNum * colsAlign));
+    outQueueRes_.EnQue<T>(resLocal);
+
+    resLocal = outQueueRes_.DeQue<T>();
+    uint32_t indicesOffset = 0;
+    for (uint32_t i = 0; i < uniqueIdNum; i++) {
+        uint32_t uniqueTimes = static_cast<uint32_t>(uniqueIdCountLocal(i)); // 重复次数
+        for (uint32_t j = 0; j < uniqueTimes; j++) {
+            if constexpr (updatesIsScalar) {
+                Add(resLocal[i * colsAlign], resLocal[i * colsAlign], updatesLocal, cols);
+            } else {
+                uint32_t srcIdx = updatesOriginIdxLocal.GetValue(indicesOffset + j);
+                Add(resLocal[i * colsAlign], resLocal[i * colsAlign], updatesLocal[srcIdx * colsAlign], cols);
+            }
+        }
+        indicesOffset += uniqueTimes;
+    }
+
+    outQueueRes_.EnQue<T>(resLocal);
+    if constexpr (updatesIsScalar) {
+        updatesQueue_.EnQue<T>(updatesLocal);
+    } else {
+        updatesQueue_.FreeTensor<T>(updatesLocal);
+    }
+}
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+__aicore__ inline void ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType,
+                                                          scatterOp>::CopyResToGm(uint32_t cols, uint32_t colsAlign,
+                                                                                  uint64_t ubOffset,
+                                                                                  uint32_t& uniqueIdNum)
+{
+    LocalTensor<T> resLocal = outQueueRes_.DeQue<T>();
+    LocalTensor<CAST_T> indicesSortedLocal = sortIndicesQue_.Get<CAST_T>();
+    LocalTensor<int32_t> uniqueIdCountLocal = uniqueIdCountQue_.Get<int32_t>();
+    if constexpr (scatterOp == SUB && !updatesIsScalar) {
+        NegateUpdate<T>(resLocal, static_cast<uint32_t>(uniqueIdNum * colsAlign));
+        auto MTE3WaitVEventID = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_MTE3));
+        SetFlag<HardEvent::V_MTE3>(MTE3WaitVEventID);
+        WaitFlag<HardEvent::V_MTE3>(MTE3WaitVEventID);
+    }
+
+    int32_t tmpIndex = shiftOffset_;
+
+    SetAtomicAdd<T>();
+    for (uint32_t i = 0; i < uniqueIdNum; i++) {
+        CAST_T dstIndices = indicesSortedLocal(tmpIndex); // 获取每个可能重复的indices的第一个的值
+        uint64_t offset = dstIndices * tilingData_.varShape[1] + ubOffset; // 通过indices值获取对应var的偏移
+        tmpIndex = tmpIndex + uniqueIdCountLocal(i);
+
+        if (dstIndices < 0 || dstIndices >= tilingData_.varShape[0]) {
+            continue;
+        }
+
+        CopyOut(varRefGm_, resLocal[i * colsAlign], offset, 1, cols);
+    }
+    SetAtomicNone();
+    outQueueRes_.FreeTensor(resLocal);
+}
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+__aicore__ inline void ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType, scatterOp>::Compute()
+{
+    if (GetBlockIdx() >= tilingData_.atomicAddCoreNum) {
+        return;
+    }
+
+    if constexpr (updatesIsScalar) {
+        LocalTensor<T> updatesLocal = updatesQueue_.AllocTensor<T>();
+        BroadcastUpdatesScalar<T, scatterOp>(updatesLocal, updatesGm_, static_cast<int32_t>(tilingData_.ubFactorCol));
+        updatesQueue_.EnQue<T>(updatesLocal);
+    }
+    uint64_t rowIdx = GetBlockIdx() / tilingData_.colTileNum; // 当前block在第几个分块行
+    uint64_t colIdx = GetBlockIdx() % tilingData_.colTileNum; // 当前block在第几个分块列
+    uint64_t curCoreRows = rowIdx != (tilingData_.rowTileNum - 1) ? tilingData_.normBlockRow :
+                                                                    tilingData_.tailBlockRow; // 当前分块行数
+    uint64_t curCoreCols = colIdx != (tilingData_.colTileNum - 1) ? tilingData_.normBlockCol :
+                                                                    tilingData_.tailBlockCol; // 当前分块列数
+
+    uint64_t blockOffsetindices = rowIdx * tilingData_.normBlockRow; // 当前indices的偏移位置
+    uint64_t blockOffsetUpdate = rowIdx * tilingData_.normBlockRow * tilingData_.varShape[1] +
+                                 colIdx * tilingData_.normBlockCol;             // 当前updates块的偏移位置
+    uint64_t colUbLoopNum = ops::CeilDiv(curCoreCols, tilingData_.ubFactorCol); // 当前分块在列方向需要UB循环多少次
+    uint64_t rowUbLoopNum = ops::CeilDiv(curCoreRows, tilingData_.ubFactorRow); // 当前分块在行方向需要UB循环多少次
+
+    for (uint64_t rowLoop = 0; rowLoop < rowUbLoopNum; rowLoop++) {
+        uint64_t rows = (rowLoop == rowUbLoopNum - 1) ? (curCoreRows - rowLoop * tilingData_.ubFactorRow) :
+                                                        tilingData_.ubFactorRow;
+        uint32_t uniqueIdNum = ProcessIndices(blockOffsetindices, rowLoop, rows);
+
+        for (uint64_t colLoop = 0; colLoop < colUbLoopNum; colLoop++) {
+            uint64_t cols = (colLoop == colUbLoopNum - 1) ? (curCoreCols - colLoop * tilingData_.ubFactorCol) :
+                                                            tilingData_.ubFactorCol; // 当前UB拿到的updates小块的列数
+            uint64_t colsAlign = ops::Aligned(static_cast<uint64_t>(cols * sizeof(T)),
+                                              static_cast<uint64_t>(ONE_BLOCK_SIZE)) /
+                                 sizeof(T);
+
+            if constexpr (!updatesIsScalar) {
+                LocalTensor<T> updatesLocal = updatesQueue_.AllocTensor<T>();
+                uint64_t offset = blockOffsetUpdate + rowLoop * tilingData_.ubFactorRow * tilingData_.varShape[1] +
+                                  colLoop * tilingData_.ubFactorCol;
+                CopyIn(updatesLocal, updatesGm_, offset, rows, cols, tilingData_.varShape[1] - cols);
+                updatesQueue_.EnQue<T>(updatesLocal);
+            }
+            if constexpr (IsSameType<T, int8_t>::value) {
+                ComputeUpdatesSum(cols, colsAlign, uniqueIdNum);
+            } else if constexpr (IsSameType<T, half>::value || IsSameType<T, bfloat16_t>::value) {
+                ComputeUpdatesSumRegbase<uint16_t>(cols, colsAlign, uniqueIdNum);
+            } else {
+                ComputeUpdatesSumRegbase<uint32_t>(cols, colsAlign, uniqueIdNum);
+            }
+
+            uint64_t ubOffset = colIdx * tilingData_.normBlockCol + colLoop * tilingData_.ubFactorCol;
+            CopyResToGm(cols, colsAlign, ubOffset, uniqueIdNum);
+        }
+    }
+
+    if constexpr (updatesIsScalar) {
+        LocalTensor<T> updatesLocal = updatesQueue_.DeQue<T>();
+        updatesQueue_.FreeTensor<T>(updatesLocal);
+    }
+}
+
+template <typename T, typename U, typename CAST_T, bool updatesIsScalar, uint32_t castType, uint32_t scatterOp>
+__aicore__ inline void ScatterAddSIMDSortSupportAtomicAdd<T, U, CAST_T, updatesIsScalar, castType, scatterOp>::Process()
+{
+    if (GetBlockIdx() >= GetBlockNum()) {
+        return;
+    }
+
+    Compute();
+}
+} // namespace ScatterAdd
+#endif // SCATTER_ADD_SIMD_SORT_SUPPORT_ATOMICADD_H

@@ -1,0 +1,16 @@
+diff --git a/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td b/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td
+index 4200343ce3e1..bc6a891c8654 100644
+--- a/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td
++++ b/mlir/include/mlir/Dialect/Utils/StructuredOpsUtils.td
+@@ -15,6 +15,11 @@ include "mlir/IR/EnumAttr.td"
+ def IteratorType : I32EnumAttr<"IteratorType", "Iterator type", [
+   I32EnumAttrCase<"parallel", 0>,
+   I32EnumAttrCase<"reduction", 1>
++#ifdef BSPUB_DAVINCI_BISHENGIR
++  ,
++  I32EnumAttrCase<"concat", 2>,
++  I32EnumAttrCase<"gather", 3>
++#endif
+ ]> {
+     let genSpecializedAttr = 0;
+     let cppNamespace = "::mlir::utils";

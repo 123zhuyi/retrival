@@ -1,0 +1,320 @@
+name: PR-pipeline_ops-math
+
+concurrency:
+  max: 15
+  exceed-action: QUEUE
+  enable: true
+  preemption:
+    enable: true
+    events: [mr_id]
+
+on:
+  pull_request_comment:
+    types: [created]
+    branches: [ '**' ]
+    comments: [ '^(?:\/)?compile*' ]
+  pr_comment:
+    types: [ created ]
+    keyword: '^(?:\/)?compile*'
+
+env:
+  org_name: "${{ vars.ORG_NAME }}"
+  repo_name: ${{atomgit.event.repository.name}}
+  MERGE_ID: ${{atomgit.event.pull_request.number}}
+  obs_path: "${{ env.org_name }}/${{ env.repo_name }}/ci/package/${{ env.MERGE_ID }}"
+  obs_smoke_path: "${{ env.obs_path }}/presmoke/2"
+  TARGET_BRANCH: ${{atomgit.ref_name}}
+  SOURCE_BRANCH: ${{atomgit.head_ref}}
+  online: ${{ vars.APPLY_LABEL }}
+
+stages:
+  stage1:
+    name: PreBuild
+    jobs:
+      JOB_image:
+        name: Test_image
+        steps:
+          - name: revise_image
+            identifier: revise_image
+            uses: cann/.gitcode/actions/revise-img@master
+            with:
+              repo_name: 'ops-math'
+              target_branch: ${{ env.TARGET_BRANCH }}
+              comment: ${{ atomgit.event.comment.body }}
+              token: ${{ secrets.TESTTOKEN }}
+          -
+            name: show_output
+            run: |
+              echo "image: ${{ steps.revise_image.outputs.Compile_Ascend_X86 }}"
+        if: "${{ default() }}"
+        runs-on: ["self-hosted", "arch=x64", "spec=small"]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:k8s_v1.1006
+      JOB_pre:
+        name: Test_PreBuild
+        uses: cann/.gitcode/.gitcode/workflows/pre_action.yml@master
+    pre:
+    - type: auto
+    fail-fast: true
+  stage2:
+    name: Compile
+    jobs:
+      JOB_Compile_Ascend_X86_ubuntu24:
+        name: Compile_Ascend_X86_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_ubuntu24'
+          package_name: 'cann-ops-math_linux-x86_64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_ubuntu24 }}
+          arch: 'x64'
+      JOB_Compile_Ascend_X86_mobile_station_ubuntu24:
+        name: Compile_Ascend_X86_mobile_station_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_mobile_station_ubuntu24'
+          package_name: 'cann-ops-math-kirinx90_linux-x86_64_ubuntu24.run'
+          ge_st_rt2: 'kirin90'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_mobile_station_ubuntu24 }}
+          arch: 'x64'
+      JOB_Compile_Ascend_X86_experimental_ubuntu24:
+        name: Compile_Ascend_X86_experimental_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_experimental_ubuntu24'
+          package_name: 'cann-ops-math_experimental_linux-x86_64_ubuntu24.run'
+          ge_st_rt2: 'experimental'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_experimental_ubuntu24 }}
+          arch: 'x64'
+      JOB_Compile_X86_monitor_910b:
+        name: Compile_X86_monitor_910b
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_X86_monitor_910b'
+          package_name: 'cann-ops-math-monitor-910b_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_X86_monitor }}
+          arch: 'x64'
+      JOB_Compile_X86_monitor_910c:
+        name: Compile_X86_monitor_910c
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_X86_monitor_910c'
+          package_name: 'cann-ops-math-monitor-910c_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_X86_monitor }}
+          arch: 'x64'
+      JOB_Compile_X86_monitor_950:
+        name: Compile_X86_monitor_950
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_X86_monitor_950'
+          package_name: 'cann-ops-math-monitor-950_linux-x86_64.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_X86_monitor }}
+          arch: 'x64'
+      JOB_Compile_Ascend_X86_A5_ubuntu24:
+        name: Compile_Ascend_X86_A5_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_A5_ubuntu24'
+          package_name: 'cann-ops-math-custom_linux-x86_64_A5_ubuntu24.run'
+          ge_st_rt2: 'A5'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_A5_ubuntu24 }}
+          arch: 'x64'
+      JOB_Compile_Ascend_X86_mobile_station_9030_ubuntu24:
+        name: Compile_Ascend_X86_mobile_station_9030_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_X86_mobile_station_9030_ubuntu24'
+          package_name: 'cann-ops-math-kirin9030_linux-x86_64_ubuntu24.run'
+          ge_st_rt2: 'kirin9030'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_mobile_station_ubuntu24 }}
+          arch: 'x64'
+      JOB_Compile_Ascend_ARM_ubuntu24:
+        name: Compile_Ascend_ARM_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_ARM_ubuntu24'
+          package_name: 'cann-ops-math_linux-aarch64_ubuntu24.run'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_ubuntu24 }}
+          arch: 'arm64'
+      JOB_Compile_Ascend_ARM_experimental_ubuntu24:
+        name: Compile_Ascend_ARM_experimental_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_ARM_experimental_ubuntu24'
+          package_name: 'cann-ops-math_experimental_linux-aarch64_ubuntu24.run'
+          ge_st_rt2: 'experimental'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_experimental_ubuntu24 }}
+          arch: 'arm64'
+      JOB_Compile_Ascend_single_ubuntu24:
+        name: Compile_Ascend_single_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_single_ubuntu24'
+          package_name: 'single_ubuntu24.tar.gz'
+          ge_st_rt2: 'single'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_single_ubuntu24 }}
+          arch: 'arm64'
+      JOB_Compile_Ascend_ARM_A5_ubuntu24:
+        name: Compile_Ascend_ARM_A5_ubuntu24
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_ARM_A5_ubuntu24'
+          package_name: 'cann-ops-math-custom_linux-aarch64_A5_ubuntu24.run'
+          ge_st_rt2: 'A5'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_A5_ubuntu24 }}
+          arch: 'arm64'
+      JOB_Compile_Ascend_single:
+        name: Compile_Ascend_single
+        uses: .gitcode/workflows/compile_action.yml
+        with:
+          task_name: 'Compile_Ascend_single'
+          package_name: 'single.tar.gz'
+          ge_st_rt2: 'single'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_single }}
+          arch: 'arm64'
+      JOB_codecheck:
+        name: CodeCheck
+        uses: cann/.gitcode/.gitcode/workflows/codecheck_action.yml@master
+        with:
+          precommit_image_version: ${{ jobs.JOB_image.outputs.precommit }}
+          codecheck_image_version: ${{ jobs.JOB_image.outputs.codecheck }}
+      JOB_staticcheck_md_check:
+        name: CodeCheck_staticcheck_md_check
+        uses: .gitcode/workflows/staticcheck_action.yml
+        with:
+          check_type: 'md_check'
+          image_version: ${{ jobs.JOB_image.outputs.staticcheck }}
+    pre:
+    - type: auto
+    fail-fast: false
+  stage3:
+    name: UT
+    jobs:
+      JOB_api_check:
+        name: API_Check
+        steps:
+          -
+            name: api-check
+            identifier: api-check
+            uses: cann/.gitcode/actions/api-check@master
+            with:
+              org_name: ${{ env.org_name }}
+              mode: check
+              repo_name: ${{ env.repo_name }}
+              merge_id: ${{ env.MERGE_ID }}
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: ["self-hosted", "arch=x64", "spec=small"]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/${{ jobs.JOB_image.outputs.API_Check }}
+      JOB_UT_Test_experimental:
+        name: UT_Test_experimental
+        uses: .gitcode/workflows/llt_action.yml
+        with:
+          ut_type: 'UT_Test_experimental'
+          ut_package: 'coverage_*.info'
+          ge_st_rt2: 'experimental'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test_experimental }}
+      JOB_UT_Test_kernel:
+        name: UT_Test_kernel
+        uses: .gitcode/workflows/llt_action.yml
+        with:
+          ut_type: 'UT_Test_kernel'
+          ut_package: 'coverage_*.info'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test }}
+      JOB_UT_Test:
+        name: UT_Test
+        uses: .gitcode/workflows/llt_action.yml
+        with:
+          ut_type: 'UT_Test'
+          ut_package: 'coverage_*.info'
+          image_version: ${{ jobs.JOB_image.outputs.UT_Test }}
+    pre:
+    - type: auto
+    fail-fast: false
+  stage4:
+    name: PreSmoke
+    jobs:
+      PreSmoke_A2:
+        name: PreSmoke_A2
+        steps:
+          -
+            name: Checkout
+            identifier: process_checkout
+            uses: checkout
+            with:
+              token: ${{secrets.GIT_TOKEN}}
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+          -
+            name: download
+            uses: obs-download
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{ secrets.AK }}
+              secret-key: ${{ secrets.SK }}
+              key: |
+                ${{ env.obs_path }}/pr_filelist.txt
+                ${{ env.obs_path }}/pr_filelist_mod.txt
+                ${{ env.obs_path }}/update_file_detail.txt
+                ${{ env.obs_path }}/pre_smoke.sh
+              path: ${{ steps.process_checkout.outputs.path }}
+          -
+            name: smoke executor
+            timeout-minutes: 30
+            run: |
+              export single_tar_url=${{jobs.JOB_Compile_Ascend_single.outputs.arm_run_url}}
+              export smoke_run_file_url=${{jobs.JOB_Compile_Ascend_ARM_experimental_ubuntu24.outputs.arm_run_url}}
+              export obs_smoke_path=${{env.obs_smoke_path}}
+              export repo_name=${{env.repo_name}}
+              export pr_id=${{ env.MERGE_ID }}
+              export AK=${{secrets.AK}}
+              export SK=${{secrets.SK}}
+              export WORKSPACE=${{ steps.process_checkout.outputs.path }}
+              bash ${{ steps.process_checkout.outputs.path }}/pre_smoke.sh
+          - name: upload
+            uses: obs-upload
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{ secrets.AK }}
+              secret-key: ${{ secrets.SK }}
+              artifact-path: "${{ steps.process_checkout.outputs.path }}/slog*.tar.gz"
+              object-prefix: ${obs_smoke_path}/plog/
+
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: ['self-hosted','npu=2','smoke=204']
+        container:
+          image: swr.cn-south-1.myhuaweicloud.com/pre_smoke/${{ jobs.JOB_image.outputs.PreSmoke_A900 }}
+      PreSmoke_harmony-infer-chs-math:
+        name: PreSmoke_harmony-infer-chs-math
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: [self-hosted, arch=x64, os=ubuntu, type=chs_phone]
+        steps:
+          - name: Checkout
+            identifier: process_checkout
+            uses: checkout
+            with:
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+              token: ${{secrets.GIT_TOKEN}}
+          - name: 执行 Kirin PreSmoke_harmony-infer-chs-math 测试
+            run: bash .gitcode/scripts/kirin_smoke_chs.sh
+      PreSmoke_harmony-infer-cpro-math:
+        name: PreSmoke_harmony-infer-cpro-math
+        if: env.TARGET_BRANCH == 'master'
+        runs-on: [self-hosted, arch=x64, os=ubuntu, type=kirinx90]
+        steps:
+          - name: Checkout
+            identifier: process_checkout
+            uses: checkout
+            with:
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+              token: ${{secrets.GIT_TOKEN}}
+          - name: 执行 Kirin PreSmoke_harmony-infer-cpro-math 测试
+            run: bash .gitcode/scripts/kirin_smoke_cpro.sh
+    pre:
+    - type: auto
+    fail-fast: true
+post:
+  jobs:
+    job_post:
+      name: Test_post
+      uses: cann/.gitcode/.gitcode/workflows/post_action.yml@master

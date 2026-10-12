@@ -1,0 +1,1464 @@
+//===- MaxParallelAnalyzer.cpp - Implementation of
+// MaxParallelAnalyzer--------===//
+//
+// Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//===----------------------------------------------------------------------===//
+
+#include "bishengir/Dialect/Analysis/VFFusion/CostModelInfo/CostModelInfoUtils.h"
+#include "bishengir/Dialect/Analysis/VFFusion/VFFusionAnalyzer.h"
+#include "bishengir/Dialect/HFusion/Utils/Utils.h"
+#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/Dominance.h"
+#include "mlir/IR/Visitors.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
+#define DEBUG_TYPE "vf-fusion-max-parallel-analyzer"
+#define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE "]: ")
+#define LDBG(X) LLVM_DEBUG(DBGS() << X << "\n")
+
+namespace mlir::analysis {
+static constexpr unsigned kIssueQueueLen = 64;
+static constexpr float kEpsilon = std::numeric_limits<float>::epsilon();
+
+// === Common Helpers ===
+// Iterate over the non-terminator inner operations of a linalgOp,
+// invoking the callback for each. Returns false if linalgOp is invalid.
+template <typename CallbackT>
+static bool iterateLinalgInnerOps(linalg::LinalgOp linalgOp,
+                                  CallbackT &&callback) {
+  if (!linalgOp || linalgOp->getNumRegions() == 0 ||
+      linalgOp->getRegion(0).empty()) {
+    return false;
+  }
+  for (Operation &innerOp : linalgOp->getRegion(0).front()) {
+    if (!innerOp.hasTrait<OpTrait::IsTerminator>()) {
+      callback(&innerOp);
+    }
+  }
+  return true;
+}
+
+static bool isValidLinalgOp(linalg::LinalgOp linalgOp) {
+  if (!linalgOp || linalgOp.getOperation()->getNumRegions() == 0 ||
+      linalgOp.getOperation()->getRegion(0).empty()) {
+    return false;
+  }
+  return true;
+}
+
+bool isLinalgReductionOp(linalg::LinalgOp linalgOp) {
+  auto iteratorTypes = linalgOp.getIteratorTypesArray();
+  return llvm::any_of(iteratorTypes, [](auto attr) {
+    return linalg::isReductionIterator(attr);
+  });
+}
+
+static bool isReductionOp(Operation *innerOp, Operation *outterOp) {
+  auto linalgOp = dyn_cast<linalg::LinalgOp>(outterOp);
+  if (!linalgOp)
+    return false;
+
+  int64_t numInputs = linalgOp.getNumDpsInputs();
+
+  Block *body = &linalgOp->getRegion(0).front();
+
+  for (Value operand : innerOp->getOperands()) {
+    auto blockArg = dyn_cast<BlockArgument>(operand);
+    if (!blockArg || blockArg.getOwner() != body)
+      continue;
+    // if an op take the inits arg as its operand, it is a reduction op
+    if (blockArg.getArgNumber() >= numInputs) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool isInFusionWhiteList(Operation *op) {
+  if (isa<linalg::TransposeOp>(op) && !isVsstbPatternTransposeOp(op))
+    return false;
+  return isReshapeOp(op) || isa<tensor::ExtractSliceOp>(op) ||
+         isa<tensor::ExtractOp>(op) || isa<tensor::InsertSliceOp>(op) ||
+         isValidLinalgOp(dyn_cast<linalg::LinalgOp>(op));
+}
+
+// i1 "pass-through" ops: consume i1 and produce i1 (with shape/logic change).
+// These ops break the direct compare→select connection that
+// fusePredicateSelectPattern relies on. Recognizing them allows the pattern
+// to trace through and keep the predicate in-register.
+// Examples:
+//   compare → tensor.expand_shape → select   (fused_24 / fused_34)
+//   compare → elemwise_binary{vand} → select  (fused_36 / fused_38)
+static bool isI1PassThrough(Operation *op) {
+  // Reshape ops: expand_shape, collapse_shape
+  if (isReshapeOp(op))
+    return true;
+  // i1 binary ops: vand, vor, vxor (combine masks, produce i1)
+  if (auto elemwiseOp = dyn_cast<hfusion::ElemwiseBinaryOp>(op)) {
+    auto fn = elemwiseOp.getFun();
+    return fn == hfusion::BinaryFn::vand || fn == hfusion::BinaryFn::vor ||
+           fn == hfusion::BinaryFn::vxor;
+  }
+  return false;
+}
+
+static bool isPredicateSelect(Operation *op) {
+  return isa<hfusion::SelectOp, linalg::SelectOp>(op);
+}
+
+// === Cost Model Helpers ===
+// Extract CostInfo for all inner ops of a linalgOp.
+static void extractInstrSet(linalg::LinalgOp linalgOp,
+                            SmallVector<CostInfo> &costInfoSet) {
+  iterateLinalgInnerOps(linalgOp, [&](Operation *innerOp) {
+    auto isReduction = isReductionOp(innerOp, linalgOp.getOperation());
+    costInfoSet.push_back(
+        CostModelInfoUtils::getOpCostInfo(innerOp, isReduction));
+  });
+}
+
+// Extract CostInfo for ops
+template <typename RangeT>
+static void extractInstrSet(const RangeT &ops,
+                            SmallVector<CostInfo> &costInfoSet) {
+  for (auto *op : ops) {
+    auto linalgOp = dyn_cast<linalg::LinalgOp>(op);
+    if (linalgOp) {
+      extractInstrSet(linalgOp, costInfoSet);
+    }
+  }
+}
+
+static std::pair<int, int> getExuCnt(const SmallVector<CostInfo> &costInfoSet) {
+  int singleExuCnt = 0;
+  int doubleExuCnt = 0;
+  for (const auto &costInfo : costInfoSet) {
+    if (costInfo.execUnit == 2) {
+      doubleExuCnt++;
+    } else {
+      singleExuCnt++;
+    }
+  }
+  return {singleExuCnt, doubleExuCnt};
+}
+
+template <typename RangeT>
+static llvm::DenseMap<std::pair<int64_t, int64_t>, unsigned>
+getSameGroupOpCnts(const RangeT &ops) {
+  llvm::DenseMap<std::pair<int64_t, int64_t>, unsigned> innerOpCnts;
+  SmallVector<CostInfo> costInfoSet;
+  extractInstrSet(ops, costInfoSet);
+  for (const auto &costInfo : costInfoSet) {
+    auto key = std::make_pair(costInfo.execInterval, costInfo.execUnit);
+    innerOpCnts[key]++;
+  }
+  return innerOpCnts;
+}
+
+template <typename RangeT>
+static std::pair<int, int> getExecUnitCounts(const RangeT &ops) {
+  SmallVector<CostInfo> costInfoSet;
+  extractInstrSet(ops, costInfoSet);
+  return getExuCnt(costInfoSet);
+}
+
+static float getComputeScores(Operation *op) {
+  auto linalgOp = dyn_cast<linalg::LinalgOp>(op);
+  if (!isValidLinalgOp(linalgOp)) {
+    return 0.0f;
+  }
+  float_t computeScores = 0.0f;
+  for (Operation &innerOp : linalgOp.getOperation()->getRegion(0).front()) {
+    if (!innerOp.hasTrait<OpTrait::IsTerminator>()) {
+      auto isReduction = isReductionOp(&innerOp, op);
+      auto costInfo = CostModelInfoUtils::getOpCostInfo(&innerOp, isReduction);
+      computeScores += 1.0 * costInfo.execInterval / costInfo.execUnit;
+    }
+  }
+  return computeScores;
+}
+
+/// Count non-terminator inner ops of a single linalgOp.
+static int getComputeOpCount(Operation *op) {
+  int count = 0;
+  auto linalgOp = dyn_cast<linalg::LinalgOp>(op);
+  iterateLinalgInnerOps(linalgOp, [&](Operation *) { count++; });
+  return count;
+}
+
+// === Exec Unit Utilization ===
+static float getExecUnitUtilization(
+    int singleCnt, int doubleCnt,
+    const DenseMap<std::pair<int64_t, int64_t>, unsigned> &innerOpCnts) {
+  float avgMaxCycle = 0.0f;
+  for (const auto &[key, opCnt] : innerOpCnts) {
+    const auto [numerator, denominator] = key;
+    if (denominator == 0) {
+      continue;
+    }
+    const float cycle =
+        1.0f * opCnt * (static_cast<float>(numerator) / denominator);
+    avgMaxCycle = std::max(cycle, avgMaxCycle);
+  }
+  if (doubleCnt < singleCnt) {
+    avgMaxCycle = std::max(avgMaxCycle, 1.0f * singleCnt);
+  }
+  int totalExecUnits = doubleCnt + singleCnt;
+  float maxAllowedUnits = avgMaxCycle * 2.0f;
+  float utilization = totalExecUnits / maxAllowedUnits;
+  return std::min(utilization, 1.0f);
+}
+
+// === IO Score Helpers ===
+static void collectValuesFromOps(const DenseSet<Operation *> &ops,
+                                 llvm::SmallDenseSet<Value> &uniqueInputs,
+                                 llvm::SmallDenseSet<Value> &uniqueOutputs,
+                                 llvm::SmallDenseSet<Value> &uniqueAll) {
+  for (auto op : ops) {
+    auto linalgOp = dyn_cast<linalg::LinalgOp>(op);
+    if (!linalgOp)
+      continue;
+
+    for (auto value : linalgOp.getDpsInputs()) {
+      if (!value.getDefiningOp<arith::ConstantOp>()) {
+        uniqueInputs.insert(value);
+        uniqueAll.insert(value);
+      }
+    }
+
+    for (auto value : linalgOp.getOperation()->getResults()) {
+      if (!value.getDefiningOp<arith::ConstantOp>()) {
+        uniqueOutputs.insert(value);
+        uniqueAll.insert(value);
+      }
+    }
+  }
+}
+
+// IO Scores compute with eliminated inputs/outputs
+static std::pair<size_t, size_t> calculateIoCounts(size_t input, size_t output,
+                                                   size_t all) {
+  auto optIoNum = (input + output) - all;
+  auto inputsNums = input - optIoNum;
+  auto outputsNums = output - optIoNum;
+  return {inputsNums, outputsNums};
+}
+
+static float ioScoreFromCounts(size_t inputsNums, size_t outputsNums) {
+  if (inputsNums > outputsNums)
+    return (outputsNums + inputsNums) * 0.5f;
+  return static_cast<float>(outputsNums);
+}
+
+// === Parallelism ===
+static float getParallelism(Operation *op) {
+  auto linalgOp = dyn_cast<linalg::LinalgOp>(op);
+  if (!isValidLinalgOp(linalgOp)) {
+    return 0.0f;
+  }
+  float_t parallelism = 0.0f;
+  for (Operation &innerOp : linalgOp.getOperation()->getRegion(0).front()) {
+    if (!innerOp.hasTrait<OpTrait::IsTerminator>()) {
+      auto isReduction = isReductionOp(&innerOp, op);
+      auto costInfo = CostModelInfoUtils::getOpCostInfo(&innerOp, isReduction);
+      if (costInfo.execInterval == 0) {
+        continue;
+      }
+      parallelism = std::max(1.0f * costInfo.execUnit * costInfo.execLatency /
+                                 costInfo.execInterval,
+                             parallelism);
+    }
+  }
+  return parallelism;
+}
+
+// === MaxParallelAnalyzer Member Functions ===
+bool MaxParallelAnalyzer::hasReductionToConsumer(const int producerIndex,
+                                                 const int consumerIndex) {
+  if (!opToGroupIndex.count(opsInBlock[producerIndex]) ||
+      !opToGroupIndex.count(opsInBlock[consumerIndex])) {
+    return false;
+  }
+
+  auto &producerGroupNodes =
+      AllFusedGroupBlocks[opToGroupIndex[opsInBlock[producerIndex]]];
+  auto &consumerGroupNodes =
+      AllFusedGroupBlocks[opToGroupIndex[opsInBlock[consumerIndex]]];
+
+  for (auto *node : producerGroupNodes) {
+    auto linalgOp = dyn_cast<linalg::LinalgOp>(node);
+    if (!isValidLinalgOp(linalgOp) || !isLinalgReductionOp(linalgOp))
+      continue;
+    for (auto *user : linalgOp->getUsers()) {
+      if (consumerGroupNodes.contains(user)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool MaxParallelAnalyzer::useNarrowingCastInConsumer(const int producerIndex,
+                                                     const int consumerIndex) {
+  if (!opToGroupIndex.count(opsInBlock[producerIndex]) ||
+      !opToGroupIndex.count(opsInBlock[consumerIndex])) {
+    return false;
+  }
+
+  auto &producerGroupNodes =
+      AllFusedGroupBlocks[opToGroupIndex[opsInBlock[producerIndex]]];
+  auto &consumerGroupNodes =
+      AllFusedGroupBlocks[opToGroupIndex[opsInBlock[consumerIndex]]];
+
+  SmallVector<hfusion::CastOp> producerCasts;
+  for (auto *node : producerGroupNodes) {
+    auto cast = dyn_cast<hfusion::CastOp>(node);
+    if (cast)
+      producerCasts.emplace_back(cast);
+  }
+  if (producerCasts.size() == 0)
+    return false;
+
+  auto producerOp = dyn_cast<linalg::LinalgOp>(opsInBlock[producerIndex]);
+  if (!isValidLinalgOp(producerOp))
+    return false;
+
+  auto getTypeWidth = [](Value output) -> uint32_t {
+    auto outType = dyn_cast<RankedTensorType>(output.getType());
+    if (!outType)
+      return 0;
+    Type elemType = outType.getElementType();
+    if (!isa<IntegerType, FloatType>(elemType))
+      return 0;
+    return elemType.getIntOrFloatBitWidth();
+  };
+
+  for (auto cast : producerCasts) {
+    auto castWidth = getTypeWidth(cast.getOutputs()[0]);
+    if (llvm::all_of(cast->getUsers(), [&consumerGroupNodes](Operation *user) {
+          return !consumerGroupNodes.contains(user);
+        }))
+      continue;
+    for (auto *user : producerOp->getUsers()) {
+      if (!consumerGroupNodes.contains(user))
+        continue;
+      if (llvm::any_of(user->getOperands(),
+                       [&getTypeWidth, &castWidth](Value operand) {
+                         return getTypeWidth(operand) > castWidth;
+                       })) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Decide whether a fusion pair involving an insert_slice is allowed.
+// insert_slice as producer is always rejected; as consumer it is only
+// allowed in the bridge case, where the producer also feeds a later
+// linalg consumer so fusing the slice connects the two linalg ops.
+//
+// Multi-buffer write-back exemption: when insert_slice writes back into a
+// double-buffered tensor (dest leading dim >= 2) and the producer's result
+// is solely consumed by this insert_slice, allow fusion so the fused VF
+// directly operates on the multi-buffered tensor.  This prevents the
+// outliner from producing a single-buffered VF signature that would later
+// require an explicit copy_ubuf_to_ubuf (MOV_UB_TO_UB) to fill the
+// ping-pong slot.
+static bool isInsertSliceFusionAllowed(Operation *producerOp,
+                                       Operation *consumerOp) {
+  if (isa<tensor::InsertSliceOp>(producerOp))
+    return false;
+  if (!isa<tensor::InsertSliceOp>(consumerOp))
+    return true;
+
+  // Multi-buffer write-back: when insert_slice writes back into a
+  // multi-buffered tensor whose dest is a loop-carried iter_arg
+  // (BlockArgument) with a leading dimension >= 2, and the producer
+  // result is the sole input to this insert_slice, allow fusion.
+  // This keeps the 2x prefix in the VF signature and avoids later
+  // copy_ubuf_to_ubuf (MOV_UB_TO_UB) to fill the ping-pong slot.
+  auto insertOp = cast<tensor::InsertSliceOp>(consumerOp);
+  Value dest = insertOp.getDest();
+  if (auto blockArg = dyn_cast<BlockArgument>(dest)) {
+    if (auto destType = dyn_cast<RankedTensorType>(dest.getType())) {
+      if (!destType.getShape().empty() && destType.getShape()[0] >= 2) {
+        bool soleConsumer =
+            llvm::all_of(producerOp->getResults(), [&](Value res) {
+              return res.hasOneUse() && *res.getUsers().begin() == consumerOp;
+            });
+        if (soleConsumer)
+          return true;
+      }
+    }
+  }
+
+  // Bridge case: producer also feeds a later linalg consumer.
+  for (Operation *user : producerOp->getUsers()) {
+    if (user == consumerOp)
+      continue;
+    if (isValidLinalgOp(dyn_cast<linalg::LinalgOp>(user)) &&
+        consumerOp->isBeforeInBlock(user))
+      return true;
+  }
+  return false;
+}
+
+bool MaxParallelAnalyzer::canSinkPredicateGroupAcrossSync(
+    int producerGroupId, int consumerGroupId, Operation *consumerOp) {
+  auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+  auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+  DominanceInfo dominance(consumerOp->getParentOp());
+
+  // Keep this exception scoped to the predicate/select pattern. The first
+  // merge may target an i1 pass-through op; the final merge must target a
+  // group that already contains the select.
+  if (!isI1PassThrough(consumerOp) &&
+      !llvm::any_of(consumerGroup, isPredicateSelect))
+    return false;
+
+  for (Operation *op : producerGroup) {
+    // Only the pure predicate chain is allowed to cross SyncBlockSet. In
+    // particular, do not turn this into a general stage-0 sync bypass.
+    if (!isa<hfusion::CompareOp>(op) && !isI1PassThrough(op))
+      return false;
+    if (!isMemoryEffectFree(op))
+      return false;
+
+    // Sinking is only safe when every result stays inside the two groups that
+    // are about to be merged. Otherwise an earlier user could be moved past
+    // its definition, or a second chain could unexpectedly cross the sync.
+    for (Operation *user : op->getUsers())
+      if (!producerGroup.count(user) && !consumerGroup.count(user))
+        return false;
+
+    // Values defined outside the predicate group become inputs of the fused
+    // VF at the consumer position, so they must still dominate that position.
+    for (Value operand : op->getOperands()) {
+      Operation *defOp = operand.getDefiningOp();
+      if (defOp && producerGroup.count(defOp))
+        continue;
+      if (!dominance.dominates(operand, consumerOp))
+        return false;
+    }
+  }
+  return true;
+}
+
+bool MaxParallelAnalyzer::areFusibleOps(const int producerIndex,
+                                        const int consumerIndex) {
+  auto producerOp = opsInBlock[producerIndex];
+  auto consumerOp = opsInBlock[consumerIndex];
+
+  int producerGroupId = static_cast<int>(opToGroupIndex[producerOp]);
+  int consumerGroupId = static_cast<int>(opToGroupIndex[consumerOp]);
+  auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+  auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+
+  // SyncBlockSet remains a hard boundary except for the stage-0 predicate
+  // co-location pattern. That exception only sinks a pure, isolated-use
+  // compare/i1 pass-through chain whose inputs remain available at the target.
+  for (auto it = producerOp->getNextNode(); it != nullptr && it != consumerOp;
+       it = it->getNextNode()) {
+    if (isa<hivm::SyncBlockSetOp>(it)) {
+      if (!this->option.enablePredicateSinkAcrossSync || stage != 0 ||
+          !canSinkPredicateGroupAcrossSync(producerGroupId, consumerGroupId,
+                                           consumerOp))
+        return false;
+      break;
+    }
+  }
+
+  if (!option.isMixCV && !isInsertSliceFusionAllowed(producerOp, consumerOp)) {
+    LDBG("Rejecting fusion: insert_slice boundary");
+    return false;
+  }
+
+  // Only producer ExtractSlice/Extract Ops need to be fused to VF.
+  // Similar to hasInvalidDependencyIfFused, if the number of ops in a group is
+  // greater than 1, then the extract ops in that group must satisfy the
+  // constraint rules.
+  SmallVector<Operation *, 4> extractVec;
+  if (producerGroup.size() == 1)
+    for (Operation *op : producerGroup)
+      if (isa<tensor::ExtractSliceOp>(op) || isa<tensor::ExtractOp>(op))
+        extractVec.push_back(op);
+  if (consumerGroup.size() == 1)
+    for (Operation *op : consumerGroup)
+      if (isa<tensor::ExtractSliceOp>(op) || isa<tensor::ExtractOp>(op))
+        extractVec.push_back(op);
+  for (auto *extractOp : extractVec)
+    for (auto *user : extractOp->getUsers())
+      if (!consumerGroup.count(user) && !producerGroup.count(user))
+        return false;
+
+  if (!isInFusionWhiteList(producerOp) ||
+      !isInFusionWhiteList(consumerOp))
+    return false;
+
+  auto producerLinalgOp = dyn_cast<linalg::LinalgOp>(producerOp);
+
+  if (producerLinalgOp != nullptr && isLinalgReductionOp(producerLinalgOp))
+    return false;
+
+  // Prevent reduction op having a consumer in the fused group
+  if (stage == 1 && hasReductionToConsumer(producerIndex, consumerIndex)) {
+    LDBG("areFusibleOps reject: group "
+         << producerGroupId << " contains reduction op for consumer group "
+         << consumerGroupId);
+    return false;
+  }
+
+  return true;
+}
+
+std::vector<OpOperand *>
+MaxParallelAnalyzer::getSortedConsumerOperands(Operation *producerOp) {
+  std::vector<OpOperand *> validUses;
+  for (OpOperand &use : producerOp->getUses()) {
+    if (opToIndex.contains(use.getOwner())) {
+      validUses.push_back(&use);
+    }
+  }
+
+  // Sort the uses in ascending called order.
+  std::sort(validUses.begin(), validUses.end(),
+            [&](OpOperand *x, OpOperand *y) {
+              int xIndex = opToIndex.at(x->getOwner());
+              int pxMax = dsu.getMaxIndexUnion(xIndex);
+              int yIndex = opToIndex.at(y->getOwner());
+              int pyMax = dsu.getMaxIndexUnion(yIndex);
+              return pxMax < pyMax;
+            });
+
+  return validUses;
+}
+
+void MaxParallelAnalyzer::initializeImpl(Block &block) {
+  for (auto &op : block) {
+    if (!opToIndex.contains(&op))
+      continue;
+    if (!isInFusionWhiteList(&op))
+      continue;
+    auto currentOpIndex = opToIndex.at(&op);
+    Operation *groupOp = opsInBlock[currentOpIndex];
+    if (!opToGroupIndex.count(groupOp)) {
+      auto groupId = AllFusedGroupBlocks.size();
+      AllFusedGroupBlocks[groupId].insert(groupOp);
+      opToGroupIndex.insert({groupOp, groupId});
+      groupMetrics[groupId] = getOpMetrics(groupOp);
+    }
+  }
+  LDBG("Initialized " << AllFusedGroupBlocks.size()
+                      << " groups with one op each");
+}
+
+const MaxParallelAnalyzer::CostMetrics &
+MaxParallelAnalyzer::getOpMetrics(Operation *op) {
+  if (!isa<linalg::LinalgOp>(op))
+    return nonLinalgOpMetrics;
+  auto it = linalgOpMetrics.find(op);
+  if (it != linalgOpMetrics.end())
+    return it->second;
+  CostMetrics curOpMetrics;
+  curOpMetrics.isValidLinalg = isValidLinalgOp(dyn_cast<linalg::LinalgOp>(op));
+  curOpMetrics.computeScore = getComputeScores(op);
+  curOpMetrics.computeOpCount = getComputeOpCount(op);
+  curOpMetrics.parallelism = getParallelism(op);
+  SmallVector<Operation *, 1> single{op};
+  auto [s, d] = getExecUnitCounts(single);
+  curOpMetrics.singleExuCnt = s;
+  curOpMetrics.doubleExuCnt = d;
+  curOpMetrics.innerOpCnts = getSameGroupOpCnts(single);
+  DenseSet<Operation *> singleSet;
+  singleSet.insert(op);
+  collectValuesFromOps(singleSet, curOpMetrics.inputs, curOpMetrics.outputs,
+                       curOpMetrics.allValues);
+  linalgOpMetrics[op] = curOpMetrics;
+  return linalgOpMetrics[op];
+}
+
+bool MaxParallelAnalyzer::tryFuseByCastStrategy(int producerGroupId,
+                                                int consumerGroupId,
+                                                int producerIndex,
+                                                int consumerIndex) {
+  auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+  auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+  Operation *const candidateOp = opsInBlock[producerIndex];
+  Operation *const consumerOp = opsInBlock[consumerIndex];
+
+  // Classify a cast as widening (inBits <= outBits) or narrowing
+  // (inBits > outBits); false for non-cast / non-numeric types.
+  auto checkCast = [](Operation *op, bool checkWidening) -> bool {
+    if (!op || !isa<hfusion::CastOp>(op))
+      return false;
+    auto castOp = cast<hfusion::CastOp>(op);
+    auto outType = dyn_cast<RankedTensorType>(castOp.getOutputs()[0].getType());
+    auto inType = dyn_cast<RankedTensorType>(castOp.getInputs()[0].getType());
+    if (!outType || !inType)
+      return false;
+    Type outElemType = outType.getElementType();
+    Type inElemType = inType.getElementType();
+    if (!isa<IntegerType, FloatType>(outElemType) ||
+        !isa<IntegerType, FloatType>(inElemType))
+      return false;
+    unsigned inBits = inElemType.getIntOrFloatBitWidth();
+    unsigned outBits = outElemType.getIntOrFloatBitWidth();
+    return checkWidening ? (inBits <= outBits) : (inBits > outBits);
+  };
+
+  // 1. Producer cast (widening): fuse with consumer when the cast is the sole
+  //    producer op and one of: widening, consumer is a vsstb-pattern transpose
+  //    chain, the cast has no available producer to pair with, or fusing
+  //    relieves an invalid dependency.
+  if (isa<hfusion::CastOp>(candidateOp) && producerGroup.size() == 1) {
+    LDBG("candidateOp is Cast");
+    bool isWideningCast = checkCast(candidateOp, /*checkWidening=*/true);
+    Operation *castInputDef = candidateOp->getOperand(0).getDefiningOp();
+    bool noAvailableCastProdOp =
+        !castInputDef || !opToIndex.count(castInputDef);
+    bool hasInvalidDep =
+        castInputDef && opToIndex.count(castInputDef) &&
+        hasInvalidDependencyIfFused(opToIndex[castInputDef], producerIndex);
+    bool castConsumerIsTranspose =
+        isa<linalg::TransposeOp>(consumerOp) ||
+        (isa<tensor::ExpandShapeOp>(consumerOp) &&
+         llvm::any_of(consumerOp->getUsers(), [](Operation *op) {
+           return isa<linalg::TransposeOp>(op);
+         }));
+    return isWideningCast || castConsumerIsTranspose || noAvailableCastProdOp ||
+           hasInvalidDep;
+  }
+
+  // 2. Consumer cast (narrowing): fuse with producer when the cast is the sole
+  //    consumer op and it is a narrowing cast.
+  if (isa<hfusion::CastOp>(consumerOp) && consumerGroup.size() == 1) {
+    LDBG("consumerOp is Cast");
+    if (checkCast(consumerOp, /*checkWidening=*/false))
+      return true;
+  }
+
+  return false;
+}
+
+bool MaxParallelAnalyzer::canFuseGroups(int producerGroupId,
+                                        int consumerGroupId, int producerIndex,
+                                        int consumerIndex) {
+  Operation *const candidateOp = opsInBlock[producerIndex];
+  auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+  // enableCastOpt only takes effect in max-parallel mode.
+  if (this->option.enableCastOpt) {
+    if (tryFuseByCastStrategy(producerGroupId, consumerGroupId, producerIndex,
+                              consumerIndex))
+      return true;
+  } else if (isa<hfusion::CastOp>(candidateOp)) {
+    LDBG("candidateOp is Cast");
+    return true;
+  }
+
+  if (stage == 1) {
+    if (this->option.enableCastOpt &&
+        useNarrowingCastInConsumer(producerIndex, consumerIndex)) {
+      return false;
+    }
+    // TODO Perhaps we can cache the computation state of operation, but we
+    // cannot estimate the memory overhead as each operation consumes 208 bytes
+    // of memory.
+    const CostMetrics &cand = getOpMetrics(candidateOp);
+    float producerComputeScores = cand.computeScore;
+    auto [candIn, candOut] = calculateIoCounts(
+        cand.inputs.size(), cand.outputs.size(), cand.allValues.size());
+    float producerIoScores = ioScoreFromCounts(candIn, candOut);
+    const CostMetrics &consumer = groupMetrics[consumerGroupId];
+    float consumerComputeScores = consumer.computeScore;
+    auto [consIn, consOut] =
+        calculateIoCounts(consumer.inputs.size(), consumer.outputs.size(),
+                          consumer.allValues.size());
+    float consumerIoScores = ioScoreFromCounts(consIn, consOut);
+
+    // IO Scores compute with uneliminated inputs/outputs
+    float_t fusedIoScores = producerIoScores + consumerIoScores;
+    float_t fusedComputeScores = producerComputeScores + consumerComputeScores;
+
+    auto paralLift = parallelismSubModel(cand, consumer);
+    auto execUtilLift = execUnitUtilizationSubModel(cand, consumer);
+
+    LDBG("candidate op producer: compute=" << producerComputeScores
+                                           << " io=" << producerIoScores);
+    LDBG("consumer(" << consumerGroup.size() << "): compute="
+                     << consumerComputeScores << " io=" << consumerIoScores);
+
+    if (producerIoScores + kEpsilon > producerComputeScores &&
+        consumerIoScores + kEpsilon > consumerComputeScores) {
+      LDBG("Both IO Bound -> Fuse");
+      return true;
+    }
+
+    if (!(producerIoScores < producerComputeScores &&
+          consumerIoScores < consumerComputeScores) &&
+        fusedIoScores + kEpsilon > fusedComputeScores) {
+      LDBG("Fused IO >= Compute -> Fuse");
+      return true;
+    }
+    LDBG("execUtilLift=" << execUtilLift << "paralLift=" << paralLift);
+    return (execUtilLift || paralLift);
+  } else {
+    return true;
+  }
+}
+
+static size_t countUnique(const llvm::SmallDenseSet<Value> &lhs,
+                          const llvm::SmallDenseSet<Value> &rhs) {
+  size_t cnt = 0;
+  for (Value v : rhs) {
+    if (!lhs.contains(v))
+      ++cnt;
+  }
+  return cnt;
+}
+
+bool MaxParallelAnalyzer::parallelismSubModel(
+    const MaxParallelAnalyzer::CostMetrics &candidateCM,
+    const MaxParallelAnalyzer::CostMetrics &consumerCM) const {
+  size_t fusedIoCountNum = 0;
+  if (candidateCM.isValidLinalg) {
+    size_t mergedIn = consumerCM.inputs.size() +
+                      countUnique(consumerCM.inputs, candidateCM.inputs);
+    size_t mergedOut = consumerCM.outputs.size() +
+                       countUnique(consumerCM.outputs, candidateCM.outputs);
+    size_t mergedAll = consumerCM.allValues.size() +
+                       countUnique(consumerCM.allValues, candidateCM.allValues);
+    auto [inNum, outNum] = calculateIoCounts(mergedIn, mergedOut, mergedAll);
+    fusedIoCountNum = inNum + outNum;
+  }
+  auto fusedComputeCount =
+      candidateCM.computeOpCount + consumerCM.computeOpCount;
+  int totalOps =
+      static_cast<int>(fusedIoCountNum) + static_cast<int>(fusedComputeCount);
+  float fusedLoopParallelism = (1.0f * kIssueQueueLen * 2 / totalOps) *
+                               (1.0f * fusedComputeCount / totalOps);
+  auto opMaxParallelism =
+      std::max(candidateCM.parallelism, consumerCM.parallelism);
+  return fusedLoopParallelism + kEpsilon > opMaxParallelism;
+}
+
+bool MaxParallelAnalyzer::execUnitUtilizationSubModel(
+    const CostMetrics &candidateCM, const CostMetrics &consumerCM) const {
+  float producerUtil =
+      getExecUnitUtilization(candidateCM.singleExuCnt, candidateCM.doubleExuCnt,
+                             candidateCM.innerOpCnts);
+  float consumerUtil = getExecUnitUtilization(
+      consumerCM.singleExuCnt, consumerCM.doubleExuCnt, consumerCM.innerOpCnts);
+  LDBG("producerUtil=" << producerUtil << " consumerUtil=" << consumerUtil);
+  float beforeUtil = std::min(consumerUtil, producerUtil);
+  DenseMap<std::pair<int64_t, int64_t>, unsigned> temp = consumerCM.innerOpCnts;
+  for (const auto &[k, v] : candidateCM.innerOpCnts)
+    temp[k] += v;
+  float mergedUtil = getExecUnitUtilization(
+      candidateCM.singleExuCnt + consumerCM.singleExuCnt,
+      candidateCM.doubleExuCnt + consumerCM.doubleExuCnt, temp);
+  LDBG("mergedUtil=" << mergedUtil);
+  return beforeUtil + kEpsilon < 1.0f && beforeUtil < mergedUtil + kEpsilon;
+}
+
+bool MaxParallelAnalyzer::isIOBoundGroup(int groupId) {
+  if (AllFusedGroupBlocks[groupId].empty()) {
+    return false;
+  }
+  const CostMetrics &cm = groupMetrics[groupId];
+  float computeScores = cm.computeScore;
+  auto [in, out] = calculateIoCounts(cm.inputs.size(), cm.outputs.size(),
+                                     cm.allValues.size());
+  float ioScores = ioScoreFromCounts(in, out);
+  return ioScores + kEpsilon > computeScores;
+}
+
+static int getElementByteWidth(Type elementType) {
+  if (!elementType.isIntOrFloat())
+    return 0;
+  return static_cast<int>(llvm::divideCeil(elementType.getIntOrFloatBitWidth(),
+                                           mlir::utils::INTR_BITS_PER_BYTE));
+}
+
+static int computeOpInstNum(Operation &op) {
+  int64_t maxElements = 0;
+  int byteWidth = 0;
+  auto checkRankedTensor = [&](Value val) {
+    auto tensorType = dyn_cast<RankedTensorType>(val.getType());
+    if (!tensorType)
+      return;
+    if (!tensorType.hasStaticShape())
+      return;
+    int elemByteWidth = getElementByteWidth(tensorType.getElementType());
+    if (elemByteWidth == 0)
+      return;
+    int64_t numElements = tensorType.getNumElements();
+    if (numElements * elemByteWidth > maxElements * byteWidth) {
+      maxElements = numElements;
+      byteWidth = elemByteWidth;
+    }
+  };
+  // Check linalg op inputs and outputs.
+  if (auto linalgOp = dyn_cast<linalg::LinalgOp>(&op)) {
+    for (auto input : linalgOp.getDpsInputs())
+      checkRankedTensor(input);
+    for (auto output : linalgOp->getResults())
+      checkRankedTensor(output);
+  } else {
+    for (auto operand : op.getOperands())
+      checkRankedTensor(operand);
+    for (auto result : op.getResults())
+      checkRankedTensor(result);
+  }
+  if (maxElements == 0 || byteWidth == 0)
+    return 0;
+  return static_cast<int>(maxElements * byteWidth / mlir::hfusion::util::VL);
+}
+
+template <typename RangeT> static int computeGroupInstNum(const RangeT &group) {
+  int totalInstNum = 0;
+  for (auto *op : group)
+    totalInstNum += computeOpInstNum(*op);
+  return totalInstNum;
+}
+
+bool MaxParallelAnalyzer::isSmallShapeGroup(int groupId) {
+  if (AllFusedGroupBlocks[groupId].empty()) {
+    return false;
+  }
+  int instNum = computeGroupInstNum(AllFusedGroupBlocks[groupId]);
+  LDBG("isSmallShapeGroup: group " << groupId << " instNum=" << instNum);
+  return instNum < kIssueQueueLen;
+}
+
+bool MaxParallelAnalyzer::mergeGroups(const int producerGroupId,
+                                      const int consumerGroupId) {
+  auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+  auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+  for (auto *op : producerGroup) {
+    consumerGroup.insert(op);
+    opToGroupIndex[op] = consumerGroupId;
+  }
+  producerGroup.clear();
+  auto it = groupMetrics.find(producerGroupId);
+  if (it != groupMetrics.end()) {
+    groupMetrics[consumerGroupId] += groupMetrics[producerGroupId];
+    groupMetrics.erase(it);
+  }
+  LDBG("merged group " << producerGroupId << " into group " << consumerGroupId);
+  return true;
+}
+
+// Attempt to fuse two groups by: checking fusibility, checking index
+// fusion, and merging. Returns true on success.
+bool MaxParallelAnalyzer::tryFuseGroups(int producerIndex, int consumerIndex,
+                                        int producerGroupId,
+                                        int consumerGroupId) {
+  if (!VFFusionAnalyzerBase::isFusible(producerIndex, consumerIndex)) {
+    LDBG("isFusible failed");
+    return false;
+  }
+  if (!VFFusionAnalyzerBase::fuseIndexWith(producerIndex, consumerIndex)) {
+    LDBG("fuseIndexWith failed");
+    return false;
+  }
+  if (!mergeGroups(producerGroupId, consumerGroupId)) {
+    LDBG("mergeGroups failed");
+    return false;
+  }
+  return true;
+}
+
+bool MaxParallelAnalyzer::isFusibleImpl(const int producerIndex,
+                                        const int consumerIndex) {
+  LDBG("checking group-based fusible");
+
+  auto *producerOp = opsInBlock[producerIndex];
+  auto *consumerOp = opsInBlock[consumerIndex];
+
+  if (!opToGroupIndex.count(producerOp) || !opToGroupIndex.count(consumerOp)) {
+    LDBG("producer or consumer has no group, cannot fuse");
+    return false;
+  }
+
+  int producerGroupId = static_cast<int>(opToGroupIndex[producerOp]);
+  int consumerGroupId = static_cast<int>(opToGroupIndex[consumerOp]);
+
+  auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+  auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+
+  // Check if ALL ops in producer group have zero compute
+  bool allZeroCompute = llvm::all_of(
+      producerGroup, [](Operation *op) { return getComputeOpCount(op) == 0; });
+  if (allZeroCompute && !producerGroup.empty()) {
+    LDBG("producer group all zero compute op, fuse");
+    return true;
+  }
+
+  // Check if producerGroup or consumerGroup are ALL reshape ops
+  bool producerAllReshape = llvm::all_of(producerGroup, isReshapeOp);
+  bool consumerAllReshape = llvm::all_of(consumerGroup, isReshapeOp);
+  if ((producerAllReshape || consumerAllReshape) && !producerGroup.empty() &&
+      !consumerGroup.empty()) {
+    LDBG("producer or consumer group all reshape Op, fuse");
+    return true;
+  }
+
+  if (canFuseGroups(producerGroupId, consumerGroupId, producerIndex,
+                    consumerIndex)) {
+    LDBG("groups can be fused based on cost model");
+    return true;
+  }
+
+  return false;
+}
+
+bool MaxParallelAnalyzer::fuseProducerConsumerImpl(Block &block) {
+  bool hasFused = false;
+  // Iterate through block in reverse order (from last op to first)
+  for (auto it = block.rbegin(); it != block.rend(); ++it) {
+    Operation &producerOp = *it;
+
+    if (!opToIndex.contains(&producerOp))
+      continue;
+
+    const int producerIndex = opToIndex.at(&producerOp);
+    if (!opToGroupIndex.contains(&producerOp))
+      continue;
+
+    std::vector<OpOperand *> validUses = getSortedConsumerOperands(&producerOp);
+    for (OpOperand *opOperandPtr : validUses) {
+      Operation *consumerOp = opOperandPtr->getOwner();
+      if (!opToGroupIndex.contains(consumerOp))
+        continue;
+
+      const int consumerIndex = opToIndex.at(consumerOp);
+      int producerGroupId = static_cast<int>(opToGroupIndex[&producerOp]);
+      int consumerGroupId = static_cast<int>(opToGroupIndex[consumerOp]);
+
+      LDBG("Check: " << producerOp << " " << producerOp << " (group "
+                     << producerGroupId << ", "
+                     << AllFusedGroupBlocks[producerGroupId].size()
+                     << " ops) -> " << consumerOp << " " << *consumerOp
+                     << " (group " << consumerGroupId << ", "
+                     << AllFusedGroupBlocks[consumerGroupId].size() << " ops)");
+
+      if (producerGroupId == consumerGroupId) {
+        LDBG("same group, skip");
+        continue;
+      }
+
+      if (!areFusibleOps(producerIndex, consumerIndex)) {
+        LDBG("areFusibleOps returned false");
+        continue;
+      }
+
+      if (tryFuseGroups(producerIndex, consumerIndex, producerGroupId,
+                        consumerGroupId)) {
+        hasFused = true;
+        LDBG("Successfully fused group " << producerGroupId << " with group "
+                                         << consumerGroupId);
+      }
+    }
+  }
+  return hasFused;
+}
+
+// Pattern: predicate (producer) + select (consumer) co-location.
+// If compare and select are split into separate groups, OVF will outline them
+// into different VFs. The i1 data read from UB memory must be converted from
+// vector register format to predicate register format via RV_MOVVP before
+// VSEL can use it. Forcing them into the same group keeps the predicate
+// in-register.
+bool MaxParallelAnalyzer::fusePredicateSelectPattern(Block &block) {
+  bool hasFused = false;
+
+  // Pre-build hasPredicate/hasSelect caches in a single pass over all groups.
+  // This avoids re-scanning on every iteration and every consumer candidate
+  // check.
+  DenseMap<int, bool> hasPredicate, hasSelect;
+  for (auto &[id, ops] : AllFusedGroupBlocks) {
+    if (ops.empty())
+      continue;
+    bool pred = false, sel = false;
+    for (auto *op : ops) {
+      if (isa<hfusion::CompareOp>(op))
+        pred = true;
+      if (isPredicateSelect(op))
+        sel = true;
+    }
+    hasPredicate[static_cast<int>(id)] = pred;
+    hasSelect[static_cast<int>(id)] = sel;
+  }
+
+  // Worklist: only groups with predicate producers are potential producers.
+  // After a merge, only the consumer group's flags may change, so we
+  // only re-process the consumer — not all groups.
+  std::set<int> worklist;
+  for (auto &[id, pred] : hasPredicate)
+    if (pred)
+      worklist.insert(id);
+
+  while (!worklist.empty()) {
+    int producerGroupId = *worklist.begin();
+    worklist.erase(worklist.begin());
+    auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+    if (producerGroup.empty())
+      continue;
+
+    LDBG("Special pattern (predicate+select): producer group "
+         << producerGroupId);
+
+    // Pre-phase: fuse with i1 pass-through ops (reshape, vand, vor) that sit
+    // between compare and select. These ops break the direct
+    // compare→select connection: compare→expand_shape→select or
+    // compare→elemwise_binary{vand}→select. By fusing the compare's group
+    // with the pass-through's group first, the fixpoint re-entry will find
+    // the select as a direct consumer of the merged group.
+    bool fusedPassThrough = false;
+    for (auto *producerOp : producerGroup) {
+      if (!opToIndex.contains(producerOp))
+        continue;
+      std::vector<OpOperand *> validUses =
+          getSortedConsumerOperands(producerOp);
+      for (auto *opOperandPtr : validUses) {
+        auto *ptConsumerOp = opOperandPtr->getOwner();
+        if (!opToGroupIndex.contains(ptConsumerOp))
+          continue;
+        int ptGroupId = static_cast<int>(opToGroupIndex[ptConsumerOp]);
+        if (ptGroupId == producerGroupId)
+          continue;
+        if (AllFusedGroupBlocks[ptGroupId].empty())
+          continue;
+        // Skip if the pass-through's group already has a select — the
+        // existing direct-search logic below will handle it.
+        if (hasSelect.lookup(ptGroupId))
+          continue;
+        if (!isI1PassThrough(ptConsumerOp))
+          continue;
+
+        int producerIndex = static_cast<int>(opToIndex[producerOp]);
+        int ptIndex = static_cast<int>(opToIndex[ptConsumerOp]);
+        if (!areFusibleOps(producerIndex, ptIndex)) {
+          LDBG("areFusibleOps returned false for pass-through fusion");
+          continue;
+        }
+        if (tryFuseGroups(producerIndex, ptIndex, producerGroupId, ptGroupId)) {
+          hasFused = true;
+          fusedPassThrough = true;
+          hasPredicate[ptGroupId] =
+              hasPredicate[ptGroupId] || hasPredicate[producerGroupId];
+          hasSelect[ptGroupId] =
+              hasSelect[ptGroupId] || hasSelect[producerGroupId];
+          hasPredicate.erase(producerGroupId);
+          hasSelect.erase(producerGroupId);
+          // The merged group now has predicate ops → re-add to worklist so
+          // the next iteration can find the select consumer directly.
+          if (hasPredicate[ptGroupId])
+            worklist.insert(ptGroupId);
+          LDBG("Special pattern (pass-through): group "
+               << producerGroupId << " fused with pass-through group "
+               << ptGroupId);
+          break;
+        }
+      }
+      if (fusedPassThrough)
+        break;
+    }
+    if (fusedPassThrough)
+      continue;
+
+    // Find nearest select consumer using cache (O(1) lookup).
+    int consumerGroupId = -1;
+    int consumerGroupMinIndex = -1;
+    for (auto *producerOp : producerGroup) {
+      if (!opToIndex.contains(producerOp))
+        continue;
+      std::vector<OpOperand *> validUses =
+          getSortedConsumerOperands(producerOp);
+      for (auto *opOperandPtr : validUses) {
+        auto *consumerOp = opOperandPtr->getOwner();
+        if (!opToGroupIndex.contains(consumerOp))
+          continue;
+        int foundGroupId = static_cast<int>(opToGroupIndex[consumerOp]);
+        if (foundGroupId == producerGroupId)
+          continue;
+        if (AllFusedGroupBlocks[foundGroupId].empty())
+          continue;
+        if (!hasSelect.lookup(foundGroupId))
+          continue;
+        int foundGroupMaxIndex = static_cast<int>(
+            dsu.getMaxIndexUnion(static_cast<int>(opToIndex[consumerOp])));
+        if (consumerGroupId < 0 || foundGroupMaxIndex < consumerGroupMinIndex) {
+          consumerGroupId = foundGroupId;
+          consumerGroupMinIndex = foundGroupMaxIndex;
+        }
+      }
+    }
+    if (consumerGroupId < 0)
+      continue;
+    if (AllFusedGroupBlocks[consumerGroupId].empty())
+      continue;
+
+    LDBG("Special pattern: group " << producerGroupId << " -> consumer group "
+                                   << consumerGroupId);
+    auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+    auto *producerOp = *producerGroup.begin();
+    auto *consumerOp = *consumerGroup.begin();
+    if (!opToIndex.contains(producerOp) || !opToIndex.contains(consumerOp))
+      continue;
+    int producerIndex = static_cast<int>(opToIndex[producerOp]);
+    int consumerIndex = static_cast<int>(opToIndex[consumerOp]);
+
+    if (!areFusibleOps(producerIndex, consumerIndex)) {
+      LDBG("areFusibleOps returned false for special pattern");
+      continue;
+    }
+    if (tryFuseGroups(producerIndex, consumerIndex, producerGroupId,
+                      consumerGroupId)) {
+      hasFused = true;
+      // Incrementally update caches: producer's ops are now in consumer.
+      // No need to re-scan inner ops — just OR the flags.
+      hasPredicate[consumerGroupId] =
+          hasPredicate[consumerGroupId] || hasPredicate[producerGroupId];
+      hasSelect[consumerGroupId] =
+          hasSelect[consumerGroupId] || hasSelect[producerGroupId];
+      hasPredicate.erase(producerGroupId);
+      hasSelect.erase(producerGroupId);
+      // Consumer may now have predicate ops (from producer) → re-add to
+      // worklist so it can find its own select consumers.
+      if (hasPredicate[consumerGroupId])
+        worklist.insert(consumerGroupId);
+      LDBG("Special pattern: group " << producerGroupId << " fused with group "
+                                     << consumerGroupId);
+    }
+  }
+  return hasFused;
+}
+
+bool MaxParallelAnalyzer::fuseSpecialPatterns(Block &block) {
+  bool hasFused = false;
+  // Each pattern function is self-contained and iterates to fixpoint.
+  // New patterns can be added here as the framework grows.
+  hasFused |= fusePredicateSelectPattern(block);
+  hasFused |= fuseSingleUseArangeComparePattern(block);
+  return hasFused;
+}
+
+// Pattern: single-use arange + compare co-location.
+//
+// This handles a pipeline interaction that the MaxParallel profitability model
+// does not currently represent.  A compute-bound arange may be left outside a
+// compare group because adding it provides neither an execution-unit nor a
+// parallelism lift.  When the compare is grouped with operations after a copy,
+// VFFusion outlines the group at the consumer position and passes the full
+// arange tensor from the caller across the copy.  AutoVectorizeV2 may later
+// inline the fused function, but its copy-conflict constraints can still keep
+// the arange and compare in different vector functions.  Bufferization then
+// materializes the arange result in UB even though it could be generated in the
+// consumer VF, and will result ub overflow.
+//
+// Keep the impact narrow: require an exact ArangeOp with one ranked-tensor
+// result, a single direct CompareOp user, and a singleton producer group.  Do
+// not extend predicate/select groups because they have separate cross-sync
+// safety rules.  The merge also goes through areFusibleOps and tryFuseGroups,
+// so this pattern bypasses only the stage-1 profitability decision, not the
+// common legality, dependency, or grouping checks.
+//
+// TODO If there is a better way to handle it in the future, this code can be
+// removed.
+bool MaxParallelAnalyzer::fuseSingleUseArangeComparePattern(Block &block) {
+  bool hasFused = false;
+  for (Operation &op : block) {
+    auto arangeOp = dyn_cast<hfusion::ArangeOp>(&op);
+    if (!arangeOp || arangeOp->getNumResults() != 1)
+      continue;
+
+    Value result = arangeOp->getResult(0);
+    if (!isa<RankedTensorType>(result.getType()) || !result.hasOneUse())
+      continue;
+
+    Operation *consumerOp = *result.getUsers().begin();
+    if (!isa<hfusion::CompareOp>(consumerOp) ||
+        !opToGroupIndex.contains(arangeOp) ||
+        !opToGroupIndex.contains(consumerOp))
+      continue;
+
+    int producerGroupId =
+        static_cast<int>(opToGroupIndex[arangeOp.getOperation()]);
+    int consumerGroupId = static_cast<int>(opToGroupIndex[consumerOp]);
+    if (producerGroupId == consumerGroupId ||
+        AllFusedGroupBlocks[producerGroupId].size() != 1)
+      continue;
+
+    // Predicate/select sinking has its own cross-sync safety constraints.  Do
+    // not extend that pattern by pulling an arange into a select group.
+    if (llvm::any_of(AllFusedGroupBlocks[consumerGroupId], isPredicateSelect))
+      continue;
+
+    int producerIndex = static_cast<int>(opToIndex[arangeOp.getOperation()]);
+    int consumerIndex = static_cast<int>(opToIndex[consumerOp]);
+    if (!areFusibleOps(producerIndex, consumerIndex))
+      continue;
+
+    if (tryFuseGroups(producerIndex, consumerIndex, producerGroupId,
+                      consumerGroupId)) {
+      hasFused = true;
+      LDBG("Special pattern (single-use arange+compare): group "
+           << producerGroupId << " fused with group " << consumerGroupId);
+    }
+  }
+  return hasFused;
+}
+
+bool MaxParallelAnalyzer::fuseGroupsWithNearestConsumer(
+    bool (MaxParallelAnalyzer::*isTargetGroup)(int), const char *groupKind) {
+  bool hasFused = false;
+  bool madeProgress = true;
+
+  while (madeProgress) {
+    madeProgress = false;
+
+    // Find all target groups
+    std::vector<int> targetGroupIds;
+    for (auto &[id, ops] : AllFusedGroupBlocks) {
+      if (!ops.empty() && (this->*isTargetGroup)(id)) {
+        targetGroupIds.push_back(id);
+      }
+    }
+
+    for (int producerGroupId : targetGroupIds) {
+      LDBG(groupKind << " group " << producerGroupId);
+      auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+      if (producerGroup.empty())
+        continue;
+
+      // Collect all consumer groups from every op in the producer group,
+      // then find the truly nearest consumer group.
+      int consumerGroupId = -1;
+      int consumerGroupMinIndex = -1;
+      for (auto *producerOp : producerGroup) {
+        if (!opToIndex.contains(producerOp))
+          continue;
+
+        std::vector<OpOperand *> validUses =
+            getSortedConsumerOperands(producerOp);
+
+        for (auto *opOperandPtr : validUses) {
+          auto *consumerOp = opOperandPtr->getOwner();
+          if (!opToGroupIndex.contains(consumerOp))
+            continue;
+          int foundGroupId = static_cast<int>(opToGroupIndex[consumerOp]);
+          if (foundGroupId == producerGroupId)
+            continue;
+          if (AllFusedGroupBlocks[foundGroupId].empty())
+            continue;
+
+          int foundGroupMaxIndex = static_cast<int>(
+              dsu.getMaxIndexUnion(static_cast<int>(opToIndex[consumerOp])));
+          if (consumerGroupId < 0 ||
+              foundGroupMaxIndex < consumerGroupMinIndex) {
+            consumerGroupId = foundGroupId;
+            consumerGroupMinIndex = foundGroupMaxIndex;
+          }
+        }
+      }
+      if (consumerGroupId < 0)
+        continue;
+      if (AllFusedGroupBlocks[consumerGroupId].empty())
+        continue;
+
+      LDBG(groupKind << " group " << producerGroupId << " -> consumer group "
+                     << consumerGroupId);
+
+      auto &consumerGroup = AllFusedGroupBlocks[consumerGroupId];
+
+      // Use representative ops from each group for areFusibleOps/tryFuseGroups
+      auto *producerOp = *producerGroup.begin();
+      auto *consumerOp = *consumerGroup.begin();
+      if (!opToIndex.contains(producerOp) || !opToIndex.contains(consumerOp))
+        continue;
+
+      int producerIndex = static_cast<int>(opToIndex[producerOp]);
+      int consumerIndex = static_cast<int>(opToIndex[consumerOp]);
+
+      if (!areFusibleOps(producerIndex, consumerIndex)) {
+        LDBG("areFusibleOps returned false");
+        continue;
+      }
+
+      if (tryFuseGroups(producerIndex, consumerIndex, producerGroupId,
+                        consumerGroupId)) {
+        hasFused = true;
+        madeProgress = true;
+        LDBG(groupKind << " group " << producerGroupId
+                       << " fused with consumer group " << consumerGroupId);
+      }
+    }
+  }
+  return hasFused;
+}
+
+bool MaxParallelAnalyzer::fuseIOBoundGroupsWithNearestConsumer() {
+  return fuseGroupsWithNearestConsumer(&MaxParallelAnalyzer::isIOBoundGroup,
+                                       "IO-bound");
+}
+
+bool MaxParallelAnalyzer::fuseReduceGroupsWithProducer() {
+  bool hasFused = false;
+
+  std::vector<int> reduceGroupIds;
+  for (auto &[id, ops] : AllFusedGroupBlocks) {
+    if (ops.size() != 1)
+      continue;
+    auto linalgOp = dyn_cast<linalg::LinalgOp>(*ops.begin());
+    if (linalgOp && isLinalgReductionOp(linalgOp))
+      reduceGroupIds.push_back(id);
+  }
+
+  for (int reduceGroupId : reduceGroupIds) {
+    auto &reduceGroup = AllFusedGroupBlocks[reduceGroupId];
+    if (reduceGroup.empty())
+      continue;
+
+    Operation *reduceOp = *reduceGroup.begin();
+    if (tryFuseReduceWithProducer(reduceGroupId, reduceOp)) {
+      hasFused = true;
+      LDBG("Reduce group " << reduceGroupId << " fused with producer");
+    }
+  }
+  return hasFused;
+}
+
+bool MaxParallelAnalyzer::tryFuseReduceWithProducer(int reduceGroupId,
+                                                    Operation *reduceOp) {
+  auto linalgOp = dyn_cast<linalg::LinalgOp>(reduceOp);
+  if (!linalgOp)
+    return false;
+
+  // Find the nearest producer group from the reduce's DPS inputs.
+  // "Nearest" = the producer group with the largest max topological index
+  // (closest to the reduce in execution order).
+  int producerGroupId = -1;
+  int producerGroupMaxIndex = -1;
+  for (auto input : linalgOp.getDpsInputs()) {
+    Operation *definingOp = input.getDefiningOp();
+    if (!definingOp || isa<arith::ConstantOp>(definingOp))
+      continue;
+    if (!opToIndex.contains(definingOp) || !opToGroupIndex.contains(definingOp))
+      continue;
+
+    int foundGroupId = static_cast<int>(opToGroupIndex[definingOp]);
+    if (foundGroupId == reduceGroupId)
+      continue;
+    if (AllFusedGroupBlocks[foundGroupId].empty())
+      continue;
+
+    int foundGroupMaxIndex = static_cast<int>(
+        dsu.getMaxIndexUnion(static_cast<int>(opToIndex[definingOp])));
+    if (producerGroupId < 0 || foundGroupMaxIndex > producerGroupMaxIndex) {
+      producerGroupId = foundGroupId;
+      producerGroupMaxIndex = foundGroupMaxIndex;
+    }
+  }
+
+  if (producerGroupId < 0)
+    return false;
+
+  auto &producerGroup = AllFusedGroupBlocks[producerGroupId];
+  if (producerGroup.empty())
+    return false;
+
+  auto *producerOp = *producerGroup.begin();
+  if (!opToIndex.contains(producerOp) || !opToIndex.contains(reduceOp))
+    return false;
+
+  int producerIndex = static_cast<int>(opToIndex[producerOp]);
+  int consumerIndex = static_cast<int>(opToIndex[reduceOp]);
+  LDBG("Reduce group " << reduceGroupId << " -> producer group "
+                       << producerGroupId);
+
+  if (!areFusibleOps(producerIndex, consumerIndex)) {
+    LDBG("areFusibleOps returned false for reduce-to-producer fusion");
+    return false;
+  }
+
+  return tryFuseGroups(producerIndex, consumerIndex, producerGroupId,
+                       reduceGroupId);
+}
+
+bool MaxParallelAnalyzer::fuseShapeBoundGroupsWithNearestConsumer() {
+  return fuseGroupsWithNearestConsumer(&MaxParallelAnalyzer::isSmallShapeGroup,
+                                       "Small-shape");
+}
+
+void MaxParallelAnalyzer::printValidGroupCount() {
+  int64_t count = 0;
+  std::vector<int> validGroupIds;
+
+  LDBG("=============================================");
+  LDBG("        All Fusion Groups Info");
+  LDBG("=============================================");
+
+  for (auto &entry : AllFusedGroupBlocks) {
+    int groupId = entry.first;
+    auto &opSet = entry.second;
+
+    if (opSet.empty())
+      continue;
+
+    validGroupIds.push_back(groupId);
+    count++;
+  }
+  LDBG("=============================================");
+  LDBG("Total valid groups: " << count);
+  LDBG("All Valid Group IDs: ");
+  for (int id : validGroupIds) {
+    LDBG("  - " << id);
+  }
+  LDBG("=============================================\n");
+  return;
+}
+
+LogicalResult MaxParallelAnalyzer::fuseImpl(Block &block) {
+  LDBG("MaxParallel Fusing" << block << "\n");
+  initialize(block);
+  // Stage 0: Special pattern pre-fusion — perform early fusion of critical
+  // patterns before the cost model, so that ops with strong hardware-level
+  // co-location requirements are guaranteed to land in the same group.
+  stage = 0;
+  if (fuseSpecialPatterns(block))
+    LDBG("=== Phase 0: special pattern fusion ===");
+  // Stage 1: Cost-model-based producer-consumer fusion.
+  stage = 1;
+  // Perform producer-consumer fusion until no more fusions occur.
+  while (fuseProducerConsumerImpl(block)) {
+    // Keep looping
+  }
+  stage = 2;
+  if (fuseIOBoundGroupsWithNearestConsumer())
+    LDBG("=== Phase 2: find IO bound group to be merged ===");
+  stage = 3;
+  if (fuseShapeBoundGroupsWithNearestConsumer())
+    LDBG("=== Phase 3: find small shape group to be merged ===");
+  stage = 4;
+  if (fuseReduceGroupsWithProducer())
+    LDBG("=== Phase 4: fuse reduce group with producer ===");
+  printValidGroupCount();
+  return success();
+}
+} // namespace mlir::analysis

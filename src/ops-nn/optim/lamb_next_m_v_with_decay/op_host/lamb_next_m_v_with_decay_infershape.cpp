@@ -1,0 +1,66 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file lamb_next_m_v_with_decay_infershape.cpp
+ * \brief
+ */
+
+#include "register/op_impl_registry.h"
+#include "log/log.h"
+#include "infershape_broadcast_util.h"
+
+using namespace Ops::Base;
+using namespace ge;
+namespace ops {
+// full tensors: input_mul3(0,g^2), input_mul0(4,m). All four outputs share their broadcast shape.
+constexpr size_t IN_MUL3 = 0;
+constexpr size_t IN_MUL0 = 4;
+constexpr size_t OUT_NUM = 4;
+
+static ge::graphStatus InferShape4LambNextMVWithDecay(gert::InferShapeContext* context)
+{
+    auto g2 = context->GetInputShape(IN_MUL3);
+    OP_CHECK_NULL_WITH_CONTEXT(context, g2);
+    auto m = context->GetInputShape(IN_MUL0);
+    OP_CHECK_NULL_WITH_CONTEXT(context, m);
+    for (size_t i = 0; i < OUT_NUM; i++) {
+        auto out = context->GetOutputShape(i);
+        OP_CHECK_NULL_WITH_CONTEXT(context, out);
+        OP_CHECK_IF(!BroadcastShape(g2, m, out),
+                    OP_LOGE_FOR_INVALID_SHAPES_WITH_REASON(context->GetNodeName(), "input_mul3 and input_mul0",
+                                                           (ToString(*g2) + " and " + ToString(*m)).c_str(),
+                                                           "shapes cannot broadcast"),
+                    return ge::GRAPH_FAILED);
+    }
+    return GRAPH_SUCCESS;
+}
+static ge::graphStatus InferDataType4LambNextMVWithDecay(gert::InferDataTypeContext* context)
+{
+    if (context == nullptr) {
+        return ge::GRAPH_FAILED;
+    }
+    OP_LOGD(context->GetNodeName(), "InferDataType4LambNextMVWithDecay enter");
+    // y1 与 input_mul3 同类型
+    context->SetOutputDataType(0, context->GetInputDataType(0));
+    // y2 与 input_mul3 同类型
+    context->SetOutputDataType(1, context->GetInputDataType(0));
+    // y3 与 input_mul3 同类型
+    context->SetOutputDataType(2, context->GetInputDataType(0));
+    // y4 与 input_mul3 同类型
+    context->SetOutputDataType(3, context->GetInputDataType(0));
+    OP_LOGD(context->GetNodeName(), "InferDataType4LambNextMVWithDecay end");
+    return ge::GRAPH_SUCCESS;
+}
+
+IMPL_OP_INFERSHAPE(LambNextMVWithDecay)
+    .InferShape(InferShape4LambNextMVWithDecay)
+    .InferDataType(InferDataType4LambNextMVWithDecay);
+} // namespace ops

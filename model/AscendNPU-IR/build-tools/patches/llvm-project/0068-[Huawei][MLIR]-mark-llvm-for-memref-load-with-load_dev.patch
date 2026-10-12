@@ -1,0 +1,19 @@
+diff --git a/mlir/lib/Conversion/MemRefToLLVM/MemRefToLLVM.cpp b/mlir/lib/Conversion/MemRefToLLVM/MemRefToLLVM.cpp
+index 054827d40f0f..b4919e9bbea7 100644
+--- a/mlir/lib/Conversion/MemRefToLLVM/MemRefToLLVM.cpp
++++ b/mlir/lib/Conversion/MemRefToLLVM/MemRefToLLVM.cpp
+@@ -592,9 +592,13 @@ struct LoadOpLowering : public LoadStoreOpLowering<memref::LoadOp> {
+     Value dataPtr =
+         getStridedElementPtr(loadOp.getLoc(), type, adaptor.getMemref(),
+                              adaptor.getIndices(), rewriter);
+-    rewriter.replaceOpWithNewOp<LLVM::LoadOp>(
++    bool disableDCache = loadOp.getOperation()->hasAttr("disableDCache");
++    Operation *llvmLoadOp = rewriter.replaceOpWithNewOp<LLVM::LoadOp>(
+         loadOp, typeConverter->convertType(type.getElementType()), dataPtr, 0,
+         false, loadOp.getNontemporal());
++    if (disableDCache) {
++      llvmLoadOp->setAttr("disableDCache", rewriter.getI32IntegerAttr(0));
++    }
+     return success();
+   }
+ };

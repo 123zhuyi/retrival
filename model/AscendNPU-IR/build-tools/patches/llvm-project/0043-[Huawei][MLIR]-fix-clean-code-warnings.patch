@@ -1,0 +1,95 @@
+diff --git a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+index 3cfa734bf91f..e48ad02dab49 100644
+--- a/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
++++ b/mlir/include/mlir/Dialect/Utils/ReshapeOpsUtils.h
+@@ -644,8 +644,8 @@ struct ComposeReshapeLoosely : public OpRewritePattern<MainOpTy> {
+   using OpRewritePattern<MainOpTy>::OpRewritePattern;
+   LogicalResult matchAndRewrite(MainOpTy mainOp,
+                                 PatternRewriter &rewriter) const override {
+-
+-    SmallVector<ReassociationIndices> supposedExpand, supposedCollapse;
++    SmallVector<ReassociationIndices> supposedExpand;
++    SmallVector<ReassociationIndices> supposedCollapse;
+     SmallVector<int64_t> newExpandShape;
+     Value mainOpSrcVal = mainOp.getSrc();
+     auto sourceOp = mainOpSrcVal.getDefiningOp<SourceOpTy>();
+diff --git a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+index 411e190ab542..2c463649b0d2 100644
+--- a/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
++++ b/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp
+@@ -2708,8 +2708,9 @@ DiagnosedSilenceableFailure transform::TileReductionUsingForOp::apply(
+ 
+   SmallVector<SmallVector<Operation *>> fillOps;
+   fillOps.resize(getFillOp().size());
+-  SmallVector<Operation *> loopOps, splitOps, combiningOps;
+-
++  SmallVector<Operation *> loopOps;
++  SmallVector<Operation *> splitOps;
++  SmallVector<Operation *> combiningOps;
+   for (auto [idx, target] : llvm::enumerate(targets)) {
+     FailureOr<scf::SCFReductionTilingResult> result =
+         scf::tileReductionUsingScf(
+diff --git a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+index 930328f675ea..66d1f88b6b02 100644
+--- a/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
++++ b/mlir/lib/Dialect/Linalg/Transforms/BubbleUpExtractSlice.cpp
+@@ -53,11 +53,6 @@ struct BubbleUpExtractSliceOpPattern
+     : OpRewritePattern<tensor::ExtractSliceOp> {
+   using OpRewritePattern<tensor::ExtractSliceOp>::OpRewritePattern;
+ 
+-#if BSPUB_DAVINCI_BISHENGIR
+-private:
+-  BubbleUpExtractSliceOptions options;
+-#endif
+-
+ #if BSPUB_DAVINCI_BISHENGIR
+ public:
+   BubbleUpExtractSliceOpPattern(MLIRContext *ctx,
+@@ -88,7 +83,8 @@ public:
+     auto outputSizes = sliceOp.getMixedSizes();
+ 
+     // Compute the input offsets and sizes.
+-    SmallVector<OpFoldResult> inputOffsets, inputSizes;
++    SmallVector<OpFoldResult> inputOffsets;
++    SmallVector<OpFoldResult> inputSizes;
+     LLVM_DEBUG(llvm::dbgs() << broadcastOp << "\n";);
+     for (int position = 0; position < outputType.getRank(); position++) {
+       if (!isBroadcastedDimension[position]) {
+@@ -149,7 +145,8 @@ public:
+     // Compute the input offsets and sizes.
+     // Assert unit stride
+     SmallVector<OpFoldResult> inputStrides(inputRank, rewriter.getIndexAttr(1));
+-    SmallVector<Value> newDpsInputs, newDpsInits;
++    SmallVector<Value> newDpsInputs;
++    SmallVector<Value> newDpsInits;
+     for (int i = 0; i < reduceOp.getNumDpsInits(); i++) {
+       unsigned outIdx = 0;
+       SmallVector<OpFoldResult> inputOffsets(inputRank);
+@@ -296,6 +293,11 @@ public:
+     rewriter.replaceOp(sliceOp, newOp->getResults());
+     return success();
+   }
++
++#if BSPUB_DAVINCI_BISHENGIR
++private:
++  BubbleUpExtractSliceOptions options;
++#endif
+ };
+ } // namespace
+ 
+diff --git a/mlir/lib/Dialect/SCF/Utils/Utils.cpp b/mlir/lib/Dialect/SCF/Utils/Utils.cpp
+index d6cb74961bb1..bf62f7477207 100644
+--- a/mlir/lib/Dialect/SCF/Utils/Utils.cpp
++++ b/mlir/lib/Dialect/SCF/Utils/Utils.cpp
+@@ -1290,7 +1290,10 @@ static bool isTargetUsersProperlyDominateSource(Operation *target,
+ static void cloneUsersRecursively(Value from, Value to, RewriterBase &rewriter,
+                                   SetVector<Operation *> &cloned,
+                                   IRMapping &mapping, int level) {
+-  assert(level <= 100 && "too many clones!");
++#ifndef NDEBUG
++  const int maxRecursionDepth = 100;
++  assert(level <= maxRecursionDepth && "too many clones!");
++#endif
+   for (OpOperand &userOperand : from.getUses()) {
+     Operation *userOp = userOperand.getOwner();
+     if (!userOp) {

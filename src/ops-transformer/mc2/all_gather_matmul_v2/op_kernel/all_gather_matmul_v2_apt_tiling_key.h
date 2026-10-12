@@ -1,0 +1,85 @@
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file all_gather_matmul_v2_apt_tiling_key.h
+ * \brief
+ */
+
+#ifndef __OP_KERNEL_ALL_GATHER_MATMUL_V2_APT_TILING_KEY_H__
+#define __OP_KERNEL_ALL_GATHER_MATMUL_V2_APT_TILING_KEY_H__
+
+#include "ascendc/host_api/tiling/template_argument.h"
+
+namespace Mc2Tiling{
+
+// 通用参数
+#define TPL_PARAMS_COMM bool INPUT_IS_BF16FP16, bool TRANS_B, uint8_t OUTPUTDTYPE
+// quant_bmm_tiling参数簇
+#define TPL_QUANT_BMM_PARAMS_COMM uint8_t QUANTMMMODE, uint8_t SCALETYPE
+
+// outputdtype uint8_t
+#define OUTPUT_TYPE_IS_FP16_BF16 0
+#define OUTPUT_TYPE_IS_OTHER 1
+#define OUTPUT_TYPE_IS_FLOAT 2
+// quantmode uint8_t
+#define TPL_DEFAULT_MODE 0
+#define TPL_PERBLOCK_MODE 1
+// scaleType uint8_t
+#define SCALE_TYPE_NOT_IS_MX 0
+#define SCALE_TYPE_IS_MX 1
+
+// 模板参数
+ASCENDC_TPL_ARGS_DECL(
+    Mc2AllGatherMatmulV2Apt, // 算子OpType
+    ASCENDC_TPL_BOOL_DECL(INPUT_IS_BF16FP16, 0, 1),
+    ASCENDC_TPL_BOOL_DECL(TRANS_B, 0, 1),
+    ASCENDC_TPL_UINT_DECL(OUTPUTDTYPE, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_LIST, \
+                        OUTPUT_TYPE_IS_FP16_BF16, OUTPUT_TYPE_IS_OTHER, OUTPUT_TYPE_IS_FLOAT),
+    ASCENDC_TPL_UINT_DECL(QUANTMMMODE, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_LIST, \
+                        TPL_DEFAULT_MODE, TPL_PERBLOCK_MODE),
+    ASCENDC_TPL_UINT_DECL(SCALETYPE, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_LIST, \
+                        SCALE_TYPE_NOT_IS_MX, SCALE_TYPE_IS_MX),
+);
+
+#define SET_NOT_USE_QUANT_BMM_SEL                                               \
+    ASCENDC_TPL_UINT_SEL(QUANTMMMODE, ASCENDC_TPL_UI_LIST, TPL_DEFAULT_MODE),       \
+    ASCENDC_TPL_UINT_SEL(SCALETYPE, ASCENDC_TPL_UI_LIST, SCALE_TYPE_NOT_IS_MX)
+
+// 模板参数组合
+// 用于调用GET_TPL_TILING_KEY获取TilingKey时，接口内部校验TilingKey是否合法
+ASCENDC_TPL_SEL(
+    // base_tiling
+    ASCENDC_TPL_ARGS_SEL(
+        ASCENDC_TPL_BOOL_SEL(INPUT_IS_BF16FP16, 1),
+        ASCENDC_TPL_BOOL_SEL(TRANS_B, 0, 1),
+        ASCENDC_TPL_UINT_SEL(OUTPUTDTYPE, ASCENDC_TPL_UI_LIST, OUTPUT_TYPE_IS_FP16_BF16),
+        SET_NOT_USE_QUANT_BMM_SEL),
+
+    // quant_bmm_tiling
+    ASCENDC_TPL_ARGS_SEL(
+        ASCENDC_TPL_BOOL_SEL(INPUT_IS_BF16FP16, 0),
+        ASCENDC_TPL_BOOL_SEL(TRANS_B, 0, 1),
+        ASCENDC_TPL_UINT_SEL(OUTPUTDTYPE, ASCENDC_TPL_UI_LIST, \
+                            OUTPUT_TYPE_IS_FP16_BF16, OUTPUT_TYPE_IS_FLOAT),
+        ASCENDC_TPL_UINT_SEL(QUANTMMMODE, ASCENDC_TPL_UI_LIST, TPL_DEFAULT_MODE),
+        ASCENDC_TPL_UINT_SEL(SCALETYPE, ASCENDC_TPL_UI_LIST, SCALE_TYPE_IS_MX)),
+    ASCENDC_TPL_ARGS_SEL(
+        ASCENDC_TPL_BOOL_SEL(INPUT_IS_BF16FP16, 0),
+        ASCENDC_TPL_BOOL_SEL(TRANS_B, 0, 1),
+        ASCENDC_TPL_UINT_SEL(OUTPUTDTYPE, ASCENDC_TPL_UI_LIST, \
+                            OUTPUT_TYPE_IS_FP16_BF16, OUTPUT_TYPE_IS_FLOAT),
+        ASCENDC_TPL_UINT_SEL(QUANTMMMODE, ASCENDC_TPL_UI_LIST, \
+                            TPL_DEFAULT_MODE, TPL_PERBLOCK_MODE),
+        ASCENDC_TPL_UINT_SEL(SCALETYPE, ASCENDC_TPL_UI_LIST, SCALE_TYPE_NOT_IS_MX)),
+);
+} // all_gather_matmul_v2_apt_tiling_key
+
+#endif // __OP_KERNEL_ALL_GATHER_MATMUL_V2_APT_TILING_KEY_H__

@@ -1,0 +1,613 @@
+/**
+ * Copyright (c) 2025-2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file dynamic_block_quant_single_row_kernel.h
+ * \brief
+ */
+
+#ifndef DYNAMIC_BLOCK_QUNANT_SINGLE_ROW_KERNEL_H
+#define DYNAMIC_BLOCK_QUNANT_SINGLE_ROW_KERNEL_H
+
+#include "kernel_operator.h"
+#include "../inc/platform.h"
+#include "dynamic_block_quant_common.h"
+
+#define FLOAT_OVERFLOW_MODE_CTRL 60
+namespace DynamicBlockQuant {
+
+using namespace AscendC;
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+class DynamicBlockQuantSingleRow {
+public:
+    __aicore__ inline DynamicBlockQuantSingleRow(TPipe* pipe) { tPipe_ = pipe; }
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, GM_ADDR scale, const DynamicBlockQuantTilingData* tilingData);
+    __aicore__ inline void Process();
+
+private:
+    __aicore__ inline void ProcessRow(uint64_t rowBaseOffset, uint64_t rowScaleBaseOffset, uint64_t rowSize);
+    __aicore__ inline void ProcessCol(uint64_t colBaseOffset, uint64_t colScaleBaseOffset, uint64_t rowSize,
+                                      uint64_t colSize);
+    __aicore__ inline void CopyIn(uint64_t offset, uint64_t rowSize, uint64_t colSize);
+    __aicore__ inline void Compute(uint64_t colSize, uint64_t rowBlockSize, uint64_t colBlockSize);
+    __aicore__ inline void CopyOut(uint64_t offset, uint64_t rowSize, uint64_t colSize);
+    __aicore__ inline void CopyOutScale(uint64_t offset, uint64_t rowSize, uint64_t colSize);
+    __aicore__ inline void ComputeVF(__ubuf__ OUT_TYPE* outLocal, __ubuf__ float* scaleLocal, __ubuf__ IN_TYPE* xLocal,
+                                     uint64_t colSize, uint64_t rowBlockSize, uint64_t colBlockSize);
+
+private:
+    TPipe* tPipe_ = nullptr;
+    const DynamicBlockQuantTilingData* tilingData_ = nullptr;
+
+    TQue<QuePosition::VECIN, DB_BUFFER> inQueue_;
+    GlobalTensor<IN_TYPE> xGm_;
+    TQue<QuePosition::VECOUT, DB_BUFFER> outQueue_;
+    GlobalTensor<OUT_TYPE> yGm_;
+    TQue<QuePosition::VECOUT, DB_BUFFER> scaleQueue_;
+    GlobalTensor<float> scaleGm_;
+
+    int32_t blockIdx_ = 0;
+
+    int64_t rowCoreNum_ = 0; // 核内行数
+    int64_t colCoreNum_ = 0; // 核内列数
+
+    int32_t rowUbNum_ = 0; // 单次UB行数
+    int32_t colUbNum_ = 0; // 单次UB列数
+
+    int32_t rowUbBlockNum_ = 0; // UB内行方向循环次数
+    int32_t colUbBlockNum_ = 0; // UB内列方向循环次数
+
+    int32_t colAlign_ = BLOCK_BYTE_32 / sizeof(OUT_TYPE); // col 32Byte对齐
+    uint16_t maxValue_ = 0x7fff;                          // FP16/BF16 使用，取绝对值掩码
+    uint32_t maxValue32_ = 0x7fffffff;                    // float32 使用，取绝对值掩码
+    uint32_t infValue_;
+    float fp8MaxValue_ = 0;
+
+    static constexpr AscendC::Reg::CastTrait castTrait32toh8Zero = []() {
+        if constexpr (ROUND_MODE == 1 || ROUND_MODE == 4) {
+            return AscendC::Reg::CastTrait{AscendC::Reg::RegLayout::ZERO, AscendC::Reg::SatMode::SAT,
+                                           AscendC::Reg::MaskMergeMode::ZEROING, RoundMode::CAST_ROUND};
+        } else if constexpr (ROUND_MODE == 7) {
+            return AscendC::Reg::CastTrait{AscendC::Reg::RegLayout::ZERO, AscendC::Reg::SatMode::SAT,
+                                           AscendC::Reg::MaskMergeMode::ZEROING, RoundMode::CAST_HYBRID};
+        }
+    }();
+};
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+__aicore__ inline void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::Init(
+    GM_ADDR x, GM_ADDR y, GM_ADDR scale, const DynamicBlockQuantTilingData* tilingData)
+{
+    tilingData_ = tilingData;
+    blockIdx_ = GetBlockIdx();
+    if (blockIdx_ >= tilingData_->usedCoreNum) {
+        return;
+    }
+
+#if (__NPU_ARCH__ == 3510) && (DTYPE_Y != DT_INT8)
+    AscendC::SetCtrlSpr<FLOAT_OVERFLOW_MODE_CTRL, FLOAT_OVERFLOW_MODE_CTRL>(0);
+#endif
+    infValue_ = FP32_INF_VALUE;
+    // Compute BlockOffset
+    int32_t coreRowIdx = blockIdx_ / tilingData_->colTileNum;
+    int32_t coreColIdx = blockIdx_ % tilingData_->colTileNum;
+
+    int64_t rowBlockOffset = 0; // 行方向偏移的块数
+    int64_t colBlockOffset = 0; // 列方向偏移的块数
+
+    if (coreRowIdx < tilingData_->rowNormalCoreNum) {
+        // normal core
+        rowBlockOffset = coreRowIdx * tilingData_->normalCoreRowTileNum;
+        rowCoreNum_ = Min(tilingData_->normalCoreRowTileNum * tilingData_->blockSizeRow,
+                          tilingData_->batchNum * tilingData_->rowNum - rowBlockOffset * tilingData_->blockSizeRow);
+    } else {
+        rowBlockOffset = tilingData_->rowNormalCoreNum * tilingData_->normalCoreRowTileNum +
+                         (coreRowIdx - tilingData_->rowNormalCoreNum) * tilingData_->tailCoreRowTileNum;
+        rowCoreNum_ = Min(tilingData_->tailCoreRowTileNum * tilingData_->blockSizeRow,
+                          tilingData_->batchNum * tilingData_->rowNum - rowBlockOffset * tilingData_->blockSizeRow);
+    }
+
+    if (coreColIdx < tilingData_->colNormalCoreNum) {
+        colBlockOffset = coreColIdx * tilingData_->normalCoreColTileNum;
+        colCoreNum_ = Min(tilingData_->normalCoreColTileNum * tilingData_->blockSizeCol,
+                          tilingData_->colNum - colBlockOffset * tilingData_->blockSizeCol);
+    } else {
+        colBlockOffset = tilingData_->colNormalCoreNum * tilingData_->normalCoreColTileNum +
+                         (coreColIdx - tilingData_->colNormalCoreNum) * tilingData_->tailCoreColTileNum;
+        colCoreNum_ = Min(tilingData_->tailCoreColTileNum * tilingData_->blockSizeCol,
+                          tilingData_->colNum - colBlockOffset * tilingData_->blockSizeCol);
+    }
+
+    int64_t blockOffset = rowBlockOffset * tilingData_->colNum + colBlockOffset * tilingData_->blockSizeCol;
+    int64_t blockScaleOffset = rowBlockOffset * tilingData_->colBlockLoopNum + colBlockOffset;
+
+    xGm_.SetGlobalBuffer((__gm__ IN_TYPE*)x + blockOffset);
+    yGm_.SetGlobalBuffer((__gm__ OUT_TYPE*)y + blockOffset);
+    scaleGm_.SetGlobalBuffer((__gm__ float*)scale + blockScaleOffset);
+
+    // Compute real ub size
+    rowUbNum_ = Min(tilingData_->rowUbBlockLoopNum * tilingData_->blockSizeRow, rowCoreNum_);
+    colUbNum_ = Min(tilingData_->colUbBlockLoopNum * tilingData_->blockSizeCol, colCoreNum_);
+
+    // Compute ub loop num
+    rowUbBlockNum_ = Ceil(rowUbNum_, tilingData_->blockSizeRow);
+    colUbBlockNum_ = Ceil(colUbNum_, tilingData_->blockSizeCol);
+
+    // Init Buffer
+    tPipe_->InitBuffer(inQueue_, DB_BUFFER, tilingData_->rowUbFactor * tilingData_->colUbFactor * sizeof(IN_TYPE));
+    tPipe_->InitBuffer(outQueue_, DB_BUFFER, tilingData_->rowUbFactor * tilingData_->colUbFactor * sizeof(OUT_TYPE));
+    tPipe_->InitBuffer(scaleQueue_, DB_BUFFER,
+                       tilingData_->colUbBlockLoopNum * tilingData_->rowUbBlockLoopNum * BLOCK_BYTE_32);
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::Process()
+{
+    if (blockIdx_ > tilingData_->usedCoreNum) {
+        return;
+    }
+
+    fp8MaxValue_ = GetDstTypeMaxValue<OUT_TYPE>(tilingData_->dstTypeMax);
+    uint64_t rowBaseOffset = 0;
+    uint64_t rowScaleBaseOffset = 0;
+    uint64_t rowLoopNum = rowCoreNum_ / rowUbNum_;
+    for (uint64_t rowIdx = 0; rowIdx < rowLoopNum; rowIdx++) {
+        ProcessRow(rowBaseOffset, rowScaleBaseOffset, rowUbNum_);
+        rowBaseOffset += rowUbNum_ * tilingData_->colNum;
+        rowScaleBaseOffset += rowUbBlockNum_ * tilingData_->colBlockLoopNum;
+    }
+    if (rowLoopNum * rowUbNum_ < rowCoreNum_) {
+        ProcessRow(rowBaseOffset, rowScaleBaseOffset, rowCoreNum_ - rowLoopNum * rowUbNum_);
+    }
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::ProcessRow(
+    uint64_t rowBaseOffset, uint64_t rowScaleBaseOffset, uint64_t rowSize)
+{
+    uint64_t colBaseOffset = 0;
+    uint64_t colScaleBaseOffset = rowScaleBaseOffset;
+    uint64_t colLoopNum = colCoreNum_ / colUbNum_;
+    for (uint64_t colIdx = 0; colIdx < colLoopNum; colIdx++) {
+        ProcessCol(rowBaseOffset + colBaseOffset, colScaleBaseOffset, rowSize, colUbNum_);
+        colBaseOffset += colUbNum_;
+        colScaleBaseOffset += colUbBlockNum_;
+    }
+    if (colLoopNum * colUbNum_ < colCoreNum_) {
+        ProcessCol(rowBaseOffset + colBaseOffset, colScaleBaseOffset, rowSize, colCoreNum_ - colLoopNum * colUbNum_);
+    }
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::ProcessCol(
+    uint64_t colBaseOffset, uint64_t colScaleBaseOffset, uint64_t rowSize, uint64_t colSize)
+{
+    uint64_t rowBlockSize = Ceil(rowSize, tilingData_->blockSizeRow);
+    uint64_t colBlockSize = Ceil(colSize, tilingData_->blockSizeCol);
+    CopyIn(colBaseOffset, rowSize, colSize);
+    Compute(colSize, rowBlockSize, colBlockSize);
+    CopyOut(colBaseOffset, rowSize, colSize);
+    CopyOutScale(colScaleBaseOffset, rowBlockSize, colBlockSize);
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::CopyIn(uint64_t offset,
+                                                                                         uint64_t rowSize,
+                                                                                         uint64_t colSize)
+{
+    LocalTensor<IN_TYPE> xLocal = inQueue_.AllocTensor<IN_TYPE>();
+    DataCopyExtParams dataCopyExtParams = {
+        static_cast<uint16_t>(rowSize), static_cast<uint32_t>(colSize * sizeof(IN_TYPE)),
+        static_cast<uint32_t>((tilingData_->colNum - colSize) * sizeof(IN_TYPE)), static_cast<uint32_t>(0), 0};
+    DataCopyPadExtParams<IN_TYPE> dataCopyPadExtParams = {false, 0, 0, 0};
+    DataCopyPad(xLocal, xGm_[offset], dataCopyExtParams, dataCopyPadExtParams);
+    inQueue_.EnQue(xLocal);
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::Compute(uint64_t colSize,
+                                                                                          uint64_t rowBlockSize,
+                                                                                          uint64_t colBlockSize)
+{
+    LocalTensor<IN_TYPE> xLocal = inQueue_.DeQue<IN_TYPE>();
+    LocalTensor<OUT_TYPE> yLocal = outQueue_.AllocTensor<OUT_TYPE>();
+    LocalTensor<float> scaleLocal = scaleQueue_.AllocTensor<float>();
+
+    __ubuf__ IN_TYPE* xLocalPtr = (__ubuf__ IN_TYPE*)xLocal.GetPhyAddr();
+    __ubuf__ OUT_TYPE* yLocalPtr = (__ubuf__ OUT_TYPE*)yLocal.GetPhyAddr();
+    __ubuf__ float* scaleLocalPtr = (__ubuf__ float*)scaleLocal.GetPhyAddr();
+
+    ComputeVF(yLocalPtr, scaleLocalPtr, xLocalPtr, colSize, rowBlockSize, colBlockSize);
+
+    inQueue_.FreeTensor(xLocal);
+    outQueue_.EnQue(yLocal);
+    scaleQueue_.EnQue(scaleLocal);
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::CopyOut(uint64_t offset,
+                                                                                          uint64_t rowSize,
+                                                                                          uint64_t colSize)
+{
+    LocalTensor<OUT_TYPE> yLocal = outQueue_.DeQue<OUT_TYPE>();
+    uint32_t srcStride = 0;
+    DataCopyExtParams dataCopyExtParams = {
+        static_cast<uint16_t>(rowSize), static_cast<uint32_t>(colSize * sizeof(OUT_TYPE)), 0,
+        static_cast<uint32_t>((tilingData_->colNum - colSize) * sizeof(OUT_TYPE)), 0};
+    DataCopyPad(yGm_[offset], yLocal, dataCopyExtParams);
+    outQueue_.FreeTensor(yLocal);
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::CopyOutScale(uint64_t offset,
+                                                                                               uint64_t rowSize,
+                                                                                               uint64_t colSize)
+{
+    LocalTensor<float> scaleLocal = scaleQueue_.DeQue<float>();
+    int64_t scaleLocalOffset = 0;
+    DataCopyExtParams dataCopyExtParams = {
+        static_cast<uint16_t>(rowSize), static_cast<uint32_t>(1 * sizeof(float) * colSize), 0,
+        static_cast<uint32_t>((tilingData_->colBlockLoopNum - colSize) * sizeof(float)), 0};
+    DataCopyPad<float, PaddingMode::Compact>(scaleGm_[offset], scaleLocal[scaleLocalOffset], dataCopyExtParams);
+    scaleQueue_.FreeTensor(scaleLocal);
+}
+
+template <typename IN_TYPE, typename OUT_TYPE, int64_t ROUND_MODE>
+inline __aicore__ void DynamicBlockQuantSingleRow<IN_TYPE, OUT_TYPE, ROUND_MODE>::ComputeVF(
+    __ubuf__ OUT_TYPE* outLocal, __ubuf__ float* scaleLocal, __ubuf__ IN_TYPE* xLocal, uint64_t colSize,
+    uint64_t rowBlockSize, uint64_t colBlockSize)
+{
+    IN_TYPE zero = 0.0;
+    uint16_t dtypeSizeAlign = BLOCK_BYTE_32 / sizeof(IN_TYPE);
+    uint32_t inputColAlign = (colSize + dtypeSizeAlign - 1) / dtypeSizeAlign * dtypeSizeAlign;
+    uint32_t colSizeAlign = (colSize + colAlign_ - 1) / colAlign_ * colAlign_;
+    uint32_t vfColSize = colSize;
+    uint16_t vfRowBlockSize = rowBlockSize;
+    uint16_t vfColBlockSize = colBlockSize;
+    uint16_t normalColBlockLoop = colBlockSize - 1;
+    uint16_t scalePadding = BLOCK_BYTE_32 / sizeof(float);
+    uint16_t VL = AscendC::VECTOR_REG_WIDTH / sizeof(IN_TYPE);
+    uint16_t tailBlockSize = colSize - (colBlockSize - 1) * tilingData_->blockSizeCol;
+    uint16_t normalLoopNum = (tilingData_->blockSizeCol + VL - 1) / VL;
+    uint16_t tailLoopNum = (tailBlockSize + VL - 1) / VL;
+    uint32_t curSize;
+    __VEC_SCOPE__
+    {
+        AscendC::Reg::RegTensor<IN_TYPE> vReg0;
+        AscendC::Reg::RegTensor<IN_TYPE> vReg1;
+        AscendC::Reg::RegTensor<IN_TYPE> vReg2;
+        AscendC::Reg::RegTensor<IN_TYPE> vReg3;
+        AscendC::Reg::RegTensor<IN_TYPE> vReg4;
+        AscendC::Reg::RegTensor<float> vReg5;
+        AscendC::Reg::RegTensor<float> vReg6;
+        AscendC::Reg::RegTensor<float> vReg7;
+        AscendC::Reg::RegTensor<float> vReg8;
+        AscendC::Reg::RegTensor<float> vReg9;
+        AscendC::Reg::RegTensor<float> vReg10;
+        AscendC::Reg::RegTensor<float> vReg11;
+        AscendC::Reg::RegTensor<float> vReg12;
+        AscendC::Reg::RegTensor<float> vReg13;
+        AscendC::Reg::RegTensor<float> vReg14;
+        AscendC::Reg::RegTensor<int16_t> vReg19;
+        AscendC::Reg::RegTensor<half> vReg20;
+        AscendC::Reg::RegTensor<OUT_TYPE> vReg15;
+        AscendC::Reg::RegTensor<OUT_TYPE> vReg16;
+        AscendC::Reg::MaskReg maskReg1;
+        AscendC::Reg::MaskReg maskReg2;
+        AscendC::Reg::MaskReg maskReg3;
+        AscendC::Reg::MaskReg scaleMaskReg;
+        AscendC::Reg::MaskReg defaultMaskReg = AscendC::Reg::CreateMask<IN_TYPE>();
+        AscendC::Reg::MaskReg inputMaskReg = AscendC::Reg::CreateMask<IN_TYPE>();
+
+        AscendC::Reg::RegTensor<float> fp8MaxValue;
+        AscendC::Reg::RegTensor<float> reciprocalScale;
+        AscendC::Reg::RegTensor<float> minScaleReg;
+        Reg::UnalignRegForStore ureg;
+        AscendC::Reg::Duplicate(reciprocalScale, 1.0f);
+        AscendC::Reg::Duplicate(minScaleReg, tilingData_->minScale);
+
+        // FP_MAX
+        AscendC::Reg::Duplicate(fp8MaxValue, fp8MaxValue_);
+
+        static constexpr AscendC::Reg::CastTrait castTraitZero = {
+            AscendC::Reg::RegLayout::ZERO, AscendC::Reg::SatMode::NO_SAT, AscendC::Reg::MaskMergeMode::ZEROING,
+            AscendC::RoundMode::CAST_RINT};
+        static constexpr AscendC::Reg::CastTrait castTraitOne = {
+            AscendC::Reg::RegLayout::ONE, AscendC::Reg::SatMode::NO_SAT, AscendC::Reg::MaskMergeMode::ZEROING,
+            AscendC::RoundMode::CAST_RINT};
+        static constexpr AscendC::Reg::DivSpecificMode mode = {AscendC::Reg::MaskMergeMode::ZEROING, false};
+        AscendC::Reg::Div<float, &mode>(reciprocalScale, reciprocalScale, minScaleReg, defaultMaskReg);
+
+        if constexpr (IsSameType<IN_TYPE, float>::value) {
+            // ===== float32 类型处理 =====
+            AscendC::Reg::RegTensor<uint32_t> vRegFp32Max;
+            AscendC::Reg::Duplicate((AscendC::Reg::RegTensor<uint32_t>&)vRegFp32Max, maxValue32_);
+
+            for (uint16_t rowIdx = 0; rowIdx < vfRowBlockSize; rowIdx++) {
+                for (uint16_t colIdx = 0; colIdx < normalColBlockLoop; colIdx++) {
+                    AscendC::Reg::Duplicate(vReg2, 0.0f);
+                    curSize = tilingData_->blockSizeCol;
+                    for (uint16_t vlLoopIdx = 0; vlLoopIdx < normalLoopNum; vlLoopIdx++) {
+                        inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                        AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                           colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                        AscendC::Reg::And((AscendC::Reg::RegTensor<uint32_t>&)vReg3,
+                                          (AscendC::Reg::RegTensor<uint32_t>&)vReg0,
+                                          (AscendC::Reg::RegTensor<uint32_t>&)vRegFp32Max, inputMaskReg);
+                        AscendC::Reg::Max<uint32_t, AscendC::Reg::MaskMergeMode::MERGING>(
+                            (AscendC::Reg::RegTensor<uint32_t>&)vReg2, (AscendC::Reg::RegTensor<uint32_t>&)vReg2,
+                            (AscendC::Reg::RegTensor<uint32_t>&)vReg3, inputMaskReg);
+                    }
+
+                    AscendC::Reg::Reduce<Reg::ReduceType::MAX, uint32_t>((AscendC::Reg::RegTensor<uint32_t>&)vReg3,
+                                                                         (AscendC::Reg::RegTensor<uint32_t>&)vReg2,
+                                                                         defaultMaskReg);
+
+                    AscendC::Reg::Duplicate(vReg4, vReg3, defaultMaskReg);
+
+                    // brc(input_max) - 位模式直接参与计算
+                    AscendC::Reg::Div<float, &mode>(vReg8, (AscendC::Reg::RegTensor<float>&)vReg4, fp8MaxValue,
+                                                    defaultMaskReg);
+                    AscendC::Reg::Compares<uint32_t, CMPMODE::LT>(
+                        scaleMaskReg, (AscendC::Reg::RegTensor<uint32_t>&)vReg8, infValue_, defaultMaskReg);
+                    AscendC::Reg::Min<float, AscendC::Reg::MaskMergeMode::MERGING>(vReg8, vReg8, reciprocalScale,
+                                                                                   scaleMaskReg);
+
+                    // copy out scale
+                    Reg::StoreUnAlign<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, vReg8, ureg,
+                                                                                 static_cast<uint32_t>(1));
+                    Reg::StoreUnAlignPost<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, ureg,
+                                                                                     static_cast<int32_t>(0));
+
+                    curSize = tilingData_->blockSizeCol;
+                    for (uint16_t vlLoopIdx = 0; vlLoopIdx < normalLoopNum; vlLoopIdx++) {
+                        inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                        AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                           colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                        AscendC::Reg::Div<float, &mode>(vReg13, vReg0, vReg8, defaultMaskReg);
+
+                        if constexpr (IsSameType<OUT_TYPE, hifloat8_t>::value) {
+                            AscendC::Reg::Cast<OUT_TYPE, float, castTrait32toh8Zero>(vReg15, vReg13, defaultMaskReg);
+                        } else if constexpr (IsSameType<OUT_TYPE, int8_t>::value) {
+                            AscendC::Reg::Cast<int16_t, float, castTraitF32ToI16>(vReg19, vReg13, defaultMaskReg);
+                            AscendC::Reg::Cast<half, int16_t, castTraitI16ToF16>(vReg20, vReg19, defaultMaskReg);
+                            AscendC::Reg::Cast<OUT_TYPE, half, castTraitF16ToI8>(vReg15, vReg20, defaultMaskReg);
+                        } else {
+                            AscendC::Reg::Cast<OUT_TYPE, float, castTrait32tofp8>(vReg15, vReg13, defaultMaskReg);
+                        }
+
+                        AscendC::Reg::StoreAlign<OUT_TYPE, AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                            outLocal + rowIdx * colSizeAlign + colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL,
+                            vReg15, inputMaskReg);
+                    }
+                }
+
+                // tail block
+                AscendC::Reg::Duplicate(vReg2, 0.0f);
+                curSize = tailBlockSize;
+                for (uint16_t vlLoopIdx = 0; vlLoopIdx < tailLoopNum; vlLoopIdx++) {
+                    inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                    AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                       normalColBlockLoop * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                    AscendC::Reg::And((AscendC::Reg::RegTensor<uint32_t>&)vReg3,
+                                      (AscendC::Reg::RegTensor<uint32_t>&)vReg0,
+                                      (AscendC::Reg::RegTensor<uint32_t>&)vRegFp32Max, inputMaskReg);
+                    AscendC::Reg::Max<uint32_t, AscendC::Reg::MaskMergeMode::MERGING>(
+                        (AscendC::Reg::RegTensor<uint32_t>&)vReg2, (AscendC::Reg::RegTensor<uint32_t>&)vReg2,
+                        (AscendC::Reg::RegTensor<uint32_t>&)vReg3, inputMaskReg);
+                }
+
+                AscendC::Reg::Reduce<Reg::ReduceType::MAX, uint32_t>((AscendC::Reg::RegTensor<uint32_t>&)vReg3,
+                                                                     (AscendC::Reg::RegTensor<uint32_t>&)vReg2,
+                                                                     defaultMaskReg);
+
+                AscendC::Reg::Duplicate(vReg4, vReg3, defaultMaskReg);
+
+                // brc(input_max) - 位模式直接参与计算
+                AscendC::Reg::Div<float, &mode>(vReg8, (AscendC::Reg::RegTensor<float>&)vReg4, fp8MaxValue,
+                                                defaultMaskReg);
+                AscendC::Reg::Compares<uint32_t, CMPMODE::LT>(scaleMaskReg, (AscendC::Reg::RegTensor<uint32_t>&)vReg8,
+                                                              infValue_, defaultMaskReg);
+                AscendC::Reg::Min<float, AscendC::Reg::MaskMergeMode::MERGING>(vReg8, vReg8, reciprocalScale,
+                                                                               scaleMaskReg);
+
+                // copy out scale
+                Reg::StoreUnAlign<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, vReg8, ureg,
+                                                                             static_cast<uint32_t>(1));
+                Reg::StoreUnAlignPost<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, ureg,
+                                                                                 static_cast<int32_t>(0));
+
+                curSize = tailBlockSize;
+                for (uint16_t vlLoopIdx = 0; vlLoopIdx < tailLoopNum; vlLoopIdx++) {
+                    inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                    AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                       normalColBlockLoop * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                    AscendC::Reg::Div<float, &mode>(vReg13, vReg0, vReg8, defaultMaskReg);
+
+                    if constexpr (IsSameType<OUT_TYPE, hifloat8_t>::value) {
+                        AscendC::Reg::Cast<OUT_TYPE, float, castTrait32toh8Zero>(vReg15, vReg13, defaultMaskReg);
+                    } else if constexpr (IsSameType<OUT_TYPE, int8_t>::value) {
+                        AscendC::Reg::Cast<int16_t, float, castTraitF32ToI16>(vReg19, vReg13, defaultMaskReg);
+                        AscendC::Reg::Cast<half, int16_t, castTraitI16ToF16>(vReg20, vReg19, defaultMaskReg);
+                        AscendC::Reg::Cast<OUT_TYPE, half, castTraitF16ToI8>(vReg15, vReg20, defaultMaskReg);
+                    } else {
+                        AscendC::Reg::Cast<OUT_TYPE, float, castTrait32tofp8>(vReg15, vReg13, defaultMaskReg);
+                    }
+
+                    AscendC::Reg::StoreAlign<OUT_TYPE, AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                        outLocal + rowIdx * colSizeAlign + normalColBlockLoop * tilingData_->blockSizeCol +
+                            vlLoopIdx * VL,
+                        vReg15, inputMaskReg);
+                }
+            }
+        } else {
+            // ===== FP16/BF16 类型处理 =====
+            AscendC::Reg::RegTensor<IN_TYPE> vRegFp16Max;
+            AscendC::Reg::Duplicate((AscendC::Reg::RegTensor<uint16_t>&)vRegFp16Max, maxValue_);
+
+            for (uint16_t rowIdx = 0; rowIdx < vfRowBlockSize; rowIdx++) {
+                for (uint16_t colIdx = 0; colIdx < normalColBlockLoop; colIdx++) {
+                    AscendC::Reg::Duplicate(vReg2, 0);
+                    curSize = tilingData_->blockSizeCol;
+                    for (uint16_t vlLoopIdx = 0; vlLoopIdx < normalLoopNum; vlLoopIdx++) {
+                        inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                        AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                           colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                        AscendC::Reg::And((AscendC::Reg::RegTensor<uint16_t>&)vReg3,
+                                          (AscendC::Reg::RegTensor<uint16_t>&)vReg0,
+                                          (AscendC::Reg::RegTensor<uint16_t>&)vRegFp16Max, inputMaskReg);
+
+                        AscendC::Reg::Max<IN_TYPE, AscendC::Reg::MaskMergeMode::MERGING>(vReg2, vReg2, vReg3,
+                                                                                         inputMaskReg);
+                    }
+
+                    AscendC::Reg::Reduce<Reg::ReduceType::MAX>((AscendC::Reg::RegTensor<uint16_t>&)vReg3,
+                                                               (AscendC::Reg::RegTensor<uint16_t>&)vReg2,
+                                                               defaultMaskReg);
+
+                    // brc(input_max)
+                    AscendC::Reg::Duplicate(vReg4, vReg3, defaultMaskReg);
+
+                    // cast_to_f32
+                    AscendC::Reg::Cast<float, IN_TYPE, castTraitZero>(vReg5, vReg4, defaultMaskReg);
+
+                    // input_max / FP_MAX
+                    AscendC::Reg::Div<float, &mode>(vReg8, vReg5, fp8MaxValue, defaultMaskReg);
+                    AscendC::Reg::Compares<uint32_t, CMPMODE::LT>(
+                        scaleMaskReg, (AscendC::Reg::RegTensor<uint32_t>&)vReg8, infValue_, defaultMaskReg);
+                    // Min(input_max / FP_MAX, 1 / minScale)
+                    AscendC::Reg::Min<float, AscendC::Reg::MaskMergeMode::MERGING>(vReg8, vReg8, reciprocalScale,
+                                                                                   scaleMaskReg);
+
+                    // copy out scale
+                    Reg::StoreUnAlign<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, vReg8, ureg,
+                                                                                 static_cast<uint32_t>(1));
+                    Reg::StoreUnAlignPost<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, ureg,
+                                                                                     static_cast<int32_t>(0));
+
+                    curSize = tilingData_->blockSizeCol;
+                    for (uint16_t vlLoopIdx = 0; vlLoopIdx < normalLoopNum; vlLoopIdx++) {
+                        inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                        AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                           colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                        AscendC::Reg::Cast<float, IN_TYPE, castTraitZero>(vReg9, vReg0, defaultMaskReg);
+                        AscendC::Reg::Cast<float, IN_TYPE, castTraitOne>(vReg10, vReg0, defaultMaskReg);
+                        AscendC::Reg::Interleave(vReg11, vReg12, vReg9, vReg10);
+                        AscendC::Reg::Div<float, &mode>(vReg13, vReg11, vReg8, defaultMaskReg);
+                        AscendC::Reg::Div<float, &mode>(vReg14, vReg12, vReg8, defaultMaskReg);
+
+                        if constexpr (IsSameType<OUT_TYPE, hifloat8_t>::value) {
+                            AscendC::Reg::Cast<OUT_TYPE, float, castTrait32toh8Zero>(vReg15, vReg13, defaultMaskReg);
+                            AscendC::Reg::Cast<OUT_TYPE, float, castTrait32toh8Zero>(vReg16, vReg14, defaultMaskReg);
+                        } else if constexpr (IsSameType<OUT_TYPE, int8_t>::value) {
+                            AscendC::Reg::Cast<int16_t, float, castTraitF32ToI16>(vReg19, vReg13, defaultMaskReg);
+                            AscendC::Reg::Cast<half, int16_t, castTraitI16ToF16>(vReg20, vReg19, defaultMaskReg);
+                            AscendC::Reg::Cast<OUT_TYPE, half, castTraitF16ToI8>(vReg15, vReg20, defaultMaskReg);
+                            AscendC::Reg::Cast<int16_t, float, castTraitF32ToI16>(vReg19, vReg14, defaultMaskReg);
+                            AscendC::Reg::Cast<half, int16_t, castTraitI16ToF16>(vReg20, vReg19, defaultMaskReg);
+                            AscendC::Reg::Cast<OUT_TYPE, half, castTraitF16ToI8>(vReg16, vReg20, defaultMaskReg);
+                        } else {
+                            AscendC::Reg::Cast<OUT_TYPE, float, castTrait32tofp8>(vReg15, vReg13, defaultMaskReg);
+                            AscendC::Reg::Cast<OUT_TYPE, float, castTrait32tofp8>(vReg16, vReg14, defaultMaskReg);
+                        }
+
+                        AscendC::Reg::UnPack<AscendC::Reg::HighLowPart::LOWEST>(maskReg2, inputMaskReg);
+                        AscendC::Reg::UnPack<AscendC::Reg::HighLowPart::HIGHEST>(maskReg3, inputMaskReg);
+
+                        AscendC::Reg::StoreAlign<OUT_TYPE, AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                            outLocal + rowIdx * colSizeAlign + colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL,
+                            vReg15, maskReg2);
+                        AscendC::Reg::StoreAlign<OUT_TYPE, AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                            outLocal + rowIdx * colSizeAlign + colIdx * tilingData_->blockSizeCol + vlLoopIdx * VL + 64,
+                            vReg16, maskReg3);
+                    }
+                }
+
+                AscendC::Reg::Duplicate(vReg2, 0);
+                curSize = tailBlockSize;
+                for (uint16_t vlLoopIdx = 0; vlLoopIdx < tailLoopNum; vlLoopIdx++) {
+                    inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                    AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                       normalColBlockLoop * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                    AscendC::Reg::And((AscendC::Reg::RegTensor<uint16_t>&)vReg3,
+                                      (AscendC::Reg::RegTensor<uint16_t>&)vReg0,
+                                      (AscendC::Reg::RegTensor<uint16_t>&)vRegFp16Max, inputMaskReg);
+
+                    AscendC::Reg::Max<IN_TYPE, AscendC::Reg::MaskMergeMode::MERGING>(vReg2, vReg2, vReg3, inputMaskReg);
+                }
+
+                AscendC::Reg::Reduce<Reg::ReduceType::MAX>((AscendC::Reg::RegTensor<uint16_t>&)vReg3,
+                                                           (AscendC::Reg::RegTensor<uint16_t>&)vReg2, defaultMaskReg);
+
+                // brc(input_max)
+                AscendC::Reg::Duplicate(vReg4, vReg3, defaultMaskReg);
+
+                // cast_to_f32
+                AscendC::Reg::Cast<float, IN_TYPE, castTraitZero>(vReg5, vReg4, defaultMaskReg);
+
+                // input_max / FP_MAX
+                AscendC::Reg::Div<float, &mode>(vReg8, vReg5, fp8MaxValue, defaultMaskReg);
+                AscendC::Reg::Compares<uint32_t, CMPMODE::LT>(scaleMaskReg, (AscendC::Reg::RegTensor<uint32_t>&)vReg8,
+                                                              infValue_, defaultMaskReg);
+                // Min(input_max / FP_MAX, 1 / minScale)
+                AscendC::Reg::Min<float, AscendC::Reg::MaskMergeMode::MERGING>(vReg8, vReg8, reciprocalScale,
+                                                                               scaleMaskReg);
+
+                // copy out scale
+                Reg::StoreUnAlign<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, vReg8, ureg,
+                                                                             static_cast<uint32_t>(1));
+                Reg::StoreUnAlignPost<float, Reg::PostLiteral::POST_MODE_UPDATE>(scaleLocal, ureg,
+                                                                                 static_cast<int32_t>(0));
+
+                curSize = tailBlockSize;
+                for (uint16_t vlLoopIdx = 0; vlLoopIdx < tailLoopNum; vlLoopIdx++) {
+                    inputMaskReg = AscendC::Reg::UpdateMask<IN_TYPE>(curSize);
+                    AscendC::Reg::LoadAlign(vReg0, xLocal + rowIdx * inputColAlign +
+                                                       normalColBlockLoop * tilingData_->blockSizeCol + vlLoopIdx * VL);
+                    AscendC::Reg::Cast<float, IN_TYPE, castTraitZero>(vReg9, vReg0, defaultMaskReg);
+                    AscendC::Reg::Cast<float, IN_TYPE, castTraitOne>(vReg10, vReg0, defaultMaskReg);
+                    AscendC::Reg::Interleave(vReg11, vReg12, vReg9, vReg10);
+                    AscendC::Reg::Div<float, &mode>(vReg13, vReg11, vReg8, defaultMaskReg);
+                    AscendC::Reg::Div<float, &mode>(vReg14, vReg12, vReg8, defaultMaskReg);
+
+                    if constexpr (IsSameType<OUT_TYPE, hifloat8_t>::value) {
+                        AscendC::Reg::Cast<OUT_TYPE, float, castTrait32toh8Zero>(vReg15, vReg13, defaultMaskReg);
+                        AscendC::Reg::Cast<OUT_TYPE, float, castTrait32toh8Zero>(vReg16, vReg14, defaultMaskReg);
+                    } else if constexpr (IsSameType<OUT_TYPE, int8_t>::value) {
+                        AscendC::Reg::Cast<int16_t, float, castTraitF32ToI16>(vReg19, vReg13, defaultMaskReg);
+                        AscendC::Reg::Cast<half, int16_t, castTraitI16ToF16>(vReg20, vReg19, defaultMaskReg);
+                        AscendC::Reg::Cast<OUT_TYPE, half, castTraitF16ToI8>(vReg15, vReg20, defaultMaskReg);
+                        AscendC::Reg::Cast<int16_t, float, castTraitF32ToI16>(vReg19, vReg14, defaultMaskReg);
+                        AscendC::Reg::Cast<half, int16_t, castTraitI16ToF16>(vReg20, vReg19, defaultMaskReg);
+                        AscendC::Reg::Cast<OUT_TYPE, half, castTraitF16ToI8>(vReg16, vReg20, defaultMaskReg);
+                    } else {
+                        AscendC::Reg::Cast<OUT_TYPE, float, castTrait32tofp8>(vReg15, vReg13, defaultMaskReg);
+                        AscendC::Reg::Cast<OUT_TYPE, float, castTrait32tofp8>(vReg16, vReg14, defaultMaskReg);
+                    }
+
+                    AscendC::Reg::UnPack<AscendC::Reg::HighLowPart::LOWEST>(maskReg2, inputMaskReg);
+                    AscendC::Reg::UnPack<AscendC::Reg::HighLowPart::HIGHEST>(maskReg3, inputMaskReg);
+
+                    AscendC::Reg::StoreAlign<OUT_TYPE, AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                        outLocal + rowIdx * colSizeAlign + normalColBlockLoop * tilingData_->blockSizeCol +
+                            vlLoopIdx * VL,
+                        vReg15, maskReg2);
+                    AscendC::Reg::StoreAlign<OUT_TYPE, AscendC::Reg::StoreDist::DIST_PACK4_B32>(
+                        outLocal + rowIdx * colSizeAlign + normalColBlockLoop * tilingData_->blockSizeCol +
+                            vlLoopIdx * VL + 64,
+                        vReg16, maskReg3);
+                }
+            }
+        }
+    }
+}
+} // namespace DynamicBlockQuant
+#endif // DYNAMIC_BLOCK_QUNANT_SINGLE_ROW_KERNEL_H

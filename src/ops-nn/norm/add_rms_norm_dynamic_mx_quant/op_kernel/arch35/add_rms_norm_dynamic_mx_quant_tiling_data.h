@@ -1,0 +1,73 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file add_rms_norm_dynamic_mx_quant_tiling_data.h
+ * \brief
+ */
+#ifndef _ADD_RMS_NORM_DYNAMIC_MX_QUANT_TILING_DATA_H_
+#define _ADD_RMS_NORM_DYNAMIC_MX_QUANT_TILING_DATA_H_
+
+struct AddRmsNormDynamicMxQuantTilingData {
+    uint64_t numRow;            // A: total rows (batch)
+    uint64_t numCol;            // R: norm dimension size
+    uint64_t numColAlign;       // R aligned to block boundary
+    uint64_t blockFactor;       // rows per core
+    uint64_t rowFactor;         // rows per UB iteration
+    uint64_t binAddQuotient;    // binary add quotient point
+    uint64_t roundMode;         // rounding mode (0=round, 1=floor, 4=rint)
+    uint64_t mxBlockSize;       // MX block size (32)
+    uint64_t blockNumInColAxis; // CeilDiv(R, 32)
+    uint64_t dstStrideUbBlocks; // R axis needs dstStrideUbBlocks to align numColAlign
+    uint64_t mxScaleSize;       // mxscale output size per row
+    int64_t scaleAlg;           // scale algorithm (0=standard, 1=cublas)
+    float epsilon;
+    float avgFactor;   // 1.0 / R
+    uint32_t betaFlag; // whether beta input exists
+    uint32_t rstdFlag; // whether rstd output is needed
+};
+
+struct AddRmsNormDynamicMxQuantReduceEmptyTilingData {
+    uint64_t perCoreElements;          // elements per core (non-last core)
+    uint64_t lastCoreElements;         // elements for last core
+    uint64_t perCoreLoops;             // loops per core (non-last core)
+    uint64_t perCorePerLoopElements;   // elements per loop (non-last core, non-last loop)
+    uint64_t perCoreLastLoopElements;  // elements for last loop (non-last core)
+    uint64_t lastCoreLoops;            // loops for last core
+    uint64_t lastCorePerLoopElements;  // elements per loop (last core, non-last loop)
+    uint64_t lastCoreLastLoopElements; // elements for last loop (last core)
+    uint64_t numRow;
+    uint32_t rstdFlag; // whether rstd output is needed
+};
+
+struct AddRmsNormDynamicMxQuantSplitRTilingData {
+    uint64_t numCol;         // R: norm dimension size
+    uint64_t numColAlign;    // R aligned to block boundary
+    uint64_t blockFactor;    // mPerCore: rows per core
+    uint64_t mLastCore;      // last core row count
+    uint64_t baseN;          // tile size along R axis (power of 2)
+    uint64_t baseNBlockSize; // CeilDiv(baseN, 32)
+    uint64_t baseM;          // batch size for rstd output alignment
+    uint64_t nUbLoops;       // number of UB iterations along R axis
+    uint64_t binAddQuotient; // intra-tile binary fold point
+    uint64_t powerSplit;     // inter-tile binary fold power
+    uint64_t mainFoldCount;  // main fold tile count after powerSplit
+    uint64_t foldTail;       // tail length after folding
+    uint64_t roundMode;      // rounding mode (0=round, 1=floor, 4=rint)
+    uint64_t mxBlockSize;    // MX block size (32)
+    uint64_t mxScaleSize;    // mxscale output size per row
+    int64_t scaleAlg;        // scale algorithm (0=standard, 1=cublas)
+    float epsilon;
+    float avgFactor;   // 1.0 / R
+    uint32_t betaFlag; // whether beta input exists
+    uint32_t rstdFlag; // whether rstd output is needed
+};
+
+#endif
