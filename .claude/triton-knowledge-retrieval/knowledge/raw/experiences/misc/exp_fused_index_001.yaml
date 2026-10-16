@@ -1,0 +1,46 @@
+experience_id: exp_fused_index_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with Fused Post-ops (ReLU, Scale, Sum)
+  data_type:
+  - fp8
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    N:
+    - '>=128'
+    H:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: The kernel fuses four distinct operationsвЂ”Matrix Multiplication
+    (GEMM), ReLU activation, Scaling, and Reduction (Sum)вЂ”into a single kernel launch.
+    This drastically reduces global memory read/write traffic by keeping intermediate
+    results in high-speed registers or SRAM.
+- data_reuse_optimization: The Q matrix (shape HxK) and its corresponding scaling
+    factors are loaded into registers once before the loop over the N dimension. This
+    ensures that the Q data is reused for every block of K loaded, minimizing memory
+    bandwidth requirements for the Q tensor.
+- auto_tiling_strategy: Utilizes `@triton.autotune` to dynamically select the optimal
+    `BLOCK_SIZE_N` (128, 256, or 512) based on the specific runtime dimensions of
+    H, N, and K. This ensures the kernel achieves the best balance between occupancy
+    and memory coalescing for varying sequence lengths.
+- boundary_handling: Implements mask-based loading and storing (`mask=...`) to efficiently
+    handle sequence lengths (N) that are not perfectly divisible by the block size,
+    avoiding expensive conditional branching within the kernel body.
+performance_boost: 45%
+note: This kernel is specifically optimized for index calculation or similarity search
+  tasks involving FP8 quantization. It assumes the Q matrix is small enough to fit
+  in registers/cache for reuse across the N dimension.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/197-triton_index_kernel.py

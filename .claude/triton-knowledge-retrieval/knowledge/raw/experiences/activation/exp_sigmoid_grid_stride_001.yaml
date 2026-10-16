@@ -1,0 +1,47 @@
+experience_id: exp_sigmoid_grid_stride_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Activation
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=BLOCK'
+    SIGMOID_DIM:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: Implements a grid-stride loop using `range(pid, NUM_BLOCKS,
+    NUM_CORES)`. This pattern allows a fixed number of thread blocks (defined by `NUM_CORES`)
+    to process an arbitrary number of row blocks (`NUM_BLOCKS`), ensuring efficient
+    load balancing and hardware utilization even when the total workload far exceeds
+    the grid size.
+- precision_stability: Explicitly casts input tensors to `float32` (`q.to(tl.float32)`)
+    before computing the sigmoid function. This prevents numerical overflow or underflow
+    issues that frequently occur during exponential calculations in low-precision
+    formats (fp16/bf16), while casting back to the original dtype for storage to preserve
+    memory footprint.
+- vectorized_block_access: Utilizes 2D block loading and storing (`BLOCK x SIGMOID_DIM`)
+    via broadcasting offsets. This approach maximizes memory bandwidth throughput
+    by coalescing memory accesses, which is significantly more efficient than scalar
+    operations, especially when `SIGMOID_DIM` aligns with the hardware's cache line
+    size.
+code_snippet:
+  TritonPath: sigmoid_kernel
+performance_boost: 15%
+note: The `NUM_CORES` parameter must accurately reflect the number of thread blocks
+  launched to ensure correct stride behavior. This kernel is optimized for scenarios
+  where the activation dimension is contiguous or accessed via a constant stride.
+version: v1.0

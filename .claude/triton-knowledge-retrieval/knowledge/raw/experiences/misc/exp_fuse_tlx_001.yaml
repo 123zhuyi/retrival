@@ -1,0 +1,46 @@
+experience_id: exp_fuse_tlx_001
+match_cond:
+  operator_type: Fused Operations
+  compute_pattern: Fused RMSNorm-Sinkhorn-Reduction
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - <=128
+    H:
+    - '>=1024'
+    NS:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses RMSNorm, Sinkhorn normalization (MxM matrix ops), and a large-scale
+    weighted sum reduction into a single kernel. This eliminates global memory write/read
+    overhead for intermediate tensors like normalized vectors, the Sinkhorn matrix,
+    and the pre-mix weights.
+- tiled_reduction: Implements a tiling strategy for the weighted sum loop over the
+    `H` dimension. By loading the residual tensor `res_ptr` in tiles of size `[M,
+    BH]`, the kernel ensures data reuse and optimizes memory bandwidth utilization
+    for large hidden dimensions.
+- in_register_iteration: The Sinkhorn iteration operates on an `M x M` matrix stored
+    entirely in local variables (`cm`, `rs`, `cs`). This keeps the iterative normalization
+    process in high-speed registers/SRAM, avoiding expensive global memory accesses
+    during the `SR` loop.
+- vectorized_accumulation: The accumulation loops over `NS` (number of sources) use
+    vectorized loads to efficiently aggregate features from multiple sources without
+    branching or scalar operations.
+performance_boost: 35%
+note: This kernel is optimized for scenarios where M is small (fitting in SRAM) and
+  H is large. The tiling factor `BH` should be tuned to match the L1/L2 cache size
+  of the specific hardware.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/076-_k_fuse_tlx.py

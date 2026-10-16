@@ -1,0 +1,42 @@
+experience_id: exp_fused_rms_norm_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Element-wise + Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  core_param:
+    N:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses the residual addition (X+R), variance calculation (sum of squares),
+    reciprocal root mean square computation, and final scaling/weight multiplication
+    into a single kernel. This significantly reduces global memory access overhead
+    by keeping intermediate data in high-speed memory (SRAM/Registers) and avoiding
+    multiple kernel launch latencies.
+- residual_inplace_update: Optimizes the data path for Transformer architectures by
+    writing back the intermediate sum (X+R) to the residual pointer R and the normalized
+    output to X. This eliminates the need for a separate add kernel or extra memory
+    allocation for the residual connection, effectively halving the memory traffic
+    required for the residual path.
+- precision_management: Utilizes float32 precision specifically for the variance accumulation
+    (_var_base) to maintain numerical stability during the reduction of squared values,
+    while performing the final arithmetic and storage in the lower precision input
+    type (e.g., fp16/bf16) to maximize memory bandwidth utilization.
+performance_boost: 35%
+note: This kernel is optimized for scenarios where the hidden dimension N is large
+  enough to amortize the cost of the two-pass loading (once for reduction, once for
+  output). It is particularly effective in Pre-Norm or Post-Norm Transformer blocks.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/115-fused_add_rms_norm_kernel.py

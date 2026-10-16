@@ -1,0 +1,45 @@
+experience_id: exp_perf_011
+match_cond:
+  operator_type: general
+  compute_pattern: memory_access
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 内存访问优化
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: 在Ascend 910B上，tl.make_block_ptr配合boundary_check会为每个维度、每个元素生成逐元素标量边界判断，导致aiv_scalar_ratio飙升（实测可达41%-93%）
+- 核心方案: 将block_ptr store/load替换为手动指针计算+显式mask，mask用tl.arange生成的偏移一次性向量化计算，避免逐元素标量比较
+- 边界处理: 使用mask=...和other=0.0（load）或mask=...（store）保证边界外数据为零或被正确过滤
+- 典型收益: 在chunk_kda_bwd_kernel_wy_dqkg_fused上仅此项优化即可消除93% scalar的根因；在chunk_kda_bwd_kernel_intra上可将AIV scalar从41.4%降至20%以下
+- 适用场景: 所有使用tl.make_block_ptr + boundary_check且出现aiv_scalar_ratio高的kernel，尤其是小tile（BC=16）频繁load/store的场景
+code_snippet:
+  Triton: "# 反模式：block_ptr + boundary_check 产生逐元素标量判断\n\
+    p_dq2 = tl.make_block_ptr(dq2_local, (T_local, K), (H*K, 1),\n\
+    \                         (i_ti, i_k * BK), (BC, BK), (1, 0))\n\
+    tl.store(p_dq2, b_dq2.to(p_dq2.dtype.element_ty), boundary_check=(0, 1))\n\
+    \n\
+    # 正模式：手动指针 + 向量化mask\n\
+    o_i = tl.arange(0, BC)\n\
+    o_k = tl.arange(0, BK)\n\
+    m_ti = (i_ti + o_i).to(tl.float32) < T_local.to(tl.float32)\n\
+    m_k  = o_k.to(tl.float32) < K.to(tl.float32)\n\
+    BC_BK_mask = m_ti[:, None] & m_k[None, :]\n\
+    p_dq2 = dq2_local + (i_ti + o_i[:, None]) * H * K + o_k[None, :]\n\
+    tl.store(p_dq2, b_dq2.to(dq2.dtype.element_ty), mask=BC_BK_mask)"
+performance_boost: 50%
+note: 手动指针替代block_ptr在Ascend上是一把双刃剑：它消除了boundary_check的标量开销，但要求开发者手动保证指针计算正确和mask完备。对确定性大块访存（如无边界tile），保留block_ptr仍可能获得更好的硬件预取。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/zy_design.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

@@ -1,0 +1,51 @@
+experience_id: exp_entropy_backward_fused_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Fused Matrix Multiplication (Backward)
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    num_tokens:
+    - '>=128'
+    vocab_size:
+    - '>=64'
+    hidden_size:
+    - '>=256'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: The kernel utilizes a grid stride loop (`for pid in range(pid0,
+    total_tiles, num_aicores)`) to map a large number of logical tiles (M*N) to a
+    fixed number of physical AI cores. This significantly reduces kernel launch overhead
+    and scheduling latency compared to launching a grid with dimensions equal to the
+    total number of tiles.
+- pointer_arithmetic_optimization: Inside the K-dimension loop, the kernel calculates
+    the absolute memory address (`base + offset + k * BLOCK_SIZE_K * stride`) for
+    each load operation explicitly, rather than incrementing a pointer variable. This
+    practice assists the compiler in inferring precise memory access patterns and
+    aliasing information, leading to more efficient instruction generation for load
+    operations.
+- operator_fusion: The kernel fuses the backward pass of the entropy loss (calculating
+    `d_logits` from `d_logprobs` and `d_entropy`) directly with the backward pass
+    of the linear layer (calculating `d_hidden` and `d_weight`). This fusion eliminates
+    the need to materialize and write the large intermediate `d_logits` matrix to
+    global memory, substantially reducing memory bandwidth consumption.
+- grouped_tiling: The implementation employs a `GROUP_SIZE_M` strategy, processing
+    multiple blocks of the N dimension (vocab) for a single block of the M dimension
+    (tokens). This enhances data locality by allowing the `hidden` matrix tiles to
+    be reused in cache across multiple iterations of the `weight` matrix.
+performance_boost: 35%
+note: This optimization is particularly effective for Ascend hardware (910B series)
+  where `num_aicores` maps to the physical Cube units. It is designed for LLM workloads
+  with large vocabularies.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/206-efficient_entropy_backward_kernel_general_mainloop_MN.py

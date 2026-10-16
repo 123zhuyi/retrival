@@ -1,0 +1,43 @@
+experience_id: exp_attn_reduce_stage2_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Online Softmax Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_DV:
+    - '>=64'
+    MAX_KV_SPLITS:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax_algorithm: Implements the numerically stable online softmax reduction
+    (max, sum, value update) within a loop over KV splits. This avoids materializing
+    the full [SeqLen, SeqLen] attention matrix, significantly reducing memory bandwidth
+    requirements and HBM access.
+- vectorized_accumulation: Accumulates the output values (`acc`) and normalization
+    statistics (`e_sum`, `e_max`) using float32 precision to maintain numerical stability
+    during exponentiation, while loading inputs potentially in lower precision.
+- split_loop_optimization: The loop iterates over `MAX_KV_SPLITS` to aggregate partial
+    results. By calculating `kv_len_per_split` and using `tl.minimum` for bounds checking,
+    it efficiently handles variable sequence lengths without padding, ensuring compute
+    units are not wasted on empty iterations.
+- sink_token_integration: Efficiently handles the sink token contribution by integrating
+    it into the final normalization step (`e_sum += tl.exp(cur_sink - e_max)`), avoiding
+    extra passes over the data or complex branching within the main reduction loop.
+performance_boost: 30%
+note: This kernel is designed for the second stage of FlashAttention-like mechanisms,
+  aggregating partial results from block-wise computation. It relies on `kv_indptr`
+  to handle variable sequence lengths within batches.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/028-_fwd_kernel_stage2.py

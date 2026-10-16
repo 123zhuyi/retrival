@@ -1,0 +1,50 @@
+experience_id: exp_outer_product_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Outer Product
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=1024'
+    n:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- loop_invariant_code_motion_licm: The kernel employs a conditional branch based on
+    NEED_LOOP_N to optimize memory access. When N is small enough, the rhs vector
+    is loaded once outside the main loop (else block). This drastically reduces global
+    memory read bandwidth for the rhs vector from O(M*N) to O(N), as the loaded data
+    is reused across all M blocks.
+- grid_stride_loop_scheduling: The kernel utilizes a grid-stride loop (for task_id
+    in range(pid, total_tasks_num, num_jobs)) to process the output matrix. This decouples
+    the total workload from the number of launched thread blocks, allowing the kernel
+    to handle arbitrarily large matrix dimensions (M, N) without exceeding hardware
+    grid limits or requiring kernel re-launches.
+- adaptive_tiling_strategy: The @triton.autotune configuration sweeps through a wide
+    range of tile sizes (1024 to 32768) with num_stages=3. This allows the runtime
+    to select the optimal tile size that balances instruction-level parallelism and
+    memory latency hiding, specifically tuning for the L1/L2 cache hierarchy of the
+    target hardware.
+- vectorized_boundary_handling: The use of tl.load and tl.store with explicit masks
+    ensures that the kernel handles non-multiple-of-tile dimensions efficiently without
+    padding, maintaining high memory coalescing even at the edges of the matrix.
+performance_boost: 45%
+note: The @libentry decorator suggests this is part of a specialized library entry.
+  The NEED_LOOP_N heuristic is critical; it should be set based on the size of N relative
+  to the cache/scratchpad size to maximize the benefit of hoisting the RHS load.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/140-outer_kernel.py

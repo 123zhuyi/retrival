@@ -1,0 +1,59 @@
+experience_id: exp_swiglu_fwd_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Operations
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- mixed_precision_computation: The kernel explicitly casts the input tensor 'a' to
+    float32 before applying the silu (sigmoid linear unit) function. This ensures
+    numerical stability for the sigmoid component, which is prone to overflow/underflow
+    in fp16/bf16, while maintaining performance by casting back to the original dtype
+    for the final multiplication.
+- vectorized_memory_access: By utilizing a compile-time constant BLOCK_SIZE and tl.arange,
+    the kernel loads and stores data in vectorized chunks. This maximizes memory bandwidth
+    utilization and reduces the number of memory instructions issued compared to scalar
+    operations.
+- operator_fusion: The kernel fuses the silu activation and the element-wise multiplication
+    (gate mechanism) into a single kernel launch. This eliminates the need to write
+    intermediate results to global memory, significantly reducing memory bandwidth
+    pressure and latency.
+- grid_stride_scheduling: The kernel implements a grid-stride loop over the row dimension
+    (`for row_task_id in range(pid, num_row_tasks, grid_size)`). This allows a fixed
+    number of thread blocks to process an arbitrary number of rows efficiently, ensuring
+    high utilization even when the total number of row blocks exceeds the grid size.
+- autotuning_block_m: The `BLOCK_SIZE_M` is autotuned across a range of values (1
+    to 32). This is critical for adapting to varying row dimensions (e.g., different
+    batch sizes or sequence lengths in LLMs), optimizing the trade-off between instruction-level
+    parallelism and GPU occupancy.
+- mixed_precision_computation: The input tensor `a` is cast to `float32` before the
+    `silu` activation and then cast back to the original dtype. This ensures numerical
+    stability for the sigmoid calculation, which is prone to underflow in fp16/bf16,
+    without sacrificing the memory bandwidth benefits of lower precision storage.
+- vectorized_memory_access: The inner loop processes columns in chunks of `BLOCK_SIZE_N`,
+    ensuring that memory loads and stores are coalesced. This maximizes memory bandwidth
+    utilization by accessing contiguous memory locations.
+performance_boost: 15%
+note: This kernel is specifically optimized for the SwiGLU activation function found
+  in modern LLMs. The float32 intermediate calculation is essential for maintaining
+  accuracy during the activation phase.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/211-_swiglu_fwd_kernel.py

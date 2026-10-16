@@ -1,0 +1,36 @@
+experience_id: exp_ascend_core_num_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 硬件资源适配
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 硬件适配优化
+framework_tag:
+- Triton
+optimization_points:
+- 核心数选择: 按算子类型匹配核心数——向量计算类（element-wise/softmax/归一化）用VEC核心数，矩阵计算类（matmul/attention）用CUBE核心数
+- 获取时机: 核心数必须在Module的`__init__`阶段获取，避免在forward中调用导致设备同步开销
+- 风险规避: torch_npu 的import和`get_device_limit`调用会触发设备同步，禁止在forward中执行该操作
+- 容错适配: 增加try-except兜底，适配不同Ascend机型的默认核心数（910B4默认VEC=40、CUBE=20）
+code_snippet:
+  Triton: "import torch_npu\n\nclass ModelNew(torch.nn.Module):\n    def __init__(self):\n\
+    \        super().__init__()\n        # 核心优化: 在__init__中仅执行一次核心数获取，避免forward同步开销\n\
+    \        try:\n            # 向量计算类算子 → VEC核心数\n            self.VEC_CORE_NUM =\
+    \ torch_npu.npu.npu_config.get_device_limit(0).get(\"vector_core_num\", 40)\n\
+    \            # 矩阵计算类算子 → CUBE核心数\n            self.CUBE_CORE_NUM = torch_npu.npu.npu_config.get_device_limit(0).get(\"\
+    cube_core_num\", 20)\n        except:\n            # 兜底值: 适配Ascend 910B4（20个AI\
+    \ Core × 2 VEC/Core = 40；20个AI Core ×1 CUBE/Core=20）\n            self.VEC_CORE_NUM\
+    \ = 40\n            self.CUBE_CORE_NUM = 20\n    \n    def forward(self, input_tensor):\n\
+    \        # forward中直接使用初始化好的核心数，无同步开销\n        grid = (self.VEC_CORE_NUM,)\n \
+    \       # 后续kernel调用逻辑...\n        return output_tensor"
+performance_boost: 0%
+note: 该规则无直接性能提升，但可规避forward中设备同步导致的10%-15%性能损耗；910B2默认VEC=48、CUBE=24，910B3默认VEC=64、CUBE=32，可按需调整兜底值
+version: v1.0

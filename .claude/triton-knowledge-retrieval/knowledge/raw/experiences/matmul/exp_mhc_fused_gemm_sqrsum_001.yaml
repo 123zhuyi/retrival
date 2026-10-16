@@ -1,0 +1,43 @@
+experience_id: exp_mhc_fused_gemm_sqrsum_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    num_tokens:
+    - '>=32'
+    hc_hidden_size:
+    - '>=256'
+    hc_mult3:
+    - <=32
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses the square-sum reduction and the matrix multiplication into
+    a single kernel pass. This significantly reduces global memory access bandwidth
+    by reading the input tensor x only once per block instead of twice.
+- block_tiling: Employs a tiling strategy with token_block=32 and hidden_block=256.
+    The 32-token block aligns with the warp size for efficient reduction, while the
+    256 hidden block optimizes memory coalescing and loading efficiency.
+- precision_optimization: Loads input data in bfloat16 (bf16) to save memory bandwidth
+    but performs accumulation in float32 (fp32). This balances speed with the numerical
+    precision required for sum-of-squares calculations.
+- hardware_acceleration: Utilizes tl.dot with allow_tf32=True to leverage hardware-accelerated
+    matrix units (Tensor Cores/Cube) for the matrix multiplication component, maximizing
+    compute throughput.
+performance_boost: 30%
+note: This kernel is specifically optimized for scenarios where hc_mult3 is small
+  (<=32). It combines a reduction and a GEMM, making it highly efficient for pre-GEMM
+  feature processing.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/077-_mhc_pre_gemm_sqrsum_kernel.py

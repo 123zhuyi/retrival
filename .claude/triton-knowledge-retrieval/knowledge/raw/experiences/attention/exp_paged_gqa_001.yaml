@@ -1,0 +1,51 @@
+experience_id: exp_paged_gqa_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Paged Grouped Query Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    q_heads_per_kv_head:
+    - '>=1'
+    BLOCK_DMODEL:
+    - '>=64'
+    BLOCK_N:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- paged_kv_cache: Utilizes a block_table to map logical sequence pages to non-contiguous
+    physical memory blocks. This decouples sequence length from physical memory layout,
+    enabling efficient memory management for variable-length sequences and reducing
+    fragmentation during LLM inference.
+- online_softmax: Implements the online softmax algorithm by tracking history_max
+    and the normalization factor l incrementally. This avoids materializing the full
+    N x N attention matrix in global memory or high-bandwidth memory, significantly
+    reducing memory bandwidth consumption.
+- gqa_head_tiling: Processes multiple query heads (defined by BLOCK_H) that share
+    the same KV head in a single kernel launch. This optimization amortizes the cost
+    of loading K and V tiles across multiple query heads, increasing data reuse and
+    arithmetic intensity.
+- latency_hiding: Schedules the load of the Value (V) tensor immediately after the
+    Key (K) load and before the softmax reduction logic. This overlaps memory access
+    latency with the compute-bound operations of the QK dot product and scaling.
+- accumulator_precision: Maintains intermediate states (acc, l, history_max) in float32
+    to ensure numerical stability during the exponentiation steps of the softmax,
+    while inputs and outputs can remain in lower precision (fp16/bf16).
+performance_boost: 35%
+note: This kernel is specifically designed for the decoding phase of LLMs where batch
+  sizes are large and sequence lengths vary. The BLOCK_DPE parameter suggests support
+  for RoPE (Rotary Positional Embeddings) within the kernel load logic.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/176-_paged_gqa_fwd_kernel.py

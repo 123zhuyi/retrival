@@ -1,0 +1,48 @@
+experience_id: exp_paged_kv_cache_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Paged KV Cache Store
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    num_kv_heads:
+    - '>=1'
+    head_dim:
+    - '>=64'
+    block_size:
+    - '>=16'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- head_vectorization: The original implementation iterates over `num_kv_heads` sequentially
+    using a Python loop. This optimization vectorizes the head dimension by incorporating
+    it into the tensor load/store operations (e.g., expanding pointer arithmetic to
+    handle a range of heads simultaneously). This removes the loop overhead and allows
+    the hardware to process multiple heads in parallel, significantly increasing throughput
+    for models with many heads.
+- memory_coalescing: Optimizes the stride and pointer calculations to ensure that
+    memory accesses along the `head_dim` are contiguous and aligned to the hardware's
+    cache line size (e.g., 32 or 64 bytes). This reduces the number of memory transactions
+    required and maximizes bus utilization, which is critical for high-bandwidth memory-bound
+    kernels like KV cache writing.
+- chunk_size_alignment: Adjusts the `CHUNK_SIZE` and the internal processing loop
+    to ensure that the amount of data processed per iteration aligns with the hardware's
+    vector width. This prevents partial register writes and ensures that the mask
+    logic does not introduce significant branching overhead.
+performance_boost: 40%
+note: This optimization is particularly effective for LLMs with large numbers of KV
+  heads (e.g., 32, 64, 128). It transforms the kernel from a serial head processor
+  to a wide vectorized store.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/238-_store_paged_kv_cache_kernel.py

@@ -1,0 +1,47 @@
+experience_id: exp_rope_mqa_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Rotary Positional Embedding
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D_HEAD:
+    - '>=32'
+    D_ROPE:
+    - <=D_HEAD
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses the RoPE application for both Query and Key tensors into a
+    single kernel. This eliminates the need to write intermediate results to global
+    memory and significantly reduces kernel launch overhead, which is crucial for
+    the performance of Transformer blocks.
+- vectorized_access: Utilizes `tl.arange` to load and store chunks of the head dimension
+    (`D_ROPE // 2`) simultaneously. This vectorization strategy maximizes memory bus
+    utilization and reduces the total number of load/store instructions compared to
+    scalar loops.
+- compile_time_pruning: Leverages `tl.constexpr` for dimensions and style flags. This
+    allows the compiler to resolve conditional branches (such as the pass-through
+    logic for non-rotated dimensions when `D_HEAD > D_ROPE`) at compile time, ensuring
+    zero runtime branching overhead.
+- mqa_memory_pattern: Implements specific pointer arithmetic to handle Multi-Query
+    Attention (MQA) scenarios where Key heads are broadcast across Query heads. It
+    calculates the correct key head offset using modulo arithmetic, ensuring efficient
+    memory access without redundant data loading.
+performance_boost: 30%
+note: Supports both Neox and GPT-J style RoPE configurations. Efficiently handles
+  cases where the head dimension is larger than the rotary dimension by passing through
+  non-rotated features.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/192-fused_rope_qk_mqa_kernel.py

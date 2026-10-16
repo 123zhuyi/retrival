@@ -1,0 +1,48 @@
+experience_id: exp_grouped_attn_stage1_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Grouped Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    seq_len:
+    - '>=128'
+    head_dim:
+    - '>=64'
+    block_n:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- indirect_load_scalarization: Replaces vectorized gather loads for the Key tensor
+    (K) with a scalar loop using `tl.get_element` and `tl.insert_slice`. This optimization
+    addresses severe performance degradation caused by uncoalesced memory accesses
+    when indexing into the KV cache via `kv_indices`, ensuring efficient memory bandwidth
+    usage on hardware with limited gather efficiency.
+- online_softmax_algorithm: Implements the iterative online softmax algorithm within
+    the KV loop. By maintaining running statistics (`e_max`, `e_sum`), the kernel
+    avoids materializing the full $N \times N$ attention matrix, significantly reducing
+    memory pressure for long sequences.
+- dpe_fusion_computation: Fuses the computation of an additional dimension (`BLOCK_DPE`,
+    typically used for positional embeddings or dequantization scales) directly into
+    the main QK dot product loop. This eliminates the need for separate kernel launches
+    or extra memory reads for this auxiliary data.
+- vectorized_v_load: Retains vectorized loading for the Value tensor (V) using the
+    native stride calculation, contrasting with the scalarized K load. This hybrid
+    approach balances the complexity of K indexing with the higher throughput requirements
+    of the final accumulation.
+performance_boost: 35%
+note: This kernel is designed for "Stage 1" of a grouped attention mechanism (e.g.,
+  FlashAttention variant), specifically optimizing for the irregular memory access
+  patterns inherent in paged-attention or variable-length sequence batching.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/013-grouped_attention_kernel_stage1.py

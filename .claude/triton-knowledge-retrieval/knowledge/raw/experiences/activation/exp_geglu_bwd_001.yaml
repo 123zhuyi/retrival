@@ -1,0 +1,50 @@
+experience_id: exp_geglu_bwd_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    total_elements:
+    - '>=4096'
+    BLOCK_SIZE:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: Implements a grid-stride loop pattern using `tl.range` with a
+    stride equal to `num_progs * BLOCK_SIZE`. This ensures that all NPU cores are
+    fully utilized even when the tensor size is not an exact multiple of the grid
+    size, effectively handling arbitrary tensor dimensions without idle cores.
+- activation_recomputation: Adopts a recompute strategy for the GELU activation (`tanh_result`,
+    `geglu_a`) during the backward pass. Instead of storing the forward activations
+    in high-bandwidth memory (HBM), the kernel recalculates them. This trades increased
+    ALU usage for significantly reduced memory bandwidth and storage requirements,
+    which is critical for memory-bound operations on NPUs.
+- software_pipelining: Utilizes the `NUM_STAGES` parameter in the `tl.range` loop
+    to enable software pipelining. This allows the kernel to overlap memory load/store
+    operations with the arithmetic computations of the GELU derivative, effectively
+    hiding memory access latency.
+- precision_preservation: Performs intermediate accumulation in `float32` (e.g., `a.to(tl.float32)`)
+    before casting back to the input precision. This ensures numerical stability during
+    the calculation of the GELU derivative, which involves cubic terms (`a_cubed`)
+    and hyperbolic tangents that are sensitive to precision loss in lower precision
+    formats.
+performance_boost: 25%
+note: The flattened 1D approach simplifies memory addressing and is highly effective
+  for GEGLU layers in Transformers. The recompute strategy is particularly beneficial
+  when batch sizes or sequence lengths are large, making memory bandwidth the primary
+  bottleneck.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/097-_geglu_backward_kernel_flat.py

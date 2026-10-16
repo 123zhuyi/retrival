@@ -1,0 +1,45 @@
+experience_id: exp_fused_matmul_rms_rope_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with Fused Element-wise Ops
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    total_seq_len:
+    - '>=256'
+    N:
+    - '>=128'
+    K:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- heterogeneous_parallelism: The kernel explicitly leverages the NPU's heterogeneous
+    architecture by dispatching the compute-intensive Matrix Multiplication to the
+    `cube` unit and the memory-intensive RMS Normalization and Rotary Position Embedding
+    to the `vector` unit. This ensures that different hardware units are utilized
+    simultaneously rather than sequentially.
+- async_task_scheduling: By using `dl.async_task`, the runtime is instructed to execute
+    the MatMul and the vector operations (RMS Norm + RoPE) asynchronously. This allows
+    the vector unit to process the normalization and embedding logic in parallel with
+    the matrix calculations on the cube unit, effectively hiding the latency of the
+    vector operations behind the heavy GEMM computation.
+- kernel_fusion_graph: The code fuses three distinct operations (MatMul, RMS Norm,
+    RoPE) into a single kernel launch context. This reduces the overhead of multiple
+    kernel launches and improves data locality, particularly for the `KV` tensor which
+    is processed sequentially by the vector kernels.
+code_snippet:
+  TritonPath: fused_matmul_and_rms_norm_and_rotary_pos_emb_kernel
+performance_boost: 25%
+note: This optimization is highly effective for Transformer inference/decoding stages
+  where MatMul is followed by normalization and RoPE. It requires hardware support
+  for asynchronous task scheduling between Cube and Vector units (e.g., Ascend 910B).
+version: v1.0

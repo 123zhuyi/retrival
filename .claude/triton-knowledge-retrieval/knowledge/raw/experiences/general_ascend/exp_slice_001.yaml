@@ -1,0 +1,47 @@
+experience_id: exp_slice_001
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法规范
+framework_tag:
+- Triton
+optimization_points:
+- 禁用规则: 禁止使用Python风格直接切片语法（如`b[0]`/`b[i:j]`），必须使用Triton专用切片API
+- 单元素提取: 单元素提取使用`tl.get_element(tensor, (index,))`或单次`tl.load`实现
+- 切片提取: 多元素切片提取使用`tl.extract_slice(tensor, offsets, sizes, strides)`
+- 切片插入: 子张量插入使用`tl.insert_slice(ful, sub, offsets, sizes, strides)`，支持任意维度张量
+code_snippet:
+  Triton: "# ========== Triton切片操作规范示例 ==========\n# 1. 单元素提取（替代b[i]）\n@triton.jit\n\
+    def single_element_kernel(ptr, output_ptr, idx: tl.constexpr, BLOCK_SIZE: tl.constexpr):\n\
+    \    offsets = tl.program_id(0)*BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask\
+    \ = offsets < 1024\n    tensor = tl.load(ptr + offsets, mask=mask)\n    # 正确:\
+    \ tl.get_element提取单元素\n    element = tl.get_element(tensor, (idx,))\n    # 等价实现:\
+    \ 单次load（另一种单元素提取方式）\n    # element = tl.load(ptr + idx)\n    tl.store(output_ptr,\
+    \ element)\n\n# 2. 一维切片插入（替代output[offset:offset+size] = output_sub）\n@triton.jit\n\
+    def slice_insert_1d_kernel(x_ptr, y_ptr, output_ptr, offset: tl.constexpr, size:\
+    \ tl.constexpr, BLOCK_SIZE: tl.constexpr):\n    offsets = tl.program_id(0)*BLOCK_SIZE\
+    \ + tl.arange(0, size)\n    mask = offsets < size\n    x_sub = tl.load(x_ptr +\
+    \ offsets, mask=mask)\n    y_sub = tl.load(y_ptr + offsets, mask=mask)\n    output_sub\
+    \ = x_sub + y_sub\n    # 初始化输出张量\n    output = tl.zeros((1024,), dtype=tl.float16)\n\
+    \    # 正确: tl.insert_slice插入一维切片\n    output = tl.insert_slice(output, output_sub,\
+    \ [offset], [size], [1])\n    tl.store(output_ptr + offsets, output[offsets],\
+    \ mask=mask)\n\n# 3. 二维切片插入（逐行构建，替代tmp_buf[i, :] = val）\n@triton.jit\ndef slice_insert_2d_kernel(in_ptr,\
+    \ output_ptr, rows: tl.constexpr, cols: tl.constexpr, BLOCK_SIZE: tl.constexpr):\n\
+    \    # 初始化二维临时缓冲区\n    tmp_buf = tl.zeros((rows, cols), dtype=tl.float16)\n  \
+    \  for i in range(rows):\n        offset = i * cols + tl.arange(0, cols)\n   \
+    \     mask = offset < rows * cols\n        val = tl.load(in_ptr + offset, mask=mask)\n\
+    \        # 正确: tl.insert_slice插入二维单行切片\n        tmp_buf = tl.insert_slice(tmp_buf,\
+    \ val[None,:], offsets=(i, 0), sizes=(1, cols), strides=(1, 1))\n    # 存储最终结果\n\
+    \    tl.store(output_ptr, tmp_buf, mask=tl.arange(0, rows*cols) < rows*cols)"
+performance_boost: 0%
+note: 该规则为Triton切片操作核心语法规范，违反会直接导致编译失败；910b2/910b3平台对Python风格切片语法无兼容容错，必须严格使用专用API
+version: v1.0

@@ -1,0 +1,49 @@
+experience_id: exp_softmax_online_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Softmax Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_M:
+    - '>=64'
+    BLOCK_N:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax_algorithm: The kernel implements the online softmax algorithm by
+    iteratively updating the running maximum (m_i) and the running sum of exponentials
+    (l_i). This allows the softmax operation to be fused into the main attention loop
+    without materializing the full $N \times N$ attention matrix in global memory,
+    significantly reducing memory bandwidth pressure.
+- numerical_stability: The calculation `qk - m_ij[:, None]` subtracts the row-wise
+    maximum before the exponential operation. This prevents floating-point overflow
+    or underflow during the `tl.math.exp` calculation, which is critical for the stability
+    of attention mechanisms in deep learning models.
+- mixed_precision_storage: The computation is performed in higher precision (implied
+    float32 for accumulation), but the final result `p_cast` is cast to `Q.type.element_ty`
+    (e.g., fp16/bf16) before storing to `WS2`. This optimizes shared memory usage
+    and store throughput while maintaining sufficient numerical precision for the
+    gradients.
+- vectorized_reduction: The use of `tl.max(qk, 1)` and `tl.sum(p, 1)` leverages hardware
+    vector units to perform the reduction operations efficiently across the block
+    dimension, minimizing the number of instruction cycles required for the reduction
+    step.
+performance_boost: 35%
+note: This function is designed to be called within a loop (e.g., over K or N heads)
+  in a FlashAttention-style kernel. It relies on `WS1` and `WS2` being pointers to
+  fast shared memory (SRAM).
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/054-vec_a.py

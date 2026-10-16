@@ -1,0 +1,108 @@
+experience_id: exp_rmsnorm_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMS Norm
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: Implements a grid-stride loop (for row_block_id in range(pid,
+    NUM_BLOCKS, NUM_CORES)) to map a fixed number of thread blocks to a potentially
+    large number of rows. This ensures high utilization of all available compute cores
+    (NUM_CORES) without launching excessive grid dimensions, reducing kernel launch
+    overhead and improving load balancing.
+- vectorized_block_access: Utilizes 2D block loading (BLOCK x KV_LORA_RANK) via advanced
+    indexing (pos_offset[:, None] * stride + dim_range[None, :]). This maximizes global
+    memory bandwidth by ensuring coalesced access patterns and reducing the number
+    of memory transactions.
+- mixed_precision_accumulation: Casts input data to float32 (xf = x.to(tl.float32))
+    before computing the sum of squares. This prevents overflow/underflow during the
+    variance calculation, which is critical for stability in fp16/bf16 inputs, before
+    casting back to the original dtype.
+- weight_broadcasting: Loads the weight tensor W once per kernel instance and broadcasts
+    it to the shape (BLOCK, KV_LORA_RANK). This avoids repeated global memory reads
+    of the weight vector for every row in the block, significantly reducing memory
+    traffic for the scaling operation.
+- persistent_kernel_scheduling: The kernel implements a grid-stride loop (`for row_idx
+    in range(pid, n_rows, NUM_CORES)`), allowing a single program ID to process multiple
+    rows sequentially. This reduces kernel launch overhead and improves hardware utilization
+    by keeping the compute units busy.
+- weight_vector_reuse: The weight vector `w` is loaded once outside the row processing
+    loop. This optimization significantly reduces global memory bandwidth pressure
+    by caching the weights in registers or shared memory for reuse across all rows
+    handled by the specific core.
+- full_row_vectorization: The kernel loads the entire row (`offsets = tl.arange(0,
+    N_COLS)`) into registers in a single operation. This maximizes memory coalescing
+    and allows the reduction (`tl.sum`) to be performed using wide vector units, accelerating
+    the variance calculation.
+- precision_accumulation: The input is cast to `float32` (`xf = x.to(tl.float32)`)
+    prior to the squared sum reduction. This ensures numerical stability and prevents
+    overflow/underflow issues that can occur when accumulating squared values in lower
+    precision formats like fp16 or bf16.
+- persistent_kernel_strategy: The kernel implements a grid-stride loop using `range(pid,
+    NUM_BLOCKS, NUM_CORES)`. This allows a single program instance to process multiple
+    blocks of rows sequentially, significantly reducing kernel launch overhead and
+    improving load balancing across available compute units.
+- weight_broadcasting_optimization: The weight tensor is loaded into registers once
+    before the main loop and broadcasted to the shape `(BLOCK, N_COLS)`. This eliminates
+    redundant global memory accesses for the weight vector inside the loop, which
+    is crucial as the weight is constant across all rows.
+- mixed_precision_computation: The input data is cast to `float32` (`xf = x.to(tl.float32)`)
+    prior to the variance and reciprocal square root calculations. This ensures higher
+    numerical stability during the reduction and division operations, preventing potential
+    overflow or underflow, before casting back to the original data type for the final
+    output.
+- two_pass_algorithm: The kernel separates the computation into two distinct loops
+    the first pass calculates the variance (reduction), and the second pass applies
+    the normalization and weights. This approach reduces register pressure compared
+    to loading the entire row into local memory, at the cost of increased global memory
+    access (reading X twice).
+- block_wise_vectorization: The input data is processed in chunks defined by `BLOCK_SIZE`.
+    This allows the compiler to generate vectorized memory loads/stores, maximizing
+    memory bandwidth utilization and aligning with hardware cache line sizes.
+- precision_control: Intermediate accumulation of the variance is explicitly performed
+    in `tl.float32` (via `.to(tl.float32)`), preventing overflow or underflow that
+    might occur with fp16/bf16 during the summation of squares, before casting back
+    to the output type.
+- jit_specialization_control: The `do_not_specialize=["eps"]` argument is used to
+    prevent the JIT compiler from generating a new kernel version for every unique
+    epsilon value, thereby reducing compilation overhead and binary size.
+- dynamic_row_scheduling: The kernel dynamically calculates the range of rows each
+    program instance handles based on the total number of programs (grid size). This
+    ensures load balancing even if the total number of rows is not perfectly divisible
+    by the grid size.
+- block_wise_accumulation: The reduction of squared values is performed in blocks
+    defined by BLOCK_SIZE. This allows the kernel to handle sequence lengths (n_cols)
+    that exceed the maximum vector load width or register capacity, while maintaining
+    high memory bandwidth utilization through coalesced accesses.
+- precision_stabilization: Intermediate accumulation (sum_sq) and the inverse RMS
+    calculation are explicitly performed in float32. This prevents overflow during
+    the squaring of fp16/bf16 values and ensures sufficient precision for the division
+    operation, which is critical for model convergence.
+- fused_weight_application: The normalization and weight multiplication are fused
+    into the second pass over the data. This reduces the total number of memory writes
+    and reads compared to a de-coupled approach (normalize then multiply).
+performance_boost: 15%
+note: The implementation uses a two-pass strategy over the column dimension (one for
+  reduction, one for application). While this increases memory traffic (loading inputs
+  twice), it is necessary for large hidden sizes to avoid register spilling.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/149-_rms_norm_kernel.py

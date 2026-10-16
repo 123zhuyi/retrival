@@ -1,0 +1,46 @@
+experience_id: exp_top_p_sampling_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Top-P Sampling
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    TOP_K:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_probability_calculation: The kernel computes the softmax (max, exp, sum)
+    and cumulative sum (cumsum) on the entire TOP_K vector in a single pass. This
+    fully utilizes the vector units of the NPU/GPU, avoiding the overhead of iterative
+    loops or scalar operations.
+- branchless_filtering_logic: The top-p filtering and min_tokens_to_keep constraints
+    are applied using tl.where. This ensures the execution path is divergence-free,
+    as all threads execute the same instructions without conditional branching, which
+    is critical for maintaining high throughput on SIMT architectures.
+- vectorized_candidate_search: Instead of iterating through the cumulative probabilities
+    to find the sample token, the kernel uses a vectorized comparison (f_cum_probs
+    >= threshold) combined with tl.min. This reduces the search latency to O(1) in
+    terms of instruction cycles relative to the vector width, significantly speeding
+    up the sampling step.
+- compile_time_strategy_dispatch: The 'strategy' parameter is a constexpr, allowing
+    the compiler to completely optimize away the branch for the unused strategy (either
+    standard sampling or noise injection), reducing code size and improving instruction
+    cache efficiency.
+performance_boost: 30%
+note: TOP_K is a compile-time constant and should be chosen to fit within the register
+  file to avoid spilling. The kernel assumes inputs are already sorted.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/222-_top_p_sample_kernel.py

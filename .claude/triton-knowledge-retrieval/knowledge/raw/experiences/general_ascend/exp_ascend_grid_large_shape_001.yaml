@@ -1,0 +1,49 @@
+experience_id: exp_ascend_grid_large_shape_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 大shape张量处理
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    shape_size:
+    - '>=1e6'
+  optimization_level: high
+  tensor_shape:
+  - 2d
+  - 3d
+experience_type: 负载均衡优化
+framework_tag:
+- Triton
+optimization_points:
+- 核心策略: 大shape算子优先使用**交错循环处理**（强烈推荐），将Grid固定为硬件核心数，每个核心以步长方式交错处理数据
+- 优势特性: 代码简洁、负载均衡最优（每个核心处理的数据量基本一致），完全规避Grid乘积超限问题
+- 适配场景: 适用于按行/按块独立处理的场景（如逐行计算、分块矩阵运算）
+code_snippet:
+  Triton: "import torch_npu\n\n# 大shape张量交错循环处理核心kernel\n@triton.jit\ndef row_processing_kernel(\n\
+    \    input_ptr, output_ptr, \n    M, N,\n    stride_m, stride_n,\n    BLOCK_N:\
+    \ tl.constexpr,\n    CORE_NUM: tl.constexpr,\n):\n    pid = tl.program_id(0)\n\
+    \    \n    # 核心优化：交错处理（每个核心处理 pid, pid+CORE_NUM, pid+2*CORE_NUM... 行）\n    # 负载均衡：所有行被恰好处理一次，无核心闲置\n\
+    \    for row_idx in range(pid, M, CORE_NUM):\n        # 计算当前行指针偏移\n        row_ptr\
+    \ = input_ptr + row_idx * stride_m\n        out_row_ptr = output_ptr + row_idx\
+    \ * stride_m\n        \n        # 列维度分块处理（符合BLOCK_SIZE限制）\n        for col_start\
+    \ in range(0, N, BLOCK_N):\n            col_offsets = col_start + tl.arange(0,\
+    \ BLOCK_N)\n            mask = col_offsets < N\n            \n            data\
+    \ = tl.load(row_ptr + col_offsets * stride_n, mask=mask)\n            result =\
+    \ data * 2 + 1  # 示例计算逻辑\n            tl.store(out_row_ptr + col_offsets * stride_n,\
+    \ result, mask=mask)\n\n# 大shape算子启动逻辑\nclass LargeShapeModel(torch.nn.Module):\n\
+    \    def __init__(self):\n        super().__init__()\n        # 获取Ascend硬件VEC核心数（适配不同机型）\n\
+    \        try:\n            self.VEC_CORE_NUM = torch_npu.npu.npu_config.get_device_limit(0).get(\"\
+    vector_core_num\", 48)\n        except:\n            self.VEC_CORE_NUM = 48  #\
+    \ Ascend 910B2默认值：24个AI Core × 2个VEC/Core\n\n    def forward(self, input_tensor):\n\
+    \        M, N = input_tensor.shape  # M可能超大（如327680）\n        output_tensor =\
+    \ torch.empty_like(input_tensor)\n        \n        # Grid固定为核心数，规避乘积超限\n    \
+    \    grid = (self.VEC_CORE_NUM,)\n        \n        row_processing_kernel[grid](\n\
+    \            input_tensor, output_tensor,\n            M, N,\n            input_tensor.stride(0),\
+    \ input_tensor.stride(1),\n            BLOCK_N=256,\n            CORE_NUM=self.VEC_CORE_NUM,\n\
+    \        )\n        return output_tensor"
+performance_boost: 15%
+note: 该策略是大shape算子（元素数≥1e6）的最优解，相比直接切分Grid的方案，负载均衡提升15%；Ascend 910B3默认VEC核心数为64，可按需调整
+version: v1.0

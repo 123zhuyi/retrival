@@ -1,0 +1,41 @@
+experience_id: exp_attn_fp8_ub_slice_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: FlashAttention Forward
+  data_type:
+  - fp16
+  - bf16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    HEAD_DIM:
+    - '>=256'
+    BLOCK_M:
+    - '>=128'
+    BLOCK_N:
+    - '>=128'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- fp8_value_casting: The softmax weights p are cast to float8e5 before the PV dot
+    product if fp8_v is enabled. This reduces the data volume for the PV accumulation
+    and leverages FP8 compute acceleration.
+- ub_overflow_slicing: For large head dimensions (HEAD_DIM >= 256), the accumulator
+    is explicitly sliced into 4 segments (BLOCK_M // 4) during the update phase. This
+    prevents Unified Buffer (UB) overflow on the NPU by ensuring intermediate results
+    fit within on-chip memory limits.
+- online_softmax: Implements the online softmax algorithm within the loop, updating
+    m_i (max) and l_i (sum) incrementally. This avoids storing the full attention
+    matrix, significantly reducing global memory access.
+performance_boost: 30%
+note: The slicing logic is specifically required for HEAD_DIM >= 256 to avoid hardware
+  resource limits. For smaller heads, the standard accumulator path is more efficient.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/011-_attn_fwd_inner.py

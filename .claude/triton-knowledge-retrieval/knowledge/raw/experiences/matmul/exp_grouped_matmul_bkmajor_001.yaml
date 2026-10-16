@@ -1,0 +1,47 @@
+experience_id: exp_grouped_matmul_bkmajor_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Grouped Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=1'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_load_balancing: Implements a dynamic work distribution strategy within the
+    kernel loop to handle variable matrix sizes in grouped operations. By calculating
+    cumulative block counts (`cur_count`) and iterating with a stride equal to `total_cores`,
+    the kernel ensures that all processing units remain active even when individual
+    groups have uneven dimensions, significantly reducing core idle time.
+- hardware_specific_padding: Utilizes `tl.compile_hint(..., "dot_pad_only_k")` for
+    both input tensors. This instructs the compiler to apply padding exclusively along
+    the K-dimension for the dot product operation. This is critical for NPU hardware
+    (like Ascend) to align with the Cube unit's data requirements without the overhead
+    of padding the M and N dimensions, thereby improving memory bandwidth utilization.
+- k_major_layout_optimization: The kernel is specifically designed for Matrix B in
+    K-major (Column-major) format. It loads data from B using `strideBN` and `strideBK`
+    and performs an explicit `tl.trans(b)` before accumulation. This allows the memory
+    load unit to read contiguous segments along the K dimension (maximizing burst
+    efficiency) while presenting the transposed layout required by the compute unit
+    for the matrix multiplication.
+performance_boost: 35%
+note: This kernel is optimized for scenarios where Matrix B is shared or pre-formatted
+  in K-major layout. The 'dot_pad_only_k' hint is specific to the CANN/Triton integration
+  for Ascend hardware.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/240-_m_grouped_matmul_bKmajor_kernel.py

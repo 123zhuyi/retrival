@@ -1,0 +1,54 @@
+experience_id: exp_solve_tril_004
+match_cond:
+  operator_type: Linear Algebra Operations
+  compute_pattern: Triangular Matrix Inverse / solve_tril / hierarchical kernel dispatch
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    block_size:
+    - 16
+    - 32
+    - 64
+  optimization_level: architecture
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- three_tier_hierarchical_dispatch: "根据 BT（块大小）选择不同 kernel：BT=16 直接用 `solve_tril_16x16_kernel`（基础递推）；BT=32 用 `merge_16x16_to_32x32_inverse_kernel`（4 块分治 + 1 次 merge）；BT=64 用 `merge_16x16_to_64x64_inverse_kernel`（16 块分治 + 多层 merge）。每个 kernel 内部保持 16×16 为基本计算单元（NPU 矩阵计算最优粒度）。"
+- block_recursive_inverse_formula: "分块求逆递推公式：`X[i,j] = -X[i,i] · Σ_{k=j}^{i-1} A[i,k] · X[k,j]`。与标量递推 `X[i,j] = -A[i,j] - Σ A[i,k]·X[k,j]` 在数学结构上完全一致——前者逐块，后者逐元素。统一性使得代码逻辑在不同层级可复用。"
+- divide_and_conquer_merge: "BT=32 将 32×32 矩阵分为 4 个 16×16 块，计算对角块逆后通过 `X₂₁ = -X₂₂ · A₂₁ · X₁₁` 合并。BT=64 分 16 个块，需要 3 层合并（紧邻→隔行→最远），共 7 次 16×16 tl.dot。"
+- grid_parallelism: "grid = (NT, B×H)，所有 chunk 内的所有 (batch, head) 对完全独立并行。NT = T/BT（定长）或 len(chunk_indices)（变长）。"
+- atomic_unit_16x16: "所有层级统一以 16×16 为原子计算单元（tl.dot / 逐行递推），匹配 NPU Cube 单元的最优粒度。"
+performance_boost: "通过分治将 O(BT³) 求逆降为 O(BT²) 的递推 + O(BT) 个 16×16 矩阵乘法"
+note: "此架构是算子设计层面的决策，非后期优化。16×16 原子单元的选择由 NPU 矩阵乘法硬件决定。"
+version: v1.0
+source: solve_tril_analyze.md §3 计算步骤 + §4 Kernel 实现代码详解
+code_snippet:
+  dispatch: |
+    def solve_tril(A, cu_seqlens=None, chunk_indices=None, output_dtype=torch.float):
+        B, T, H, BT = A.shape
+        assert BT in [16, 32, 64]
+
+        NT = len(chunk_indices) if cu_seqlens else triton.cdiv(T, BT)
+        Ai = torch.zeros_like(A, dtype=output_dtype)
+
+        # 按 BT 选择 kernel
+        if BT == 16:
+            merge_fn = solve_tril_16x16_kernel
+        elif BT == 32:
+            merge_fn = merge_16x16_to_32x32_inverse_kernel
+        elif BT == 64:
+            merge_fn = merge_16x16_to_64x64_inverse_kernel
+
+        # grid: (NT 个 chunk, B*H 个 batch-head 组合)
+        merge_fn[NT, B * H](A=A, Ai=Ai, ...)
+        return Ai

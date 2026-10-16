@@ -1,0 +1,41 @@
+experience_id: exp_padded_gather_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Padded Gather
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    INDICES_LENGTH:
+    - '>=BLOCK_SIZE'
+    NUM_COLUMNS:
+    - '>=BLOCK_X'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- buffered_writes: The kernel accumulates gathered rows in a local buffer (tmp_buf)
+    and performs a batched store to global memory only when the expert ID (bin_id)
+    changes. This reduces the number of global memory write transactions, which is
+    critical for high-bandwidth utilization.
+- column_tiling: The embedding dimension (NUM_COLUMNS) is processed in tiles of size
+    BLOCK_X. This tiling strategy limits the number of active registers per thread,
+    preventing register spilling and allowing the kernel to handle very wide embeddings
+    efficiently.
+- dynamic_boundary_handling: The kernel dynamically calculates the output offset (idx_o)
+    based on bin_ids and padded_bins metadata. This allows it to handle variable-length
+    expert assignments (MoE routing) without requiring the input to be strictly sorted
+    or pre-padded to a fixed size.
+performance_boost: 30%
+note: The current implementation uses a scalar loop to handle expert ID changes. For
+  extreme optimization, pre-sorting indices by expert ID is recommended to enable
+  fully vectorized loads and stores.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/032-_padded_gather_kernel.py

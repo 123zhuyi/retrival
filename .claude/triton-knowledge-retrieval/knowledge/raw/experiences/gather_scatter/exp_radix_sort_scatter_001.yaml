@@ -1,0 +1,48 @@
+experience_id: exp_radix_sort_scatter_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Radix Sort Scatter with Lookback
+  data_type:
+  - int32
+  - int64
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_elements:
+    - '>=1024'
+    bins:
+    - '>=2'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- lookback_algorithm: Implements a lookback mechanism to calculate global offsets.
+    Each block computes local histograms and then iteratively queries previous blocks'
+    status in a lookback buffer. This eliminates the need for a separate global prefix
+    sum kernel, reducing memory traffic and kernel launch latency.
+- volatile_loading: Uses `volatile=True` in the synchronization loop (`while partial_prefix
+    == 0`). This forces the load to bypass the L1 cache and fetch the most recent
+    data written by other blocks, ensuring correct synchronization and preventing
+    deadlocks in the spin-wait logic.
+- cache_streaming: Applies `cache_modifier=".cg"` (Cache Global) when writing to the
+    lookback buffer. This ensures that synchronization data is pushed to the L2 cache
+    or main memory immediately, making it visible to other thread blocks performing
+    the lookback.
+- data_reuse: Loads `key_data` and `value_data` once per block and iterates over `bins_segment`
+    (multiple bins) within the same kernel execution. This maximizes data reuse of
+    the input tensors, significantly reducing global memory bandwidth requirements
+    compared to launching a kernel per bin.
+performance_boost: 25%
+note: The lookback loop involves a spin-wait which can consume cycles if blocks are
+  heavily imbalanced. The `volatile` attribute is essential for correctness on NPUs/GPUs
+  with relaxed memory consistency.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/137-radix_sortbykey_scatter_kernel.py

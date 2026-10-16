@@ -1,0 +1,44 @@
+experience_id: exp_logits_penalty_fusion_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Element-wise Arithmetic
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_vocab:
+    - '>=1024'
+    BLOCK_SIZE:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses frequency penalty, presence penalty, repetition penalty, and
+    temperature scaling into a single kernel launch. This significantly reduces global
+    memory read/write bandwidth by processing all penalties in one pass over the logits
+    tensor.
+- conditional_loading: Implements a check on the `is_present` flag to conditionally
+    load the frequency tensor and execute penalty logic. This avoids unnecessary memory
+    loads and computation for batches that do not contain valid token history (e.g.,
+    padding or empty sequences).
+- precision_upcast: Converts inputs to `float32` before performing arithmetic operations.
+    This ensures numerical stability during the division and subtraction operations
+    required by penalty algorithms, preventing precision loss that might occur with
+    `fp16` accumulation.
+performance_boost: 35%
+note: The kernel assumes row-major layout for logits and frequencies. The `BLOCK_SIZE`
+  should be tuned to the specific hardware's cache line size (e.g., 128 or 256) for
+  optimal memory throughput.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/226-_fused_penalty_temp_kernel.py

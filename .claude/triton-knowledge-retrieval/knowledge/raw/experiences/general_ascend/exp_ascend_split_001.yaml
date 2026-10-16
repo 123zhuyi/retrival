@@ -1,0 +1,36 @@
+experience_id: exp_ascend_split_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 张量切分
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 硬件适配优化
+framework_tag:
+- Triton
+optimization_points:
+- 硬性限制: Ascend后端BLOCK_SIZE必须严格小于65536，且线程块占用的总内存需符合硬件缓存限制（910b2 L1缓存32KB、910b3 L1缓存64KB）
+- 超限处理: 若张量shape过大导致单次切分超硬件缓存，或BLOCK_SIZE触达65536上限，需对循环进行**多次嵌套切分**（先按行/列拆分子块，再逐块处理）
+- 切分原则: 多次切分优先按维度拆分（如先拆M维度，再拆N维度），保证每个子块内存占用≤硬件缓存上限
+code_snippet:
+  Triton: "# Ascend后端多次切分示例（BLOCK_SIZE超限场景）\n@triton.jit\ndef multi_split_kernel(\n\
+    \    input_ptr, output_ptr, M, N,\n    stride_m, stride_n,\n    BLOCK_M: tl.constexpr=128,\
+    \  # <65536 符合硬件限制\n    BLOCK_N: tl.constexpr=128,\n    MAX_SPLITS: tl.constexpr=100\
+    \  # 多次切分上限\n):\n    pid = tl.program_id(0)\n    # 一级切分：按M维度拆分子块（避免单次切分超缓存）\n\
+    \    for split_m in range(pid, M, MAX_SPLITS):\n        if split_m >= M:\n   \
+    \         break\n        # 二级切分：按N维度拆分子块（符合BLOCK_SIZE限制）\n        for split_n\
+    \ in range(0, N, BLOCK_N):\n            col_offsets = split_n + tl.arange(0, BLOCK_N)\n\
+    \            mask = col_offsets < N\n            # 加载当前子块数据（内存占用符合硬件限制）\n    \
+    \        row_ptr = input_ptr + split_m * stride_m\n            data = tl.load(row_ptr\
+    \ + col_offsets * stride_n, mask=mask)\n            # 计算并存储\n            result\
+    \ = data * 2\n            out_row_ptr = output_ptr + split_m * stride_m\n    \
+    \        tl.store(out_row_ptr + col_offsets * stride_n, result, mask=mask)"
+performance_boost: 20%
+note: 910b2/910b3平台下，BLOCK_SIZE≥65536会直接编译失败，线程块内存超缓存会导致访存效率下降50%以上；多次切分可在符合限制的前提下充分利用硬件算力
+version: v1.0

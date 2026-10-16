@@ -1,0 +1,32 @@
+experience_id: exp_api_003
+match_cond:
+  operator_type: general
+  compute_pattern: 循环
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 循环适配
+framework_tag:
+- Triton
+optimization_points:
+- 替代规则: 循环上限为编译时常量时，直接用`for range`替代`while`循环，无需额外逻辑
+- 语法要求: 循环上限需声明为`tl.constexpr`，保证编译时确定
+code_snippet:
+  Triton: "# Ascend后端while（静态上限）→ for range 替代\n# 错误: while循环（Ascend不支持）\n# @triton.jit\n\
+    # def while_static_kernel(ptr, BLOCK_SIZE: tl.constexpr):\n#     i = 0\n#    \
+    \ N_ITERS: tl.constexpr = 10  # 编译时常量\n#     while i < N_ITERS:\n#         offset\
+    \ = i * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n#         data = tl.load(ptr +\
+    \ offset)\n#         tl.store(ptr + offset, data * 2)\n#         i += 1\n\n# 正确:\
+    \ for range替代\n@triton.jit\ndef for_static_kernel(ptr, BLOCK_SIZE: tl.constexpr):\n\
+    \    N_ITERS: tl.constexpr = 10  # 编译时常量\n    for i in range(N_ITERS):  # 直接替换while\n\
+    \        offset = i * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n        data = tl.load(ptr\
+    \ + offset)\n        tl.store(ptr + offset, data * 2)"
+performance_boost: 0%
+note: Ascend后端不支持while循环，静态上限场景`for range`是最优替代，无额外开销；循环上限必须为`tl.constexpr`，否则归为动态上限场景
+version: v1.0

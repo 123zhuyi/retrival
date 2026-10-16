@@ -1,0 +1,37 @@
+experience_id: exp_attn_bwd_hstu_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Attention Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    seq_len:
+    - '>=128'
+    head_dim:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kv_tile_reuse: The kernel loads the K and V blocks corresponding to the current
+    column block (start_n) outside the row iteration loop. These tiles are reused
+    across all row blocks (start_m), drastically reducing global memory read bandwidth
+    for K and V tensors.
+- fp32_accumulation: Gradients for DK and DV are accumulated in float32 precision
+    (tl.zeros with dtype=tl.float32) to prevent precision loss during the reduction
+    across the sequence length before casting back to the input dtype.
+- block_ptr_bias: Utilizes tl.make_block_ptr for the optional bias tensor, enabling
+    efficient 2D block memory access that aligns with hardware memory coalescing requirements.
+performance_boost: 35%
+note: This optimization is critical for the backward pass of attention, where memory
+  bandwidth for K and V is often the bottleneck.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/009-_hstu_attn_bwd_one_col_block.py

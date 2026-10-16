@@ -1,0 +1,56 @@
+experience_id: exp_rejection_sample_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Rejection Sampling
+  data_type:
+  - int32
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    max_spec_len:
+    - '>=4'
+    vocab_size:
+    - '>=32000'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_global_load: The kernel loads `draft_token_ids` and `target_argmax_ids`
+    in chunks of `BLOCK_SIZE` (vectors) from global memory. This aggregates memory
+    requests, significantly reducing global memory access overhead compared to scalar
+    loading inside a loop.
+- in_block_serial_processing: Utilizes `tl.range` and `tl.get_element` to iterate
+    over the loaded vector elements sequentially. This design allows for complex control
+    flow (conditional checks and external function calls) that are difficult to express
+    in a purely vectorized SIMD manner, specifically for the rejection sampling verification
+    step.
+- strided_output_storage: Stores the accepted `target_argmax_id` into the output buffer
+    with a stride of 2 (`offset * 2`). This prepares the memory layout for interleaved
+    data (e.g., storing accepted tokens alongside bonus tokens or metadata) without
+    requiring a separate data rearrangement kernel.
+- vectorized_inner_loop: Replace the scalar loop `for pos in range(num_draft_tokens)`
+    with a vectorized loop that processes multiple tokens (e.g., 4 or 8) per iteration.
+    This increases instruction-level parallelism and utilizes memory bandwidth more
+    efficiently by loading chunks of `draft_token_ids`, `draft_probs`, and `target_probs`
+    simultaneously.
+- mask_based_rejection_propagation: Implement a bitmask mechanism to handle the sequential
+    dependency of rejection (stop processing once a token is rejected) within the
+    vectorized loop. This allows the kernel to maintain correctness while still performing
+    parallel comparisons and loads for the active (non-rejected) prefix of the sequence.
+- greedy_path_specialization: Explicitly handle the `is_greedy` condition by masking
+    out the expensive probability loading and division logic for greedy requests.
+    This reduces register pressure and avoids unnecessary memory accesses for the
+    greedy decoding path.
+performance_boost: 40%
+note: This optimization is particularly effective for typical speculative decoding
+  scenarios where the speculation length (max_spec_len) is between 4 and 16. It reduces
+  the overhead of loop control and serial memory accesses.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/168-rejection_random_sample_kernel.py

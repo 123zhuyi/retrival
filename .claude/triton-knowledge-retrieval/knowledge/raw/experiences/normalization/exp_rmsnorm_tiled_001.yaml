@@ -1,0 +1,43 @@
+experience_id: exp_rmsnorm_tiled_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMS Norm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_cols:
+    - '>=2048'
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- column_tiling_strategy: The kernel tiles the column dimension (n_cols) into fixed-size
+    blocks (BLOCK_SIZE). This prevents Unified Buffer (UB) overflow when processing
+    rows with large dimensions (e.g., >= 4096), which is a common bottleneck in NPU
+    memory architecture.
+- grid_stride_loop: Implements a grid-stride loop over rows (tl.range(pid, n_rows,
+    num_progs)). This optimizes hardware utilization by matching the number of active
+    program instances to the NPU core count, reducing launch overhead and ensuring
+    efficient scheduling for varying batch sizes.
+- two_pass_algorithm: Decouples the reduction phase (sum of squares calculation) from
+    the normalization phase. This allows the kernel to compute the global statistics
+    (rstd) required for normalization while processing data in manageable chunks.
+- cache_policy_optimization: Uses 'evict_first' during the reduction pass to minimize
+    cache pollution for data that is read once, and '.ca' (cache all) during the normalization
+    pass to maximize data reuse for weights and inputs.
+performance_boost: 25%
+note: Specifically designed for scenarios with large hidden dimensions (n_cols >=
+  2048) where standard kernels might OOM or overflow UB. Involves a double-load overhead
+  per row which is amortized by the ability to process large rows.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/101-_rms_norm_forward_kernel_tiled.py

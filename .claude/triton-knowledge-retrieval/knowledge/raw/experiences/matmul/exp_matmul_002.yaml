@@ -1,0 +1,48 @@
+experience_id: exp_matmul_002
+match_cond:
+  operator_type: AIC
+  compute_pattern: 矩阵乘法
+  data_type:
+  - fp16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: extreme
+  tensor_shape:
+  - nz
+experience_type: 计算优化
+framework_tag:
+- Triton
+optimization_points:
+- 量化融合: 将fp16计算与Cube fixpipe随路量化融合，提升计算效率
+- 循环展开: 展开K维循环，减少分支判断开销
+- 内存预取: 使用triton.preload做数据预取，隐藏访存延迟
+code_snippet:
+  Triton: "@triton.jit def matmul_optimized_kernel(x, y, output, M, N, K, **kwargs):\n\
+    \    # 融合预取+循环展开的优化代码\n    pid = triton.program_id(0)\n    rm = pid // (N // 256)\n\
+    \    rn = pid % (N // 256)\n    x_ptr = x + rm * 256 * K + triton.arange(0, 256)[:,\
+    \ None] * K + triton.arange(0, 256)[None, :]\n    y_ptr = y + rn * 256 + triton.arange(0,\
+    \ 256)[:, None] * N + triton.arange(0, 256)[None, :]\n    acc = triton.zeros((256,\
+    \ 256), dtype=triton.float32)\n    # 循环展开4次\n    for k in range(0, K, 256*4):\n\
+    \        a1 = triton.load(x_ptr, mask=triton.arange(0, 256)[None, :] < K - k,\
+    \ other=0.0)\n        b1 = triton.load(y_ptr, mask=triton.arange(0, 256)[:, None]\
+    \ < K - k, other=0.0)\n        a2 = triton.load(x_ptr+256, mask=triton.arange(0,\
+    \ 256)[None, :] < K - k -256, other=0.0)\n        b2 = triton.load(y_ptr+256*N,\
+    \ mask=triton.arange(0, 256)[:, None] < K - k -256, other=0.0)\n        a3 = triton.load(x_ptr+512,\
+    \ mask=triton.arange(0, 256)[None, :] < K - k -512, other=0.0)\n        b3 = triton.load(y_ptr+512*N,\
+    \ mask=triton.arange(0, 256)[:, None] < K - k -512, other=0.0)\n        a4 = triton.load(x_ptr+768,\
+    \ mask=triton.arange(0, 256)[None, :] < K - k -768, other=0.0)\n        b4 = triton.load(y_ptr+768*N,\
+    \ mask=triton.arange(0, 256)[:, None] < K - k -768, other=0.0)\n        acc +=\
+    \ a1@b1 + a2@b2 + a3@b3 + a4@b4\n        x_ptr += 1024\n        y_ptr += 1024\
+    \ * N\n    triton.store(output + rm * 256 * N + rn * 256 + triton.arange(0,256)[:,None]*N\
+    \ + triton.arange(0,256)[None,:], acc.to(x.dtype))"
+performance_boost: 35%
+note: 仅适配Triton框架，
+version: v1.0

@@ -1,0 +1,45 @@
+experience_id: exp_fused_attn_preprocess_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Fused MatMul + RMSNorm + RotaryEmbedding
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=1'
+    n:
+    - '>=1'
+    k:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the Value projection matrix multiplication (MatMul), Key
+    RMS Normalization, and Query/Key Rotary Positional Embedding into a single kernel.
+    This eliminates the need to write intermediate results to High Bandwidth Memory
+    (HBM) and read them back for subsequent operations, significantly reducing memory
+    access latency.
+- hardware_pipeline_scheduling: Utilizes `dl.async_task` to explicitly dispatch the
+    heavy compute load (MatMul) to the 'cube' unit and the light element-wise/reduction
+    loads (Norm, Rotary) to the 'vector' unit. This allows for potential overlap of
+    computation and memory transfers or efficient utilization of distinct hardware
+    pipelines within the NPU.
+- memory_access_optimization: By keeping the data within the on-chip memory hierarchy
+    (L0/L1 buffers) across the three stages (MatMul -> Norm -> Rotary), the kernel
+    maximizes data reuse and minimizes off-chip traffic, which is the primary bottleneck
+    in transformer inference.
+performance_boost: 35%
+note: This kernel is specifically designed for NPU architectures (like Ascend 910B)
+  that support distinct Cube and Vector units. The `dl` module calls indicate hardware-specific
+  dialect extensions for asynchronous task management.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/085-fused_matmul_norm_rotary_emb_kernel.py

@@ -1,0 +1,34 @@
+experience_id: exp_solve_tril_005
+match_cond:
+  operator_type: Linear Algebra Operations
+  compute_pattern: Triangular Matrix Inverse / solve_tril / CANN compatibility
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: API Usage / Compatibility
+framework_tag:
+- Triton
+optimization_points:
+- cann_incompatible_parameter_removal: "CANN 不同版本支持的编译参数不同。以下参数在 CANN 8.5.0 上不支持或不兼容，应从 kernel launch 或 wrapper 中删除：`limit_auto_multi_buffer_of_local_buffer='no-limit'`（CANN 8.5.0 未实现）、`sync_solver=True`（CANN 8.5.0 不支持同步 solver）、`num_stages=2`（TMA 异步拷贝依赖，USE_TMA=False 时无效）。保留这些参数可能导致编译错误或警告。"
+- version_aware_parameter_audit: "从第三方仓库（如 fla）迁移 kernel 时，必须审计所有编译参数和 launch option 与目标 CANN 版本的兼容性。特别是 `tl.range(..., num_stages=N)` 中的 num_stages 依赖 USE_TMA 能力，而在 Ascend 上 TMA 通常不可用。"
+- tma_unavailable: "Ascend 910b 上 USE_TMA=False（CANN 8.5.0），TMA（Tensor Memory Access）异步拷贝不可用。依赖 TMA 的参数（num_stages、sync_solver 等）均为无效参数。"
+performance_boost: "无性能影响（参数在 CANN 8.5.0 上本就不生效），消除编译警告/错误"
+note: "此经验适用于所有从外部仓库（fla、vllm、flash-attention 等）迁移到 Triton-Ascend 的 kernel。迁移时务必逐项审计 launch option 和编译参数。"
+version: v1.0
+source: solve_tril_analyze.md §9.1 优化内容 + §9.6 被排除的无效优化
+code_snippet:
+  problematic_params: |
+    # 应删除的 CANN 8.5.0 不兼容参数：
+    # 1. limit_auto_multi_buffer_of_local_buffer="no-limit"  — CANN 8.5.0 未实现
+    # 2. sync_solver=True                                 — CANN 8.5.0 不支持
+    # 3. num_stages=2（在 tl.range 中）                     — 依赖 USE_TMA，Ascend 不可用
+
+    # 正确做法：从 wrapper 中删除不兼容参数
+    # merge_fn[NT, B * H](A=A, Ai=Ai, ...)  # 不含不兼容参数

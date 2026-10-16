@@ -1,0 +1,45 @@
+experience_id: exp_crossentropy_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Cross Entropy Loss
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_cols:
+    - '>=4096'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax_algorithm: Implements the Online Softmax (Algorithm 3) which computes
+    the maximum value (m) and the sum of exponentials (d) in a single pass. This reduces
+    the number of memory loads from 3 to 2 per element compared to the standard safe
+    softmax, significantly lowering memory bandwidth pressure.
+- forward_backward_fusion: Fuses the calculation of the Cross Entropy loss and the
+    gradient computation (backward pass) into a single kernel execution. By writing
+    gradients directly to the input pointer `X_ptr` when `OVERWRITE_GRAD_LOGITS` is
+    enabled, it eliminates the need to store and reload intermediate activation tensors,
+    saving HBM memory capacity and bandwidth.
+- feature_fusion: Integrates auxiliary operationsвЂ”Label Smoothing, Z-loss, and SoftcappingвЂ”directly
+    into the main kernel loop. This avoids launching separate element-wise kernels
+    for these modifications, reducing kernel launch overhead and improving data locality.
+- large_block_vectorization: Utilizes large block sizes (4096 and 8192) via `triton.autotune`
+    to process the vocabulary dimension. This maximizes global memory throughput by
+    ensuring memory accesses are coalesced and fully utilize the bus width of the
+    hardware.
+performance_boost: 40%
+note: This kernel is highly optimized for large vocabulary sizes typical in LLMs (e.g.,
+  >= 4k). It ensures numerical stability by accumulating in float32 regardless of
+  input precision.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/245-_cross_entropy_kernel.py

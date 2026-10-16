@@ -1,0 +1,45 @@
+experience_id: exp_lightning_attn_decode_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Linear Attention / Outer Product Accumulation
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    D:
+    - '>=64'
+    B:
+    - '>=1'
+    H:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- loop_invariant_code_motion: The current implementation redundantly loads the query
+    (q), key (k), and value (v) tensors inside the inner 'pid_d' loop. Since these
+    vectors are constant across the dimension blocks for a specific batch and head,
+    they should be hoisted outside the 'pid_d' loop. This drastically reduces global
+    memory access pressure and instruction count.
+- fused_multiply_accumulate: The cache update logic 'kv_outer = kv_outer + ratio *
+    kv_cache_old' represents a classic multiply-add operation. Explicitly ensuring
+    this maps to the hardware's FMA (Fused Multiply-Add) pipeline prevents instruction
+    decoding overhead and maximizes compute unit utilization.
+- grid_stride_loop_optimization: The kernel utilizes a grid-stride loop ('for pid_bh
+    in range(pid_c, B * H, NUM_CORES)'). To optimize this for the NPU, ensure that
+    the number of launched programs (grid size) is a multiple of the number of physical
+    cores (NUM_CORES) to avoid tail effects and load imbalance.
+performance_boost: 30%
+note: The primary bottleneck in the provided code is the redundant memory loads within
+  the tiling loop. Moving these loads out is critical. Additionally, verify that 'BLOCK_SIZE'
+  is a multiple of the hardware's vector width (e.g., 32 or 64 bytes) to enable vectorized
+  memory instructions.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/069-_lightningattn_attn_decode_kernel.py

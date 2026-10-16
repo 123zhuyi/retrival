@@ -1,0 +1,50 @@
+experience_id: exp_sparse_flash_attn_prefill_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Sparse Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    seq_len:
+    - '>=1024'
+    topk:
+    - '>=32'
+    head_dim:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sparse_indexing_simd: Utilizes tle.index_select_simd to gather only the Top-K keys
+    from global memory based on the Indices_ptr. This significantly reduces memory
+    bandwidth consumption compared to dense attention by avoiding the load of irrelevant
+    key tokens.
+- cube_unit_acceleration: Explicitly invokes the hardware Cube unit via the cube1
+    intrinsic for the Q @ K^T matrix multiplication. This offloads the heavy compute
+    workload from the vector unit to the dedicated matrix accelerator, maximizing
+    throughput.
+- online_softmax_stability: Implements the numerically stable online softmax algorithm
+    using Log-Sum-Exp (LSE) logic. It processes the sequence in blocks (BLOCK_SBS),
+    updating the LSE and accumulator incrementally, which prevents overflow/underflow
+    and avoids materializing the full [S, S] attention matrix.
+- workspace_tiling_strategy: Manually manages workspace buffers (Wksp_K_ptr, Wksp_qk_ptr,
+    etc.) with a CACHE_BLOCK size of 64. This ensures that data loaded into the Unified
+    Buffer (UB) is fully utilized before being discarded, optimizing data residency
+    and minimizing HBM access latency.
+- intra_core_parallelism: Leverages tle.sub_vec_id to distribute the processing of
+    heads and blocks across the vector lanes or sub-cores within a single AI Core,
+    ensuring high hardware utilization.
+performance_boost: 60%
+note: This kernel is highly optimized for the Ascend 910B series architecture using
+  proprietary intrinsics (tle, cube1). It requires pre-computed Top-K indices and
+  is designed for the prefill stage of long-context LLMs.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/199-sparse_flash_attention_prefill_kernel.py

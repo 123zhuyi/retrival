@@ -1,0 +1,44 @@
+experience_id: exp_rmsnorm_kv_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMS Normalization
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=BLOCK'
+    kv_lora_rank:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: The kernel implements a grid-stride loop using `range(pid,
+    NUM_BLOCKS, NUM_CORES)`. This allows a single program to process multiple blocks
+    of rows, ensuring that all available NPU cores are utilized efficiently even when
+    the total number of rows is not perfectly divisible by the grid size, or when
+    the grid size is smaller than the core count.
+- weight_vector_caching: The normalization weights `W` are loaded into registers once
+    before the row processing loop and broadcasted to the shape `(BLOCK, KV_LORA_RANK)`.
+    This optimization eliminates redundant global memory accesses for the weights
+    across different row blocks, significantly reducing memory bandwidth pressure.
+- mixed_precision_accumulation: The kernel casts input data `x` to `float32` before
+    computing the variance (`tl.sum(xf * xf, 1)`) and reciprocal square root. This
+    prevents potential overflow or underflow issues inherent in low-precision (fp16/bf16)
+    reduction operations while maintaining high memory throughput by storing the final
+    result back to the original low-precision dtype.
+performance_boost: 25%
+note: This kernel is specifically designed for normalizing the KV LoRA rank dimension
+  within a larger tensor structure, utilizing strided access patterns.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/045-rms_norm_ckv_kernel.py

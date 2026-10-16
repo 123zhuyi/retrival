@@ -1,0 +1,41 @@
+experience_id: exp_perf_012
+match_cond:
+  operator_type: general
+  compute_pattern: scalar_elimination
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 标量消除
+framework_tag:
+- Triton
+optimization_points:
+- 降级规则: 在Ascend 910B上，i32的LT/GT/LE/GE比较全部标量降级；只有f16/f32比较和i32的EQ/NE走向量单元
+- 症状: profiling中aiv_scalar_ratio高，且代码中存在大量mask生成（如o_k < K, o_i >= j, o_i[:,None] >= o_i[None,:]等）
+- 核心方案: 将整数比较操作数转换为fp32后再比较，使比较走Vector CMP单元而非Scalar
+- 注意: 程序级单次分支（如if i_ti < T_local）只执行一次，影响极小，无需转换；重点优化循环内或向量化mask比较
+- 典型收益: 每个mask从逐元素标量比较变为向量比较，在BC=16场景下每个mask节省16~256次标量操作；在KDA intra kernel上10+处mask可显著降低AIV scalar
+code_snippet:
+  Triton: "# 反模式：i32 LT/GT/LE/GE → 标量降级\n\
+    m_k = o_k < K\n\
+    m_i_diag_qk = (o_i[:, None] >= o_i[None, :]) & ((i_ti + o_i[:, None]) < T_local)\n\
+    \n\
+    # 正模式：转fp32后比较 → 向量单元\n\
+    o_i_f = o_i.to(tl.float32)\n\
+    o_k_f = o_k.to(tl.float32)\n\
+    T_local_f = T_local.to(tl.float32)\n\
+    K_f = K.to(tl.float32)\n\
+    m_k = o_k_f < K_f\n\
+    m_i_diag_qk = (o_i_f[:, None] >= o_i_f[None, :]) & ((i_ti + o_i_f[:, None]) < T_local_f)"
+performance_boost: 35%
+note: 此优化对由tl.arange生成的索引比较尤其有效。当参与比较的变量本身就是tl.full构造的fp32标量时，可直接使用而无需额外转换。注意fp32比较对mask逻辑无精度损失。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/scalar_opt_report.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

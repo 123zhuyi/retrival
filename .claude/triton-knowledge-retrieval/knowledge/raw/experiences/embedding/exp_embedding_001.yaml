@@ -1,0 +1,41 @@
+experience_id: exp_embedding_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Embedding Lookup
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    embedding_dim:
+    - '>=64'
+    n_elements:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- 2D_Tiling_Strategy: The kernel tiles the output matrix into blocks of BLOCK_SIZE_M
+    x BLOCK_SIZE_N. This allows for vectorized memory loads and stores along the embedding
+    dimension (N), significantly improving memory bandwidth utilization compared to
+    row-wise processing.
+- Software_Pipelining: Utilizes the num_stages parameter in tl.range to enable software
+    pipelining. This overlaps memory access operations for subsequent blocks with
+    the current block's execution, effectively hiding global memory latency.
+- Memory_Coalescing: The address calculation embedding_offsets = indices[:, None]
+    * embedding_dim + offsets_n[None, :] ensures that consecutive threads access contiguous
+    memory locations in the embedding table, maximizing the efficiency of memory transactions.
+performance_boost: 25%
+note: Best suited for scenarios with large embedding dimensions where memory bandwidth
+  is the primary bottleneck.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/090-embedding_forward_kernel.py

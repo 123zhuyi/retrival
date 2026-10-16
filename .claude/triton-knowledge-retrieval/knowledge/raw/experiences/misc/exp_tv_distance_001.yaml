@@ -1,0 +1,46 @@
+experience_id: exp_tv_distance_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Element-wise Reduction
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_cols:
+    - '>=128'
+    total_rows:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- software_pipelining: The kernel utilizes the `num_stages` parameter within `tl.range`
+    to implement software pipelining. This prefetches subsequent blocks of `p` and
+    `q` into the cache while computing the current block, effectively hiding memory
+    access latency.
+- branchless_execution: The gradient calculation uses `tl.where(p > q, 0.5, -0.5)`
+    instead of conditional control flow. This ensures that all threads within a warp
+    execute the same instructions, preventing divergence and maintaining high SIMD
+    utilization.
+- vectorized_memory_access: Data is loaded and stored in contiguous chunks defined
+    by `BLOCK_SIZE`. This ensures memory accesses are coalesced and aligns with the
+    hardware's vector width requirements, maximizing memory bandwidth throughput.
+- efficient_masking: Dynamic masking is applied for both boundary conditions (partial
+    blocks) and the `ignore_index` logic. This allows the kernel to handle variable
+    row lengths and padding without expensive branching or separate kernel launches.
+performance_boost: 25%
+note: This implementation is highly efficient for per-row reduction tasks. Ensure
+  `BLOCK_SIZE` is tuned to match the specific NPU's L1 cache line size (e.g., 128
+  bytes) for optimal performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/107-_tv_distance_kernel.py

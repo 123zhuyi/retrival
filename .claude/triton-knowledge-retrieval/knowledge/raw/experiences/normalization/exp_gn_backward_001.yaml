@@ -1,0 +1,49 @@
+experience_id: exp_gn_backward_001
+match_cond:
+  operator_type: Normalization Operations
+  compute_pattern: Group Normalization Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    group_size:
+    - '>=32'
+    HW:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- Tiled Two-Pass Reduction: The kernel separates the computation of reduction statistics
+    (sum of gradients and weighted sum) from the final gradient application. This
+    is necessary because the gradient formula requires global statistics over the
+    spatial dimension. By tiling the spatial dimension with BLOCK_HW_SIZE, the kernel
+    accumulates partial sums in registers/SRAM during the first pass, avoiding expensive
+    atomic operations or global memory synchronization.
+- Spatial Tiling and Locality: The loop over HW processes data in chunks of BLOCK_HW_SIZE
+    (default 128). This optimizes for L2 cache and memory bandwidth by reusing loaded
+    grad_y and X values within the accumulation registers (dx_part2, dx_part3) before
+    moving to the next tile.
+- Precision Preservation: Explicitly casts intermediate calculations to tl.float32
+    (e.g., rstd, mean, weight, dx_part2). This prevents numerical underflow or overflow
+    during the reduction of variance and mean terms, which is critical for the stability
+    of the backward pass in normalization layers.
+- Boundary-Aware Masking: Utilizes dynamic masking (wb_mask, hw_mask, xy_mask) to
+    handle arbitrary tensor dimensions where C or HW are not perfectly divisible by
+    the block sizes. This ensures correctness for all input shapes without the overhead
+    of padding.
+code_snippet:
+  TritonPath: group_norm_backward_kernel
+performance_boost: 35%
+note: The kernel performs two passes over the input data (grad_y and X). For very
+  large HW, this is memory bandwidth intensive. Optimizations could involve software
+  pipelining within the loops to hide latency.
+version: v1.0

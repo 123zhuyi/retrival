@@ -1,0 +1,47 @@
+experience_id: exp_rmsnorm_infer_001
+match_cond:
+  operator_type: Normalization Operations
+  compute_pattern: Reduction + Element-wise
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: The kernel utilizes a grid-stride loop (`for row_task_id
+    in range(pid, num_row_tasks, grid_size)`) to process rows. This allows a single
+    kernel launch to handle an arbitrary number of rows exceeding the grid size, ensuring
+    all compute units remain active even for large batch sizes or sequence lengths.
+- two_pass_algorithm: The computation is split into two distinct passes over the input
+    data. The first pass calculates the sum of squares (variance), and the second
+    pass applies the normalization and scaling. This decouples the reduction dependency
+    from the output calculation, significantly reducing register pressure by avoiding
+    the need to store the entire input block in registers between the reduction and
+    output stages.
+- high_precision_accumulation: The kernel explicitly casts input data to `tl.float32`
+    before accumulating the sum of squares (`ss_acc`) and performing the final arithmetic.
+    This ensures numerical stability during the reduction, preventing overflow or
+    underflow that can occur with low-precision floating-point types (fp16/bf16).
+- tiled_memory_access: By iterating over columns in blocks of `BLOCK_SIZE_N`, the
+    kernel ensures memory accesses are coalesced and aligned to favorable boundaries,
+    maximizing memory bandwidth utilization for both the input tensor `X` and the
+    weight tensor `W`.
+code_snippet:
+  TritonPath: _rmsnorm_infer_kernel
+performance_boost: 25%
+note: The two-pass approach trades off increased memory bandwidth usage (loading X
+  twice) for lower register pressure, which is highly effective for operations with
+  large hidden dimensions (n_cols).
+version: v1.0

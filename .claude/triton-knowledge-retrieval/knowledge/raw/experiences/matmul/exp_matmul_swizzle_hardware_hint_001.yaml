@@ -1,0 +1,45 @@
+experience_id: exp_matmul_swizzle_hardware_hint_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_swizzling: Utilizes grouped_launch_swizzling with a BLOCK_TRESHHOLD to reorder
+    the execution sequence of matrix blocks. This optimizes memory access patterns,
+    reduces bank conflicts, and improves L2 cache hit rates by ensuring spatial locality
+    in the access pattern.
+- multi_block_scheduling: Implements a persistent kernel style loop (for block_idx
+    in range(pid, NUM_BLOCKS, num_cores)), allowing a single core to process multiple
+    output blocks. This reduces kernel launch overhead and improves overall hardware
+    utilization by keeping compute units busy.
+- hardware_specific_hint: Applies dl.compile_hint with "dot_pad_only_k" for the loaded
+    blocks. This instructs the compiler to pad only the K-dimension for the dot product
+    operation, aligning data precisely with the requirements of the hardware's matrix
+    compute unit (Cube) to maximize throughput.
+- autotuning_config: Employs @triton.autotune to dynamically select the optimal block
+    sizes (BLOCK_M, BLOCK_N) and swizzling threshold (BLOCK_TRESHHOLD) based on the
+    specific dimensions of N and K at runtime.
+performance_boost: 25%
+note: This kernel relies on the 'dl' module for hardware hints and an external 'grouped_launch_swizzling'
+  function. Ensure these are available in the runtime environment.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/073-matmul_kernel.py

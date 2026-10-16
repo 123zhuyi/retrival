@@ -1,0 +1,51 @@
+experience_id: exp_entropy_backward_d_weight_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with Atomic Accumulation
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    num_tokens:
+    - '>=128'
+    vocab_size:
+    - '>=64'
+    hidden_size:
+    - '>=256'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- persistent_kernel_grid_stride: The kernel implements a grid-stride loop strategy
+    using `for pid in range(pid0, total_tiles, num_aicores)`. This maps a potentially
+    large number of logical tiles to a fixed number of physical AICores, significantly
+    reducing kernel launch overhead and scheduling latency compared to a 1:1 grid
+    mapping.
+- compiler_friendly_pointer_arithmetic: In the backward pass accumulation loop, the
+    code calculates the absolute memory address explicitly (`base + offset + k * stride`)
+    inside the load operation rather than incrementing a pointer variable across iterations.
+    This specific pattern assists the compiler in performing alias analysis and inferring
+    contiguous memory access patterns, leading to more efficient load instructions.
+- atomic_gradient_accumulation: Utilizes `tl.atomic_add` to handle concurrent writes
+    to the `d_weight` matrix. This resolves race conditions where multiple thread
+    blocks (processing different tokens) update the same weight parameters, which
+    is essential for the correctness of the backward pass.
+- grouped_gemm_scheduling: Employs `GROUP_SIZE_M` to process multiple M-dimension
+    blocks together. This improves data locality and allows for better reuse of loaded
+    weight tiles across the grouped blocks.
+performance_boost: 25%
+note: This kernel is specifically optimized for the Ascend 910 series architecture.
+  It reconstructs logits during the backward pass, requiring high memory bandwidth
+  and compute density. The pointer arithmetic optimization is critical for achieving
+  peak load efficiency on the NPU.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/207-efficient_entropy_backward_kernel_d_weight.py

@@ -1,0 +1,52 @@
+experience_id: exp_ssm_gated_delta_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Gated Delta Rule Recurrence
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+    T:
+    - '>0'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses the recurrent state update loop, gating logic (g, beta), and
+    output projection into a single kernel. This eliminates the need to write and
+    read back the intermediate hidden state (h) to global memory for every time step,
+    significantly reducing memory bandwidth pressure.
+- 2d_tiling_strategy: Implements a 2D blocking strategy on the hidden state matrix
+    (K x V) using block sizes BK and BV. This parallelizes the inherently sequential
+    recurrence across the head and value dimensions, allowing the hardware to utilize
+    vector units effectively for the matrix operations (outer products and dot products)
+    within each step.
+- heuristic_specialization: Uses compile-time heuristics to handle complex deployment
+    scenarios like Variable Length sequences (IS_VARLEN), Continuous Batching (IS_CONTINUOUS_BATCHING),
+    and Speculative Decoding (IS_SPEC_DECODING). This generates optimized code paths
+    for specific input shapes and memory layouts without runtime branching overhead.
+- fp32_accumulation: Performs the accumulation of the hidden state `b_h` in float32
+    precision. This is critical for maintaining numerical stability in gated recurrent
+    networks (SSMs/Mamba) where the state is updated multiplicatively over many steps,
+    preventing overflow or underflow.
+- inplace_state_update: Supports in-place updates for the final state (`INPLACE_FINAL_STATE`)
+    and optimized indexing for continuous batching. This reduces memory footprint
+    and avoids redundant data copies when managing the KV cache or state cache in
+    LLM inference systems.
+performance_boost: 50%
+note: This kernel is specifically designed for Selective State Space Models (like
+  Mamba). It handles the "Delta Rule" update efficiently. Ensure BK and BV are tuned
+  to the L1 cache size of the specific hardware (e.g., 64x64 or 128x128).
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/151-fused_recurrent_gated_delta_rule_fwd_kernel.py

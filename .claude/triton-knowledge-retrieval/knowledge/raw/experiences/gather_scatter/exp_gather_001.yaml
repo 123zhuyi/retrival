@@ -1,0 +1,54 @@
+experience_id: exp_gather_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Gather
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    num_indices:
+    - '>=32'
+    x_size:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_indexing: Replace the scalar loop `for i in range(SUB_BLOCK_SIZE)` with
+    vectorized pointer arithmetic. Calculate the base addresses for all rows in the
+    sub-block simultaneously using the `cur_indices` tensor to enable parallel memory
+    access.
+- batched_loading: Utilize `tl.load` with advanced indexing (broadcasted pointer arithmetic)
+    to fetch the entire `(SUB_BLOCK_SIZE, BLOCK_X)` block in a single operation. This
+    eliminates the need for iterative `tl.insert_slice` calls and reduces instruction
+    count.
+- control_flow_optimization: Remove the inner Python-level loop within the JIT kernel.
+    This allows the compiler to generate efficient SIMT instructions and improves
+    pipeline utilization by avoiding serial execution of row gathering.
+- vectorized_row_load: The kernel loads the entire feature vector (x_vals) for a specific
+    row into local memory/registers in a single operation before performing the gather.
+    This strategy transforms multiple potential scattered global memory reads into
+    one contiguous read, significantly reducing global memory access latency and bandwidth
+    usage.
+- intrinsic_gather_utilization: Leverages the tl.gather intrinsic, which maps directly
+    to efficient hardware indexing instructions. This avoids the overhead of complex
+    manual pointer arithmetic or loop-based masking typically required for irregular
+    memory access patterns.
+- stride_generalization: The kernel is designed to handle arbitrary strides for input,
+    index, and output tensors. This flexibility allows it to operate directly on non-contiguous
+    tensor layouts (such as sliced or transposed views) without requiring a preliminary
+    layout transformation (padding or transposition) kernel.
+performance_boost: 30%
+note: This approach assumes the feature dimension (x_size) is small enough to fit
+  efficiently into the GPU's SRAM or register file. For extremely large feature vectors,
+  this method may lead to high register pressure.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/124-_gather_high_perf_kernel.py

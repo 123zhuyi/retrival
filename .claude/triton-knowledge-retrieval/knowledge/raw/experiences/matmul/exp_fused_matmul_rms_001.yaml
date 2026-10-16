@@ -1,0 +1,45 @@
+experience_id: exp_fused_matmul_rms_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication + RMS Norm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the matrix multiplication (GEMM) operation with the RMS normalization.
+    This eliminates the need to write the intermediate GEMM results to High Bandwidth
+    Memory (HBM) and read them back for the normalization step, significantly reducing
+    memory bandwidth consumption and latency.
+- async_pipeline_scheduling: Utilizes `dl.async_task` to dispatch the GEMM workload
+    to the Cube unit and the RMS Norm workload to the Vector unit. This asynchronous
+    execution model allows for efficient pipelining, potentially overlapping computation
+    phases or reducing the scheduling overhead between the two distinct hardware stages.
+- hardware_unit_specialization: Explicitly scopes the `matmul_kernel` to `dl.async_task.cube`
+    and the `rms_norm_block_kernel` to `dl.async_task.vector`. This ensures that the
+    heavy matrix arithmetic is handled by the dedicated matrix engine while the element-wise
+    and reduction operations are handled by the vector engine, maximizing the utilization
+    of the Ascend NPU's heterogeneous architecture.
+performance_boost: 25%
+note: This optimization relies on the `dl` module which provides hardware-specific
+  primitives for Ascend NPUs. It is most effective when the matrix dimensions are
+  large enough to saturate the Cube unit, and the subsequent RMS Norm does not introduce
+  a significant bottleneck on the Vector unit.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/041-fused_matmul_ckvkr_and_rms_norm_cq_kernel.py

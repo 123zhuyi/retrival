@@ -1,0 +1,50 @@
+experience_id: exp_fused_rmsnorm_sigmoid_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Fused RMSNorm and Sigmoid
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    DIM:
+    - '>=128'
+    n_rows:
+    - '>=BLOCK'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the RMSNorm and Sigmoid operations into a single kernel launch.
+    This optimization significantly reduces global memory access by reading the input
+    tensor 'QQ' only once (conceptually split) and writing two outputs without storing
+    intermediate results to HBM, thus lowering memory bandwidth pressure.
+- dimension_splitting_strategy: Implements a logical split of the input tensor 'QQ'
+    along the feature dimension using HALF_DIM. The first half of the data is processed
+    through the RMSNorm pipeline (variance calculation, normalization, scaling), while
+    the second half is processed through the Sigmoid pipeline. This is highly efficient
+    for packed data structures in transformer models.
+- grid_stride_scheduling: Utilizes a grid-stride loop pattern (`range(pid, NUM_BLOCKS,
+    NUM_CORES)`) to distribute the workload across all available GPU cores. This ensures
+    high utilization even when the number of rows is not perfectly divisible by the
+    block size or when the grid dimension is small, preventing core idleness.
+- mixed_precision_computation: Performs the reduction (sum of squares) and reciprocal
+    square root operations in float32 (`q.to(tl.float32)`) to maintain numerical stability
+    and prevent overflow/underflow, which is critical for normalization layers. The
+    results are cast back to the input data type only at the final store stage to
+    save memory bandwidth.
+performance_boost: 35%
+note: This kernel assumes the input tensor 'QQ' contains data for both operations
+  concatenated along the last dimension. Ensure that the DIM parameter is an even
+  number.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/083-fused_rmsnorm_and_sigmoid_kernel.py

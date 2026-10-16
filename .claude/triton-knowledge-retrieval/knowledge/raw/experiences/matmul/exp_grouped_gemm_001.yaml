@@ -1,0 +1,47 @@
+experience_id: exp_grouped_gemm_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Grouped Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=64'
+    N:
+    - '>=64'
+    num_groups:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_work_stealing: The kernel implements a dynamic scheduling strategy within
+    the group loop. By calculating `cur_block` based on `core_idx` and `total_cores`
+    and iterating with a `while` loop, it ensures that all compute cores are utilized
+    efficiently even when different groups have vastly different K dimensions (computational
+    loads). This mitigates the "tail effect" common in static scheduling of grouped
+    operations.
+- hardware_specific_padding_hint: The use of `dl.compile_hint(..., "dot_pad_only_k")`
+    is a critical hardware adaptation for Ascend NPUs. It instructs the compiler to
+    pad only the K dimension of the tiles to align with the hardware's matrix multiplication
+    unit (Cube) requirements, rather than padding the entire block. This significantly
+    reduces unnecessary data movement and memory footprint.
+- explicit_layout_transposition: The kernel explicitly transposes matrix A (`aa =
+    tl.trans(a)`) before the `tl.dot` operation. This optimization aligns the data
+    layout in registers/SRAM with the specific operand ordering expected by the underlying
+    hardware instruction, ensuring that the dot product can be executed without additional
+    permutation overhead.
+performance_boost: 35%
+note: This kernel relies on the `dl` (DeepLink) module, indicating it is specifically
+  designed for Ascend hardware (910 series). The dynamic scheduling is particularly
+  effective when the variance in K dimensions across groups is high.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/067-k_grouped_gemm_kernel.py

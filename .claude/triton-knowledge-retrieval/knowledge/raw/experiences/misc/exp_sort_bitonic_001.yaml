@@ -1,0 +1,46 @@
+experience_id: exp_sort_bitonic_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Bitonic Sort
+  data_type:
+  - int32
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    N:
+    - <=1024
+    BLOCK_SIZE:
+    - '>=N'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- padding_strategy: The kernel utilizes `_get_iinfo_val` to determine the maximum
+    or minimum integer value based on the sort order (DESCENDING). This value is used
+    as the `other` parameter in `tl.load` to pad out-of-bound elements. This ensures
+    that padding elements are naturally pushed to the end of the sorted sequence,
+    allowing the sorting algorithm to operate on a fixed-size block without complex
+    conditional branches inside the sort loop.
+- batch_parallelism: The kernel is designed to handle multiple independent sorting
+    batches by calculating pointer offsets using `tl.program_id(0)`. This design maximizes
+    hardware utilization by allowing different GPU/NPU cores to sort different chunks
+    of data simultaneously, which is highly efficient for sorting many small arrays.
+- masked_memory_access: Memory operations (`tl.load` and `tl.store`) use a mask (`cols
+    < N`) to handle cases where the data size `N` is not a multiple of `BLOCK_SIZE`
+    or is smaller. This prevents illegal memory access violations and ensures correctness
+    for arbitrary input sizes within the block limit.
+performance_boost: 25%
+note: This implementation is optimized for small to medium array sizes (N <= 1024)
+  that fit within the SRAM/Register file of a single thread block. The use of `iinfo`
+  suggests a focus on integer sorting, though the logic can extend to floats with
+  appropriate padding values.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/134-bitonic_sortbykey_kernel.py

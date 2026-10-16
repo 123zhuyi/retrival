@@ -1,0 +1,42 @@
+experience_id: exp_shuffle_blockwise_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Block-wise Shuffle
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_SIZE:
+    - '>=128'
+    n_elements:
+    - '>=BLOCK_SIZE'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_local_sorting: Restricts the sorting and shuffling scope to the local `BLOCK_SIZE`
+    (e.g., 256 elements). This avoids the expensive global synchronization and memory
+    traffic associated with sorting the entire tensor, reducing complexity from O(N
+    log N) to O(N log B) where B is the block size.
+- parallel_prng_state: Utilizes `tl.philox` with a counter offset calculated as `c0
+    = c0 + i4`. This ensures that each element within the block has a unique, independent
+    random seed state, allowing the random number generation to proceed in parallel
+    across all threads without serialization or race conditions.
+- in_place_memory_strategy: Performs the load, shuffle, and store operations on the
+    same buffer pointer (`value_in`). This in-place approach halves the memory bandwidth
+    requirement and peak memory usage compared to an out-of-place shuffle that requires
+    a separate output buffer.
+performance_boost: 35%
+note: This kernel performs a local shuffle within blocks. It is not a global shuffle
+  of the entire dataset. Ensure `BLOCK_SIZE` is tuned to fit within the SRAM/Registers
+  of the target hardware for optimal argsort performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/138-duplicate_keys_shuffle_kernel.py

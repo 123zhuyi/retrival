@@ -1,0 +1,60 @@
+experience_id: exp_fused_matmul_rmsnorm_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication + RMSNorm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=1'
+    K:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the Matrix Multiplication (CKVKR) and RMS Normalization (CQ)
+    into a single kernel. This eliminates the need to write the intermediate MatMul
+    results back to global memory (HBM) and read them back for the normalization step,
+    significantly reducing memory bandwidth consumption and latency.
+- hardware_unit_dispatch: Explicitly maps the MatMul computation to the 'cube' scope
+    (Matrix Unit) and the RMS Norm computation to the 'vector' scope (Vector Unit).
+    This leverages the specialized hardware pipelines of the Ascend NPU, ensuring
+    that the heavy matrix math and the element-wise/reduction math are handled by
+    their most efficient processing units.
+- async_task_scheduling: Utilizes the 'dl.async_task' construct to decouple the execution
+    of the Cube and Vector tasks. This allows the underlying runtime or hardware to
+    pipeline these operations, potentially overlapping data transfers or computation
+    phases to hide latency and improve overall throughput.
+- hardware_scope_dispatching: The code explicitly utilizes the Da Vinci (dl) dialect
+    to dispatch the `matmul_kernel` to the `cube` scope and the `rms_norm_ckv_kernel`
+    to the `vector` scope. This ensures that the computationally intensive matrix
+    multiplication is offloaded to the dedicated Cube unit, while the memory-bandwidth
+    intensive normalization is handled by the Vector unit, maximizing hardware resource
+    utilization on Ascend NPUs.
+- asynchronous_task_scheduling: By wrapping the kernel calls in `dl.async_task`, the
+    runtime is permitted to execute these operations asynchronously. This facilitates
+    pipeline parallelism where the Vector unit can process normalization on a block
+    of data while the Cube unit is processing the matrix multiplication for the next
+    or current block, effectively hiding latency and improving throughput.
+- configurable_tiling_strategy: The kernel exposes `BLOCK_M`, `BLOCK_N`, `BLOCK_K`,
+    and `BLOCK_NORM` as `tl.constexpr` arguments. This allows for precise tuning of
+    the tiling sizes to match the L0/L1 cache sizes of the specific hardware (910b)
+    and the dynamic shape of the KV cache (defined by `total_seq_len` and `NOPE_DIM`),
+    minimizing global memory access overhead.
+performance_boost: 25%
+note: This optimization is specifically designed for the Ascend NPU architecture using
+  the Da Vinci dialect extensions. It assumes that the `matmul_kernel` and `rms_norm_ckv_kernel`
+  are defined elsewhere and compatible with the `dl.async_task` interface.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/052-fused_matmul_qb_and_rmsnorm_kv_kernel.py

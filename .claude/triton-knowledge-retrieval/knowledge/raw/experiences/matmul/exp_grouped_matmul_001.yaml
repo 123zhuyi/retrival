@@ -1,0 +1,59 @@
+experience_id: exp_grouped_matmul_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Grouped Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=32'
+    N:
+    - '>=32'
+    K:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_load_balancing: The kernel implements a dynamic scheduling strategy within
+    the main loop (`for cur_block in range(cur_block, cur_count, total_cores)`). This
+    allows a single kernel launch to handle multiple matrix multiplications with varying
+    M dimensions (groups), efficiently distributing work across all available cores
+    to prevent idle time caused by uneven group sizes.
+- hardware_specific_hints: Utilizes `tl.compile_hint(..., "dot_pad_only_k")` to explicitly
+    instruct the compiler to pad operands only along the K dimension for the dot product
+    instruction. This is critical for Ascend NPU hardware (910B series) to ensure
+    the matrix unit (Cube) operates efficiently without unnecessary memory overhead
+    or instruction constraints violations.
+- pointer_arithmetic_optimization: Optimizes memory access patterns for the 'bNmajor'
+    layout by calculating base pointers (`a_ptrs_base`, `b_ptrs_base`) using offsets
+    that incorporate the group index (`group_idx`). This ensures that while iterating
+    through the K dimension, the memory accesses remain coalesced and aligned with
+    the hardware's expectation for grouped operations.
+- dynamic_load_balancing: Implements a core rotation mechanism using modulo arithmetic
+    on `last_count` to distribute blocks of different groups across cores. This mitigates
+    the "tail effect" in grouped GEMMs where cores might idle waiting for the last
+    group to finish.
+- compile_hint_optimization: Utilizes `tl.compile_hint(..., "dot_pad_only_k")` to
+    instruct the compiler backend (likely CANN for Ascend) to optimize padding specifically
+    for the K-dimension in dot product instructions, reducing instruction overhead.
+- on_chip_transpose: Performs `tl.trans(a)` immediately after loading to align the
+    data layout for the `tl.dot` operation, ensuring efficient vectorization without
+    requiring pre-transposed global memory layouts.
+performance_boost: 25%
+note: Specifically designed for K-grouped matrix multiplication where the K dimension
+  varies per group. The dynamic scheduling is critical for performance when group
+  sizes vary significantly.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/242-_k_grouped_matmul_kernel.py

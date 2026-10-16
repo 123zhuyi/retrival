@@ -1,0 +1,39 @@
+experience_id: exp_sum_scale_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Sum and Scale
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    N:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_size_tuning: Increase BLOCK_N from 128 to 1024 or 2048. This aligns better
+    with the memory burst length and cache line size of the Ascend 910B series, significantly
+    reducing the number of memory transactions and loop control overhead.
+- vectorized_access: Ensure that the tl.load operations for both input and weight
+    pointers utilize the maximum vector width (e.g., 128 bytes) supported by the hardware.
+    This maximizes memory bandwidth utilization, which is critical as the kernel loads
+    two data streams simultaneously when scalebyw is enabled.
+- loop_unrolling: Apply loop unrolling to the main accumulation loop to minimize branch
+    prediction penalties and instruction dispatch overhead, allowing the hardware
+    pipeline to process data more efficiently.
+performance_boost: 30%
+note: The current implementation processes the entire array within a single program
+  block (grid size 1). For large-scale arrays (N > 10000), it is highly recommended
+  to refactor the kernel into a multi-block parallel reduction pattern to fully utilize
+  the NPU cores.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/114-sum_and_scale.py

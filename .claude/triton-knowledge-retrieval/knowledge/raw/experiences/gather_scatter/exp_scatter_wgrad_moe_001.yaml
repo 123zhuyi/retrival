@@ -1,0 +1,46 @@
+experience_id: exp_scatter_wgrad_moe_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Scatter + Dot Product
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    NUM_COLUMNS:
+    - '>=64'
+    BLOCK_SIZE:
+    - '>=128'
+    SUB_BLOCK_SIZE:
+    - '>=16'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- expert_binning_strategy: The kernel leverages pre-computed `bin_ids` and `bins`
+    to group tokens belonging to the same expert. This transforms the scatter operation
+    into a series of contiguous memory accesses, significantly reducing memory latency
+    and improving cache utilization for the `x` tensor.
+- padded_memory_alignment: By utilizing `padded_bins`, the kernel ensures that the
+    memory offsets for each expert's data are aligned to favorable boundaries. This
+    avoids unaligned memory access penalties and allows the memory controller to issue
+    full-width burst reads, which is critical for high-bandwidth hardware like 910B.
+- vectorized_reduction: The inner computation loop loads `BLOCK_X` elements of `x`
+    and `grads` simultaneously to perform a vectorized dot product (`tl.sum(val *
+    grad)`). This maximizes the utilization of vector units and reduces the instruction
+    count per element compared to scalar operations.
+- pointer_alignment_hints: The use of `tl.multiple_of` in pointer arithmetic (`grad_ptr`,
+    `x_ptr`) provides explicit hints to the compiler about address alignment, enabling
+    more efficient code generation for global memory loads.
+performance_boost: 30%
+note: This kernel is specifically optimized for Mixture of Experts (MoE) backpropagation
+  where tokens are routed to different experts. The binning logic is essential for
+  performance when the number of tokens per expert varies significantly.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/034-_padded_scatter_wgrad_kernel.py

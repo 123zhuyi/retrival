@@ -1,0 +1,52 @@
+experience_id: exp_qwen2vl_mrope_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Rotary Positional Embedding
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    hd:
+    - '>=128'
+    n_qh:
+    - '>=1'
+    n_kh:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- fused_mrope_logic: The kernel fuses the complex logic of Multi-RoPE (temporal, height,
+    width) directly into the computation. Instead of preprocessing or splitting tensors,
+    it calculates pointers for t, h, and w components and uses tl.where to dynamically
+    select the correct cos/sin values based on the dimension index. This eliminates
+    extra memory reads and kernel launch overheads associated with handling multi-modal
+    positional encodings.
+- head_blocking_reuse: The implementation processes Query and Key heads in blocks
+    (BLOCK_Q, BLOCK_K). This strategy allows the cos and sin vectors, which are constant
+    for a given row across all heads, to be loaded once from global memory and reused
+    for all heads within the block. This drastically reduces the memory bandwidth
+    pressure for accessing the relatively small positional embedding tables.
+- software_pipelining: The outer loop utilizes the num_stages parameter to implement
+    software pipelining. By prefetching the next row's data while computing the current
+    row, the kernel effectively hides global memory latency, ensuring the compute
+    units are consistently fed with data.
+- vectorized_rotation: The rotation operation is performed by splitting the head dimension
+    into left and right halves (q_left, q_right). This aligns with the memory layout
+    of interleaved RoPE tensors, enabling the use of wide vectorized load/store instructions
+    which maximize memory bus utilization on NPU hardware.
+performance_boost: 25%
+note: This kernel is specifically optimized for Qwen2-VL's 3D positional encoding
+  requirements. It assumes the input tensors are in a standard 2D layout (rows, head_dim)
+  and handles boundary conditions for arbitrary sequence lengths and batch sizes.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/099-_triton_qwen2vl_mrope_npu.py

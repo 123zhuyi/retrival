@@ -1,0 +1,2720 @@
+# Experience Index
+# Auto-generated file - do not edit manually
+
+- experience_id: exp_elem_add_001_20260526
+  category: elementwise
+  title: Add算子块大小动态调整优化经验
+  status: draft
+  composite_score: 75
+
+- experience_id: exp_perf_001
+  category: general_perf
+  experience_type: 块大小优化
+  operator_type: general
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_002
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_003
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_004
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_006
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_007
+  category: general_perf
+  experience_type: 性能避坑
+  operator_type: general
+  performance_boost: -40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_008
+  category: general_perf
+  experience_type: 内存初始化优化
+  operator_type: general
+  performance_boost: 8%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_009
+  category: general_perf
+  experience_type: 冗余操作优化
+  operator_type: AIV
+  performance_boost: 10%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_010
+  category: general_perf
+  experience_type: 算子拆分优化
+  operator_type: MIX
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_stability_001
+  category: general_stability
+  experience_type: 数值稳定性优化
+  operator_type: AIV
+  performance_boost: 数值稳定性提升100%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_stability_002
+  category: general_stability
+  experience_type: 数值稳定性优化
+  operator_type: AIV
+  performance_boost: 数值稳定性提升95%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_stability_003
+  category: general_stability
+  experience_type: 数值精度优化
+  operator_type: AIV
+  performance_boost: 计算精度提升（MAE降低80%）
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_stability_004
+  category: general_stability
+  experience_type: 数值精度优化
+  operator_type: AIV
+  performance_boost: 累加精度提升（MSE降低90%）
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_api_001
+  category: general_api
+  experience_type: 语法避坑
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_api_002
+  category: general_api
+  experience_type: 语法适配
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_api_003
+  category: general_api
+  experience_type: 循环适配
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_api_004
+  category: general_api
+  experience_type: 循环适配
+  operator_type: general
+  performance_boost: -5%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_slice_001
+  category: general_ascend
+  experience_type: 语法规范
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_slice_002
+  category: general_ascend
+  experience_type: 语法避坑
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_constexpr_001
+  category: general_ascend
+  experience_type: 语法规范
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_tensor_create_001
+  category: general_ascend
+  experience_type: 内存初始化优化
+  operator_type: general
+  performance_boost: 8%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_where_001
+  category: general_ascend
+  experience_type: 语法适配
+  operator_type: general
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_scalar_cast_001
+  category: general_ascend
+  experience_type: 语法规范
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_split_001
+  category: general_ascend
+  experience_type: 硬件适配优化
+  operator_type: 通用优化
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_grid_001
+  category: general_ascend
+  experience_type: 语法规范
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_grid_large_shape_001
+  category: general_ascend
+  experience_type: 负载均衡优化
+  operator_type: 通用优化
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_core_num_001
+  category: general_ascend
+  experience_type: 硬件适配优化
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_ascend_parallel_pattern_001
+  category: general_ascend
+  experience_type: 负载均衡优化
+  operator_type: 通用优化
+  performance_boost: 10%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_ascend_large_shape_block_001
+  category: general_ascend
+  experience_type: 内存访问优化
+  operator_type: 通用优化
+  performance_boost: 12%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_debug_001
+  category: general_debug
+  experience_type: 调试排查
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_debug_002
+  category: general_debug
+  experience_type: 调试排查
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_debug_003
+  category: general_debug
+  experience_type: 调试排查
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_debug_004
+  category: general_debug
+  experience_type: 调试排查
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_debug_005
+  category: general_debug
+  experience_type: 调试排查
+  operator_type: 通用优化
+  performance_boost: 0%
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+- experience_id: exp_matmul_diag_tiling_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_moe_binned_scatter_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_scatter_npu_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_moe_wgrad_npu_001
+  category: moe
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_hstu_attn_fwd_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_hstu_attn_sched_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_hstu_attn_bwd_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_bwd_hstu_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_attn_fp8_ub_slice_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_flash_attn_gridstride_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_grouped_attn_stage1_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_gather_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_scatter_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_scatter_wgrad_001
+  category: gather_scatter
+  experience_type: Compute Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_flashattn_splitk_gqa_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Attention Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_reduce_split_001
+  category: reduction
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_paged_attn_flash_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_sparse_attn_topk_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Attention Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_backward_sum_001
+  category: reduction
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_hist_count_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_topk_pad_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_idx_copy_001
+  category: embedding
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_sparse_bwd_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sparse_attn_backward_dq_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_flashattn_gqa_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_attn_reduce_stage2_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_001
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_002
+  category: conv
+  experience_type: Compute Optimization
+  operator_type: Convolution Operations
+  performance_boost: "D>=2048: 2.3x-3.1x; D<=256: negative (needs threshold gating)"
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_003
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: "block_ptr vs scalar load: up to 2-3x difference (combined with loop unrolling)"
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_004
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: 15-25% memory bandwidth reduction
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_005
+  category: conv
+  experience_type: Compute Optimization
+  operator_type: Convolution Operations
+  performance_boost: 5-15% scalar instruction reduction
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_006
+  category: conv
+  experience_type: Cross-kernel Optimization Transfer
+  operator_type: Convolution Operations
+  performance_boost: "Bias fusion: 10-20% latency; Pointer precompute: 5-10% scalar reduction"
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_update_007
+  category: conv
+  experience_type: Scheduling Optimization
+  operator_type: Convolution Operations
+  performance_boost: 30-40% (combined architectural decisions)
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_ascend_diag_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_padded_gather_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_scatter_moe_padded_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_scatter_wgrad_moe_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rope_triton_001
+  category: rope
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rope_001
+  category: rope
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_partial_rope_001
+  category: rope
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_matmul_ascend_001
+  category: matmul
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_matmul_rms_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_qn_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_matmul_rope_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_kv_001
+  category: normalization
+  experience_type: Scheduling Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_matmul_rms_rope_001
+  category: matmul
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_matmul_rmsnorm_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_ptr_setup_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_softmax_online_001
+  category: softmax
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_ascend_dual_pipeline_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 55%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_small_tile_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rope_matmul_001
+  category: matmul
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rope_matmul_fused_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_moe_scatter_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_moe_gather_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_rope_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_norm_rope_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_gemm_scale_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_grouped_gemm_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_lightning_attn_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Attention Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_lightning_attn_decode_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_grouped_gemm_bkmajor_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_grouped_gemm_bNmajor_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_vec_parallel_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_swizzle_hardware_hint_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_ascend_wavefront_001
+  category: matmul
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_mhc_post_fusion_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fuse_tlx_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Fused Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_mhc_fused_gemm_sqrsum_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_partial_matmul_dynamic_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_sigmoid_grid_stride_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_transformer_block_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Fused Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_norm_rope_matmul_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Fused Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_partial_matmul_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_rmsnorm_sigmoid_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_matmul_norm_sigmoid_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_attn_preprocess_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_flash_attn_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 200%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_matmul_triton_base_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_embedding_001
+  category: embedding
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_embedding_backward_001
+  category: embedding
+  experience_type: Scheduling Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_fused_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_npu_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_backward_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_backward_npu_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_geglu_flat_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_geglu_bwd_001
+  category: activation
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rope_llama4_npu_001
+  category: rope
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_qwen2vl_mrope_001
+  category: rope
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_notiling_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_tiled_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_backward_tiled_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rope_npu_001
+  category: rope
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_swiglu_flat_001
+  category: activation
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_swiglu_bwd_flat_001
+  category: activation
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_tv_distance_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_celoss_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_celoss_smooth_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_celoss_bwd_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_celoss_smooth_bwd_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sum_scale_001
+  category: reduction
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_rms_norm_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+- experience_id: exp_rope_siso_001
+  category: rope
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_skip_layernorm_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_addmm_ascend_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_gn_backward_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Normalization Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_gn_wb_backward_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_groupnorm_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Normalization Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_gather_flat_001
+  category: gather_scatter
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_bmm_grouped_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_softmax_non_inner_001
+  category: softmax
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_softmax_inner_002
+  category: softmax
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_softmax_backward_non_inner_001
+  category: softmax
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_softmax_backward_001
+  category: softmax
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_grad_dx_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Normalization Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_grad_dw_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sort_bitonic_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_radix_convert_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Element-wise Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_digit_hist_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_radix_sort_scatter_001
+  category: gather_scatter
+  experience_type: Scheduling Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_shuffle_blockwise_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_multinomial_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_outer_product_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_mm_grouped_reorder_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_masked_fill_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_log_softmax_001
+  category: softmax
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_log_softmax_backward_001
+  category: softmax
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_swiglu_quant_001
+  category: activation
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_matmul_bias_fused_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_linear_persistent_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_layernorm_fwd_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_ssm_gated_delta_001
+  category: ssm
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_delta_rule_001
+  category: ssm
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_tril_solve_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_block_inverse_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_recompute_w_u_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_qkvzba_split_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Concatenation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_chunk_kkt_001
+  category: ssm
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_chunk_fwd_001
+  category: ssm
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_chunk_gated_delta_001
+  category: ssm
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_qkv_rmsnorm_rope_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_gating_001
+  category: activation
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_layernorm_npu_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rejection_sample_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Indexing Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_bonus_renew_001
+  category: misc
+  experience_type: Compilation Optimization
+  operator_type: Indexing Operations
+  performance_boost: Compilation time reduced by >80% for dynamic sequence lengths;
+    Negligible execution overhead
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_spec_dec_verify_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_expand_serial_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Indexing Operations
+  performance_boost: Baseline
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_speculative_recovery_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_spec_decode_verify_scalar
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Sampling Operations
+  performance_boost: 300%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_triton_rope_001
+  category: rope
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_sinks_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_sinks_prefill_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_mla_paged_attn_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_paged_gqa_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_gqa_paged_npu_001
+  category: attention
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Attention Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_swiglu_oai_001
+  category: activation
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_delta_rule_npu_001
+  category: ssm
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_layernorm_npu_simd_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Normalization Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_block_matmul_inv_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_chunk_cumsum_001
+  category: ssm
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_fused_quant_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_gemma_rmsnorm_001
+  category: matmul
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_split_qk_norm_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rope_mqa_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_swiglu_fwd_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_swiglu_bwd_001
+  category: activation
+  experience_type: Compute Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_cube1_qk_gemm_001
+  category: matmul
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sparse_flash_attn_decode_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Attention Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_qk_cube_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sparse_flash_attn_prefill_001
+  category: attention
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 60%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_entropy_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 60%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_entropy_epilogue_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_entropy_backward_001
+  category: loss
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_entropy_backward_npu_001
+  category: loss
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_entropy_backward_fused_001
+  category: loss
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_entropy_backward_d_weight_001
+  category: loss
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_grpo_loss_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_grpo_bwd_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_cache_store_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_silu_fwd_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_silu_bwd_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sdpa_infer_ascend_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sdpa_infer_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 150%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_sdpa_flash_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Attention Operations
+  performance_boost: 200%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_sdpa_bwd_reduce_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sdpa_bwd_q_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sdpa_bwd_kv_001
+  category: attention
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_top_p_sampling_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Indexing Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_topp_filter_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_reject_sampler_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Indexing Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_spec_dec_reject_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 60%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_logits_penalty_fusion_001
+  category: misc
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rope_forward_001
+  category: rope
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rope_backward_001
+  category: rope
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_infer_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Normalization Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_fwd_001
+  category: normalization
+  experience_type: Scheduling Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_bwd_001
+  category: normalization
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_bwd_large_cols_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_layernorm_bwd_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Normalization Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_paged_kv_cache_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Indexing Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_launch_diagonal_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_grouped_matmul_bkmajor_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_grouped_matmul_001
+  category: matmul
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_gelu_fwd_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_gelu_bwd_001
+  category: activation
+  experience_type: Scheduling Optimization
+  operator_type: Activation Operations
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_crossentropy_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_crossentropy_backward_001
+  category: loss
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 60%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_element_mul_001
+  category: misc
+  experience_type: Scheduling Optimization
+  operator_type: Matrix Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_rmsnorm_add_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_rmsnorm_bwd_fused_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_add_layernorm_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Activation Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_layernorm_bwd_fused_001
+  category: normalization
+  experience_type: Memory Access Optimization
+  operator_type: Reduction Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_attn_causal_mask_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+  - '910_93'
+  - '910_95'
+- experience_id: exp_paged_prefill_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_paged_attn_decode_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_flashattn_fwd_001
+  category: attention
+  experience_type: Memory Access Optimization
+  operator_type: Matrix Operations
+  performance_boost: 200%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_attn_bwd_q_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_flashattn_bwd_kv_001
+  category: attention
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sda_fwd_ascend_001
+  category: misc
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_attn_sda_001
+  category: attention
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_sda_bwd_reduce_001
+  category: reduction
+  experience_type: Compute Optimization
+  operator_type: Reduction Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_sda_bwd_q_001
+  category: misc
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_attn_bwd_q_down_001
+  category: attention
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_sda_bwd_kv_ascend_001
+  category: misc
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_fused_index_001
+  category: misc
+  experience_type: Compute Optimization
+  operator_type: Matrix Operations
+  performance_boost: 45%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_flashattn_bwd_kv_ascend_001
+  category: attention
+  experience_type: Hardware Adaptation Optimization
+  operator_type: Matrix Operations
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_causal_conv1d_001
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_bwd_001
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_prefill_002
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: "75% token load reduction; contributes to 1.60x avg speedup"
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_prefill_003
+  category: conv
+  experience_type: Scheduling Optimization
+  operator_type: Convolution Operations
+  performance_boost: "2D Grid: 25-39% over 1D; overall 1.60x avg speedup"
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_prefill_004
+  category: conv
+  experience_type: Compute Optimization
+  operator_type: Convolution Operations
+  performance_boost: 10-20% scalar address computation reduction
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_prefill_005
+  category: conv
+  experience_type: Scheduling Optimization
+  operator_type: Convolution Operations
+  performance_boost: Proportional to padding ratio (e.g. 25% padding → ~25% resource savings)
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_prefill_006
+  category: conv
+  experience_type: Compute Optimization
+  operator_type: Convolution Operations
+  performance_boost: 30-40% latency reduction (2 kernel launches eliminated)
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_prefill_007
+  category: conv
+  experience_type: Compute Optimization
+  operator_type: Convolution Operations
+  performance_boost: 5-15% scalar instruction reduction
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+- experience_id: exp_causal_conv1d_states_001
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_solve_tril_001
+  category: solve_tril
+  experience_type: Compute Optimization
+  operator_type: Linear Algebra Operations
+  performance_boost: 1.33x-1.87x (BT=16)
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_solve_tril_002
+  category: solve_tril
+  experience_type: Memory Access Optimization
+  operator_type: Linear Algebra Operations
+  performance_boost: 1.01x-1.37x (V4 vs V1)
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_solve_tril_003
+  category: solve_tril
+  experience_type: Compute Optimization
+  operator_type: Linear Algebra Operations
+  performance_boost: 保证快速路径最优展开
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_solve_tril_004
+  category: solve_tril
+  experience_type: Scheduling Optimization
+  operator_type: Linear Algebra Operations
+  performance_boost: 分治架构 (O(BT³)→O(BT²))
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_solve_tril_005
+  category: solve_tril
+  experience_type: API Usage / Compatibility
+  operator_type: Linear Algebra Operations
+  performance_boost: 消除编译错误
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_solve_tril_006
+  category: solve_tril
+  experience_type: 矛盾提示 / Optimization Decision
+  operator_type: Linear Algebra Operations
+  performance_boost: 排除无效优化
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_001
+  category: matmul
+  experience_type: 访存优化
+  operator_type: AIC
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_002
+  category: matmul
+  experience_type: 计算优化
+  operator_type: AIC
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_003
+  category: matmul
+  experience_type: 切分优化
+  operator_type: AIC
+  performance_boost: 10%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_004
+  category: matmul
+  experience_type: 切分优化
+  operator_type: AIC
+  performance_boost: 10%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_matmul_005
+  category: matmul
+  experience_type: 切分优化
+  operator_type: AIC
+  performance_boost: 32%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_attention_001
+  category: attention
+  experience_type: 流程优化
+  operator_type: MIX
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_fused_attention_002
+  category: attention
+  experience_type: 内存优化+数值稳定优化
+  operator_type: MIX
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_011
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_012
+  category: general_perf
+  experience_type: 标量消除
+  operator_type: general
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_013
+  category: general_perf
+  experience_type: 标量消除
+  operator_type: general
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_014
+  category: general_perf
+  experience_type: 标量消除
+  operator_type: general
+  performance_boost: 10%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_015
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_016
+  category: general_perf
+  experience_type: 内存访问优化
+  operator_type: general
+  performance_boost: 15%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_perf_017
+  category: general_perf
+  experience_type: 调优配置
+  operator_type: general
+  performance_boost: 20%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_blockptr_boundary_scalar_001
+  category: general_ascend
+  experience_type: 硬件约束
+  operator_type: general
+  performance_boost: 60%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_int_compare_scalar_001
+  category: general_ascend
+  experience_type: 硬件约束
+  operator_type: general
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_compile_hint_001
+  category: general_ascend
+  experience_type: 调优经验
+  operator_type: general
+  performance_boost: 25%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_ascend_int64_address_001
+  category: general_ascend
+  experience_type: 硬件约束
+  operator_type: general
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_kda_bwd_wy_scalar_opt_001
+  category: ssm
+  experience_type: 标量消除
+  operator_type: SSM
+  performance_boost: 233%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_kda_bwd_intra_scalar_opt_001
+  category: ssm
+  experience_type: 标量消除
+  operator_type: SSM
+  performance_boost: 50%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_kda_bwd_intra_memory_opt_001
+  category: ssm
+  experience_type: 内存访问优化
+  operator_type: SSM
+  performance_boost: 35%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_kda_bwd_scalar_loop_to_dot_001
+  category: ssm
+  experience_type: 计算优化
+  operator_type: SSM
+  performance_boost: 40%
+  hardware:
+  - 910b2
+  - 910b3
+- experience_id: exp_kda_bwd_wy_structure_opt_001
+  category: ssm
+  experience_type: 计算优化
+  operator_type: SSM
+  performance_boost: 30%
+  hardware:
+  - 910b2
+  - 910b3
+
+- experience_id: exp_causal_conv1d_varlen_opt_001
+  category: conv
+  experience_type: Memory Access Optimization
+  operator_type: Convolution Operations
+  performance_boost: 22%
+  status: draft
+  composite_score: 75
+  hardware:
+  - 910b2
+
+- experience_id: exp_debug_triton_branch_type_mismatch_001
+  category: general_debug
+  experience_type: Debugging
+  operator_type: General
+  status: draft
+  composite_score: 70
+  hardware:
+  - 910b2
+  - 910b3
+
+- experience_id: exp_elemwise_add_001_20260526
+  category: elementwise
+  experience_type: Element-wise Operations
+  operator_type: Element-wise
+  status: draft
+  composite_score: 85
+  hardware:
+  - 910b2
+
+- experience_id: exp_debug_006_20260914
+  category: general_debug
+  title: fp32 mask 非确定 store 污染与 padded 无 mask store 规避（94_Gdn2Fwd）
+  status: draft
+  composite_score: 70
+
+- experience_id: exp_perf_018_20260914
+  category: general_perf
+  title: 逐 token 状态递推 kernel 瓶颈预测偏差与四个证伪方向（94_Gdn2Fwd Phase 4 全扫描）
+  status: draft
+  composite_score: 70
+
+- experience_id: exp_chunk_gdn2_wy_dispatch_001
+  category: ssm
+  title: GDN2 chunked WY 骨架与 serial 交叉点（host 预转置 + cost-model dispatch，94_Gdn2Fwd 对照实验）
+  status: draft
+  composite_score: 85
+  hardware:
+  - 910b1

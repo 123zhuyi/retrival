@@ -1,0 +1,39 @@
+experience_id: exp_digit_hist_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Histogram
+  data_type:
+  - int32
+  - uint32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_elements:
+    - '>=1024'
+    bins_segment:
+    - <=16
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- gemm_based_histogram: Replace the iterative bin counting loop (for s in range(bins_segment))
+    with a one-hot encoding followed by a matrix multiplication (tl.dot). This maps
+    the reduction to a highly optimized GEMM operation, leveraging the NPU's Cube
+    unit for parallel counting instead of scalar ALU loops.
+- loop_unrolling: If bins_segment is small and constant (e.g., 16 for 4-bit radix),
+    ensure the loop is fully unrolled to minimize branch prediction overhead and allow
+    the compiler to optimize the mask generation logic.
+- memory_access_coalescing: The store operation to digit_hist is performed inside
+    the inner loop. Ensure that the stride of the write access (grid0) results in
+    coalesced global memory transactions to maximize bandwidth utilization.
+performance_boost: 50%
+note: The current implementation uses a scalar loop for bin counting which is inefficient
+  for larger block sizes. The GEMM-based approach is recommended for Ascend 910 series
+  to achieve high throughput.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/136-digit_hist_kernel.py

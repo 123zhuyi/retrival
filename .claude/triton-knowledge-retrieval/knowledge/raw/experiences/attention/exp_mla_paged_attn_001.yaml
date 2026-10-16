@@ -1,0 +1,49 @@
+experience_id: exp_mla_paged_attn_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Paged Multi-Latent Attention
+  data_type:
+  - bf16
+  - fp16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_N:
+    - '>=64'
+    BLOCK_DNOPE:
+    - '>=64'
+    BLOCK_DROPE:
+    - '>=64'
+    q_heads_per_kv_head:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- paged_kv_cache: Implements PagedAttention mechanism using a block_table to map logical
+    pages to physical memory blocks. This allows efficient handling of variable-length
+    sequences and reduces memory fragmentation by allocating KV cache in fixed-size
+    blocks.
+- mla_decomposition: Decomposes the attention mechanism into content-based (nope)
+    and positional-based (rope) components. By compressing the Key and Value vectors
+    into a latent dimension (K_NOPE), this drastically reduces the memory bandwidth
+    and storage requirements for the KV cache.
+- online_softmax: Utilizes an iterative online softmax algorithm within the kernel
+    loop. It maintains running maximums (`history_max`) and normalization sums (`l`)
+    to avoid materializing the full $N \times N$ attention matrix, which is critical
+    for long-context inference and memory efficiency.
+- fused_gemm_pipeline: Fuses the QK matrix multiplication, softmax calculation, and
+    PV matrix multiplication into a single kernel. This minimizes global memory access
+    by keeping intermediate attention scores and partial accumulators (`acc`) in high-speed
+    SRAM/registers.
+code_snippet:
+  TritonPath: _paged_mla_fwd_kernel
+performance_boost: 45%
+note: In MLA, the Value (V) tensor shares the same buffer as the Key content (K_NOPE).
+  This kernel assumes the KV cache is pre-allocated in blocks and the block_table
+  is correctly populated by the runtime.
+version: v1.0

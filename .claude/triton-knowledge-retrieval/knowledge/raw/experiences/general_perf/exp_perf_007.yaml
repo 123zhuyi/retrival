@@ -1,0 +1,41 @@
+experience_id: exp_perf_007
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+  optimization_level: medium
+  tensor_shape:
+  - nd
+experience_type: 性能避坑
+framework_tag:
+- Triton
+optimization_points:
+- 开销分析: stride访问每次load/store都需计算多维偏移，累积开销随张量尺寸线性增长
+- 访存缺陷: stride访问易导致内存访问不连续，缓存命中率低（比连续访问低50%）
+- 避坑策略: 除非必须（如非规则张量布局），否则完全避免直接stride访问，优先连续化后一维遍历
+code_snippet:
+  Triton: "# 反例: 不推荐的stride访问（累积开销大）\n@triton.jit\ndef stride_access_kernel(input_ptr,\
+    \ output_ptr, M, N, stride_m, stride_n, BLOCK_M: tl.constexpr=128, BLOCK_N: tl.constexpr=128):\n\
+    \    pid = triton.program_id(0)\n    rm = pid // (N // BLOCK_N)\n    rn = pid\
+    \ % (N // BLOCK_N)\n    # 每次访问需计算stride偏移，额外开销大\n    offsets_m = rm * BLOCK_M\
+    \ + tl.arange(0, BLOCK_M)[:, None]\n    offsets_n = rn * BLOCK_N + tl.arange(0,\
+    \ BLOCK_N)[None, :]\n    data_offsets = offsets_m * stride_m + offsets_n * stride_n\n\
+    \    mask = (offsets_m < M) & (offsets_n < N)\n    data = tl.load(input_ptr +\
+    \ data_offsets, mask=mask)\n    result = data * 0.5\n    tl.store(output_ptr +\
+    \ data_offsets, result, mask=mask)\n\n# 正例: 推荐的连续化+一维访问（替代stride）\ndef replace_stride_access(input_tensor):\n\
+    \    if not input_tensor.is_contiguous():\n        input_tensor = input_tensor.contiguous()\n\
+    \    output = torch.empty_like(input_tensor)\n    n_elements = input_tensor.numel()\n\
+    \    grid = (triton.cdiv(n_elements, 128),)\n    elementwise_opt_kernel[grid](input_tensor,\
+    \ output, n_elements, BLOCK_SIZE=128)\n    return output"
+performance_boost: -40%
+note: 负性能提升表示stride访问相比最优方案的性能损耗；910b2/910b3平台对stride访问的硬件惩罚显著，2D张量（1024x1024）的stride访问耗时是连续一维访问的1.4倍以上
+version: v1.0

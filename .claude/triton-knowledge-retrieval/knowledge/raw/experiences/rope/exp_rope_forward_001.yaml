@@ -1,0 +1,42 @@
+experience_id: exp_rope_forward_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: RoPE (Rotary Positional Embedding)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    seq_len:
+    - '>=TOKEN_BLOCK_SIZE'
+    head_dim:
+    - '>=rope_dim'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_specialization: Uses `do_not_specialize=["seq_len"]` to prevent kernel recompilation
+    for varying sequence lengths, significantly reducing launch overhead in dynamic
+    batching scenarios.
+- memory_alignment_handling: Implements an `ALIGNED` path that loads the full RoPE
+    dimension in a single vectorized load, and a fallback path for unaligned dimensions,
+    ensuring maximum memory bandwidth utilization regardless of tensor layout.
+- grid_stride_scheduling: Employs a grid-stride loop (`for block_id in range(pid,
+    total_blocks, grid_size)`) to map a fixed number of thread blocks to a variable
+    number of sequence blocks, maintaining high hardware occupancy.
+- efficient_masking: Combines sequence validity masks with head and dimension masks
+    to perform safe loads/stores for variable-length sequences and KV caches without
+    expensive branching.
+performance_boost: 25%
+note: Optimized for LLM inference with variable length sequences and KV cache support.
+  Handles both contiguous and non-contiguous memory layouts for RoPE dimensions.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/229-_rope_forward_kernel.py

@@ -1,0 +1,52 @@
+experience_id: exp_rmsnorm_fused_quant_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Add + RMSNorm + Bias + Quantization
+  data_type:
+  - bf16
+  - fp16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    hidden_size:
+    - '>=128'
+    batch_size:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: The kernel fuses four distinct operations (Element-wise Add, RMSNorm,
+    Bias Addition, and Affine Quantization) into a single kernel launch. This drastically
+    reduces global memory access by keeping intermediate results (e.g., the sum of
+    input and residual) in high-speed registers/SRAM rather than writing them back
+    to HBM.
+- weight_caching: The normalization weights (`norm_weight_values`) are loaded outside
+    the main batch processing loop (`for i in tl.range...`). This leverages data reuse,
+    as the same weights are applied to every row in the batch, significantly reducing
+    memory traffic for the weight tensor.
+- block_tiling_quantization: The quantization logic employs a tiling strategy using
+    `COL_BLOCK_SIZE`. By iterating over the hidden dimension in blocks (`range(0,
+    hidden_size, COL_BLOCK_SIZE)`), the kernel efficiently manages register pressure
+    and allows for vectorized loading of quantization parameters (`quant_scale_ptr`,
+    `quant_offset_ptr`).
+- slice_extraction: The use of `tl.extract_slice` inside the quantization loop allows
+    the kernel to operate on sub-sections of the normalized data without reloading
+    the entire row, optimizing memory bandwidth usage during the per-channel quantization
+    step.
+- precision_management: The variance calculation is explicitly upcast to `tl.float32`
+    before summation and division to ensure numerical stability during the RMSNorm
+    calculation, while the final output is cast to `tl.int8` with saturation to handle
+    quantization clamping correctly.
+performance_boost: 50%
+note: This kernel is specifically optimized for inference scenarios requiring post-fusion
+  normalization and quantization (e.g., the output layer of a Transformer block).
+  The `SCALE` conditional allows it to function as a standard Add+RMSNorm kernel when
+  quantization is not required.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/189-add_rmsnorm_bias_kernel.py

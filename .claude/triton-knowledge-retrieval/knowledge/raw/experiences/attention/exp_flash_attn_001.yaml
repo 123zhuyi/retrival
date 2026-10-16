@@ -1,0 +1,53 @@
+experience_id: exp_flash_attn_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_M:
+    - '>=128'
+    BLOCK_N:
+    - '>=64'
+    HEAD_DIM:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- tiling_strategy: Implements Flash Attention tiling by partitioning the Q, K, and
+    V matrices into smaller blocks (BLOCK_M, BLOCK_N). This ensures that the intermediate
+    attention scores and the output accumulator fit within the fast SRAM, minimizing
+    expensive HBM memory accesses from O(N^2) to O(N^2 / BlockSize).
+- online_softmax: Utilizes the online softmax algorithm to compute attention probabilities
+    incrementally. Instead of materializing the full N x N attention matrix, it maintains
+    running statistics (max value m_i and sum l_i) to update the output accumulator
+    acc in-place, significantly reducing memory footprint.
+- block_ptr_utilization: Leverages tl.make_block_ptr for efficient 2D memory loads
+    and stores. This abstraction handles complex stride calculations automatically
+    and enables the hardware to perform vectorized loads, maximizing memory bandwidth
+    utilization for the Q, K, and V tensors.
+- fused_masking: Efficiently integrates causal masking and sliding window (BANDWIDTH)
+    logic directly into the computation loop. By applying vectorized boolean masks
+    to the QK scores before the exponential operation, it avoids expensive branching
+    or separate masking kernels.
+- precision_management: Performs accumulation in float32 (acc, m_i, l_i) to maintain
+    numerical stability during the softmax reduction, while supporting fp16/bf16 inputs
+    and outputs. This prevents overflow/underflow without sacrificing the speed of
+    lower-precision tensor core operations.
+performance_boost: 200%
+note: This kernel supports variable sequence lengths via Start_q and sliding window
+  attention via BANDWIDTH. It also includes specific logic for Attention Sinks to
+  stabilize generation.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/088-_attn_fwd.py

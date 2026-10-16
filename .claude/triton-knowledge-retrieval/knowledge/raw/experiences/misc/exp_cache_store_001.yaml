@@ -1,0 +1,45 @@
+experience_id: exp_cache_store_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Scatter Write / Indexed Copy
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    head_num:
+    - '>=1'
+    head_dim:
+    - '>=64'
+    token_num:
+    - '>=BATCH_BLOCK_NUM'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_3d_memory_access: The kernel performs memory operations on a 3D block
+    (BATCH_BLOCK_NUM x head_num x head_dim) in a single instruction cycle. This maximizes
+    DRAM bandwidth utilization and significantly reduces the overhead of loop control
+    logic compared to iterating through tokens or heads sequentially.
+- stride_based_addressing_with_broadcasting: It leverages broadcasting (b_3d, h_3d,
+    d_3d) to compute memory offsets for the entire block in parallel. This allows
+    for the calculation of complex, non-contiguous destination addresses (label_cache_addr)
+    derived from loaded indices (block_idx, token_idx) without explicit nested loops
+    in the kernel code.
+- unified_masking_strategy: A single `valid_mask` is constructed to handle both the
+    dynamic boundary condition of the token sequence (b_3d < b_end) and the static
+    tensor dimensions. This ensures memory safety for partial blocks at the end of
+    the sequence without introducing branch divergence, maintaining high SIMD efficiency.
+performance_boost: 30%
+note: This kernel is specifically designed for sparse cache updates (e.g., KV-Cache
+  or Label Cache) where write destinations are determined dynamically by index lists.
+  Performance is sensitive to the choice of BATCH_BLOCK_NUM relative to the L2 cache
+  size.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/213-_store_label_cache_triton_kernel.py

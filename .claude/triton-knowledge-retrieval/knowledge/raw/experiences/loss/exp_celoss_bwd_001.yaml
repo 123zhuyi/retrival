@@ -1,0 +1,67 @@
+experience_id: exp_celoss_bwd_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Cross Entropy Loss Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    C:
+    - '>=128'
+    D:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_algorithm: The kernel separates the reduction phase (calculating max and
+    sum of exponents) from the gradient accumulation phase. This avoids storing the
+    large intermediate probability matrix (C x D) in global memory, significantly
+    reducing memory bandwidth pressure and memory footprint, at the cost of re-reading
+    the input tensor.
+- numerical_stability: Implements the 'max trick' (subtracting max value before exp)
+    during the reduction loop to prevent floating-point overflow/underflow, which
+    is critical for the stability of Softmax calculations in fp16/bf16.
+- block_tiling_and_autotuning: Utilizes `BLOCK_C` and `BLOCK_D` tiling to process
+    data chunks that fit into the SRAM/Cache. The `@triton.autotune` decorator dynamically
+    selects the optimal block sizes based on the specific C and D dimensions to maximize
+    hardware utilization.
+- vectorized_masking: Efficiently handles boundary conditions and the `ignore_index`
+    logic using vectorized mask operations (`tl.where`, `ignore_mask`) rather than
+    scalar branching, maintaining high pipeline throughput.
+- stable_log_sum_exp_reduction: The first loop implements a numerically stable reduction
+    algorithm for the Softmax denominator. It iteratively updates `tmp_max` and `tmp_sum`
+    using the `max` and `exp` shifting technique (`tmp_sum * tl.exp(tmp_max - cur_max)
+    + cur_exp`). This prevents floating-point overflow/underflow when computing exponents
+    of large logits, which is critical for large vocabulary sizes (C).
+- two_pass_gradient_computation: The kernel employs a two-pass strategy over the class
+    dimension `C`. The first pass aggregates global statistics (sum of exponentials
+    and weighted target sum), and the second pass computes the per-element gradient.
+    This trades off increased memory traffic (reloading inputs) for significantly
+    reduced register/Shared Memory pressure, allowing the kernel to handle large batch
+    sizes or hidden dimensions that would otherwise spill registers.
+- fused_label_smoothing_and_weighting: The logic for label smoothing (`tgt * (1 -
+    label_smoothing) + label_smoothing / C`) and sample weighting (`w`) is fused directly
+    into the kernel loops. This eliminates the need for pre-processing the target
+    tensor or launching separate auxiliary kernels, reducing memory footprint and
+    kernel launch overhead.
+- vectorized_tiled_memory_access: The kernel utilizes 2D block tiling (`BLOCK_C` x
+    `BLOCK_D`) to load data. It uses `tl.load` with masks to efficiently handle non-divisible
+    dimensions, ensuring high memory bandwidth utilization while correctly processing
+    boundary elements without padding artifacts.
+performance_boost: 35%
+note: This implementation prioritizes numerical stability and memory capacity over
+  minimizing global memory loads (due to the two-pass approach). It is best suited
+  for scenarios where C (number of classes) is large, preventing the storage of the
+  full [N, C, D] intermediate activation matrix in SRAM.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/112-celoss_probability_bwd.py

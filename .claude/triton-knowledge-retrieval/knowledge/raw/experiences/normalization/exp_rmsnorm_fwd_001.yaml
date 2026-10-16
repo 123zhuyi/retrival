@@ -1,0 +1,43 @@
+experience_id: exp_rmsnorm_fwd_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm
+  data_type:
+  - fp16
+  - bf16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_rows:
+    - '>=128'
+    n_cols:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: The kernel utilizes a grid-stride loop (`for row_task_id
+    in range(pid, num_row_tasks, grid_size)`) to process rows. This design allows
+    a single kernel launch to handle matrices where the number of rows exceeds the
+    grid size, ensuring high utilization of compute cores and minimizing kernel launch
+    overhead.
+- two_pass_algorithm: The computation is decoupled into two distinct phases a reduction
+    phase to calculate the variance and RSTD, and an element-wise phase for normalization
+    and scaling. This approach significantly reduces register pressure compared to
+    a fused single-pass approach, as it avoids keeping the entire input row in registers
+    during the reduction.
+- adaptive_precision_accumulation: The kernel implements flexible casting modes (`_CASTING_MODE_GEMMA`,
+    `_CASTING_MODE_LLAMA`) to upcast inputs to FP32 during accumulation. This is critical
+    for maintaining numerical stability and preventing overflow/underflow when operating
+    on lower precision data types like FP8 or BF16.
+performance_boost: 25%
+note: The grid-stride loop makes this kernel particularly robust for variable batch
+  sizes (n_rows) without requiring re-compilation or host-side grid adjustments.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/232-_rmsnorm_fwd_kernel.py

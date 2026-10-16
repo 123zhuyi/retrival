@@ -1,0 +1,53 @@
+experience_id: exp_fused_add_layernorm_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Fused Add + LayerNorm
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the element-wise addition (X + R), Layer Normalization (mean/variance
+    calculation), and the affine transformation (scaling and shifting) into a single
+    kernel launch. This significantly reduces the overhead of writing and reading
+    intermediate tensors to and from global memory (HBM).
+- precision_management: Utilizes single-precision floating-point (float32) for the
+    accumulation of mean and variance statistics to ensure numerical stability and
+    prevent overflow/underflow, while performing the final arithmetic and storage
+    in the input data type (e.g., fp16/bf16) to maximize throughput.
+- loop_tiling_strategy: Implements a 2D tiling strategy using `BLOCK_SIZE_M` for rows
+    and `BLOCK_SIZE_N` for columns. This allows the kernel to process data in chunks
+    that fit efficiently into the GPU/NPU's SRAM, reducing global memory access frequency
+    and improving data reuse.
+- heuristic_block_sizing: Uses `@triton.heuristics` to dynamically configure `BLOCK_SIZE_M`
+    based on the input tensor dimensions. This ensures that the number of launched
+    programs is optimal for the specific hardware, maximizing occupancy and resource
+    utilization.
+- intermediate_streaming: The kernel explicitly stores the intermediate sum (S) to
+    global memory in the first pass and reloads it in the second pass. This design
+    choice trades off some memory bandwidth for reduced register pressure, allowing
+    the kernel to handle larger hidden dimensions (n_cols) that exceed register capacity.
+performance_boost: 30%
+note: This kernel is optimized for scenarios where the intermediate result S is required
+  to be materialized in global memory or when the hidden dimension is too large for
+  register tiling. For smaller dimensions where S fits in registers, a register-tiling
+  approach would be more performant.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/250-_fused_add_layernorm_fwd_kernel.py

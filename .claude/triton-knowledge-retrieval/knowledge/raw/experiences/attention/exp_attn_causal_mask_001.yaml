@@ -1,0 +1,43 @@
+experience_id: exp_attn_causal_mask_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Causal Masking
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - '910_93'
+  - '910_95'
+  core_param:
+    mask_size:
+    - '>=128'
+    Q_BLOCK:
+    - '>=64'
+    KV_BLOCK:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_offset_generation: Utilizes broadcasting with tl.arange to compute memory
+    offsets for the entire Q_BLOCK x KV_BLOCK tile in a single operation, significantly
+    reducing instruction count compared to iterative index calculation.
+- branchless_boundary_clamping: Implements the causal offset logic using min/max arithmetic
+    to constrain indices within the valid mask range [-mask_size, mask_size], avoiding
+    divergence caused by conditional branches within GPU threads.
+- stride_agnostic_access: Directly incorporates mask_stride_m and mask_stride_n into
+    the pointer arithmetic, enabling high-performance loading even when the mask tensor
+    is stored in non-contiguous or transposed memory layouts.
+- minimal_register_footprint: Explicitly casts the loaded mask to tl.int1 immediately
+    after loading, optimizing register usage and ensuring the data format is ready
+    for efficient bitwise masking operations during the attention score accumulation.
+performance_boost: 15%
+note: This function is specifically designed for causal attention mechanisms (e.g.,
+  GPT, LLaMA) and supports sliding window attention via the q_start and kv_start parameters.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/252-causal_mask_fn.py

@@ -1,0 +1,48 @@
+experience_id: exp_element_mul_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Element-wise Multiplication
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=8'
+    n_cols:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: The kernel implements a grid-stride loop on the M dimension (rows)
+    using `range(pid * BLOCK_SIZE_M, n_rows, num_programs * BLOCK_SIZE_M)`. This decouples
+    the total grid size from the problem size, allowing the kernel to process matrices
+    with a large number of rows efficiently without launching excessive blocks, thus
+    maintaining high hardware occupancy.
+- wide_vectorization: The autotune configurations aggressively utilize large block
+    sizes for the N dimension (1024, 2048, 4096) while keeping M small (8-32). This
+    maximizes memory bandwidth utilization by loading wide contiguous segments of
+    memory (columns) per transaction, which is critical for NPU memory architectures.
+- scalar_hoisting: The scalar value `grad_output` is loaded from global memory once
+    at the start of the kernel and reused for all computation tiles. This eliminates
+    redundant global memory accesses for the scalar, significantly reducing latency.
+- autotuning_strategy: The specific search space (small M, large N) indicates a tuning
+    strategy designed to balance register pressure (limited by small M) against memory
+    throughput (maximized by large N), ensuring the pipeline is neither compute-bound
+    nor memory-bound in a suboptimal way.
+performance_boost: 25%
+note: This kernel performs an in-place element-wise multiplication. The optimization
+  is particularly effective for row-major tensors where the number of columns is large,
+  leveraging contiguous memory access patterns.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/247-_element_mul_kernel.py

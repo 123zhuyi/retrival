@@ -1,0 +1,51 @@
+experience_id: exp_addmm_ascend_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with Bias Addition
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_autotuning: The kernel leverages `runtime.get_tuned_config("addmm")` to
+    dynamically select the optimal tile sizes (BLOCK_M, BLOCK_N, BLOCK_K) based on
+    the runtime dimensions of M, N, and K. This allows the kernel to adapt to different
+    matrix shapes, maximizing hardware utilization compared to static tiling.
+- strict_precision_control: The `tl.dot` operation is explicitly configured with `allow_tf32=False`.
+    This ensures that the computation maintains high numerical precision by avoiding
+    reduced-precision TensorFloat-32 formats, which is crucial for training stability
+    and models sensitive to accumulation errors.
+- stride_agnostic_memory_access: The kernel calculates memory pointers using stride
+    arguments (`stride_am`, `stride_ak`, etc.) rather than assuming contiguous memory.
+    This allows the kernel to operate directly on transposed matrices or sliced tensors
+    without requiring an explicit layout transformation (transpose/permute) prior
+    to the kernel launch, saving memory bandwidth.
+- compilation_optimization: The `do_not_specialize` attribute is applied to scalar
+    arguments `alpha` and `beta`. This prevents the JIT compiler from generating a
+    unique kernel version for every distinct scalar value, significantly reducing
+    compilation overhead and binary size while maintaining execution speed.
+performance_boost: 25%
+note: The kernel utilizes `tle` (Triton Language Extensions) and `@libentry()`, indicating
+  it is specifically optimized for the Ascend NPU architecture (910 series) via the
+  Torch-NPU/Triton integration.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/119-addmm_kernel.py

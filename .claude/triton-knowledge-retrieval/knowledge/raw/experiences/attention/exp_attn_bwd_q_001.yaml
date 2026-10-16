@@ -1,0 +1,48 @@
+experience_id: exp_attn_bwd_q_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_C:
+    - '>=64'
+    S:
+    - '>=BLOCK_C'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- mixed_precision_compute: The kernel strategically uses mixed precision by performing
+    the softmax and intermediate gradient logic in HIGH_TYPE (typically float32) to
+    preserve numerical stability during exponentiation. Crucially, the final gradient
+    accumulation `tl.dot(block_ds.to(LOW_TYPE), block_k)` casts the data to LOW_TYPE
+    (fp16/bf16) before the matrix multiplication. This leverages the high throughput
+    of low-precision hardware matrix units (like Tensor Cores or Cube units) for the
+    heavy GEMM workload while maintaining accuracy in the reduction path.
+- sequence_chunking_tiling: The kernel processes the sequence dimension S in tiles
+    defined by BLOCK_C. By loading tiles of K and V into shared memory (or cache)
+    and reusing them for the computation of `block_dq`, the kernel significantly reduces
+    global memory access frequency and improves data locality.
+- gradient_accumulation_pattern: The operation `block_dq += ...` indicates that this
+    kernel is designed to be invoked within a loop over the sequence chunks. This
+    allows for efficient accumulation of gradients in registers or fast local memory,
+    minimizing the overhead of writing partial results back to global memory until
+    the final reduction is complete.
+performance_boost: 35%
+note: This kernel is a micro-kernel for the backward pass of the Attention mechanism
+  (calculating dQ). It is optimized for scenarios where the sequence length S is large,
+  requiring tiling. Ensure BLOCK_C is tuned to the specific hardware's L1/L2 cache
+  size for optimal performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/257-micro_kernel_bwd_q.py

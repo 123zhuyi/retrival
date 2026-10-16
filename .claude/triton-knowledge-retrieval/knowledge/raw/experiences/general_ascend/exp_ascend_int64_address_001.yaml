@@ -1,0 +1,39 @@
+experience_id: exp_ascend_int64_address_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: memory_access
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 硬件约束
+framework_tag:
+- Triton
+optimization_points:
+- 降级规则: Ascend 910B上int64的通用算术操作（VAddOp, VMulOp等）全部降级为标量循环
+- 常见陷阱: 地址计算中显式或隐式使用int64（如(i_b * NT + i_t).to(tl.int64), bos/eos用int64），导致每次地址偏移都走Scalar单元
+- 解决方案: 保持地址计算全程int32。典型场景B=1~8, T=1024~8192时，B*T*T等乘积不超过i32范围（2^31≈21亿）
+- 验证方法: 检查所有.to(tl.int64)调用，确认是否可以移除或替换为int32
+- 典型收益: 消除所有i64地址计算的标量降级，可显著降低aic_scalar_ratio和aiv_scalar_ratio
+code_snippet:
+  Triton: "# 反模式：i64 地址计算\n\
+    i_tg = (i_b * NT + i_t).to(tl.int64)\n\
+    bos, eos = (i_b * T).to(tl.int64), (i_b * T + T).to(tl.int64)\n\
+    h += (i_tg * H + i_h) * K * V\n\
+    \n\
+    # 正模式：保持 i32\n\
+    i_tg = i_b * NT + i_t\n\
+    bos = i_b * T\n\
+    eos = i_b * T + T\n\
+    h += (i_tg * H + i_h) * K * V"
+performance_boost: 50%
+note: 在确认i32范围足够的前提下使用。对超大规模张量（如T>65535且B较大），可能需要分块或其他策略避免i64。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/scalar_opt_report.md
+version: v1.0

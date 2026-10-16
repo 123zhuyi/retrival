@@ -1,0 +1,49 @@
+experience_id: exp_matmul_004
+match_cond:
+  operator_type: AIC
+  compute_pattern: 矩阵乘法
+  data_type:
+  - float
+  - float16
+  - bfloat16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=256'
+  optimization_level: high
+  tensor_shape:
+  - nd
+  left_matrix_transpose: false
+  right_matrix_transpose: true
+experience_type: 切分优化
+framework_tag:
+- Triton
+optimization_points:
+- 分块策略: 统一分块行宽K0=256（满足512B整数倍），M0和N0可灵活调整，优先保证K0对齐
+- 带宽优化: 单一K0分块减少分块适配开销，提升Ascend后端带宽利用率
+- 兼容性: M0/N0宽松限制适配不同尺寸矩阵的转置乘法场景
+code_snippet:
+  Triton: "@triton.jit def matmul_a_no_trans_b_trans_kernel(x, y, output, M, N, K,\
+    \ BLOCK_M=256, BLOCK_K=256, BLOCK_N=256, **kwargs):\n    # A不转置、B转置 - K0=256统一分块行宽\n\
+    \    pid = triton.program_id(0)\n    rm = pid // (N // BLOCK_N)\n    rn = pid\
+    \ % (N // BLOCK_N)\n    # B转置后调整指针计算逻辑，K0固定为256\n    x_ptr = x + rm * BLOCK_M\
+    \ * K + triton.arange(0, BLOCK_M)[:, None] * K + triton.arange(0, BLOCK_K)[None,\
+    \ :]\n    y_ptr = y + rn * BLOCK_K * N + triton.arange(0, BLOCK_K)[:, None] +\
+    \ triton.arange(0, BLOCK_N)[None, :] * N\n    acc = triton.zeros((BLOCK_M, BLOCK_N),\
+    \ dtype=triton.float32)\n    for k in range(0, K, BLOCK_K):\n        a = triton.load(x_ptr,\
+    \ mask=triton.arange(0, BLOCK_K)[None, :] < K - k, other=0.0)\n        b = triton.load(y_ptr,\
+    \ mask=triton.arange(0, BLOCK_K)[:, None] < K - k, other=0.0)\n        acc +=\
+    \ a @ b\n        x_ptr += BLOCK_K\n        y_ptr += BLOCK_K\n    acc = acc.to(x.dtype)\n\
+    \    output_ptr = output + rm * BLOCK_M * N + triton.arange(0, BLOCK_M)[:, None]\
+    \ * N + triton.arange(0, BLOCK_N)[None, :]\n    triton.store(output_ptr, acc,\
+    \ mask=triton.arange(0, BLOCK_M)[:, None] < M - rm * BLOCK_M and triton.arange(0,\
+    \ BLOCK_N)[None, :] < N - rn * BLOCK_N)"
+performance_boost: 10%
+note: 适用于A不转置、B转置的matmul场景，K0固定为256满足512B整数倍要求，M0/N0可根据实际矩阵尺寸灵活调整
+version: v1.0

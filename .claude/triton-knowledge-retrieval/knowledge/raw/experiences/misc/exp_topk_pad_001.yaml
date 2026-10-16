@@ -1,0 +1,46 @@
+experience_id: exp_topk_pad_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Memory Copy and Padding
+  data_type:
+  - int32
+  - int64
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    q_len:
+    - '>=BLOCK_SIZE_N'
+    topk:
+    - '>=BLOCK_SIZE_T'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_utilization: The kernel utilizes `tl.make_block_ptr` to construct 2D block
+    pointers for both source and destination tensors. This abstraction allows the
+    compiler to optimize memory access patterns, handling complex strides automatically
+    and enabling vectorized memory loads/stores which significantly improves bandwidth
+    utilization compared to scalar pointer arithmetic.
+- boundary_check_handling: By passing `boundary_check=(0, 1)` to the `load` and `store`
+    functions, the kernel efficiently handles the padding of variable-length sequences
+    (ragged tensors). This feature automatically masks out-of-bounds accesses for
+    the last block in a sequence, ensuring memory safety without the overhead of manual
+    mask calculation inside the loop.
+- early_exit_strategy: The implementation includes a guard condition `if BLOCK_SIZE_N
+    * pid_n >= q_len return` at the beginning of the kernel. This ensures that thread
+    blocks corresponding to indices beyond the actual sequence length are exited immediately,
+    preventing unnecessary memory transactions and computation for padded regions.
+performance_boost: 25%
+note: This kernel is optimized for scenarios involving variable-length sequences (e.g.,
+  NLP batch processing) where top-k indices need to be gathered and padded. Ensure
+  BLOCK_SIZE_N and BLOCK_SIZE_T are tuned to the specific cache sizes of the Ascend
+  hardware for optimal performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/023-pad_topk_idx_kernel.py

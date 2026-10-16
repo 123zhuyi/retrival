@@ -1,0 +1,48 @@
+experience_id: exp_geglu_flat_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Computation
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    total_elements:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: The kernel utilizes a grid-stride loop pattern via `tl.range(start_idx,
+    total_elements, stride, num_stages=NUM_STAGES)`. This allows a single program
+    to process multiple non-contiguous blocks of data, ensuring high utilization of
+    all NPU cores even when the total workload is not perfectly aligned with the grid
+    size or significantly larger than the grid capacity.
+- memory_flattening: By treating the input tensors as a flat 1D array (`total_elements`),
+    the kernel simplifies memory addressing logic. This eliminates the overhead of
+    calculating multi-dimensional indices (e.g., row/col strides) within the hot loop,
+    reducing instruction count and improving memory throughput.
+- precision_stabilization: The input `a_val` is explicitly cast to `float32` before
+    the GELU calculation. This ensures numerical stability during the cubic power
+    operation (`a_val * a_val * a_val`) and the `tanh` approximation, preventing potential
+    overflow or underflow issues common in lower precision floating-point types (fp16/bf16)
+    before casting back to the original dtype.
+- software_pipelining: The `num_stages` parameter is passed to `tl.range`, enabling
+    software pipelining. This overlaps memory load operations with the arithmetic
+    computations of the GELU activation and multiplication, effectively hiding memory
+    latency and keeping the compute units busy.
+code_snippet:
+  TritonPath: _geglu_forward_kernel_flat
+performance_boost: 25%
+note: This implementation is particularly effective for GEGLU layers in Transformer
+  models where the activation and gate tensors are contiguous in memory. The tanh
+  approximation of GELU is used for hardware compatibility.
+version: v1.0

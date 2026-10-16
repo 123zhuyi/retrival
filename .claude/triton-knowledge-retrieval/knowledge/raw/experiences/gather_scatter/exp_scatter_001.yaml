@@ -1,0 +1,48 @@
+experience_id: exp_scatter_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Scatter
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    INDICES_LENGTH:
+    - '>=BLOCK_SIZE'
+    NUM_COLUMNS:
+    - '>=BLOCK_X'
+    BLOCK_X:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_memory_access: The kernel loads data from the source tensor `x` in a
+    2D block (SUB_BLOCK_SIZE x BLOCK_X) and stores to the destination `out` using
+    vectorized stores of width BLOCK_X. This maximizes memory bus utilization compared
+    to scalar operations.
+- sub_block_tiling: By processing indices in chunks of SUB_BLOCK_SIZE, the kernel
+    balances register pressure. It keeps a tile of the source matrix in registers/scratchpad
+    while performing the random write pattern characteristic of scatter operations.
+- boundary_masking: Efficient handling of tensor boundaries using `idx_mask` and `col_mask`
+    for both loads and stores. This eliminates the need for padding or expensive conditional
+    branching for partial blocks at the edges of the tensor.
+- hybrid_precision_compute: The scaling operation is performed in float32 (`val.to(tl.float32)
+    * scale.to(tl.float32)`) to preserve numerical accuracy during accumulation/multiplication,
+    before casting back to the output type, ensuring stability without sacrificing
+    memory storage efficiency.
+performance_boost: 30%
+note: This kernel assumes that the scatter operation does not require atomic adds
+  (i.e., indices are unique or race conditions are acceptable/ignored). The `SCALE`
+  feature is conditionally compiled via the `SCALE` constexpr.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/015-_scatter_kernel.py

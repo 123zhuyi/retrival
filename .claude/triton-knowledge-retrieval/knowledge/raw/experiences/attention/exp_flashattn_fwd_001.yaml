@@ -1,0 +1,47 @@
+experience_id: exp_flashattn_fwd_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention (QK^T @ V)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_C:
+    - '>=64'
+    GROUP_SIZE:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax_algorithm: Implements the FlashAttention strategy by iteratively
+    updating the running maximum (block_m) and the sum of exponentials (block_l).
+    This avoids materializing the large $S \times S$ attention matrix in High Bandwidth
+    Memory (HBM), significantly reducing memory traffic.
+- block_tiling_strategy: Loads Key (k) and Value (v) tensors in blocks defined by
+    BLOCK_C. This keeps the Query tensor (block_q) resident in fast on-chip memory
+    (SRAM/Registers) while streaming k and v, maximizing data reuse per byte loaded
+    from HBM.
+- mixed_precision_computation: Utilizes LOW_TYPE (e.g., fp16/bf16) for the output
+    accumulation (block_o) to leverage high-throughput tensor core operations, while
+    implicitly using higher precision (HIGH_TYPE) for the softmax statistics (block_s,
+    block_m, block_l) to ensure numerical stability during exponential calculations.
+- gqa_memory_optimization: The stride calculation incorporates GROUP_SIZE (idx_n //
+    GROUP_SIZE), enabling efficient memory access patterns for Grouped Query Attention
+    (GQA) and Multi-Query Attention (MQA) by allowing multiple query heads to share
+    the same Key and Value data blocks.
+performance_boost: 200%
+note: This is a micro-kernel designed for the inner loop of a FlashAttention forward
+  pass. It assumes block_q is pre-loaded and handles the incremental update of output
+  and softmax statistics.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/256-micro_kernel_fwd.py

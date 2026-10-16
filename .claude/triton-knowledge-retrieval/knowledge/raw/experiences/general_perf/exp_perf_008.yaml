@@ -1,0 +1,33 @@
+experience_id: exp_perf_008
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 内存初始化优化
+framework_tag:
+- Triton
+optimization_points:
+- 创建规范: 优先使用`torch.empty_like()`创建输出张量，默认生成连续内存布局，无初始化开销
+- 避坑要点: 避免`torch.zeros()`/`torch.ones()`，此类API会产生额外的内存初始化开销（约5%-10%）
+- 兼容性: torch.empty_like()的连续特性可无缝衔接一维访问优化，无需二次转换
+code_snippet:
+  Triton: "class OutputTensorCreateModel(torch.nn.Module):\n    def __init__(self):\n\
+    \        super().__init__()\n\n    def forward(self, input_tensor):\n        #\
+    \ 优化1: 使用torch.empty_like创建输出（默认连续，无初始化开销）\n        output_tensor = torch.empty_like(input_tensor)\n\
+    \        # 反例: 不推荐 - torch.zeros_like有初始化开销\n        # output_tensor = torch.zeros_like(input_tensor)\n\
+    \        \n        # 确保输入连续后一维访问\n        input_contig = input_tensor.contiguous()\
+    \ if not input_tensor.is_contiguous() else input_tensor\n        n_elements =\
+    \ input_contig.numel()\n        grid = (triton.cdiv(n_elements, 512),)\n     \
+    \   elementwise_opt_kernel[grid](input_contig, output_tensor, n_elements, BLOCK_SIZE=512)\n\
+    \        return output_tensor"
+performance_boost: 8%
+note: 适用于所有Triton算子的输出张量创建场景，`torch.empty_like()`相比`torch.zeros_like`可节省约8%的初始化时间，且默认连续的特性适配一维访问优化，910b2/910b3平台小张量（<1e5元素）的初始化开销占比更高
+version: v1.0

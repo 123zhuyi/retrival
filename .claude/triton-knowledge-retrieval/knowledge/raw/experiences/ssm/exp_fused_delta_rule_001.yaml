@@ -1,0 +1,47 @@
+experience_id: exp_fused_delta_rule_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Recurrent Delta Rule Update
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+    T:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- Operator Fusion: Fuses the complex recurrent update logicвЂ”including sigmoid gating,
+    softplus activation, and the delta rule weight updatesвЂ”into a single kernel.
+    This eliminates the need to write intermediate states (h, v) back to global memory
+    at every timestep, significantly reducing memory bandwidth pressure.
+- Tiled State Accumulation: Utilizes block tiling on the K and V dimensions (defined
+    by BK and BV) to keep the recurrent hidden state `b_h` in registers or shared
+    memory throughout the sequence iteration. This allows efficient outer product
+    updates (`k * v`) without spilling to high-latency global memory.
+- Efficient Variable-Length Handling: Implements optimized logic for variable-length
+    sequences (`IS_VARLEN`) by calculating Begin-of-Sequence (bos) and End-of-Sequence
+    (eos) offsets once per block. This ensures the compute loop strictly processes
+    valid tokens, avoiding redundant calculations on padding tokens.
+- Numerical Stability Optimization: Implements a numerically stable `softplus` function
+    using a threshold check (`softplus_threshold`). This prevents overflow during
+    exponentiation which is critical for the stability of the gating mechanism in
+    recurrent models.
+performance_boost: 35%
+note: This kernel is optimized for Delta Rule based architectures. It requires that
+  the block sizes BK and BV are chosen such that the tiled state matrix fits within
+  the GPU's SRAM/Registers to avoid performance degradation.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/152-fused_sigmoid_gating_delta_rule_update_kernel.py

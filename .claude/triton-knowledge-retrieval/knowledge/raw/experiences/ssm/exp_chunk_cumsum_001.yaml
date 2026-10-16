@@ -1,0 +1,44 @@
+experience_id: exp_chunk_cumsum_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Cumulative Sum
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_T:
+    - '>=64'
+    CHUNK_SIZE:
+    - '64'
+    H:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- chunked_scan_strategy: The kernel reshapes the loaded block into (N_CHUNKS, CHUNK_SIZE,
+    H) and performs cumsum along the CHUNK_SIZE dimension. This breaks the long serial
+    dependency chain of a full-sequence cumsum into smaller, independent chunks, significantly
+    improving instruction-level parallelism and reducing register pressure.
+- block_ptr_utilization: Uses tl.make_block_ptr for memory loading and storing. This
+    abstracts complex pointer arithmetic and enables the compiler to generate optimized
+    vectorized memory instructions (e.g., 128-bit loads) suitable for the target hardware,
+    ensuring high memory bandwidth utilization.
+- layout_transposition: Dynamically handles HEAD_FIRST (H, T) and non-HEAD_FIRST (T,
+    H) layouts by transposing the data so that the cumsum operation always traverses
+    contiguous memory segments, minimizing memory access latency and bank conflicts.
+performance_boost: 25%
+note: BLOCK_T must be a multiple of CHUNK_SIZE. The kernel supports variable length
+  sequences via cu_seqlens, avoiding padding overhead.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/186-chunk_local_cumsum_scalar_kernel.py

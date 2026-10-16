@@ -1,0 +1,43 @@
+experience_id: exp_reject_sampler_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Reject Sampling
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    max_spec_len:
+    - <=16
+    vocab_size:
+    - '>=32000'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_load: Replace scalar loads inside the loop with vectorized loads for
+    `draft_token_ids` and `draft_probs`. Since `max_spec_len` is a compile-time constant
+    and typically small, loading the entire chunk at once significantly reduces memory
+    access overhead and instruction latency compared to iterative scalar loads.
+- parallel_comparison: Remove the sequential `for` loop and the `if not rejected`
+    branch dependency. Calculate the acceptance condition (`target_prob / draft_prob
+    >= random`) for all positions simultaneously using vectorized arithmetic. This
+    transforms the execution from serial to parallel, fully utilizing the SIMD capabilities
+    of the NPU/GPU cores.
+- mask_based_reduction: Instead of maintaining a sequential counter `accept_len` with
+    a break condition, generate a boolean mask of accepted tokens and use `tl.sum(mask)`
+    or a prefix scan to determine the final `accept_len`. This leverages hardware-accelerated
+    reduction units and avoids branch divergence.
+performance_boost: 35%
+note: The original implementation relies on a scalar loop with early exit, which limits
+  parallelism and incurs branch overhead. The optimized version processes all speculative
+  steps in parallel, which is particularly effective for the small, fixed `max_spec_len`
+  typical in speculative decoding.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/224-_reject_sampler_kernel.py

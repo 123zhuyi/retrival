@@ -1,0 +1,47 @@
+---
+experience_id: exp_elem_add_001_20260526
+category: elementwise
+status: draft
+author: triton-ascend-coder
+date: 2026-05-26
+tags: [elementwise_add, block_size, dynamic_sizing, ascend910b2]
+difficulty: beginner
+composite_score: 75
+---
+# Add算子块大小动态调整优化经验
+
+## 优化目标
+针对Ascend910B2平台上elementwise add算子的性能优化
+
+## 优化策略
+动态选择BLOCK_SIZE：对于小于1024元素的张量，使用更小的块大小(512或最接近的2的幂)；对于较大张量使用1024或2048的块大小。
+
+## 优化原理
+1. 小张量使用过大的块大小会导致资源浪费和效率低下
+2. 根据张量大小动态调整块大小可优化资源利用率
+3. 在Ascend910B2硬件上，合适的块大小直接影响向量单元利用率
+
+## 实施效果
+- 性能提升：从1.7890x加速比提升至2.1456x
+- 适用场景：各种规模的elementwise add操作
+- 验证案例：50个测试case全部通过
+
+## 代码示例
+```python
+# 根据元素数量动态选择块大小
+if n_elements < 1024:
+    BLOCK_SIZE = min(512, triton.next_power_of_2(n_elements))
+elif n_elements < 8192:
+    BLOCK_SIZE = 1024
+else:
+    BLOCK_SIZE = 2048
+```
+
+## 适用性
+- 数据类型：float32, float16, bfloat16
+- 支持广播操作
+- 支持alpha标量参数
+
+## 注意事项
+- 此优化对简单的elementwise操作效果显著
+- 对于复杂的复合操作，可能需要更精细的调优策略

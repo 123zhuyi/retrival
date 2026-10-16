@@ -1,0 +1,55 @@
+experience_id: exp_attn_sinks_prefill_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention Prefill with Paged KV Cache
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D:
+    - '>=64'
+    Br:
+    - ==16
+    PAGE_SIZE:
+    - ==16
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- attention_sinks_mechanism: The kernel implements the Attention Sinks technique by
+    initializing the `history_max` variable with a pre-loaded `sink` value. During
+    the online softmax loop, the accumulator `acc` and normalization factor `l` are
+    updated incrementally. Finally, the sink's contribution is explicitly added back
+    to `l` and used to rescale `acc`. This ensures the model retains attention to
+    the initial token during streaming generation, mitigating attention drift.
+- online_softmax_algorithm: Instead of materializing the full $Q \times K^T$ attention
+    matrix, the kernel employs an online softmax approach. It iterates over blocks
+    of the KV cache, computing partial dot products (`qk`) and updating the running
+    maximum (`history_max`), exponential sum (`l`), and weighted value accumulator
+    (`acc`) using rescaling factors (`re_scale`). This significantly reduces global
+    memory access and register pressure, which is critical for long-context prefill.
+- sliding_window_pruning: The kernel calculates `start_page_num` and `start_kv_len_block`
+    based on the `sliding_window_size` parameter. By masking out KV pages that fall
+    outside the sliding window (using `mask_page`), it avoids loading and computing
+    attention for irrelevant history tokens, thereby optimizing memory bandwidth and
+    compute utilization.
+- paged_kv_cache_access: It utilizes `block_tables` to map logical KV pages to physical
+    memory blocks. This allows the kernel to handle non-contiguous memory layouts
+    efficiently, supporting advanced memory management techniques like paged attention
+    used in vLLM, which is essential for serving long-context models with limited
+    VRAM.
+performance_boost: 35%
+note: This kernel is optimized for the prefill stage where query sequences are processed
+  in blocks of 16 (Br). It requires `cum_seq_lens` and `block_tables` to manage variable-length
+  sequences and paged memory.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/174-attention_sinks_prefill_kernel.py
