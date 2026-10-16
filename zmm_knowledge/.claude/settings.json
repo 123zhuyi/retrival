@@ -1,0 +1,56 @@
+{
+    "env": {
+"ANTHROPIC_BASE_URL": "https://ark.cn-beijing.volces.com/api/coding", "ANTHROPIC_AUTH_TOKEN": "<your-ark-token>",
+"ANTHROPIC_MODEL": "glm-5.3-flash",
+ "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.2",
+"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2",
+ "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2",
+ "NON_ANTHROPIC_PLATFORM": "true",
+ "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "1000000",
+ "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+    },
+    "permissions": {
+        "allow": [
+            "Bash(mvn:*)",
+            "Bash(git:*)",
+            "Bash(java:*)",
+            "Bash(javac:*)",
+            "Bash(jar:*)",
+            "Bash(dir:*)",
+            "Bash(ls:*)",
+            "Bash(cd:*)",
+            "Bash(find:*)",
+            "Bash(sed:*)",
+            "Bash(mkdir:*)",
+            "Bash(echo:*)",
+            "Bash(cat:*)",
+            "Bash(type:*)",
+            "Bash(scp:*)",
+            "Bash(ssh-copy-id:*)",
+            "Read(**)",
+            "Grep",
+            "Glob",
+            "LS",
+            "Edit",
+            "NotebookRead",
+            "mcp__playwright__browser_click",
+            "mcp__playwright__browser_close",
+            "mcp__playwright__browser_install",
+            "mcp__playwright__browser_navigate",
+            "mcp__playwright__browser_snapshot",
+            "mcp__playwright__browser_tab_list",
+            "mcp__playwright__browser_tab_new",
+            "mcp__playwright__browser_take_screenshot",
+            "mcp__playwright__browser_type"
+        ],
+        "deny": [],
+        "ask": [
+            "Bash(git push:*)",
+            "Bash(rm:*)",
+            "Bash(del:*)"
+        ],
+        "defaultMode": "default"
+    },
+    "skipWebFetchPreflight": true,
+    "skipDangerousModePermissionPrompt": true
+}

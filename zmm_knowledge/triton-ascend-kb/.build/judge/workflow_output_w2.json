@@ -1,0 +1,3154 @@
+{
+ "result": {
+  "results": [
+   {
+    "idx": 148,
+    "kept": [
+     {
+      "target_id": "runbooks/portability/exp_ascend_grid_large_shape_001.md",
+      "type": "same_topic",
+      "reason": "同一大 shape 缩 grid+kernel 内循环方案（交错遍历变体）"
+     },
+     {
+      "target_id": "runbooks/portability/exp_ascend_parallel_pattern_001.md",
+      "type": "same_topic",
+      "reason": "共享 grid 收缩到核心数+核内循环的并行分配模式"
+     },
+     {
+      "target_id": "runbooks/portability/exp_ascend_grid_001.md",
+      "type": "related",
+      "reason": "grid 乘积≤65535 约束是 kernel 内循环摊还方案的上游动因"
+     },
+     {
+      "target_id": "runbooks/meta-skills/exp_debug_003.md",
+      "type": "related",
+      "reason": "同一 grid 超限约束的诊断入口，指向同一交错循环规避方案"
+     }
+    ]
+   },
+   {
+    "idx": 149,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_flash_001.md",
+      "type": "same_topic",
+      "reason": "共享 tile 循环外加载+片上复用削减 HBM 带宽技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_lightning_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "循环不变量外提与 KV tile 循环外加载为同一技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "related",
+      "reason": "同为跨迭代复用消除重复 load 的访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rope_npu_001.md",
+      "type": "related",
+      "reason": "cos/sin 一次加载跨行复用，共享加载复用思想"
+     }
+    ]
+   },
+   {
+    "idx": 150,
+    "kept": []
+   },
+   {
+    "idx": 151,
+    "kept": []
+   },
+   {
+    "idx": 152,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_infer_001.md",
+      "type": "same_topic",
+      "reason": "同为 attention 场景 tl.make_block_ptr 块指针抽象技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_kkt_001.md",
+      "type": "same_topic",
+      "reason": "共享 make_block_ptr 统一 2D 块加载技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_idx_copy_001.md",
+      "type": "same_topic",
+      "reason": "共享 block ptr 替代手工指针算术的向量化加载技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为 attention 场景 block ptr 块加载与自动边界处理"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "same_topic",
+      "reason": "共享 make_block_ptr 子块加载技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "related",
+      "reason": "同一 make_block_ptr 分块加载技术的应用实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "同一 block ptr tiling 技术在 ssm 场景的应用"
+     }
+    ]
+   },
+   {
+    "idx": 153,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "same_topic",
+      "reason": "共享 online softmax 主循环 running max/sum rescale 技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_flash_001.md",
+      "type": "same_topic",
+      "reason": "同为 online softmax 避免物化 N×N 评分矩阵"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "same_topic",
+      "reason": "共享 online softmax 分块 rescale 计算技术"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax O(S²)→O(S) 算法原理卡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "same_topic",
+      "reason": "split-KV 二阶段 online softmax 归并属同一修复链"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax 块归约技术在 softmax 算子的应用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_attention_002.md",
+      "type": "same_topic",
+      "reason": "同为长序列分块+在线 softmax 避免物化评分矩阵"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "related",
+      "reason": "共享分页 KV block_table 间接寻址技术点"
+     }
+    ]
+   },
+   {
+    "idx": 154,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_attn_topk_001.md",
+      "type": "same_topic",
+      "reason": "同为 topk 稀疏索引驱动只迭代相关块的注意力稀疏化技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_flash_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为稀疏索引驱动的选择性 KV 加载，降低带宽与计算"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sparse_attn_backward_dq_001.md",
+      "type": "same_topic",
+      "reason": "同为 attention 反向基于预计算 TOPK 索引的稀疏迭代/聚集"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_gqa_001.md",
+      "type": "related",
+      "reason": "同为索引间接寻址的选择性 KV 加载（index_select_simd）"
+     },
+     {
+      "target_id": "ops/block-sparse-attention-grad.md",
+      "type": "exemplifies",
+      "reason": "稀疏注意力反向算子实例，sparse_kv_gather 与该规则同源"
+     },
+     {
+      "target_id": "ops/sparse-flash-attention.md",
+      "type": "exemplifies",
+      "reason": "SFA 算子是稀疏索引驱动选择性取数规则的算子实例"
+     },
+     {
+      "target_id": "ops/lightning-indexer.md",
+      "type": "related",
+      "reason": "该算子是 focal 规则所需预计算 topk 稀疏索引的上游生产者"
+     },
+     {
+      "target_id": "ops/kv-quant-sparse-flash-attention.md",
+      "type": "exemplifies",
+      "reason": "稀疏索引驱动离散 KV 取数的推理算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 155,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gather_flat_001.md",
+      "type": "related",
+      "reason": "同为大块向量化访存替代逐元素循环以降低访存事务数"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_embedding_001.md",
+      "type": "related",
+      "reason": "同为多维块 tile 向量化连续访存提升 DRAM 带宽利用"
+     }
+    ]
+   },
+   {
+    "idx": 156,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_003.md",
+      "type": "same_topic",
+      "reason": "同一 grid 维度映射与负载均衡技术点，2D/1D grid 互补方案"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_007.md",
+      "type": "related",
+      "reason": "同 conv kernel 家族的任务分解与布局决策，互为长/短序列互补"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md",
+      "type": "related",
+      "reason": "同 causal_conv1d 家族且共享 block ptr 向量化访存原则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_varlen_opt_001.md",
+      "type": "related",
+      "reason": "同为变长滑窗 conv 的负载/访存优化链上下游"
+     }
+    ]
+   },
+   {
+    "idx": 157,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_003.md",
+      "type": "same_topic",
+      "reason": "同一 tl.make_block_ptr 触发硬件块传输替代标量 load 技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "same_topic",
+      "reason": "共享 block_ptr vs 标量 load 退化的同一规则与根因"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_001.md",
+      "type": "related",
+      "reason": "同 causal_conv1d 家族且含相同 block ptr 向量化原则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同名 block ptr utilization 技术在分页 KV decode 的近重复应用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_topk_pad_001.md",
+      "type": "same_topic",
+      "reason": "同名 block ptr utilization 技术在变长索引搬运的近重复应用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_idx_copy_001.md",
+      "type": "same_topic",
+      "reason": "同名 block pointer utilization 技术在 embedding 拷贝的近重复应用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_infer_001.md",
+      "type": "same_topic",
+      "reason": "同为 tl.make_block_ptr 2D 块抽象提升访存带宽"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_ptr_setup_001.md",
+      "type": "same_topic",
+      "reason": "同为 block pointer 抽象生成向量化访存指令"
+     }
+    ]
+   },
+   {
+    "idx": 158,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/register-shift-sliding-window.md",
+      "type": "same_topic",
+      "reason": "同一寄存器移位复用滑动窗口消除重复 HBM 读技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_001.md",
+      "type": "same_topic",
+      "reason": "同为滑窗状态驻留寄存器移位复用、每步仅加载新元素的 decode 版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_004.md",
+      "type": "related",
+      "reason": "同一消除滑窗重复 load 目标，重叠 T-tile buffer 机制互补"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_003.md",
+      "type": "related",
+      "reason": "同一 prefill kernel 优化链的 grid 策略环节"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_006.md",
+      "type": "related",
+      "reason": "同一 prefill kernel 优化链的 conv+bias+silu 融合环节"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_001.md",
+      "type": "related",
+      "reason": "同 causal_conv1d 家族访存优化链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_varlen_opt_001.md",
+      "type": "related",
+      "reason": "同 conv 变长滑窗场景的访存优化链"
+     }
+    ]
+   },
+   {
+    "idx": 159,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_radix_convert_001.md",
+      "type": "same_topic",
+      "reason": "同为 constexpr 编译期分支消除运行时分歧的技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同用 @triton.heuristics 编译期特化且同 conv 家族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_001.md",
+      "type": "related",
+      "reason": "同 causal_conv1d 家族优化链，含 block ptr 向量化访存"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_003.md",
+      "type": "related",
+      "reason": "同 conv 家族 block ptr 硬件加速访存优化链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "related",
+      "reason": "同 conv 家族滑窗寄存器复用访存优化链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_varlen_opt_001.md",
+      "type": "related",
+      "reason": "同 conv 变长场景的 constexpr 编译期优化链"
+     }
+    ]
+   },
+   {
+    "idx": 160,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "same_topic",
+      "reason": "共享滑窗历史 token 复用以消除重复 load 的技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_004.md",
+      "type": "same_topic",
+      "reason": "同一 update kernel 滑窗历史(conv_state)访存优化，重叠 tile 消除冗余 load"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_006.md",
+      "type": "related",
+      "reason": "共享 conv+bias+SiLU 单 kernel 融合、消除 kernel launch 的修复链"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md",
+      "type": "related",
+      "reason": "同一 update kernel 的融合与循环结构跨 kernel 迁移决策"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_007.md",
+      "type": "related",
+      "reason": "同一短序列 decode update 场景的布局与状态更新组合方案"
+     }
+    ]
+   },
+   {
+    "idx": 161,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "same_topic",
+      "reason": "同一规则：make_block_ptr 映射硬件块传输、退化为标量 load 性能倒退"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 conv 家族中 make_block_ptr 向量化加载技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_002.md",
+      "type": "related",
+      "reason": "共享独立 load 退化为标量加载导致负收益的同一根因"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "related",
+      "reason": "同一 make_block_ptr 块指针加载技术在分页 KV 解码场景的实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_infer_001.md",
+      "type": "related",
+      "reason": "同一 make_block_ptr 块指针抽象技术在 SDPA 推理的实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_topk_pad_001.md",
+      "type": "related",
+      "reason": "同一 make_block_ptr 块加载技术在变长索引搬运场景的实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "related",
+      "reason": "同一 make_block_ptr 2D 块加载技术在块矩阵求逆的实例"
+     }
+    ]
+   },
+   {
+    "idx": 162,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/overlapping-t-tiling.md",
+      "type": "same_topic",
+      "reason": "同一规则：重叠 T-tiling 保证跨 tile 滑窗连续性、消除冗余历史 load"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "same_topic",
+      "reason": "共享滑窗历史 token 复用消除重复 load 的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_001.md",
+      "type": "related",
+      "reason": "同一 update kernel 中 conv_state 滑窗历史管理的互补手段"
+     }
+    ]
+   },
+   {
+    "idx": 163,
+    "kept": [
+     {
+      "target_id": "runbooks/portability/constexpr-launch-specialization.md",
+      "type": "same_topic",
+      "reason": "同一技术点：长度/stride 参数 tl.constexpr 化触发编译期特化"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/constexpr-branch-elimination.md",
+      "type": "same_topic",
+      "reason": "同一技术点：constexpr 编译期常量折叠消除运行时开销"
+     },
+     {
+      "target_id": "runbooks/memory-sram/pow2-block-constexpr.md",
+      "type": "related",
+      "reason": "共享 BLOCK 取 2 幂并 constexpr 化的编译期常量约束"
+     },
+     {
+      "target_id": "runbooks/portability/exp_constexpr_001.md",
+      "type": "related",
+      "reason": "共享 tl.constexpr 声明位置的平台约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_states_001.md",
+      "type": "related",
+      "reason": "同一 conv 家族中 heuristics/constexpr 编译期分支解析"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_003.md",
+      "type": "related",
+      "reason": "共享 constexpr 编译期双路径特化的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_011.md",
+      "type": "related",
+      "reason": "共享消除 boundary_check/padding 标量开销的修复链上下游"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_004.md",
+      "type": "related",
+      "reason": "共享 stride 手动寻址优化链：focal 将 stride constexpr 化，候选规范 stride 传原生值"
+     }
+    ]
+   },
+   {
+    "idx": 164,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "同一 SSM 门控 delta chunk 化递归家族的 fwd kernel"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_kkt_001.md",
+      "type": "related",
+      "reason": "同一门控 delta chunk 化家族、共享 gating/safe_exp 约束"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_cumsum_001.md",
+      "type": "related",
+      "reason": "共享长序列按 chunk 切分处理顺序递归/扫描的同一策略"
+     }
+    ]
+   },
+   {
+    "idx": 165,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_elemwise_add_001_20260526.md",
+      "type": "same_topic",
+      "reason": "近重复：同一 elementwise add 按张量大小动态选块大小的经验"
+     },
+     {
+      "target_id": "ops/elementwise-add.md",
+      "type": "exemplifies",
+      "reason": "focal 块大小分档规则作用的 elementwise add 算子本体"
+     },
+     {
+      "target_id": "runbooks/autotuning/exp_perf_001.md",
+      "type": "related",
+      "reason": "共享块大小按 2 幂分档并对齐 32B/UB 的选型技术点"
+     },
+     {
+      "target_id": "op-class-elementwise.md",
+      "type": "related",
+      "reason": "focal 所属的 elementwise 算子优化类页面"
+     }
+    ]
+   },
+   {
+    "idx": 166,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_elem_add_001_20260526.md",
+      "type": "same_topic",
+      "reason": "同为逐元素 add（含 alpha 广播）的块大小动态分档调优，近乎重复"
+     },
+     {
+      "target_id": "ops/elementwise-add.md",
+      "type": "exemplifies",
+      "reason": "elementwise add 算子是本块大小+尾部 mask 规则的算子实例"
+     },
+     {
+      "target_id": "op-class-elementwise.md",
+      "type": "related",
+      "reason": "elementwise 算子类指南覆盖本访存与块大小优化点"
+     },
+     {
+      "target_id": "runbooks/autotuning/exp_perf_001.md",
+      "type": "related",
+      "reason": "共享块大小选型的 32B 对齐与 UB 预算约束"
+     }
+    ]
+   },
+   {
+    "idx": 167,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_embedding_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为 embedding 场景的 2D block tiling 分块技术（前向/反向互映）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_idx_copy_001.md",
+      "type": "related",
+      "reason": "同为 embedding/索引拷贝沿特征维的向量化块访存优化"
+     },
+     {
+      "target_id": "op-class-embedding.md",
+      "type": "related",
+      "reason": "embedding 算子类指南覆盖本 2D tiling 访存优化点"
+     }
+    ]
+   },
+   {
+    "idx": 168,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同为 flash attention 分块 tiling + 在线 softmax 将访存从 O(N^2) 降到分块级"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "same_topic",
+      "reason": "共享分块注意力主循环内在线 softmax 增量归一化技术"
+     }
+    ]
+   },
+   {
+    "idx": 169,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_attention_002.md",
+      "type": "same_topic",
+      "reason": "同为长序列注意力分块 + 在线 softmax 内存 O(S^2)→O(S)，近乎重复"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flash_attn_001.md",
+      "type": "same_topic",
+      "reason": "共享分块注意力 tiling 与在线 softmax 的同一技术组合"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "same_topic",
+      "reason": "同在注意力主循环实现在线 softmax running max/sum 更新"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_flash_001.md",
+      "type": "same_topic",
+      "reason": "同为在线 softmax 配 score tile 片上驻留复用"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "本卡是在线 softmax 通用原理在 flash attention 前向上的实例化"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "same_topic",
+      "reason": "同一在线 softmax 增量归一化算法（loop 内 helper 形态）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "related",
+      "reason": "split-KV 第二阶段用同一在线 softmax rescale 合并部分结果"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "related",
+      "reason": "同一在线 softmax 算法在计算维度（cube/vector 调度）上的实现"
+     }
+    ]
+   },
+   {
+    "idx": 170,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_flash_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "共享 index_select_simd 内建指令做不规则 KV 间接加载的同一技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_mla_paged_attn_001.md",
+      "type": "related",
+      "reason": "同为分页 KV cache 经 block_table 间接寻址的访存问题"
+     },
+     {
+      "target_id": "runbooks/portability/exp_gqa_paged_npu_001.md",
+      "type": "related",
+      "reason": "同为 GQA + 分页 KV 场景下 KV 按组复用与块表遍历访存"
+     }
+    ]
+   },
+   {
+    "idx": 171,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_mhc_post_fusion_001.md",
+      "type": "related",
+      "reason": "同为 mix 权重矩阵乘与残差融合的算子链，机制与 Sinkhorn 混合融合高度相似"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md",
+      "type": "related",
+      "reason": "同为归一化 + 矩阵乘多 stage 融合消除中间张量片上往返"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_transformer_block_001.md",
+      "type": "related",
+      "reason": "共享多级算子深度融合消除中间张量 GM 读写的同一机制"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_index_001.md",
+      "type": "related",
+      "reason": "同为多算子单 kernel 融合并驻留小矩阵复用的优化路线"
+     }
+    ]
+   },
+   {
+    "idx": 172,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_norm_rope_001.md",
+      "type": "same_topic",
+      "reason": "共享 normalization 与相邻算子融合消除中间结果 HBM 往返的同一技术点"
+     }
+    ]
+   },
+   {
+    "idx": 173,
+    "kept": [
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax + 分块注意力将内存 O(S²) 降为 O(S) 的技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "same_topic",
+      "reason": "共享 flash attention 内层循环 online softmax 分块实现"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_flash_001.md",
+      "type": "same_topic",
+      "reason": "共享 score tile 复用加 online softmax 的同一 flash 分块方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "same_topic",
+      "reason": "共享 attention 主循环内 online softmax 增量归一化技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "same_topic",
+      "reason": "共享推理 attention 的 online softmax 分块计算同一技术点"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_attention_001.md",
+      "type": "related",
+      "reason": "同一算子的不分块基准实现，是分块/online 方案的直接上下游替代关系"
+     },
+     {
+      "target_id": "ops/flash-attention-score.md",
+      "type": "exemplifies",
+      "reason": "CANN FlashAttentionScore 前向是该分块+online softmax 规则的算子实例"
+     },
+     {
+      "target_id": "ops/prompt-flash-attention.md",
+      "type": "exemplifies",
+      "reason": "PromptFlashAttention 共享 QK-FlashSoftmax-PV 骨架，是规则的推理侧算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 174,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "same_topic",
+      "reason": "共享 partial RoPE 的 ROPE/NOPE 子空间划分同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_add_layernorm_001.md",
+      "type": "same_topic",
+      "reason": "共享 normalization 与相邻算子融合消除中间张量 HBM 往返的技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rope_npu_001.md",
+      "type": "related",
+      "reason": "同属 RoPE 访存优化，cos/sin 复用与融合互补"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_mqa_001.md",
+      "type": "related",
+      "reason": "同属 RoPE kernel 融合减少往返的优化链"
+     }
+    ]
+   },
+   {
+    "idx": 175,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_split_qk_norm_001.md",
+      "type": "same_topic",
+      "reason": "共享打包 fused buffer 单 kernel 拆分融合、避免多次 GM 读写的同一技术点"
+     }
+    ]
+   },
+   {
+    "idx": 176,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md",
+      "type": "same_topic",
+      "reason": "共享 residual-add 与 RMSNorm 融合单 kernel 的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "same_topic",
+      "reason": "共享 RMSNorm 与 add 融合（反向版本）的同一修复链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_quant_001.md",
+      "type": "same_topic",
+      "reason": "共享 add/norm 融合单 kernel 技术并扩展到 quant"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "same_topic",
+      "reason": "共享 add+RMSNorm 融合中间结果寄存器驻留的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_split_qk_norm_001.md",
+      "type": "related",
+      "reason": "同属 RMSNorm 与邻近操作融合减少 GM 遍数的家族"
+     },
+     {
+      "target_id": "ops/rmsnorm-rope.md",
+      "type": "exemplifies",
+      "reason": "RMSNorm-RoPE 融合 kernel 是 fused RMSNorm 规则的算子实例"
+     },
+     {
+      "target_id": "skeleton-rmsnorm_fused.md",
+      "type": "related",
+      "reason": " fused RMSNorm 的骨架模板与 focal 规则同族"
+     }
+    ]
+   },
+   {
+    "idx": 177,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_qkvzba_split_001.md",
+      "type": "same_topic",
+      "reason": "共享打包 buffer 单 kernel 融合拆分、单遍顺序读的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "同属 RMSNorm 与邻近操作融合减少 GM 访问遍数的家族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md",
+      "type": "related",
+      "reason": "同属 RMSNorm 融合单 kernel 减少 HBM 往返的家族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_quant_001.md",
+      "type": "related",
+      "reason": "同属多操作融合进单 RMSNorm kernel 的家族"
+     },
+     {
+      "target_id": "ops/rmsnorm-rope.md",
+      "type": "exemplifies",
+      "reason": "RMSNorm-RoPE 融合 kernel 是 split+norm 融合规则的算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 178,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_001.md",
+      "type": "same_topic",
+      "reason": "同一索引向量化访存技术的 scatter 对偶实现"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gather_flat_001.md",
+      "type": "related",
+      "reason": "同一 gather kernel 的访存优化姊妹卡，共享索引地址算术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_gather_001.md",
+      "type": "related",
+      "reason": "共享索引/元数据向量化加载替代标量循环的技术点"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "gather_scatter 算子类优化总纲，focal 为其向量化索引实例"
+     }
+    ]
+   },
+   {
+    "idx": 179,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gather_001.md",
+      "type": "related",
+      "reason": "同一 gather kernel 家族的访存优化姊妹卡，共享 stride 索引寻址"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_001.md",
+      "type": "related",
+      "reason": "scatter 侧同样按 BLOCK_SIZE 成块处理索引并整行向量访存"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "gather_scatter 算子类优化总纲，focal 为大 block ILP 实例"
+     }
+    ]
+   },
+   {
+    "idx": 180,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_swiglu_flat_001.md",
+      "type": "same_topic",
+      "reason": "同为 activation 场景的 grid-stride loop 访存优化"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_geglu_flat_001.md",
+      "type": "same_topic",
+      "reason": "同一 geglu flat 实现的 grid-stride 调度版本"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 grid-stride 逐元素调度技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sigmoid_grid_stride_001.md",
+      "type": "same_topic",
+      "reason": "同一 grid-stride 跨步调度技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 grid-stride 逐元素调度技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_backward_001.md",
+      "type": "related",
+      "reason": "反向 kernel 中同一 grid-stride 调度模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_001.md",
+      "type": "related",
+      "reason": "共享 focal 第二原则：门控激活中间结果重算策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_ascend_large_shape_block_001.md",
+      "type": "related",
+      "reason": "同为大 shape 逐元素张量的核间调度问题，连续段方案与 grid-stride 互补"
+     }
+    ]
+   },
+   {
+    "idx": 181,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "same_topic",
+      "reason": "同一 add+RMSNorm 融合消中间往返技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_quant_001.md",
+      "type": "related",
+      "reason": "同一 add+norm 融合链路上再叠量化的扩展"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "add+归一化融合的反向版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "related",
+      "reason": "同一 Add+RMSNorm 融合场景，共享中间结果片上驻留思路"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_001.md",
+      "type": "related",
+      "reason": "同一融合加+归一化前向场景的小列实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/operator-fusion-patterns.md",
+      "type": "related",
+      "reason": "focal 融合决策依据的通用融合模式与约束原则"
+     },
+     {
+      "target_id": "skeleton-rmsnorm_fused.md",
+      "type": "related",
+      "reason": "同一 add+RMSNorm 融合模式的代码骨架"
+     }
+    ]
+   },
+   {
+    "idx": 182,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_infer_001.md",
+      "type": "same_topic",
+      "reason": "同一两遍归约（先统计后应用）技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "same_topic",
+      "reason": "归一化反向同用两遍归约换寄存器压力"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一 two-pass reduction 结构"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_non_inner_001.md",
+      "type": "same_topic",
+      "reason": "非最内层维上的同一 two-pass reduction 结构"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "focal 所遵循的跨 tile 两阶段 reduce-then-apply 通用原则"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "归一化反向同用部分和避免原子加的实现路线"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dx_001.md",
+      "type": "related",
+      "reason": "同一归一化梯度问题的单遍 UB 驻留对照方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_001.md",
+      "type": "related",
+      "reason": "大列归一化反向的 tiling 与 dW/dB 原子争用决策同源"
+     }
+    ]
+   },
+   {
+    "idx": 183,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md",
+      "type": "same_topic",
+      "reason": "同一子块/列分块降片上压力技术，落在归一化 kernel"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "same_topic",
+      "reason": "归一化反向列分块加无冲突 dW 累加，与 focal 同问题同思路"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "related",
+      "reason": "同一 dW 累加问题的非分块寄存器驻留对照方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "共享整行 fp32 累加器驻留寄存器的 dW 约束与分块退路"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "同一归一化反向大归约维寄存器压力问题的两遍解法"
+     }
+    ]
+   },
+   {
+    "idx": 184,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_flash_001.md",
+      "type": "related",
+      "reason": "共享分页 KV 经 block_table/kv_indices 间接寻址导致非连续访存的根因"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_prefill_001.md",
+      "type": "related",
+      "reason": "共享分页 KV 间接寻址的非连续访存约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_gqa_001.md",
+      "type": "related",
+      "reason": "共享分页 KV cache 间接寻址场景与失效边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "related",
+      "reason": "同属分页 KV cache 间接寻址访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "related",
+      "reason": "同为分页存储间接寻址+在线 softmax 的注意力访存方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sparse_attn_backward_dq_001.md",
+      "type": "related",
+      "reason": "共享预计算索引间接寻址 KV 的 gather 访存约束"
+     }
+    ]
+   },
+   {
+    "idx": 185,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "related",
+      "reason": "同 GroupNorm 家族 HW 维 tiling 与多遍访存权衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_layernorm_npu_simd_001.md",
+      "type": "related",
+      "reason": "同为归一化算子的向量化宽度调优技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sum_scale_001.md",
+      "type": "related",
+      "reason": "共享按 shape 调块宽以饱和访存带宽的调优点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_001.md",
+      "type": "related",
+      "reason": "同为归一化算子按列宽自适应选 tile 的访存调优"
+     }
+    ]
+   },
+   {
+    "idx": 186,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grpo_loss_001.md",
+      "type": "same_topic",
+      "reason": "同一 GRPO LSE 三路独立归约循环融合为单循环的技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_logits_penalty_fusion_001.md",
+      "type": "related",
+      "reason": "共享将多个 vocab 维独立 pass 融合为单遍以省 GM 流量的思路"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "共享融合归约与输出多遍访问以降低 GM 往返的修复链"
+     }
+    ]
+   },
+   {
+    "idx": 187,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_flash_attn_001.md",
+      "type": "related",
+      "reason": "共享融合 QK/softmax/PV 避免评分矩阵落 GM 的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "related",
+      "reason": "同为在线 softmax 融合消除中间评分矩阵写回"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "related",
+      "reason": "同为单 kernel 内融合 softmax 流水线避免中间量落盘"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_logits_penalty_fusion_001.md",
+      "type": "related",
+      "reason": "共享 kernel 融合消除中间张量 GM 往返的访存优化点"
+     }
+    ]
+   },
+   {
+    "idx": 188,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_topk_pad_001.md",
+      "type": "same_topic",
+      "reason": "同一 block_ptr+boundary_check 处理变长 ragged 索引搬运的技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_embedding_001.md",
+      "type": "related",
+      "reason": "同属索引拷贝/embedding 类算子的 2D 分块访存方案"
+     },
+     {
+      "target_id": "op-class-embedding.md",
+      "type": "related",
+      "reason": "focal 所属 Embedding/索引拷贝算子类指南"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_ptr_setup_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 抽象替代手工指针算术的访存技术"
+     }
+    ]
+   },
+   {
+    "idx": 189,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_bwd_hstu_001.md",
+      "type": "related",
+      "reason": "共享跨阶段复用已加载 tile 消除冗余 load 的修复点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "related",
+      "reason": "共享寄存器复用消除重复 token load 的技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_003.md",
+      "type": "related",
+      "reason": "共享 block_ptr 与手工指针 load 开销权衡的同一议题"
+     }
+    ]
+   },
+   {
+    "idx": 190,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为归一化 backward 的两遍 tiled 归约与部分和累加方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dx_001.md",
+      "type": "related",
+      "reason": "同一归一化梯度 tiling 问题下的单遍 UB 驻留替代路径，共享两遍/单遍取舍约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/ub-aware-block-adaptive.md",
+      "type": "related",
+      "reason": "共享按 UB 预算自适应确定 BLOCK/tile 大小的约束，focal 的 ceil_div(4096,n_cols) 是其算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 191,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "same_topic",
+      "reason": "近重复：动态块大小 + 反向与残差加融合 + 寄存器累加 dW"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "same_topic",
+      "reason": "同为大列归一化反向两遍归约与 dW 原子/确定性累加"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "same_topic",
+      "reason": "归一化反向 dW 无冲突部分和累加，与 focal 原子加互为替代方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "same_topic",
+      "reason": "归一化反向列分块 tiling 与无冲突 dW 累加，同一修复链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dw_001.md",
+      "type": "same_topic",
+      "reason": "权重梯度 2D 分块部分和归约，共享 dW 原子加 vs 部分和的同一权衡"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_wb_backward_001.md",
+      "type": "related",
+      "reason": "同属归一化权重/偏置反向归约问题，子块划分降寄存器压力"
+     }
+    ]
+   },
+   {
+    "idx": 192,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/persistent-kernel-pattern.md",
+      "type": "related",
+      "reason": "persistent kernel grid-stride 通用规则，focal 为其在 LayerNorm 前向上的实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_d_weight_001.md",
+      "type": "same_topic",
+      "reason": "同一 persistent kernel grid-stride 摊薄 launch 开销技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_linear_persistent_001.md",
+      "type": "same_topic",
+      "reason": "同一 persistent kernel grid-stride 循环调度技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "same_topic",
+      "reason": "同一 persistent 动态调度模式，固定 grid 按核数摊薄启动开销"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_001.md",
+      "type": "same_topic",
+      "reason": "同一 grid-stride 多行循环调度，n_rows 小于核数时同样退化"
+     }
+    ]
+   },
+   {
+    "idx": 193,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_outer_product_001.md",
+      "type": "same_topic",
+      "reason": "同一 LICM 技术：循环不变量加载外提消除内层重复 GM 访问"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/loop-invariant-code-motion.md",
+      "type": "related",
+      "reason": "LICM 通用规则卡，focal 为其在 decode attention 上的算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 194,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fuse_tlx_001.md",
+      "type": "related",
+      "reason": "同一多算子融合单遍遍历省 GM 带宽的 kernel fusion 技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_qkvzba_split_001.md",
+      "type": "related",
+      "reason": "同一 kernel fusion 思路：多段处理合并为单次 launch 单遍访存"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_grpo_bwd_001.md",
+      "type": "related",
+      "reason": "同一循环融合单遍处理模式，多路输入同下标一趟读完省带宽"
+     }
+    ]
+   },
+   {
+    "idx": 195,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_spec_dec_reject_001.md",
+      "type": "same_topic",
+      "reason": "共享同一根因：消除中间结果写回 GM 再读回的往返，改为片上驻留计算"
+     }
+    ]
+   },
+   {
+    "idx": 196,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_003.md",
+      "type": "same_topic",
+      "reason": "同属 910b matmul 分块对齐技术族，共享 512B/L0 分块约束与失效边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_004.md",
+      "type": "same_topic",
+      "reason": "同一 matmul 分块规则族，K0=256 对齐约束互为转置场景分支"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_005.md",
+      "type": "same_topic",
+      "reason": "同一 512B 行宽对齐分块约束族的双转置分支"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_002.md",
+      "type": "related",
+      "reason": "同一 910b matmul kernel 优化系列，K 维展开/预取与 BLOCK_K 分块约束相邻"
+     }
+    ]
+   },
+   {
+    "idx": 197,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_004.md",
+      "type": "same_topic",
+      "reason": "失效边界中显式互引的转置场景分支，共享 K0=256/512B 对齐约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_005.md",
+      "type": "same_topic",
+      "reason": "同一 512B 行宽对齐分块约束族的双转置分支"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同属 910b matmul 分块与 L0 复用技术族，迁移条件与 padding 失效边界一致"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_002.md",
+      "type": "related",
+      "reason": "同一 910b matmul kernel 优化系列，K 维处理约束相邻"
+     }
+    ]
+   },
+   {
+    "idx": 198,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_003.md",
+      "type": "same_topic",
+      "reason": "显式互引的均不转置分支，共享 512B 对齐分块约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_005.md",
+      "type": "same_topic",
+      "reason": "同一 512B 行宽对齐分块约束族的双转置分支"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同属 910b matmul 256 分块技术族，K0 对齐与尾部 mask 失效边界一致"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_002.md",
+      "type": "related",
+      "reason": "同一 910b matmul kernel 优化系列，K 维展开与 K0 分块约束相邻"
+     }
+    ]
+   },
+   {
+    "idx": 199,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_003.md",
+      "type": "same_topic",
+      "reason": "同一 512B 行宽对齐分块约束族的均不转置分支"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_004.md",
+      "type": "same_topic",
+      "reason": "同一 K0=256 对齐分块约束族的 B 转置分支"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同属 910b matmul 分块与 L0 复用技术族，共享 padding/尾部 mask 失效边界"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_002.md",
+      "type": "related",
+      "reason": "同一 910b matmul kernel 优化系列，K 维处理约束相邻"
+     }
+    ]
+   },
+   {
+    "idx": 200,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_gqa_001.md",
+      "type": "same_topic",
+      "reason": "共享 paged KV cache 块表间接寻址技术与连续布局失效边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_flash_001.md",
+      "type": "same_topic",
+      "reason": "同一分页访存策略，Block_offsets 寻址与连续 KV 布局失效边界一致"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_prefill_001.md",
+      "type": "same_topic",
+      "reason": "同一 paged kv indirection 技术，PAGE_SIZE 对齐与分页失效边界共享"
+     },
+     {
+      "target_id": "runbooks/portability/exp_gqa_paged_npu_001.md",
+      "type": "same_topic",
+      "reason": "共享分页 KV 的 block_table 遍历技术点，仅并行维度不同"
+     }
+    ]
+   },
+   {
+    "idx": 201,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_padded_gather_001.md",
+      "type": "same_topic",
+      "reason": "共享寄存器 tmp_buf 累积后批量写、桶切换 flush 的同一技术与失效边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md",
+      "type": "related",
+      "reason": "同 MoE 分桶 scatter 修复链上游，排序分组是 register buffer 批量写的前提"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_npu_001.md",
+      "type": "related",
+      "reason": "同 MoE 分桶 scatter 的 SUB_BLOCK 分桶策略约束族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md",
+      "type": "related",
+      "reason": "同 padded binning 分组 scatter 约束族，共享 SUB_BLOCK/NUM_COLUMNS 阈值"
+     }
+    ]
+   },
+   {
+    "idx": 202,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gather_001.md",
+      "type": "same_topic",
+      "reason": "同为 gather 场景把标量索引加载改写为向量化加载"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_001.md",
+      "type": "related",
+      "reason": "共享索引类算子标量访存向量化的技术点"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "focal 是 gather_scatter 算子类指南下的 MoE gather 实例"
+     }
+    ]
+   },
+   {
+    "idx": 203,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_bwd_reduce_001.md",
+      "type": "same_topic",
+      "reason": "共享 multibuffer 软件流水预取掩盖访存延迟技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_tv_distance_001.md",
+      "type": "same_topic",
+      "reason": "同为 num_stages 软件流水隐藏访存延迟"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_flat_001.md",
+      "type": "same_topic",
+      "reason": "同为 tl.range num_stages 软件流水优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_001.md",
+      "type": "related",
+      "reason": "共享 scatter 写路径向量化（BLOCK_E 块写）技术点"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "focal 是 gather_scatter 算子类指南下的 MoE scatter 实例"
+     }
+    ]
+   },
+   {
+    "idx": 204,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/loop-invariant-code-motion.md",
+      "type": "same_topic",
+      "reason": "共享循环不变量外提减少重复访存/地址计算的根因"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_lightning_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为把循环内不变的加载提到循环外的 LICM 访存优化"
+     }
+    ]
+   },
+   {
+    "idx": 205,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_binned_scatter_001.md",
+      "type": "same_topic",
+      "reason": "同为按 bin 聚合到本地缓冲再批量 flush 写出的缓冲写技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md",
+      "type": "related",
+      "reason": "共享按 expert 排序形成连续段以支持批量写的前提"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_npu_001.md",
+      "type": "related",
+      "reason": "共享 binning 预排序保证写连续性、bin 切换即 flush 的约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md",
+      "type": "related",
+      "reason": "共享按分组键排序+padded 对齐支撑批量写的技术点"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "focal 是 gather_scatter 算子类指南下的 padded gather 实例"
+     }
+    ]
+   },
+   {
+    "idx": 206,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_flash_001.md",
+      "type": "same_topic",
+      "reason": "共享 paged KV cache 分页间接寻址根因"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_gqa_001.md",
+      "type": "same_topic",
+      "reason": "共享 paged KV cache block_table 间接访存技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_prefill_001.md",
+      "type": "same_topic",
+      "reason": "同为 paged KV 间接寻址在注意力中的访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_infer_001.md",
+      "type": "same_topic",
+      "reason": "同为注意力场景用 tl.make_block_ptr 抽象复杂 stride"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "same_topic",
+      "reason": "共享 make_block_ptr 块指针访存抽象技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同为 block ptr utilization 访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_topk_pad_001.md",
+      "type": "same_topic",
+      "reason": "共享 tl.make_block_ptr 块指针加载技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "related",
+      "reason": "共享必须用 make_block_ptr 不退化标量 load 的约束"
+     }
+    ]
+   },
+   {
+    "idx": 207,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_gqa_001.md",
+      "type": "same_topic",
+      "reason": "共享 paged KV cache 分页物理地址计算技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_prefill_001.md",
+      "type": "same_topic",
+      "reason": "同为 paged KV 间接寻址的注意力访存策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_mla_paged_attn_001.md",
+      "type": "same_topic",
+      "reason": "共享 paged KV cache 访存在 MLA 注意力中的应用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为 paged KV 布局下块指针/偏移寻址访存优化"
+     }
+    ]
+   },
+   {
+    "idx": 208,
+    "kept": [
+     {
+      "target_id": "runbooks/portability/exp_gqa_paged_npu_001.md",
+      "type": "same_topic",
+      "reason": "同为 GQA 分页 KV：block_table 遍历 + KV 头组内复用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_prefill_001.md",
+      "type": "same_topic",
+      "reason": "共享 block_table 分页 KV 间接寻址技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_flash_001.md",
+      "type": "same_topic",
+      "reason": "共享分页 KV 块偏移寻址的 attention 访存策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_mla_paged_attn_001.md",
+      "type": "same_topic",
+      "reason": "共享 block_table 分页 KV cache 访存技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为分页 KV 布局下 block_table 间接寻址"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_kv_cache_001.md",
+      "type": "same_topic",
+      "reason": "同为分页 attention 中头维访存优化（头维向量化）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_grouped_attn_stage1_001.md",
+      "type": "related",
+      "reason": "同一分页缓存间接寻址问题的标量化处理路径"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "related",
+      "reason": "共享 GROUP_SIZE 查询头分组复用 KV 的寻址思路"
+     }
+    ]
+   },
+   {
+    "idx": 209,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_gqa_001.md",
+      "type": "same_topic",
+      "reason": "同为分页 KV attention 的头维访存优化（GQA 头 tiling）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_cache_store_001.md",
+      "type": "related",
+      "reason": "同为把循环维折叠进向量 load/store 的向量化手法"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_spec_decode_verify_scalar.md",
+      "type": "related",
+      "reason": "共享消除 Python 标量循环改向量化的同一根因"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reject_sampler_001.md",
+      "type": "related",
+      "reason": "共享循环内标量 load 替换为向量 load 的技术点"
+     }
+    ]
+   },
+   {
+    "idx": 210,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_flash_001.md",
+      "type": "same_topic",
+      "reason": "共享分页 KV 块偏移寻址的 attention 访存策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_gqa_001.md",
+      "type": "same_topic",
+      "reason": "共享 block_table 分页 KV 间接寻址技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_mla_paged_attn_001.md",
+      "type": "same_topic",
+      "reason": "共享 block_table 分页 KV cache 访存技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为分页 KV 布局下 block_table 间接寻址（解码侧）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_grouped_attn_stage1_001.md",
+      "type": "related",
+      "reason": "同一分页缓存间接寻址问题的标量化处理路径"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "related",
+      "reason": "同为分页存储 attention 的 block_table 访存"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_sinks_prefill_001.md",
+      "type": "related",
+      "reason": "同为依赖 block_tables 页表的 paged prefill attention"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_ptr_setup_001.md",
+      "type": "related",
+      "reason": "共享 focal 第二原则的 tl.make_block_ptr 块指针加载"
+     }
+    ]
+   },
+   {
+    "idx": 211,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "same_topic",
+      "reason": "共享 make_block_ptr 映射块传输、禁止退化标量 load 的同一规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_011.md",
+      "type": "related",
+      "reason": "focal 失效边界指向的 boundary_check 手动指针替代方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_004.md",
+      "type": "related",
+      "reason": "手动 stride 路径与 block_ptr 路径的互补规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_003.md",
+      "type": "related",
+      "reason": "非连续/手动指针场景的连续化+一维遍历替代路径"
+     }
+    ]
+   },
+   {
+    "idx": 212,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_006.md",
+      "type": "same_topic",
+      "reason": "近重复：contiguous 一次性拷贝替代 stride 访问"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_007.md",
+      "type": "same_topic",
+      "reason": "共享多维 stride 访问劣于连续一维的根因与实测数据"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_004.md",
+      "type": "related",
+      "reason": "同一 stride 处理决策链：修正 stride 与连续化路径互补"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_002.md",
+      "type": "related",
+      "reason": "连续 2D 场景的 block_ptr 结构化替代路径"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_015.md",
+      "type": "related",
+      "reason": "转置视角大 stride 访存的另一处理路径（寄存器转置）"
+     }
+    ]
+   },
+   {
+    "idx": 213,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_007.md",
+      "type": "same_topic",
+      "reason": "共享多维 stride 访问访存/偏移计算开销的同一根因"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_003.md",
+      "type": "related",
+      "reason": "focal 失效边界指向的连续化+一维遍历替代路径"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_006.md",
+      "type": "related",
+      "reason": "同一 stride 问题链：contiguous 拷贝替代 stride 访问"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_002.md",
+      "type": "related",
+      "reason": "focal 失效边界指向的 make_block_ptr 免手动 stride 路径"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_015.md",
+      "type": "related",
+      "reason": "同为 stride 布局感知：大 stride 转置加载的行优先+寄存器转置处理"
+     }
+    ]
+   },
+   {
+    "idx": 214,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_003.md",
+      "type": "same_topic",
+      "reason": "同为非连续张量 contiguous 连续化后一维遍历的同一技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/input-contiguous.md",
+      "type": "same_topic",
+      "reason": "共享 host 侧 contiguous 化保证连续访存的同一规则"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_007.md",
+      "type": "same_topic",
+      "reason": "共享 stride 访问累积开销根因，互为正反例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/normalize-dim-to-last.md",
+      "type": "related",
+      "reason": "permute->contiguous 预处理链与 contiguous 连续化修复链上下游"
+     }
+    ]
+   },
+   {
+    "idx": 215,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_tensor_create_001.md",
+      "type": "same_topic",
+      "reason": "同为输出张量创建优选 empty/empty_like 免初始化开销的同一技术"
+     }
+    ]
+   },
+   {
+    "idx": 216,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_006.md",
+      "type": "related",
+      "reason": "免 reshape 以连续化+一维访问为前提，同一修复链上下游"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_003.md",
+      "type": "related",
+      "reason": "共享连续化+一维遍历替代形状重排的技术前提"
+     }
+    ]
+   },
+   {
+    "idx": 217,
+    "kept": [
+     {
+      "target_id": "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+      "type": "same_topic",
+      "reason": "共享 block_ptr boundary_check 逐元素标量降级根因与手动指针+向量化 mask 修法"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_kda_bwd_intra_scalar_opt_001.md",
+      "type": "exemplifies",
+      "reason": "ssm 算子中同一定向消除 boundary_check 标量判断的实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_002.md",
+      "type": "related",
+      "reason": "与 make_block_ptr 方案互补：大 tile 保留 block_ptr、小 tile 手动化"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/int-compare-cast-float32.md",
+      "type": "related",
+      "reason": "共享整数比较标量降级根因，mask 比较可转 fp32 走向量单元"
+     }
+    ]
+   },
+   {
+    "idx": 218,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_007.md",
+      "type": "related",
+      "reason": "共享 stride 非连续访存根因，本卡给出寄存器转置的另一修复路径"
+     }
+    ]
+   },
+   {
+    "idx": 219,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_bwd_hstu_001.md",
+      "type": "exemplifies",
+      "reason": "attention 场景 kv tile 跨阶段寄存器复用消除重复 load 的算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 220,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_fwd_001.md",
+      "type": "same_topic",
+      "reason": "persistent kernel 与 grid-stride 同为固定 program 数映射多行的核间调度技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "同为归一化 kernel 按 n_cols 调整映射的核间负载均衡调度"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride 调度及其在 n_rows 小于核数时退化的同一失效边界"
+     }
+    ]
+   },
+   {
+    "idx": 221,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "same_topic",
+      "reason": "共享寄存器复用中间结果避免重复 GM 读的同一技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md",
+      "type": "related",
+      "reason": "共享中间量 S 写回 GM 再读的同一约束与修复链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_001.md",
+      "type": "related",
+      "reason": "同一融合 Add+归一化 kernel 族的整行片上驻留方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_notiling_001.md",
+      "type": "related",
+      "reason": "整行驻留寄存器/UB 消除中间量落 GM 的同一思路"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_spec_dec_reject_001.md",
+      "type": "related",
+      "reason": "中间数据片上驻留避免重复 GM 读写的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "related",
+      "reason": "寄存器驻留复用窗口元素消除重复 HBM 读的同族技巧"
+     },
+     {
+      "target_id": "runbooks/memory-sram/register-shift-sliding-window.md",
+      "type": "related",
+      "reason": "寄存器移位复用替代重复 load 的同一寄存器复用技术"
+     }
+    ]
+   },
+   {
+    "idx": 222,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "same_topic",
+      "reason": "同一 RMSNorm 反向无冲突 dW 累加的列分块姊妹方案，失效边界互指"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "same_topic",
+      "reason": "共享反向寄存器累加 dW 及整行驻留预算的同一约束链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "同一归一化反向大列场景下 pid 分区 buffer 与 atomic 的同一修复链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dw_001.md",
+      "type": "related",
+      "reason": "共享 dW 部分和 buffer 二次归约的同一机制"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "反向 dW/dB 累加冲突与原子加争用的同一问题"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "related",
+      "reason": "共享寄存器复用中间结果降 GM 带宽的同一技术"
+     }
+    ]
+   },
+   {
+    "idx": 223,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一 RMSNorm 反向无冲突 dW 累加的非 tiling 姊妹方案，失效边界互指"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_tiled_001.md",
+      "type": "related",
+      "reason": "宽行场景列 tiling 防 UB 溢出的同一技术，前向对应版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md",
+      "type": "related",
+      "reason": "列分块做 UB 容量管理的同一技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dw_001.md",
+      "type": "related",
+      "reason": "共享 GM 侧 (num_programs, n_cols) 部分和 buffer 的同一 dW 归约机制"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "同一归一化反向 dW 累加在寄存器驻留与 pid 分区 buffer 间的修复链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "同为大 n_cols 归一化反向受 UB 预算约束的姊妹方案"
+     }
+    ]
+   },
+   {
+    "idx": 224,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_fused_001.md",
+      "type": "same_topic",
+      "reason": "共享 BLOCK_SIZE_M=ceil_div(4096,n_cols) 恒定 tile 面积的同一动态分块启发式"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "related",
+      "reason": "同一归一化反向 dW 累加家族的列分块姊妹方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "related",
+      "reason": "同一归一化反向寄存器累加 dW 的非 tiling 姊妹方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "共享归一化与残差 add 融合省一遍 GM 读写的同一融合思路"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "同一归一化反向在寄存器驻留与分区 buffer 间的修复链上下游"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/atomic-add-cross-tile-reduction.md",
+      "type": "related",
+      "reason": "反向多 tile dW 跨 tile 累加的同一问题，atomic_add 是其替代原语"
+     }
+    ]
+   },
+   {
+    "idx": 225,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "same_topic",
+      "reason": "同一 RMSNorm 反向两遍归约（先统计后应用）技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "same_topic",
+      "reason": "归一化反向 tiled 两遍归约的同一技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_infer_001.md",
+      "type": "same_topic",
+      "reason": "归一化场景两遍归约与 grid-stride 组合的同一技术族"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "本条是两阶段 reduce-then-apply 规则在大列反向场景的算子实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_001.md",
+      "type": "related",
+      "reason": "softmax 反向两遍归约策略与 focal 同一 reduce-then-apply 模式"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_non_inner_001.md",
+      "type": "related",
+      "reason": "同为两遍归约换寄存器/片上容量的同一权衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "CE loss 反向两遍算法与 focal 共享重读换片上容量的同一权衡"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "related",
+      "reason": "同为大 n_cols 归一化反向 UB 预算约束下的列分块姊妹方案"
+     }
+    ]
+   },
+   {
+    "idx": 226,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_notiling_001.md",
+      "type": "same_topic",
+      "reason": "同为 n_cols<2048 整行驻留 UB 免 tiling 的归一化前向方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_tiled_001.md",
+      "type": "same_topic",
+      "reason": "n_cols>=2048 时的列 tiling 互补方案，共享同一 UB 容量边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md",
+      "type": "same_topic",
+      "reason": "同一融合加+归一化场景的列分块 UB 管理互补方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "same_topic",
+      "reason": "同一 Add+归一化融合 kernel 的寄存器/UB 驻留复用技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为 n_cols<2048 整行向量化加载驻留 UB 的反向版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "同一残差加+RMSNorm 融合算子链，技术点不同但场景与边界互通"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md",
+      "type": "related",
+      "reason": "同为 Add+RMSNorm 融合前向，共享融合省 GM 访存思路"
+     }
+    ]
+   },
+   {
+    "idx": 227,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "same_topic",
+      "reason": "同为 Add+RMSNorm 多算子单 kernel 融合省 GM 访存"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md",
+      "type": "same_topic",
+      "reason": "共享 Add+RMSNorm 融合与权重驻留（weight caching/hoisting）技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_split_qk_norm_001.md",
+      "type": "related",
+      "reason": "同为归一化多算子融合单遍加载降低 GM 流量"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "反向版 Add+归一化融合，共享融合消中间写回思路"
+     },
+     {
+      "target_id": "ops/mla-preprocess.md",
+      "type": "exemplifies",
+      "reason": "MLA 前处理中的 RmsNormQuant 是 norm+quant 融合的算子实例"
+     },
+     {
+      "target_id": "ops/mla-prolog.md",
+      "type": "exemplifies",
+      "reason": "MLA Prolog 的 RmsNorm+量化路径是 norm/quant 融合算子实例"
+     },
+     {
+      "target_id": "runbooks/meta-skills/quant-fusion-int8-precision-diagnosis.md",
+      "type": "related",
+      "reason": "同一量化融合 int8 输出链路的精度诊断下游"
+     }
+    ]
+   },
+   {
+    "idx": 228,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "same_topic",
+      "reason": "共享 dW 按 pid 分区部分和+二次归约的无冲突累加技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "same_topic",
+      "reason": "同为归一化反向 dW 部分和无冲突累加的分块方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md",
+      "type": "related",
+      "reason": "同一 dW 寄存器/pid 分区 buffer 累加技术族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "大列反向两遍归约中的 dW 部分和处理与本卡同源"
+     },
+     {
+      "target_id": "op-class-reduction.md",
+      "type": "related",
+      "reason": "归约算子优化的上位指南，本卡为其部分和归约实例"
+     }
+    ]
+   },
+   {
+    "idx": 229,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为归一化反向单遍/两遍带宽与 UB 驻留权衡"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_infer_001.md",
+      "type": "same_topic",
+      "reason": "同一两遍换寄存器压力、整行驻留则单遍更优的权衡链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_notiling_001.md",
+      "type": "same_topic",
+      "reason": "同为整行驻留 UB 避免重读的免 tiling 归一化方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "大列反向两遍方案，与本卡单遍 UB 驻留互为边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_001.md",
+      "type": "related",
+      "reason": "同族归一化反向 tiling，共享两遍重载与单 tile 驻留权衡"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "归一化 reduce-then-apply 原理，解释本卡单遍融合的算法依据"
+     }
+    ]
+   },
+   {
+    "idx": 230,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为归一化 tiling 两遍归约降寄存器压力技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dx_001.md",
+      "type": "same_topic",
+      "reason": "单遍 UB 驻留方案与本卡两遍法互为同一权衡链两端"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "same_topic",
+      "reason": "同为大列归一化两遍归约降片上压力"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "same_topic",
+      "reason": "共享归一化先归约再应用的两阶段算法原理"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "同一 RMSNorm 反向两遍算法的计算维度版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_001.md",
+      "type": "related",
+      "reason": "同为两遍解耦统计量与应用的归约结构（softmax 场景）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_bwd_001.md",
+      "type": "related",
+      "reason": "同族归一化两遍列循环 tiling 方案"
+     }
+    ]
+   },
+   {
+    "idx": 231,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_tiled_001.md",
+      "type": "same_topic",
+      "reason": "n_cols>=2048 列 tiling 互补方案，共享同一 UB 容量失效边界"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_001.md",
+      "type": "same_topic",
+      "reason": "同为 n_cols<2048 整行 2D 向量加载驻留 UB 的免 tiling 技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md",
+      "type": "same_topic",
+      "reason": "融合加+归一化的列分块方案，与本卡互为列宽边界两端"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dx_001.md",
+      "type": "related",
+      "reason": "同为整行/分块驻留 UB 的单遍归一化梯度方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "same_topic",
+      "reason": "反向版 n_cols<2048 免 tiling 整行驻留技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "related",
+      "reason": "反向列 tiling 互补方案，失效边界互为参照"
+     }
+    ]
+   },
+   {
+    "idx": 232,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "same_topic",
+      "reason": "同为归一化列方向 tiling 防 UB 溢出，仅前反向之差"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_tiled_001.md",
+      "type": "same_topic",
+      "reason": "共享宽行按列切块管理 UB 容量的同一技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_notiling_001.md",
+      "type": "related",
+      "reason": "同一 n_cols 阈值决策链的互补整行方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_001.md",
+      "type": "related",
+      "reason": "同融合加+归一化场景，失效边界互指列 tiling 方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "related",
+      "reason": "反向小列宽整行方案，失效边界指向列分块版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "同为大列宽超 UB 预算时的分块/两遍应对家族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "related",
+      "reason": "同融合 Add+归一化，中间和 S 驻留策略互为上下游"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_wb_backward_001.md",
+      "type": "related",
+      "reason": "共享子块切分缓解片上缓冲容量压力的同一思路"
+     }
+    ]
+   },
+   {
+    "idx": 233,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md",
+      "type": "same_topic",
+      "reason": "同为归一化宽行列分块管理 UB 容量"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "same_topic",
+      "reason": "同一列 tiling 技术的反向版本"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_notiling_001.md",
+      "type": "related",
+      "reason": "同一 n_cols<2048 阈值的互补非 tiling 方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_001.md",
+      "type": "related",
+      "reason": "小列宽融合前向，失效边界指向本列 tiling 方案"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "related",
+      "reason": "反向整行方案，失效边界互指列分块"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "同为大 n_cols 超 UB 时的分块降寄存器压力策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "单行超 UB 时同样需沿 N 切 tile 的容量约束"
+     }
+    ]
+   },
+   {
+    "idx": 234,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/constexpr-branch-elimination.md",
+      "type": "related",
+      "reason": "共享 ALIGNED 对齐开关的编译期分支消除技术点"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_expand_serial_001.md",
+      "type": "related",
+      "reason": "同用 do_not_specialize 控制编译特化的约束"
+     },
+     {
+      "target_id": "runbooks/portability/constexpr-launch-specialization.md",
+      "type": "related",
+      "reason": "同一启动级特化机制的互补面（静态化与防特化）"
+     }
+    ]
+   },
+   {
+    "idx": 235,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_001.md",
+      "type": "same_topic",
+      "reason": "同为 RoPE cos/sin 每行载一次跨头复用"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_triton_001.md",
+      "type": "related",
+      "reason": "共享各头共用同一 cos/sin 编码表的复用前提"
+     }
+    ]
+   },
+   {
+    "idx": 236,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gather_001.md",
+      "type": "same_topic",
+      "reason": "同一索引访存向量化技术在 gather 对偶算子上的应用"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gather_flat_001.md",
+      "type": "related",
+      "reason": "同为索引类算子的大块向量化访存"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_npu_001.md",
+      "type": "related",
+      "reason": "分桶连续化是 scatter 向量化访存的前置环节"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "本卡是 gather/scatter 算子类的 scatter 向量化实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/parallel-axis-align.md",
+      "type": "related",
+      "reason": "共享索引算子内层沿连续维向量访问的对齐原则"
+     }
+    ]
+   },
+   {
+    "idx": 237,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md",
+      "type": "same_topic",
+      "reason": "同为排序 bin 分组加 padded 对齐的分组 scatter 技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_npu_001.md",
+      "type": "same_topic",
+      "reason": "共享预排序 bin_ids 形成连续段的分桶策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_binned_scatter_001.md",
+      "type": "related",
+      "reason": "同 MoE 分桶 scatter 链路的寄存器缓冲批量写"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_padded_gather_001.md",
+      "type": "related",
+      "reason": "共享按 expert ID 排序保证批量写连续的前提"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_001.md",
+      "type": "related",
+      "reason": "共享 scatter 的 BLOCK_X 列向量化访存基础"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "本卡是 gather/scatter 算子类的分组 scatter 实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/parallel-axis-align.md",
+      "type": "related",
+      "reason": "同为索引类算子连续访问对齐的通用原则"
+     }
+    ]
+   },
+   {
+    "idx": 238,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md",
+      "type": "same_topic",
+      "reason": "同为 bins/bin_ids 预排序分桶使 scatter 访存连续化的技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md",
+      "type": "same_topic",
+      "reason": "同为按分组键排序 bin 形成连续段的 scatter 访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_binned_scatter_001.md",
+      "type": "related",
+      "reason": "寄存器缓冲批量写建立在 binning 分桶连续性前提上，属同链下游"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_padded_gather_001.md",
+      "type": "related",
+      "reason": "缓冲写依赖输入按 expert ID 预排序，与 binning 预排序前提相同"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "gather/scatter 算子类导览，binning 是该类推荐访存策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/parallel-axis-align.md",
+      "type": "related",
+      "reason": "并行轴与连续访问对齐原则，binning 是实现连续访问的手段之一"
+     }
+    ]
+   },
+   {
+    "idx": 239,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md",
+      "type": "same_topic",
+      "reason": "同为排序 bin 分组加 padded 对齐的分组 scatter 访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_npu_001.md",
+      "type": "same_topic",
+      "reason": "共享 bins/bin_ids 分桶使 scatter 访存连续化的核心技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_binned_scatter_001.md",
+      "type": "related",
+      "reason": "寄存器缓冲批量写依赖分桶连续性，属同一 binned scatter 链"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_padded_gather_001.md",
+      "type": "related",
+      "reason": "同为 expert 排序分组下的批量缓冲写，前提与本卡一致"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_scatter_wgrad_001.md",
+      "type": "related",
+      "reason": "同一 scatter_wgrad kernel 的计算侧批量归约优化，与本卡访存侧互补"
+     },
+     {
+      "target_id": "op-class-gather_scatter.md",
+      "type": "related",
+      "reason": "gather/scatter 算子类导览，binning 分组是该类推荐策略"
+     },
+     {
+      "target_id": "ops/moe-token-unpermute-grad.md",
+      "type": "exemplifies",
+      "reason": "CANN MoE unpermute 反向是分组 scatter 加权归约的算子实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/parallel-axis-align.md",
+      "type": "related",
+      "reason": "scatter 连续访问对齐原则，分组 binning 是其实现路径"
+     }
+    ]
+   },
+   {
+    "idx": 240,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_tv_distance_001.md",
+      "type": "same_topic",
+      "reason": "同为访存密集型归约中用 num_stages 软件流水预取掩盖延迟"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_scatter_001.md",
+      "type": "same_topic",
+      "reason": "共享软件流水预取下一 tile 掩盖访存延迟的技术点"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_flat_001.md",
+      "type": "same_topic",
+      "reason": "同为 tl.range num_stages 软件流水掩盖 memory-bound 加载延迟"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/multibuffer-empirical.md",
+      "type": "same_topic",
+      "reason": "multibuffer 需实测验证的约束直接适用于本卡的 multibuffer=True 配置"
+     },
+     {
+      "target_id": "runbooks/portability/exp_attn_sda_001.md",
+      "type": "related",
+      "reason": "attention 场景同用 set_workspace_multibuffer 双缓冲预取"
+     }
+    ]
+   },
+   {
+    "idx": 241,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_bwd_hstu_001.md",
+      "type": "same_topic",
+      "reason": "同为 attention 中 KV/score tile 载片复用以降 HBM 访问"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同为 flash attention 块常驻片上加 online softmax 单遍结构"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_attention_002.md",
+      "type": "same_topic",
+      "reason": "同为长序列注意力分块加在线 softmax 将内存 O(S²) 降为 O(S)"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "online softmax/flash attention 单遍稳定计算的通用原则，本卡是其算子实践"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sinks_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 单遍归约技术，扩展 sink 分数场景"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "related",
+      "reason": "SDPA 推理中同一 online softmax 分块技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "related",
+      "reason": "split-KV 归并阶段的 online softmax rescale，与本卡算法同源"
+     },
+     {
+      "target_id": "ops/flash-attention-score.md",
+      "type": "exemplifies",
+      "reason": "CANN FlashAttentionScore 前向是分块 tile 复用加 online softmax 的算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 242,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_kkt_001.md",
+      "type": "same_topic",
+      "reason": "同为 tl.make_block_ptr 抽象块级搬运替代手工 stride 计算"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_ptr_setup_001.md",
+      "type": "same_topic",
+      "reason": "attention 场景同一 block pointer 抽象访存技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "attention 解码路径同用 block ptr 进行 2D 块加载"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_003.md",
+      "type": "same_topic",
+      "reason": "make_block_ptr 映射硬件块传输加速，与本卡机制相同"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 block ptr utilization 向量化访存技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "same_topic",
+      "reason": "chunked attention 同用 block ptr tiling 抽象"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "related",
+      "reason": "make_block_ptr 禁止退化标量 load 的通用规则，本卡是其应用"
+     }
+    ]
+   },
+   {
+    "idx": 243,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "same_topic",
+      "reason": "同为残差加归一化融合且用 fp32 累加保证数值稳定"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md",
+      "type": "same_topic",
+      "reason": "同为 fused add+归一化 kernel 与 fp32 精度控制"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+      "type": "same_topic",
+      "reason": "共享 fp32 高精度累加防溢出保数值稳定的技术点"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "related",
+      "reason": "融合 add+归一化中 fp32 中间量驻留寄存器的同类做法"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_bwd_q_001.md",
+      "type": "related",
+      "reason": "混合精度计算中 fp32 中间路径保精度的同类约束"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_flashattn_bwd_kv_001.md",
+      "type": "related",
+      "reason": "同为梯度计算用 fp32 中间累加控制精度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "fp32 中间计算作为精度前提的同类混合精度策略"
+     }
+    ]
+   },
+   {
+    "idx": 244,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_non_inner_001.md",
+      "type": "same_topic",
+      "reason": "同一 softmax 反向两遍归约技术的 non-inner 变体"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为 log_softmax 反向先归约 scale 再更新的两遍结构"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "same_topic",
+      "reason": "共享 softmax 两遍归约换寄存器压力的技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "same_topic",
+      "reason": "共享反向场景两遍归约解耦归约与逐元素计算的结构"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "same_topic",
+      "reason": "共享大列归一化反向两遍归约降寄存器压力技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_infer_001.md",
+      "type": "same_topic",
+      "reason": "共享两遍归约以翻倍 GM 读换低寄存器压力的权衡"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "focal 是该跨 tile 两阶段 reduce-then-apply 通用规则的实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "same_topic",
+      "reason": "共享反向 loss 中两遍归约重读输入换片上容量的技术"
+     }
+    ]
+   },
+   {
+    "idx": 245,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一 softmax 反向两遍归约技术的 inner 变体姊妹卡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为 log_softmax 反向 scale 归约+更新两遍结构"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "same_topic",
+      "reason": "共享 softmax 大 N 超 tile 时两遍归约兜底策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_backward_001.md",
+      "type": "same_topic",
+      "reason": "共享反向两遍归约解耦归约与逐元素计算的结构"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "same_topic",
+      "reason": "共享大归约维两遍读取换寄存器压力的技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_infer_001.md",
+      "type": "same_topic",
+      "reason": "共享两遍归约以翻倍 GM 带宽换低寄存器压力的权衡"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "focal 是该跨 tile 两阶段 reduce-then-apply 通用规则的实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "same_topic",
+      "reason": "共享归一化反向两遍计算与部分和二次归约结构"
+     }
+    ]
+   },
+   {
+    "idx": 246,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/preload-extract-slice-eliminate-reread.md",
+      "type": "same_topic",
+      "reason": "同一 preload+extract_slice 消除循环内 HBM 重读技术的通用规则卡"
+     },
+     {
+      "target_id": "runbooks/meta-skills/exp_solve_tril_006.md",
+      "type": "related",
+      "reason": "同算子优化链中 preload 按 grid 规模决策与 focal 失效边界互为上下游"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_003.md",
+      "type": "related",
+      "reason": "constexpr 双路径以 extract_slice 统一数据来源为前提，是 focal 技术的下游"
+     },
+     {
+      "target_id": "runbooks/memory-sram/register-shift-sliding-window.md",
+      "type": "related",
+      "reason": "共享寄存器驻留复用以消除重复 HBM 读的同一根因"
+     }
+    ]
+   },
+   {
+    "idx": 247,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_attn_topk_001.md",
+      "type": "same_topic",
+      "reason": "同一仅迭代 real_topk 索引跳过非必要块的稀疏迭代技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sparse_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同为预计算 topk 索引驱动的稀疏注意力反向 gather 跳过"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_flash_attn_decode_001.md",
+      "type": "related",
+      "reason": "共享 topk 稀疏窗口内 gather 数据访问的同一技术点"
+     },
+     {
+      "target_id": "ops/block-sparse-attention-grad.md",
+      "type": "related",
+      "reason": "块稀疏注意力反向算子同样跳过未选中块，与 focal 稀疏迭代同根因"
+     }
+    ]
+   },
+   {
+    "idx": 248,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_spec_dec_verify_001.md",
+      "type": "related",
+      "reason": "同一投机采样链路上将逐 token 标量循环向量化的姊妹 kernel"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reject_sampler_001.md",
+      "type": "same_topic",
+      "reason": "同为拒绝采样场景向量化加载比较替代标量循环"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rejection_sample_001.md",
+      "type": "same_topic",
+      "reason": "共享投机拒绝采样中向量化加载+mask 表达串行拒绝依赖的技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_add_001.md",
+      "type": "related",
+      "reason": "共享中间结果驻留寄存器/UB 避免落 GM 再读回的同一修复"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_masked_fill_001.md",
+      "type": "related",
+      "reason": "共享消除写出后立即读回的冗余 GM 往返的同一反模式"
+     }
+    ]
+   },
+   {
+    "idx": 249,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_spec_dec_reject_001.md",
+      "type": "related",
+      "reason": "同一投机采样链路上向量化接受/拒绝判定的姊妹 kernel"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reject_sampler_001.md",
+      "type": "same_topic",
+      "reason": "同为拒绝采样中向量化加载并行比较定位拒绝点"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rejection_sample_001.md",
+      "type": "same_topic",
+      "reason": "共享投机采样拒绝串行依赖用向量化 bitmask 并行表达的技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/int-compare-cast-float32.md",
+      "type": "related",
+      "reason": "共享 int64 整数比较在 Ascend Vector 标量降级需转 fp32 的同一约束"
+     }
+    ]
+   },
+   {
+    "idx": 250,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_gn_wb_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为 SUB_BLOCK 分块向量化加载以降寄存器压力、提升访存带宽"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_grpo_bwd_001.md",
+      "type": "related",
+      "reason": "同属大归约维访存瓶颈的分块并行加载优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_spec_dec_reject_001.md",
+      "type": "related",
+      "reason": "同属投机采样链上大 vocab 维的向量化/片上驻留优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_spec_dec_verify_001.md",
+      "type": "related",
+      "reason": "同属投机采样场景标量循环改向量化处理的修复链"
+     }
+    ]
+   },
+   {
+    "idx": 251,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_groupnorm_001.md",
+      "type": "same_topic",
+      "reason": "同为按硬件访存粒度与 UB 容量调优块大小以减访存事务"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_bwd_q_001.md",
+      "type": "related",
+      "reason": "同为 block size autotune 对齐硬件的调优策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_backward_sum_001.md",
+      "type": "related",
+      "reason": "同为归约场景块大小对齐向量宽度的合并访存优化"
+     }
+    ]
+   },
+   {
+    "idx": 252,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_geglu_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同为逐元素激活 kernel 的 grid-stride 循环复用核实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_geglu_flat_001.md",
+      "type": "same_topic",
+      "reason": "同为 flat 1D 化后 grid-stride + num_stages 流水的同一技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同为元素级算子 grid-stride 循环摊薄 launch 开销"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sigmoid_grid_stride_001.md",
+      "type": "same_topic",
+      "reason": "同为 grid-stride 跨步调度，核数与发射数对齐约束一致"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同为行维 grid-stride 循环的元素级激活调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_flat_001.md",
+      "type": "same_topic",
+      "reason": "同为 flat 1D 连续布局下 tl.range num_stages 软件流水"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_backward_001.md",
+      "type": "same_topic",
+      "reason": "同为 grid-stride 循环解耦数据量与 grid 大小"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_ascend_large_shape_block_001.md",
+      "type": "related",
+      "reason": "同为大张量缩小 grid、单核遍历连续段以解耦数据量的思路"
+     }
+    ]
+   },
+   {
+    "idx": 253,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_008.md",
+      "type": "same_topic",
+      "reason": "近重复：同为输出张量创建优选 empty/empty_like 避免初始化开销"
+     }
+    ]
+   },
+   {
+    "idx": 254,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同为 tl.make_block_ptr 2D 块指针向量化加载"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_paged_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同为块指针+变长序列边界处理的访存模式"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_idx_copy_001.md",
+      "type": "same_topic",
+      "reason": "同为 make_block_ptr 处理 ragged 索引搬运与早退逻辑"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "same_topic",
+      "reason": "同为 make_block_ptr 2D 块加载技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "same_topic",
+      "reason": "同为 make_block_ptr 子块 tiling 访存优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_003.md",
+      "type": "same_topic",
+      "reason": "同为利用 make_block_ptr 硬件加速 tile 加载"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_infer_001.md",
+      "type": "same_topic",
+      "reason": "同为块指针抽象替代手动指针的 2D 块访存"
+     }
+    ]
+   },
+   {
+    "idx": 255,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_bwd_reduce_001.md",
+      "type": "same_topic",
+      "reason": "同为 multibuffer 软件流水预取掩盖访存延迟"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_scatter_001.md",
+      "type": "same_topic",
+      "reason": "同为 tl.range num_stages 软件流水技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_flat_001.md",
+      "type": "same_topic",
+      "reason": "同为 num_stages 软件流水、UB 预算约束流水深度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_ascend_dual_pipeline_001.md",
+      "type": "related",
+      "reason": "同属流水化掩盖访存延迟的双任务流水变体"
+     }
+    ]
+   }
+  ]
+ }
+}

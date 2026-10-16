@@ -1,0 +1,994 @@
+{
+ "256": [
+  [
+   "runbooks/portability/exp_api_002.md",
+   "same_topic",
+   "同属 Ascend 语法约束：tl.where 复杂条件改 if-else 的替代写法家族"
+  ],
+  [
+   "runbooks/portability/exp_api_003.md",
+   "related",
+   "同属禁用语法→替代写法修复链（while→for range）"
+  ],
+  [
+   "runbooks/portability/exp_api_004.md",
+   "related",
+   "同属禁用语法→替代写法修复链（动态上限 MAX_ITERS）"
+  ],
+  [
+   "runbooks/portability/exp_ascend_where_001.md",
+   "related",
+   "共享 tl.where 在 Ascend 受限、改静态分支/mask 的技术点"
+  ],
+  [
+   "runbooks/portability/exp_slice_001.md",
+   "related",
+   "共享禁止张量直接索引/Python 式访问、必须走专用 API 的约束"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_triton_branch_type_mismatch_001.md",
+   "related",
+   "共享用 masked load/mask 替代分支控制流的修复路径"
+  ]
+ ],
+ "257": [
+  [
+   "runbooks/portability/exp_ascend_where_001.md",
+   "same_topic",
+   "同一技术点：tl.where 在复杂/偏移场景改 if-else 静态分支"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "同属 Ascend 语法避坑与替代写法修复链"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_triton_branch_type_mismatch_001.md",
+   "related",
+   "分支类问题的关联修复链：masked load 替代 if/else"
+  ],
+  [
+   "runbooks/compute-pipeline/no-continue-break.md",
+   "related",
+   "控制流与 tl.where 互换约束的一体两面（禁 continue/break 用 where 分段）"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_perf_013.md",
+   "related",
+   "分支与 tl.where 互换家族：min() 运行时分支改 tl.where"
+  ]
+ ],
+ "258": [
+  [
+   "runbooks/portability/exp_api_004.md",
+   "same_topic",
+   "同一问题（Ascend 不支持 while）的静/动态上限互补方案"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "同属禁用语法→替代写法修复链"
+  ],
+  [
+   "runbooks/portability/exp_constexpr_001.md",
+   "related",
+   "for range 上限须声明 tl.constexpr 的配套约束"
+  ],
+  [
+   "runbooks/compute-pipeline/constexpr-branch-elimination.md",
+   "related",
+   "同属编译期常量驱动的控制流优化家族"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_perf_014.md",
+   "related",
+   "共享循环边界编译期确定化以消除标量开销的技术点"
+  ],
+  [
+   "ascend-patterns.md",
+   "related",
+   "Ascend 特有语法模式目录，涵盖此类语法适配规则"
+  ]
+ ],
+ "259": [
+  [
+   "runbooks/portability/exp_api_003.md",
+   "same_topic",
+   "同一问题（Ascend 不支持 while）的静/动态上限互补方案"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "同属禁用语法→替代写法修复链"
+  ],
+  [
+   "runbooks/portability/exp_constexpr_001.md",
+   "related",
+   "MAX_ITERS 须声明 tl.constexpr 的配套约束"
+  ]
+ ],
+ "260": [
+  [
+   "runbooks/memory-sram/exp_perf_011.md",
+   "same_topic",
+   "同一技术点：手动指针+向量化 mask 替代 block_ptr boundary_check"
+  ],
+  [
+   "runbooks/portability/exp_ascend_int_compare_scalar_001.md",
+   "related",
+   "共享根因：boundary_check 的 i32 比较标量降级"
+  ],
+  [
+   "runbooks/portability/exp_ascend_int64_address_001.md",
+   "related",
+   "同属标量降级家族（int64 地址计算）"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_kda_bwd_intra_scalar_opt_001.md",
+   "same_topic",
+   "同一根因的定向消除：block_ptr boundary_check + i32 比较"
+  ],
+  [
+   "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+   "related",
+   "互补视角：何时应保留 block_ptr（硬件预取）"
+  ],
+  [
+   "runbooks/compute-pipeline/int-compare-cast-float32.md",
+   "related",
+   "共享根因 runbook：整数比较转 fp32 消除标量降级"
+  ]
+ ],
+ "261": [
+  [
+   "runbooks/portability/exp_solve_tril_005.md",
+   "related",
+   "同属编译器参数/flag 审计与移除家族（launch 参数按 CANN 版本审计）"
+  ]
+ ],
+ "262": [
+  [
+   "runbooks/portability/exp_ascend_parallel_pattern_001.md",
+   "related",
+   "交错并行模式以核心数为基础参数"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_large_shape_001.md",
+   "related",
+   "grid 固定为核心数的方案依赖核心数获取"
+  ],
+  [
+   "runbooks/portability/exp_matmul_ascend_001.md",
+   "related",
+   "核心数驱动的静态调度应用（range(pid, NUM_BLOCKS, NUM_CORES)）"
+  ]
+ ],
+ "263": [
+  [
+   "runbooks/meta-skills/exp_debug_003.md",
+   "same_topic",
+   "同一约束的诊断入口：grid 乘积 ≤65535、≤3 维 tuple"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_large_shape_001.md",
+   "related",
+   "grid 超限的解决方案：交错循环固定核心数"
+  ],
+  [
+   "runbooks/portability/exp_ascend_parallel_pattern_001.md",
+   "related",
+   "交错分配规避 grid 超限"
+  ],
+  [
+   "runbooks/portability/exp_ascend_split_001.md",
+   "related",
+   "同属硬件硬性限制家族（BLOCK_SIZE <65536）"
+  ],
+  [
+   "runbooks/portability/exp_ascend_core_num_001.md",
+   "related",
+   "推荐 1 维 grid=(core_num,) 的配套核心数获取"
+  ]
+ ],
+ "264": [
+  [
+   "runbooks/portability/exp_ascend_parallel_pattern_001.md",
+   "same_topic",
+   "同一交错分配模式：通用模式 vs 大 shape 特化"
+  ],
+  [
+   "runbooks/portability/exp_ascend_core_num_001.md",
+   "related",
+   "grid 固定核心数依赖核心数获取"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_001.md",
+   "related",
+   "交错循环规避的正是 grid 乘积 ≤65535 约束"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_003.md",
+   "related",
+   "诊断入口卡：grid 校验含交错循环方案"
+  ],
+  [
+   "runbooks/memory-sram/exp_ascend_large_shape_block_001.md",
+   "related",
+   "大 shape 的替代策略对比：连续分块 vs 交错循环"
+  ],
+  [
+   "runbooks/portability/exp_matmul_ascend_001.md",
+   "related",
+   "同一 range(pid, N, CORES) 模式在 matmul 调度的应用"
+  ]
+ ],
+ "265": [
+  [
+   "runbooks/compute-pipeline/int32-index-cast.md",
+   "same_topic",
+   "同一技术点：索引/地址 int32 化避免 int64 降级"
+  ],
+  [
+   "runbooks/portability/exp_ascend_int_compare_scalar_001.md",
+   "related",
+   "同属整数运算标量降级家族（地址算术 vs 比较）"
+  ],
+  [
+   "runbooks/compute-pipeline/int-compare-cast-float32.md",
+   "related",
+   "共享根因 runbook：整数运算转 fp32 消除标量降级"
+  ],
+  [
+   "runbooks/portability/exp_entropy_backward_npu_001.md",
+   "related",
+   "int32 化避免 int64 降级的应用实例（标签索引比较）"
+  ],
+  [
+   "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+   "related",
+   "同属标量降级根因家族"
+  ]
+ ],
+ "266": [
+  [
+   "runbooks/portability/exp_ascend_int64_address_001.md",
+   "related",
+   "同属整数运算标量降级家族（比较 vs 地址算术）"
+  ],
+  [
+   "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+   "related",
+   "boundary_check 的 i32 比较是同一根因的典型触发点"
+  ],
+  [
+   "runbooks/portability/exp_entropy_backward_npu_001.md",
+   "related",
+   "整数比较转 int32/fp32 的应用实例"
+  ]
+ ],
+ "267": [
+  [
+   "runbooks/portability/exp_ascend_grid_large_shape_001.md",
+   "same_topic",
+   "同一交错分配模式：通用模式 vs 大 shape 特化"
+  ],
+  [
+   "runbooks/portability/exp_ascend_core_num_001.md",
+   "related",
+   "交错模式以核心数为基础参数"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_001.md",
+   "related",
+   "交错分配规避 grid 乘积 ≤65535 约束"
+  ],
+  [
+   "runbooks/portability/exp_matmul_ascend_001.md",
+   "related",
+   "同一 range(pid, N, CORES) 模式在 matmul 调度的应用"
+  ],
+  [
+   "runbooks/memory-sram/exp_ascend_large_shape_block_001.md",
+   "related",
+   "任务分配替代策略对比：连续分块 vs 交错"
+  ]
+ ],
+ "268": [
+  [
+   "runbooks/memory-sram/tiling-budget-and-layout-driven-selection.md",
+   "related",
+   "同属块大小预算约束：UB/缓存容量决定切分上界"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_001.md",
+   "related",
+   "同属硬件硬性限制家族（grid 65535 与 BLOCK 65536）"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_large_shape_001.md",
+   "related",
+   "大 shape 的替代处理方案：交错循环 vs 嵌套切分"
+  ]
+ ],
+ "269": [
+  [
+   "runbooks/portability/exp_api_002.md",
+   "same_topic",
+   "同一技术点：tl.where 复杂/偏移场景改 if-else 静态分支"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "同属 Ascend 语法避坑与替代写法修复链"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_triton_branch_type_mismatch_001.md",
+   "related",
+   "分支类问题的关联修复链：masked load 替代 if/else"
+  ],
+  [
+   "runbooks/compute-pipeline/no-continue-break.md",
+   "related",
+   "控制流与 tl.where 互换约束的一体两面"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_perf_013.md",
+   "related",
+   "分支与 tl.where 互换家族：min() 运行时分支改 tl.where"
+  ]
+ ],
+ "270": [
+  [
+   "runbooks/portability/exp_attn_sda_001.md",
+   "same_topic",
+   "同一 CANN tiling 配置组合：tile_mix cube/vector loop + multibuffer + HIVM CV 均衡"
+  ],
+  [
+   "runbooks/portability/exp_flashattn_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 flag 组合 + 序列分半的反向家族"
+  ],
+  [
+   "runbooks/portability/exp_sda_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 CV 均衡 + 双缓冲 + tile_mix 配置家族"
+  ],
+  [
+   "runbooks/portability/exp_sda_bwd_q_001.md",
+   "same_topic",
+   "序列分半的 up/down 配对 kernel"
+  ],
+  [
+   "runbooks/portability/exp_sda_fwd_ascend_001.md",
+   "related",
+   "同一 HiVM flag 家族的前向版本"
+  ]
+ ],
+ "271": [
+  [
+   "runbooks/portability/exp_sda_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 CV 均衡 + 双缓冲 + tile_mix 配置家族"
+  ],
+  [
+   "runbooks/portability/exp_flashattn_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 flag 组合的反向 KV 应用"
+  ],
+  [
+   "runbooks/portability/exp_attn_bwd_q_down_001.md",
+   "same_topic",
+   "同一 tiling 配置组合 + 序列分半"
+  ],
+  [
+   "runbooks/portability/exp_sda_bwd_q_001.md",
+   "same_topic",
+   "同一 flag 家族的反向 Q kernel"
+  ],
+  [
+   "runbooks/portability/exp_sda_fwd_ascend_001.md",
+   "same_topic",
+   "同一 flag 家族的前向 kernel"
+  ],
+  [
+   "runbooks/compute-pipeline/multibuffer-empirical.md",
+   "related",
+   "multibuffer 的使用约束：须实测验证禁止默认开启"
+  ],
+  [
+   "runbooks/memory-sram/exp_sdpa_bwd_reduce_001.md",
+   "related",
+   "multibuffer 软件流水线的同类应用"
+  ]
+ ],
+ "272": [
+  [
+   "runbooks/portability/exp_api_003.md",
+   "related",
+   "constexpr 参数声明的典型应用（for range 上限）"
+  ],
+  [
+   "runbooks/portability/exp_api_004.md",
+   "related",
+   "constexpr 参数声明的典型应用（MAX_ITERS）"
+  ],
+  [
+   "runbooks/portability/cdiv-kernel-vs-host.md",
+   "related",
+   "同属 kernel/host 语法边界家族（cdiv 混用约束）"
+  ],
+  [
+   "runbooks/compute-pipeline/constexpr-branch-elimination.md",
+   "related",
+   "constexpr 的核心用途：编译期消除分支"
+  ],
+  [
+   "runbooks/memory-sram/pow2-block-constexpr.md",
+   "related",
+   "BLOCK 取 2 幂并声明 constexpr 的配套用法"
+  ],
+  [
+   "runbooks/portability/constexpr-launch-specialization.md",
+   "related",
+   "长度参数 constexpr 化触发启动级特化"
+  ],
+  [
+   "ascend-patterns.md",
+   "related",
+   "Ascend 特有语法模式目录，涵盖 constexpr 用法"
+  ]
+ ],
+ "273": [
+  [
+   "runbooks/portability/exp_ascend_int64_address_001.md",
+   "related",
+   "共享根因：int64 逻辑运算标量降级"
+  ],
+  [
+   "runbooks/compute-pipeline/int-compare-cast-float32.md",
+   "related",
+   "共享根因 runbook：整数比较/加法标量降级"
+  ],
+  [
+   "runbooks/compute-pipeline/int32-index-cast.md",
+   "related",
+   "同属索引 int32 化避免 int64 降级家族"
+  ],
+  [
+   "runbooks/portability/exp_matmul_ascend_wavefront_001.md",
+   "related",
+   "GROUP_SIZE_M 分组与对角遍历同属按块序优化 L2 局部性"
+  ]
+ ],
+ "274": [
+  [
+   "runbooks/portability/exp_sda_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同为反向 KV 梯度 + 同一 flag 组合"
+  ],
+  [
+   "runbooks/portability/exp_attn_sda_001.md",
+   "same_topic",
+   "同一 CV 均衡 + 双缓冲 + tile_mix 配置家族"
+  ],
+  [
+   "runbooks/portability/exp_attn_bwd_q_down_001.md",
+   "same_topic",
+   "同一 flag 组合 + 序列分半的反向家族"
+  ],
+  [
+   "runbooks/portability/exp_sda_bwd_q_001.md",
+   "same_topic",
+   "同一 flag 家族的反向 Q kernel"
+  ],
+  [
+   "runbooks/portability/exp_sda_fwd_ascend_001.md",
+   "related",
+   "同一 HiVM flag 家族的前向版本"
+  ]
+ ],
+ "275": [
+  [
+   "runbooks/compute-pipeline/async-task-cube-vector.md",
+   "same_topic",
+   "同一技术点：dl.async_task 实现 Cube/Vector 异构并行"
+  ],
+  [
+   "runbooks/compute-pipeline/operator-fusion-patterns.md",
+   "related",
+   "融合决策约束：UB 容量/grid 结构/多消费者"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md",
+   "related",
+   "同族融合：matmul + 归一化"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_fused_matmul_rmsnorm_001.md",
+   "related",
+   "同族融合：matmul + rmsnorm"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_fused_matmul_rope_001.md",
+   "related",
+   "同族融合：matmul + rope"
+  ]
+ ],
+ "276": [
+  [
+   "runbooks/memory-sram/exp_paged_gqa_001.md",
+   "same_topic",
+   "同一技术组合：GQA head tiling + 分页 KV cache"
+  ],
+  [
+   "runbooks/memory-sram/exp_mla_paged_attn_001.md",
+   "related",
+   "同属分页 KV cache 遍历优化"
+  ],
+  [
+   "runbooks/memory-sram/exp_flashattn_gqa_001.md",
+   "related",
+   "同一问题（GQA KV 带宽）的另一技术路径：simd index select"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_flashattn_splitk_gqa_001.md",
+   "related",
+   "GQA 场景的并行策略（split-K）"
+  ],
+  [
+   "runbooks/memory-sram/exp_attn_bwd_hstu_001.md",
+   "related",
+   "同属 KV 复用降带宽原则（反向 kv tile reuse）"
+  ]
+ ],
+ "277": [
+  [
+   "runbooks/portability/exp_matmul_ascend_wavefront_001.md",
+   "same_topic",
+   "同一技术组合：对角遍历 + dot_pad_only_k"
+  ],
+  [
+   "runbooks/portability/exp_rope_matmul_001.md",
+   "same_topic",
+   "同一技术组合：dot_pad_only_k + 对角 block 调度"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+   "related",
+   "同属对角划分调度提升 L2 局部性"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md",
+   "related",
+   "同属对角 tiling 调度"
+  ],
+  [
+   "runbooks/portability/exp_entropy_backward_npu_001.md",
+   "related",
+   "GROUP_SIZE_M 分组与对角遍历同属按块序优化 L2 局部性"
+  ]
+ ],
+ "278": [
+  [
+   "runbooks/portability/exp_matmul_ascend_001.md",
+   "same_topic",
+   "同一技术组合：对角遍历 + dot_pad_only_k"
+  ],
+  [
+   "runbooks/portability/exp_rope_matmul_001.md",
+   "same_topic",
+   "同一技术组合：dot_pad_only_k + 对角 block 调度"
+  ],
+  [
+   "runbooks/autotuning/exp_perf_017.md",
+   "related",
+   "autotune 配置空间设计（本卡的 tile 长宽比扫描所属家族）"
+  ],
+  [
+   "runbooks/autotuning/autotune-num-warps-stages.md",
+   "related",
+   "autotune 维度探索的配套 runbook"
+  ],
+  [
+   "runbooks/meta-skills/quant-matmul-autotune-strategy.md",
+   "related",
+   "autotune 按 shape 范围特化的策略互补"
+  ]
+ ],
+ "279": [
+  [
+   "runbooks/portability/exp_fused_matmul_rms_rope_001.md",
+   "related",
+   "RoPE 在 Ascend 上的另一条优化路径（Vector 侧异构融合）"
+  ]
+ ],
+ "280": [
+  [
+   "runbooks/portability/exp_matmul_ascend_001.md",
+   "same_topic",
+   "同一技术组合：对角遍历 + dot_pad_only_k"
+  ],
+  [
+   "runbooks/portability/exp_matmul_ascend_wavefront_001.md",
+   "same_topic",
+   "同一技术组合：对角遍历 + dot_pad_only_k + autotune"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+   "related",
+   "同属对角划分调度提升 L2 局部性"
+  ],
+  [
+   "runbooks/portability/exp_fused_matmul_rms_rope_001.md",
+   "related",
+   "rope+matmul 家族的异构融合路径"
+  ],
+  [
+   "runbooks/portability/exp_rope_llama4_npu_001.md",
+   "related",
+   "RoPE 类 kernel 的 UB tiling/fma 优化"
+  ]
+ ],
+ "281": [
+  [
+   "runbooks/portability/exp_constexpr_001.md",
+   "related",
+   "constexpr 常量转换须先赋临时变量再 .to()，直接配套"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "同属 Ascend 语法避坑与替代写法修复链"
+  ],
+  [
+   "runbooks/portability/exp_ascend_int_compare_scalar_001.md",
+   "related",
+   "比较操作数转 fp32 同样依赖 .to() 转换规则"
+  ]
+ ],
+ "282": [
+  [
+   "runbooks/portability/exp_attn_sda_001.md",
+   "same_topic",
+   "同一 CV 均衡 + 双缓冲 + tile_mix 配置家族"
+  ],
+  [
+   "runbooks/portability/exp_flashattn_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同为反向 KV + 同一 flag 组合"
+  ],
+  [
+   "runbooks/portability/exp_sda_bwd_q_001.md",
+   "same_topic",
+   "同一 flag 家族的反向 Q kernel"
+  ],
+  [
+   "runbooks/portability/exp_sda_fwd_ascend_001.md",
+   "same_topic",
+   "同一 flag + bf16 存储 fp32 累加的前向版本"
+  ],
+  [
+   "runbooks/portability/exp_attn_bwd_q_down_001.md",
+   "same_topic",
+   "同一 tiling 配置组合 + 序列分半"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+   "related",
+   "同属 bf16 存储 + fp32 高精度累加原则"
+  ]
+ ],
+ "283": [
+  [
+   "runbooks/portability/exp_sda_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 flag 家族的反向 KV kernel"
+  ],
+  [
+   "runbooks/portability/exp_attn_bwd_q_down_001.md",
+   "same_topic",
+   "序列分半的 up/down 配对 kernel"
+  ],
+  [
+   "runbooks/portability/exp_attn_sda_001.md",
+   "same_topic",
+   "同一 CV 均衡 + 双缓冲 + tile_mix 配置家族"
+  ],
+  [
+   "runbooks/portability/exp_flashattn_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 flag 组合的反向家族"
+  ],
+  [
+   "runbooks/portability/exp_sda_fwd_ascend_001.md",
+   "related",
+   "同一 HiVM flag 家族的前向版本"
+  ],
+  [
+   "runbooks/compute-pipeline/int-compare-cast-float32.md",
+   "related",
+   "代数掩码 (mask.to(fp32)-1)*1e6 依赖 fp32 转换保持向量化"
+  ]
+ ],
+ "284": [
+  [
+   "runbooks/portability/exp_sda_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 flag + bf16 存储 fp32 累加的反向版本"
+  ],
+  [
+   "runbooks/portability/exp_attn_sda_001.md",
+   "same_topic",
+   "同一 CV 均衡 + 双缓冲 + tile_mix 配置家族"
+  ],
+  [
+   "runbooks/portability/exp_sda_bwd_q_001.md",
+   "same_topic",
+   "同一 flag 家族的反向 Q kernel"
+  ],
+  [
+   "runbooks/portability/exp_flashattn_bwd_kv_ascend_001.md",
+   "same_topic",
+   "同一 flag 组合的反向家族"
+  ],
+  [
+   "runbooks/portability/exp_attn_bwd_q_down_001.md",
+   "same_topic",
+   "同一 tiling 配置组合 + 序列分半"
+  ],
+  [
+   "runbooks/memory-sram/exp_sdpa_flash_001.md",
+   "related",
+   "同属在线 softmax + score tile 复用技术"
+  ]
+ ],
+ "285": [
+  [
+   "runbooks/portability/exp_slice_002.md",
+   "same_topic",
+   "同属专用切片 API 家族（get_element 的边界互补）"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_005.md",
+   "same_topic",
+   "同一语法约束的诊断入口"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "禁止张量直接索引同源约束"
+  ],
+  [
+   "runbooks/memory-sram/preload-extract-slice-eliminate-reread.md",
+   "related",
+   "extract_slice 的性能优化用途（消除重复 HBM 读）"
+  ]
+ ],
+ "286": [
+  [
+   "runbooks/portability/exp_slice_001.md",
+   "same_topic",
+   "同属专用切片 API 家族（get_element 适用边界）"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_005.md",
+   "same_topic",
+   "同一语法约束的诊断入口"
+  ],
+  [
+   "runbooks/portability/exp_api_001.md",
+   "related",
+   "同属 Ascend 语法避坑与替代写法修复链"
+  ]
+ ],
+ "287": [
+  [
+   "runbooks/portability/exp_ascend_compile_hint_001.md",
+   "related",
+   "同属编译器参数/flag 审计与移除家族"
+  ],
+  [
+   "runbooks/autotuning/autotune-num-warps-stages.md",
+   "related",
+   "num_stages 收益依赖 TMA 可用性，与本卡 USE_TMA=False 判据直接关联"
+  ],
+  [
+   "runbooks/autotuning/exp_perf_017.md",
+   "related",
+   "num_stages 配置空间剪枝依赖本卡的 TMA 不可用判据"
+  ]
+ ],
+ "288": [
+  [
+   "runbooks/memory-sram/exp_sdpa_flash_001.md",
+   "related",
+   "同属在线 softmax LSE 分块更新 + tile 复用技术"
+  ],
+  [
+   "runbooks/memory-sram/ub-aware-block-adaptive.md",
+   "related",
+   "workspace/CACHE_BLOCK tile 同样由 UB 占用决定"
+  ]
+ ],
+ "289": [
+  [
+   "runbooks/compute-pipeline/exp_expand_serial_001.md",
+   "same_topic",
+   "同一技术点：编译特化控制（防止按动态参数生成多份二进制）"
+  ]
+ ],
+ "290": [
+  [
+   "runbooks/meta-skills/debugging-checklist.md",
+   "same_topic",
+   "本卡是 DG-10 清单内存访问三项检查的展开"
+  ],
+  [
+   "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+   "related",
+   "boundary_check 的性能侧：同一 API 的标量开销"
+  ]
+ ],
+ "291": [
+  [
+   "runbooks/meta-skills/debugging-checklist.md",
+   "same_topic",
+   "本卡是 DG-10 清单控制流检查的展开"
+  ],
+  [
+   "runbooks/compute-pipeline/no-continue-break.md",
+   "same_topic",
+   "同一约束：禁 break/continue 用 tl.where/mask 分段"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_triton_branch_type_mismatch_001.md",
+   "related",
+   "分支类问题的关联修复链"
+  ]
+ ],
+ "292": [
+  [
+   "runbooks/portability/exp_ascend_grid_001.md",
+   "same_topic",
+   "同一约束的规则卡：grid ≤3 维 tuple、乘积 ≤65535"
+  ],
+  [
+   "runbooks/portability/exp_ascend_grid_large_shape_001.md",
+   "related",
+   "大 shape 交错循环是 grid 超限的解决方案"
+  ],
+  [
+   "runbooks/portability/exp_ascend_parallel_pattern_001.md",
+   "related",
+   "交错分配模式同样规避 grid 超限"
+  ],
+  [
+   "runbooks/portability/exp_ascend_split_001.md",
+   "related",
+   "同属 grid/block 硬件限制家族（BLOCK_SIZE <65536）"
+  ]
+ ],
+ "293": [],
+ "294": [
+  [
+   "runbooks/portability/exp_slice_001.md",
+   "same_topic",
+   "同一语法约束的规则卡（禁 Python 切片）"
+  ],
+  [
+   "runbooks/portability/exp_slice_002.md",
+   "same_topic",
+   "同一语法约束的规则卡（arange 禁 get_element）"
+  ]
+ ],
+ "295": [
+  [
+   "runbooks/portability/exp_api_002.md",
+   "related",
+   "分支替代修复链：tl.where 复杂条件改 if-else"
+  ],
+  [
+   "runbooks/portability/exp_ascend_where_001.md",
+   "related",
+   "分支替代修复链：tl.where 偏移改静态分支"
+  ],
+  [
+   "runbooks/meta-skills/exp_debug_002.md",
+   "related",
+   "同属控制流避坑诊断家族"
+  ],
+  [
+   "runbooks/compute-pipeline/int32-index-cast.md",
+   "related",
+   "bool 张量 host 侧转 int32 同属索引/条件 int32 化家族"
+  ]
+ ],
+ "296": [
+  [
+   "runbooks/compute-pipeline/exp_kda_bwd_scalar_loop_to_dot_001.md",
+   "related",
+   "同一决策问题的两面：何时该用 tl.dot（本卡给出禁用的尺寸边界）"
+  ],
+  [
+   "runbooks/compute-pipeline/scalar-loop-to-dot.md",
+   "related",
+   "同一决策问题的两面：标量循环改 tl.dot 的适用条件"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_solve_tril_003.md",
+   "related",
+   "constexpr 展开优先的同类决策（full vs boundary 双路径）"
+  ],
+  [
+   "runbooks/memory-sram/exp_solve_tril_002.md",
+   "related",
+   "preload 决策的同类经验（V4 优化的核心）"
+  ],
+  [
+   "runbooks/memory-sram/preload-extract-slice-eliminate-reread.md",
+   "related",
+   "preload + extract_slice 技术本体"
+  ],
+  [
+   "runbooks/portability/exp_solve_tril_005.md",
+   "related",
+   "排除项 TMA 不可用的出处：CANN 8.5.0 参数审计"
+  ]
+ ],
+ "297": [
+  [
+   "runbooks/algorithm-numerics/exp-stable-softmax-rmsnorm.md",
+   "same_topic",
+   "同一技术点的宿主规则卡：exp 前减最大值"
+  ],
+  [
+   "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+   "related",
+   "在线 softmax 的 running max 维护同源"
+  ],
+  [
+   "runbooks/algorithm-numerics/exp_stability_003.md",
+   "related",
+   "同属数值稳定家族（fp32 中间计算）"
+  ],
+  [
+   "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+   "related",
+   "在线 softmax 算法的同类应用"
+  ]
+ ],
+ "298": [
+  [
+   "runbooks/algorithm-numerics/exp-stable-softmax-rmsnorm.md",
+   "same_topic",
+   "rmsnorm 的 sqrt 数值稳定同属宿主卡范围"
+  ],
+  [
+   "runbooks/algorithm-numerics/exp_stability_001.md",
+   "related",
+   "同属数值防护家族（max 钳位防溢出/防 NaN）"
+  ]
+ ],
+ "299": [
+  [
+   "runbooks/algorithm-numerics/exp-stable-softmax-rmsnorm.md",
+   "same_topic",
+   "同一技术点的宿主规则卡：fp32 中间计算/累加"
+  ],
+  [
+   "runbooks/algorithm-numerics/fp32-reduction-accumulator.md",
+   "same_topic",
+   "同一原则：统计归约必须 fp32 累加器"
+  ],
+  [
+   "runbooks/algorithm-numerics/gemm-low-dtype-fp32-accum.md",
+   "related",
+   "同属 low dtype 计算 + fp32 累加的混合精度家族"
+  ],
+  [
+   "runbooks/algorithm-numerics/exp_stability_004.md",
+   "same_topic",
+   "同一原则的具体化：fp32 累加器初始化"
+  ]
+ ]
+}

@@ -1,0 +1,3232 @@
+{
+ "result": {
+  "results": [
+   {
+    "idx": 0,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_bmm_grouped_001.md",
+      "type": "related",
+      "reason": "共享按运行时 shape 动态选择 tile 配置的 autotune 机制"
+     }
+    ]
+   },
+   {
+    "idx": 1,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/async-task-cube-vector.md",
+      "type": "same_topic",
+      "reason": "同一 dl.async_task Cube/Vector 异构并行机制"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_norm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享 cube/vector async_task 分工与流水重叠"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md",
+      "type": "related",
+      "reason": "共享 cube/vector async_task 分工与流水重叠"
+     }
+    ]
+   },
+   {
+    "idx": 2,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_flashattn_bwd_kv_001.md",
+      "type": "same_topic",
+      "reason": "同一反向梯度混合精度模式（fp32 中间 + 低精度矩阵乘）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_bwd_q_001.md",
+      "type": "related",
+      "reason": "同为 attention 类反向梯度 kernel 的混合精度与分块策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+      "type": "related",
+      "reason": "共享 fp32 高精度累加保数值稳定的策略"
+     }
+    ]
+   },
+   {
+    "idx": 3,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_cube1_qk_gemm_001.md",
+      "type": "same_topic",
+      "reason": "同一 score 矩阵乘的归约维分块 + Cube 加速技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_bwd_q_001.md",
+      "type": "related",
+      "reason": "共享 fp32 累加与序列分块策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "related",
+      "reason": "共享 16x16 子块对齐 Cube 粒度的 tiling 思路"
+     }
+    ]
+   },
+   {
+    "idx": 4,
+    "kept": [
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "同一 online softmax 单遍稳定算法"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax 迭代 max/sum 更新"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reduce_split_001.md",
+      "type": "same_topic",
+      "reason": "同一 split-K 两阶段归约链的第二阶段"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 避免物化 score 矩阵"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享 online softmax/LSE 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md",
+      "type": "related",
+      "reason": "共享跨 split 数值稳定归并（max 跟踪 + rescale）"
+     }
+    ]
+   },
+   {
+    "idx": 5,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 主循环结构"
+     }
+    ]
+   },
+   {
+    "idx": 6,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/row-width-512b-align.md",
+      "type": "same_topic",
+      "reason": "同一向量宽度/行宽对齐约束"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_moe_wgrad_npu_001.md",
+      "type": "related",
+      "reason": "共享 tl.multiple_of 对齐与向量宽度匹配"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_layernorm_npu_simd_001.md",
+      "type": "related",
+      "reason": "共享 NPU SIMD 向量化块宽配置"
+     }
+    ]
+   },
+   {
+    "idx": 7,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "same_topic",
+      "reason": "同一块矩阵求逆的 16x16 block ptr tiling"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "related",
+      "reason": "本卡是 make_block_ptr 规则的算子实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 2D 块加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_tril_solve_001.md",
+      "type": "related",
+      "reason": "共享 16x16 原子块粒度匹配矩阵单元"
+     }
+    ]
+   },
+   {
+    "idx": 8,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "same_topic",
+      "reason": "同一块矩阵求逆的 16x16 block ptr tiling"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "related",
+      "reason": "本卡是 make_block_ptr 规则的算子实例"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 2D 块加载"
+     }
+    ]
+   },
+   {
+    "idx": 9,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_mm_grouped_reorder_001.md",
+      "type": "same_topic",
+      "reason": "同一 GROUP_M 分组重排提升 L2 局部性"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md",
+      "type": "related",
+      "reason": "同为提升 L2 局部性的块调度（对角线）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+      "type": "related",
+      "reason": "同为提升 L2 局部性的对角遍历调度"
+     },
+     {
+      "target_id": "runbooks/portability/exp_matmul_ascend_001.md",
+      "type": "related",
+      "reason": "共享对角遍历 grouped_launch 调度"
+     }
+    ]
+   },
+   {
+    "idx": 10,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_007.md",
+      "type": "related",
+      "reason": "同一 conv1d 架构决策对（长序列 BTD+2D 与短序列 BDT+T-tiling 互补）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md",
+      "type": "related",
+      "reason": "同一 conv1d 双 kernel 的跨 kernel 迁移讨论"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md",
+      "type": "related",
+      "reason": "同一 prefill kernel 的滑动窗口寄存器复用设计"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_001.md",
+      "type": "related",
+      "reason": "同一算子的 grid 调度设计"
+     }
+    ]
+   },
+   {
+    "idx": 11,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md",
+      "type": "related",
+      "reason": "指针基址预计算的跨 kernel 迁移讨论"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_ptr_setup_001.md",
+      "type": "related",
+      "reason": "共享基址指针预计算/块指针抽象"
+     },
+     {
+      "target_id": "ops/rope-pointer-addressing.md",
+      "type": "related",
+      "reason": "共享指针寻址开销优化主题"
+     }
+    ]
+   },
+   {
+    "idx": 12,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/pad-slot-early-exit.md",
+      "type": "same_topic",
+      "reason": "同一 pad slot 单次检查提前退出机制"
+     }
+    ]
+   },
+   {
+    "idx": 13,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md",
+      "type": "related",
+      "reason": "bias 融合的跨 kernel 迁移来源"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_fused_quant_001.md",
+      "type": "related",
+      "reason": "同为多操作融合消除中间 HBM 往返"
+     }
+    ]
+   },
+   {
+    "idx": 14,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_005.md",
+      "type": "same_topic",
+      "reason": "同一 DIM_IS_MULTIPLE constexpr 消除 mask 技术（prefill/update 两版）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_001.md",
+      "type": "related",
+      "reason": "同为消除冗余 mask/where 指令"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_011.md",
+      "type": "related",
+      "reason": "同为消除边界检查的标量开销"
+     },
+     {
+      "target_id": "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+      "type": "related",
+      "reason": "共享 boundary_check 标量降级根因"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/int-compare-cast-float32.md",
+      "type": "related",
+      "reason": "同属标量指令削减族"
+     }
+    ]
+   },
+   {
+    "idx": 15,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md",
+      "type": "related",
+      "reason": "同一 W=4 循环展开决策的跨 kernel 讨论"
+     }
+    ]
+   },
+   {
+    "idx": 16,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_007.md",
+      "type": "same_topic",
+      "reason": "同一 DIM_IS_MULTIPLE constexpr 消除 mask 技术（prefill/update 两版）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_001.md",
+      "type": "related",
+      "reason": "同为消除冗余 mask/where 指令"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/constexpr-branch-elimination.md",
+      "type": "related",
+      "reason": "共享 constexpr 编译期消除分支机制"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_011.md",
+      "type": "related",
+      "reason": "同为消除边界检查的标量开销"
+     },
+     {
+      "target_id": "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+      "type": "related",
+      "reason": "共享 boundary_check 标量降级根因"
+     }
+    ]
+   },
+   {
+    "idx": 17,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_003.md",
+      "type": "related",
+      "reason": "迁移讨论中明确不可迁的 2D Grid 方案来源"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_007.md",
+      "type": "related",
+      "reason": "迁移目标的 update kernel 架构决策"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_004.md",
+      "type": "related",
+      "reason": "被迁移的指针预计算技术来源"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_006.md",
+      "type": "related",
+      "reason": "被迁移的 bias 融合技术来源"
+     },
+     {
+      "target_id": "runbooks/meta-skills/shape-driven-operator-decision-tree.md",
+      "type": "related",
+      "reason": "共享按 shape 选择架构的决策思路"
+     }
+    ]
+   },
+   {
+    "idx": 18,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/tiling-budget-and-layout-driven-selection.md",
+      "type": "same_topic",
+      "reason": "同一布局驱动 tile 大小选择原则"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_003.md",
+      "type": "related",
+      "reason": "互补的 prefill BTD+2D grid 架构决策"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md",
+      "type": "related",
+      "reason": "同一双 kernel 架构的跨 kernel 迁移讨论"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_update_004.md",
+      "type": "related",
+      "reason": "同一 update kernel 的 T-tiling 重叠加载设计"
+     }
+    ]
+   },
+   {
+    "idx": 19,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_001.md",
+      "type": "same_topic",
+      "reason": "同一 online LogSumExp 数值稳定技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grpo_loss_001.md",
+      "type": "same_topic",
+      "reason": "同一迭代式 LSE 防溢出技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "同一 loss 的反向两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md",
+      "type": "related",
+      "reason": "共享 LSE 变体数值稳定归并"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "related",
+      "reason": "共享 max-trick + 两遍归约"
+     }
+    ]
+   },
+   {
+    "idx": 20,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 loss 反向两遍归约 + LSE 稳定"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_001.md",
+      "type": "related",
+      "reason": "同一 loss 前向的两遍 LSE"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "共享两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "共享两阶段 reduce-then-apply 规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "共享大列数两遍归约"
+     }
+    ]
+   },
+   {
+    "idx": 21,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_001.md",
+      "type": "same_topic",
+      "reason": "同一 online LogSumExp 数值稳定技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 smoothing loss 的反向两遍实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grpo_loss_001.md",
+      "type": "same_topic",
+      "reason": "同一迭代式 LSE 防溢出技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "同一 loss 家族的反向两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md",
+      "type": "related",
+      "reason": "共享 LSE 变体数值稳定归并"
+     }
+    ]
+   },
+   {
+    "idx": 22,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一 loss 反向两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_backward_001.md",
+      "type": "related",
+      "reason": "共享反向两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "共享两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "共享两阶段 reduce-then-apply 规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "共享大列数两遍归约"
+     }
+    ]
+   },
+   {
+    "idx": 23,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_chunk_gated_delta_001.md",
+      "type": "related",
+      "reason": "同为分块拆解长串行依赖链的递推策略"
+     }
+    ]
+   },
+   {
+    "idx": 24,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_kkt_001.md",
+      "type": "related",
+      "reason": "同一 chunked 前向家族的块指针 + 融合门控"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 2D 块加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 2D 块加载"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "related",
+      "reason": "本卡是 make_block_ptr 规则的算子实例"
+     }
+    ]
+   },
+   {
+    "idx": 25,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "同一 chunked 前向家族的块指针 + 融合门控"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 2D 块加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "related",
+      "reason": "共享 tl.make_block_ptr 2D 块加载"
+     },
+     {
+      "target_id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md",
+      "type": "related",
+      "reason": "本卡是 make_block_ptr 规则的算子实例"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_infer_001.md",
+      "type": "related",
+      "reason": "共享 block ptr 抽象访存"
+     }
+    ]
+   },
+   {
+    "idx": 26,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 迭代更新"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 避免物化 score 矩阵"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_non_inner_001.md",
+      "type": "related",
+      "reason": "共享 online softmax + 单/双遍 dispatch"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "同一 online softmax 单遍稳定算法"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_001.md",
+      "type": "related",
+      "reason": "同一 loss 家族的 online LSE"
+     }
+    ]
+   },
+   {
+    "idx": 27,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "同一算子的前向 online softmax 版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "共享 loss 反向两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md",
+      "type": "related",
+      "reason": "共享 loss 反向两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sda_bwd_reduce_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride 归约循环"
+     }
+    ]
+   },
+   {
+    "idx": 28,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_bias_fused_001.md",
+      "type": "related",
+      "reason": "共享 matmul 二维分块 + fp32 累加"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_001.md",
+      "type": "related",
+      "reason": "共享 matmul 分块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "related",
+      "reason": "共享 16x16 子块对齐 Cube 粒度"
+     }
+    ]
+   },
+   {
+    "idx": 29,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_hist_count_001.md",
+      "type": "related",
+      "reason": "同为直方图计数优化（GEMM 化与寄存器累加两条路线）"
+     }
+    ]
+   },
+   {
+    "idx": 30,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_linear_persistent_001.md",
+      "type": "same_topic",
+      "reason": "同一 persistent grid-stride 摊薄启动开销"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_flash_attn_gridstride_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride 循环"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_outer_product_001.md",
+      "type": "related",
+      "reason": "共享循环不变量外提（标量提升同族）"
+     }
+    ]
+   },
+   {
+    "idx": 31,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_embedding_001.md",
+      "type": "related",
+      "reason": "同一 embedding 算子的 2D tiling"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_scatter_wgrad_001.md",
+      "type": "related",
+      "reason": "同为稀疏梯度写回的批量化/原子策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md",
+      "type": "related",
+      "reason": "共享 scatter 梯度归约的分桶策略"
+     }
+    ]
+   },
+   {
+    "idx": 32,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_fused_001.md",
+      "type": "same_topic",
+      "reason": "同一 entropy 反向融合 kernel 家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_d_weight_001.md",
+      "type": "same_topic",
+      "reason": "同一 entropy 反向 kernel 家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_entropy_001.md",
+      "type": "related",
+      "reason": "同一算子的前向融合版"
+     },
+     {
+      "target_id": "runbooks/portability/exp_entropy_backward_npu_001.md",
+      "type": "related",
+      "reason": "同一 entropy 反向的 NPU 移植版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_hstu_attn_bwd_001.md",
+      "type": "related",
+      "reason": "共享重算换带宽（反向中 tl.dot 重算）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_001.md",
+      "type": "related",
+      "reason": "共享激活重算策略"
+     }
+    ]
+   },
+   {
+    "idx": 33,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/persistent-kernel-pattern.md",
+      "type": "same_topic",
+      "reason": "同一 persistent kernel grid-stride 模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_linear_persistent_001.md",
+      "type": "same_topic",
+      "reason": "同一 persistent grid-stride 模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一 entropy 反向 kernel 家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_fused_001.md",
+      "type": "same_topic",
+      "reason": "同一 entropy 反向 kernel 家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "related",
+      "reason": "共享 persistent 动态取块调度"
+     }
+    ]
+   },
+   {
+    "idx": 34,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一 entropy 反向 kernel 家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_d_weight_001.md",
+      "type": "same_topic",
+      "reason": "同一 entropy 反向 kernel 家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_entropy_001.md",
+      "type": "related",
+      "reason": "同一算子的前向融合版"
+     },
+     {
+      "target_id": "runbooks/portability/exp_entropy_backward_npu_001.md",
+      "type": "related",
+      "reason": "同一 entropy 反向的 NPU 移植版"
+     }
+    ]
+   },
+   {
+    "idx": 35,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "related",
+      "reason": "共享跨 split 数值稳定归并"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reduce_split_001.md",
+      "type": "related",
+      "reason": "共享 split-K 部分结果归并"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_001.md",
+      "type": "related",
+      "reason": "共享 LSE 数值稳定归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grpo_loss_001.md",
+      "type": "related",
+      "reason": "共享 LSE 数值稳定归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_001.md",
+      "type": "related",
+      "reason": "共享 LSE 数值稳定归约"
+     }
+    ]
+   },
+   {
+    "idx": 36,
+    "kept": [
+     {
+      "target_id": "runbooks/meta-skills/exp_bonus_renew_001.md",
+      "type": "same_topic",
+      "reason": "同一 do_not_specialize 防多版本编译技术"
+     },
+     {
+      "target_id": "runbooks/portability/constexpr-launch-specialization.md",
+      "type": "related",
+      "reason": "共享编译期特化控制"
+     }
+    ]
+   },
+   {
+    "idx": 37,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_linear_persistent_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride persistent 循环"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_element_mul_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride 循环调度"
+     }
+    ]
+   },
+   {
+    "idx": 38,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_bwd_q_001.md",
+      "type": "same_topic",
+      "reason": "同一反向梯度混合精度模式（fp32 中间 + 低精度矩阵乘）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_bwd_q_001.md",
+      "type": "related",
+      "reason": "同为 attention 类反向梯度 kernel 的混合精度与分块策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+      "type": "related",
+      "reason": "共享 fp32 高精度累加保数值稳定"
+     }
+    ]
+   },
+   {
+    "idx": 39,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "same_topic",
+      "reason": "同一 split-K 两阶段实现的第二阶段归并（修复链上下游）"
+     },
+     {
+      "target_id": "runbooks/portability/exp_gqa_paged_npu_001.md",
+      "type": "related",
+      "reason": "共享 GQA 头共载 + 分页缓存访问"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_flash_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 分块归约"
+     }
+    ]
+   },
+   {
+    "idx": 40,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_attention_002.md",
+      "type": "related",
+      "reason": "本卡三步基准流程的分块+在线化演进"
+     },
+     {
+      "target_id": "ops/flash-attention-score.md",
+      "type": "related",
+      "reason": "同一 score-归一化-加权流程的算子卡"
+     }
+    ]
+   },
+   {
+    "idx": 41,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_ascend_dual_pipeline_001.md",
+      "type": "related",
+      "reason": "共享 dl.async_task cube/vector 分工"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_norm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rope_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     }
+    ]
+   },
+   {
+    "idx": 42,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_delta_rule_npu_001.md",
+      "type": "same_topic",
+      "reason": "同一 delta rule 递推更新的 NPU 版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_ssm_gated_delta_001.md",
+      "type": "same_topic",
+      "reason": "同一门控 delta 递推的融合实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+      "type": "related",
+      "reason": "同一 SSM 家族的状态重算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "同一 SSM chunked 前向家族"
+     }
+    ]
+   },
+   {
+    "idx": 43,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_delta_rule_001.md",
+      "type": "same_topic",
+      "reason": "同一 delta rule 递推更新"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_ssm_gated_delta_001.md",
+      "type": "same_topic",
+      "reason": "同一门控 delta 递推的融合实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_transformer_block_001.md",
+      "type": "related",
+      "reason": "共享多级深度融合 + cube/vector 隔离"
+     }
+    ]
+   },
+   {
+    "idx": 44,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_001.md",
+      "type": "related",
+      "reason": "同一算子的反向融合版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_fused_001.md",
+      "type": "related",
+      "reason": "同一算子的反向融合版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享大词表 online softmax"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md",
+      "type": "related",
+      "reason": "同一 entropy 家族的跨 split 归并"
+     }
+    ]
+   },
+   {
+    "idx": 45,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "共享门控融合 + fp32 非线性计算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_quant_001.md",
+      "type": "related",
+      "reason": "共享门控融合 + fp32 非线性计算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/operator-fusion-patterns.md",
+      "type": "related",
+      "reason": "本卡是算子融合模式规则的实例"
+     }
+    ]
+   },
+   {
+    "idx": 46,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_bias_fused_001.md",
+      "type": "same_topic",
+      "reason": "同一 GEMM+bias（+scale）融合进 accumulator 技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_mhc_fused_gemm_sqrsum_001.md",
+      "type": "related",
+      "reason": "共享 GEMM 与归约融合"
+     }
+    ]
+   },
+   {
+    "idx": 47,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_mhc_post_fusion_001.md",
+      "type": "related",
+      "reason": "共享矩阵乘+广播乘+加法融合与参数缓存"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_digit_hist_001.md",
+      "type": "related",
+      "reason": "共享 one-hot+GEMM 的映射思路"
+     }
+    ]
+   },
+   {
+    "idx": 48,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/async-task-cube-vector.md",
+      "type": "same_topic",
+      "reason": "同一 dl.async_task Cube/Vector 异构并行机制"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_lightning_attn_001.md",
+      "type": "related",
+      "reason": "共享异构异步调度 + cross_flag 同步"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/portability/exp_fused_matmul_rms_rope_001.md",
+      "type": "related",
+      "reason": "同一融合链的 portability 版"
+     }
+    ]
+   },
+   {
+    "idx": 49,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rmsnorm_001.md",
+      "type": "same_topic",
+      "reason": "同一 matmul+归一化融合 + 双 scope 异步"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_norm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/portability/exp_fused_matmul_rms_rope_001.md",
+      "type": "related",
+      "reason": "同一融合链的 portability 版"
+     }
+    ]
+   },
+   {
+    "idx": 50,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md",
+      "type": "same_topic",
+      "reason": "同一 matmul+归一化融合 + 双 scope 异步"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_norm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/portability/exp_fused_matmul_rms_rope_001.md",
+      "type": "related",
+      "reason": "同一融合链的 portability 版"
+     }
+    ]
+   },
+   {
+    "idx": 51,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同一 RoPE+MatMul 融合 + 单元分工"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_matmul_fused_001.md",
+      "type": "same_topic",
+      "reason": "同一 RoPE 融合进矩阵乘"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     }
+    ]
+   },
+   {
+    "idx": 52,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_transformer_block_001.md",
+      "type": "related",
+      "reason": "共享深度融合 + cube/vector 资源隔离"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rope_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rmsnorm_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     }
+    ]
+   },
+   {
+    "idx": 53,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_rope_001.md",
+      "type": "same_topic",
+      "reason": "同一归一化+位置编码融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_rmsnorm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + fp32 归约"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_split_qk_norm_001.md",
+      "type": "related",
+      "reason": "共享 split+归一化融合单 pass 加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_layernorm_npu_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + heuristics 编译期裁剪"
+     }
+    ]
+   },
+   {
+    "idx": 54,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_qkv_rmsnorm_rope_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + fp32 归约"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "共享归一化融合写回策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_layernorm_npu_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + heuristics 编译期裁剪"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_rope_001.md",
+      "type": "related",
+      "reason": "共享归一化+位置编码融合"
+     }
+    ]
+   },
+   {
+    "idx": 55,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md",
+      "type": "related",
+      "reason": "共享深度融合 + cube/vector 资源隔离"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_delta_rule_npu_001.md",
+      "type": "related",
+      "reason": "共享多级深度融合"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fuse_tlx_001.md",
+      "type": "related",
+      "reason": "共享多操作融合消除中间往返"
+     }
+    ]
+   },
+   {
+    "idx": 56,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md",
+      "type": "related",
+      "reason": "共享元素级 grid-stride + fp32 非线性"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "related",
+      "reason": "共享元素级 grid-stride + fp32 非线性"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "共享门控激活 + fp32 中间精度"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_geglu_bwd_001.md",
+      "type": "related",
+      "reason": "同一 GEGLU 家族的反向 grid-stride"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_swiglu_flat_001.md",
+      "type": "related",
+      "reason": "共享 flat 1D 化访存"
+     }
+    ]
+   },
+   {
+    "idx": 57,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级反向 autotune BLOCK_M(1-32) 策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md",
+      "type": "related",
+      "reason": "同一算子前向的同策略"
+     },
+     {
+      "target_id": "runbooks/autotuning/exp_perf_017.md",
+      "type": "related",
+      "reason": "共享 autotune 配置空间设计"
+     },
+     {
+      "target_id": "runbooks/autotuning/autotune-num-warps-stages.md",
+      "type": "related",
+      "reason": "共享 autotune 搜索维度约束"
+     }
+    ]
+   },
+   {
+    "idx": 58,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一算子反向的同策略（grid-stride+autotune+fp32）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级前向 grid-stride + fp32 模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sigmoid_grid_stride_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride + fp32 激活计算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "共享门控激活 + fp32 中间精度"
+     }
+    ]
+   },
+   {
+    "idx": 59,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/work-stealing-dynamic-load-balance.md",
+      "type": "same_topic",
+      "reason": "同一 work-stealing 动态负载均衡规则"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bnmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     }
+    ]
+   },
+   {
+    "idx": 60,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bnmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡（B 布局变体）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     }
+    ]
+   },
+   {
+    "idx": 61,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡（B 布局变体）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     }
+    ]
+   },
+   {
+    "idx": 62,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bnmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "related",
+      "reason": "共享 persistent 动态取块调度"
+     }
+    ]
+   },
+   {
+    "idx": 63,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bkmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_gemm_bnmajor_001.md",
+      "type": "same_topic",
+      "reason": "同一分组 GEMM 动态负载均衡"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_grouped_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同一分组矩阵乘动态负载均衡"
+     }
+    ]
+   },
+   {
+    "idx": 64,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_001.md",
+      "type": "same_topic",
+      "reason": "同一迭代式 LSE 防溢出技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_001.md",
+      "type": "same_topic",
+      "reason": "同一 online LogSumExp 数值稳定技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md",
+      "type": "related",
+      "reason": "共享 LSE 变体数值稳定归并"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_grpo_bwd_001.md",
+      "type": "related",
+      "reason": "同一 GRPO 家族的反向 LSE 归约"
+     }
+    ]
+   },
+   {
+    "idx": 65,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_digit_hist_001.md",
+      "type": "related",
+      "reason": "同为直方图计数优化（寄存器累加与 GEMM 化两条路线）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md",
+      "type": "related",
+      "reason": "共享免原子冲突的寄存器/分片累加思想"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md",
+      "type": "related",
+      "reason": "共享免原子冲突的分块累加思想"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_inner_002.md",
+      "type": "related",
+      "reason": "共享向量化累计替代循环内水平归约"
+     }
+    ]
+   },
+   {
+    "idx": 66,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一反向重算换带宽策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_001.md",
+      "type": "related",
+      "reason": "共享反向激活重算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_bwd_kv_001.md",
+      "type": "related",
+      "reason": "共享 attention 类反向分块与片上梯度累加"
+     }
+    ]
+   },
+   {
+    "idx": 67,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_hstu_attn_bwd_001.md",
+      "type": "related",
+      "reason": "同一族注意力机制的反向 kernel"
+     }
+    ]
+   },
+   {
+    "idx": 68,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_011.md",
+      "type": "same_topic",
+      "reason": "同一手动指针+向量化 mask 替代 boundary_check"
+     },
+     {
+      "target_id": "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md",
+      "type": "same_topic",
+      "reason": "同一 boundary_check 标量降级根因"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_kda_bwd_wy_scalar_opt_001.md",
+      "type": "same_topic",
+      "reason": "同一 KDA 反向家族的标量消除"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_012.md",
+      "type": "same_topic",
+      "reason": "同一 i32 比较转 fp32 消除标量降级"
+     }
+    ]
+   },
+   {
+    "idx": 69,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/scalar-loop-to-dot.md",
+      "type": "same_topic",
+      "reason": "同一标量循环改 tl.dot 规则"
+     },
+     {
+      "target_id": "runbooks/meta-skills/exp_solve_tril_006.md",
+      "type": "related",
+      "reason": "边界条件互补：微小矩阵禁 tl.dot 的负优化清单"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/gemm-low-dtype-fp32-accum.md",
+      "type": "related",
+      "reason": "共享 GEMM fp32 累加规则"
+     }
+    ]
+   },
+   {
+    "idx": 70,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_kda_bwd_intra_scalar_opt_001.md",
+      "type": "same_topic",
+      "reason": "同一 KDA 反向家族的标量消除"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_012.md",
+      "type": "same_topic",
+      "reason": "同一 i32 比较转 fp32 消除标量降级"
+     }
+    ]
+   },
+   {
+    "idx": 71,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_004.md",
+      "type": "related",
+      "reason": "共享循环不变量外提/基址预计算"
+     }
+    ]
+   },
+   {
+    "idx": 72,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+      "type": "same_topic",
+      "reason": "同一对角遍历消除 bank 冲突"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md",
+      "type": "same_topic",
+      "reason": "同一对角线分块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/diagonal-core-mapping-l2-bank-conflict.md",
+      "type": "same_topic",
+      "reason": "同一对角 core mapping 规则卡"
+     }
+    ]
+   },
+   {
+    "idx": 73,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_rmsnorm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + fp32 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_qkv_rmsnorm_rope_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + 编译期裁剪"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_fused_rms_norm_001.md",
+      "type": "related",
+      "reason": "共享归一化融合写回策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md",
+      "type": "related",
+      "reason": "共享融合归一化与权重提升"
+     }
+    ]
+   },
+   {
+    "idx": 74,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_backward_sum_001.md",
+      "type": "related",
+      "reason": "共享向量宽度对齐与向量化配置"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_groupnorm_001.md",
+      "type": "related",
+      "reason": "共享动态向量化调优"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_grad_dx_001.md",
+      "type": "related",
+      "reason": "共享归一化类单遍 tile 策略"
+     }
+    ]
+   },
+   {
+    "idx": 75,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/async-task-cube-vector.md",
+      "type": "same_topic",
+      "reason": "同一 dl.async_task Cube/Vector 异构并行机制"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_ascend_dual_pipeline_001.md",
+      "type": "related",
+      "reason": "共享 cross_flag 生产者-消费者同步与双任务流水"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_norm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享 async_task 异构分工融合"
+     }
+    ]
+   },
+   {
+    "idx": 76,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/persistent-kernel-pattern.md",
+      "type": "same_topic",
+      "reason": "同一 persistent kernel grid-stride 模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_d_weight_001.md",
+      "type": "same_topic",
+      "reason": "同一 persistent grid-stride 模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "related",
+      "reason": "共享 persistent 动态取块调度"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_layernorm_fwd_001.md",
+      "type": "related",
+      "reason": "共享 persistent kernel 策略"
+     }
+    ]
+   },
+   {
+    "idx": 77,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_backward_001.md",
+      "type": "same_topic",
+      "reason": "同一算子反向的两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "共享两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "共享两阶段 reduce-then-apply 规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_001.md",
+      "type": "related",
+      "reason": "共享两遍归约策略"
+     }
+    ]
+   },
+   {
+    "idx": 78,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "same_topic",
+      "reason": "同一算子前向的两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "共享两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "共享两阶段 reduce-then-apply 规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_softmax_backward_001.md",
+      "type": "related",
+      "reason": "共享两遍归约策略"
+     }
+    ]
+   },
+   {
+    "idx": 79,
+    "kept": []
+   },
+   {
+    "idx": 80,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md",
+      "type": "same_topic",
+      "reason": "同一对角线分块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_launch_diagonal_001.md",
+      "type": "same_topic",
+      "reason": "同一对角遍历消除 bank 冲突"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/diagonal-core-mapping-l2-bank-conflict.md",
+      "type": "same_topic",
+      "reason": "同一对角 core mapping 规则卡"
+     }
+    ]
+   },
+   {
+    "idx": 81,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_gemm_scale_001.md",
+      "type": "same_topic",
+      "reason": "同一 GEMM+bias（+scale）融合进 accumulator 技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_cube1_qk_gemm_001.md",
+      "type": "related",
+      "reason": "共享 matmul 分块 + fp32 累加"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_triton_base_001.md",
+      "type": "related",
+      "reason": "共享 matmul 基础分块结构"
+     }
+    ]
+   },
+   {
+    "idx": 82,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+      "type": "same_topic",
+      "reason": "同一对角线分块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_launch_diagonal_001.md",
+      "type": "same_topic",
+      "reason": "同一对角遍历消除 bank 冲突"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/diagonal-core-mapping-l2-bank-conflict.md",
+      "type": "same_topic",
+      "reason": "同一对角 core mapping 规则卡"
+     }
+    ]
+   },
+   {
+    "idx": 83,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_swizzle_hardware_hint_001.md",
+      "type": "same_topic",
+      "reason": "共享 dot_pad_only_k 硬件 hint + 块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+      "type": "related",
+      "reason": "共享对角块映射调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "related",
+      "reason": "共享 persistent 跨步 + 硬件 hint"
+     }
+    ]
+   },
+   {
+    "idx": 84,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_triton_base_001.md",
+      "type": "same_topic",
+      "reason": "同一小 tile 保守配置策略"
+     }
+    ]
+   },
+   {
+    "idx": 85,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_qn_001.md",
+      "type": "same_topic",
+      "reason": "共享 dot_pad_only_k 硬件 hint + 块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+      "type": "related",
+      "reason": "共享对角块映射调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md",
+      "type": "related",
+      "reason": "共享对角线分块调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "related",
+      "reason": "共享 persistent 跨步 + 硬件 hint"
+     }
+    ]
+   },
+   {
+    "idx": 86,
+    "kept": []
+   },
+   {
+    "idx": 87,
+    "kept": []
+   },
+   {
+    "idx": 88,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_gemm_scale_001.md",
+      "type": "related",
+      "reason": "共享 GEMM 与逐元素操作融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_bias_fused_001.md",
+      "type": "related",
+      "reason": "共享 GEMM 融合 accumulator"
+     }
+    ]
+   },
+   {
+    "idx": 89,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_index_001.md",
+      "type": "related",
+      "reason": "共享矩阵乘融合 + 参数循环外缓存"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_outer_product_001.md",
+      "type": "related",
+      "reason": "共享循环不变量外提"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_logits_penalty_fusion_001.md",
+      "type": "related",
+      "reason": "共享多操作融合消除中间往返"
+     }
+    ]
+   },
+   {
+    "idx": 90,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_bmm_grouped_001.md",
+      "type": "same_topic",
+      "reason": "同一 GROUP_M 分组重排提升 L2 局部性"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md",
+      "type": "related",
+      "reason": "同为提升 L2 局部性的块调度（对角线）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md",
+      "type": "related",
+      "reason": "同为提升 L2 局部性的对角遍历调度"
+     }
+    ]
+   },
+   {
+    "idx": 91,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_backward_sum_001.md",
+      "type": "same_topic",
+      "reason": "同一向量宽度对齐约束"
+     },
+     {
+      "target_id": "runbooks/memory-sram/row-width-512b-align.md",
+      "type": "same_topic",
+      "reason": "同一行宽 512B 对齐规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md",
+      "type": "related",
+      "reason": "共享对齐 + 分桶的 MoE 类写回"
+     }
+    ]
+   },
+   {
+    "idx": 92,
+    "kept": [
+     {
+      "target_id": "ops/moe-compute-expert-tokens.md",
+      "type": "related",
+      "reason": "共享二分查找的向量化实现场景"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_top_p_sampling_001.md",
+      "type": "related",
+      "reason": "共享采样类的全向量化无分支实现"
+     }
+    ]
+   },
+   {
+    "idx": 93,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md",
+      "type": "same_topic",
+      "reason": "同一偏检 matmul kernel 的调度变体"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_qn_001.md",
+      "type": "related",
+      "reason": "共享 dot_pad_only_k + persistent 调度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_swizzle_hardware_hint_001.md",
+      "type": "related",
+      "reason": "共享 dot_pad_only_k + 块重排"
+     }
+    ]
+   },
+   {
+    "idx": 94,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_matmul_001.md",
+      "type": "same_topic",
+      "reason": "同一偏检 matmul kernel 的调度变体"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/persistent-kernel-pattern.md",
+      "type": "related",
+      "reason": "共享 persistent kernel 模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_d_weight_001.md",
+      "type": "related",
+      "reason": "共享 persistent grid-stride"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_linear_persistent_001.md",
+      "type": "related",
+      "reason": "共享 persistent grid-stride"
+     }
+    ]
+   },
+   {
+    "idx": 95,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_triton_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_triton_rope_001.md",
+      "type": "related",
+      "reason": "共享分半偏移的向量化旋转加载"
+     }
+    ]
+   },
+   {
+    "idx": 96,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_003.md",
+      "type": "same_topic",
+      "reason": "同一非连续张量连续化 + 一维遍历"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_006.md",
+      "type": "same_topic",
+      "reason": "同一 contiguous() 替代 stride 访问"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_perf_004.md",
+      "type": "related",
+      "reason": "共享 stride 参数正确处理（传原生 stride）"
+     }
+    ]
+   },
+   {
+    "idx": 97,
+    "kept": []
+   },
+   {
+    "idx": 98,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_kda_bwd_intra_scalar_opt_001.md",
+      "type": "same_topic",
+      "reason": "同一 i32 比较标量降级根因"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_kda_bwd_wy_scalar_opt_001.md",
+      "type": "same_topic",
+      "reason": "同一 i32/i64 标量降级根因"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_013.md",
+      "type": "related",
+      "reason": "同属标量消除族（min→tl.where）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_014.md",
+      "type": "related",
+      "reason": "同属标量消除族（cdiv 编译期边界）"
+     }
+    ]
+   },
+   {
+    "idx": 99,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/no-continue-break.md",
+      "type": "related",
+      "reason": "共享 tl.where 向量化替代控制流分支"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_012.md",
+      "type": "related",
+      "reason": "同属标量消除族（i32→fp32 比较）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_014.md",
+      "type": "related",
+      "reason": "同属标量消除族（cdiv 编译期边界）"
+     }
+    ]
+   },
+   {
+    "idx": 100,
+    "kept": [
+     {
+      "target_id": "runbooks/portability/cdiv-kernel-vs-host.md",
+      "type": "related",
+      "reason": "共享 tl.cdiv 的正确使用规则（kernel 内 vs host 侧）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_012.md",
+      "type": "related",
+      "reason": "同属标量消除族（i32→fp32 比较）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_perf_013.md",
+      "type": "related",
+      "reason": "同属标量消除族（min→tl.where）"
+     }
+    ]
+   },
+   {
+    "idx": 101,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "related",
+      "reason": "共享位置编码向量化加载与旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_triton_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_triton_rope_001.md",
+      "type": "related",
+      "reason": "共享分半偏移的向量化旋转"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rope_npu_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用"
+     }
+    ]
+   },
+   {
+    "idx": 102,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_causal_conv1d_states_001.md",
+      "type": "related",
+      "reason": "共享 constexpr 编译期分支消除"
+     },
+     {
+      "target_id": "runbooks/meta-skills/multi-strategy-dispatch.md",
+      "type": "related",
+      "reason": "共享编译期多策略分派思想"
+     }
+    ]
+   },
+   {
+    "idx": 103,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_scatter_wgrad_001.md",
+      "type": "related",
+      "reason": "共享 scatter 类归约写回"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_npu_001.md",
+      "type": "related",
+      "reason": "共享 scatter 分桶策略"
+     }
+    ]
+   },
+   {
+    "idx": 104,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_bwd_q_001.md",
+      "type": "related",
+      "reason": "共享 fp32 高精度累加保数值稳定"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_flashattn_bwd_kv_001.md",
+      "type": "related",
+      "reason": "共享混合精度计算（fp32 中间）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_skip_layernorm_001.md",
+      "type": "related",
+      "reason": "共享精度控制策略"
+     }
+    ]
+   },
+   {
+    "idx": 105,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "same_topic",
+      "reason": "同一 split-K 两阶段归约链（stage2 归并）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md",
+      "type": "related",
+      "reason": "共享跨 split 数值稳定归并"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     }
+    ]
+   },
+   {
+    "idx": 106,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_spec_decode_verify_scalar.md",
+      "type": "same_topic",
+      "reason": "同一拒绝采样验证的向量化改造"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rejection_sample_001.md",
+      "type": "same_topic",
+      "reason": "同一投机采样验证的向量化与 bitmask 传播"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_top_p_sampling_001.md",
+      "type": "related",
+      "reason": "共享采样类向量化无分支实现"
+     }
+    ]
+   },
+   {
+    "idx": 107,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reject_sampler_001.md",
+      "type": "same_topic",
+      "reason": "同一投机采样验证的并行化"
+     }
+    ]
+   },
+   {
+    "idx": 108,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md",
+      "type": "related",
+      "reason": "共享两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md",
+      "type": "related",
+      "reason": "共享两遍归约结构"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "related",
+      "reason": "共享两遍归约 + max-trick"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md",
+      "type": "related",
+      "reason": "共享两阶段 reduce-then-apply 规则"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md",
+      "type": "related",
+      "reason": "共享大列数两遍归约"
+     }
+    ]
+   },
+   {
+    "idx": 109,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "同一归一化反向家族"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_fwd_001.md",
+      "type": "related",
+      "reason": "同一算子的前向 grid-stride 版"
+     }
+    ]
+   },
+   {
+    "idx": 110,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_kv_001.md",
+      "type": "same_topic",
+      "reason": "同一归一化 kernel 家族（grid-stride + 权重缓存 + fp32 方差）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_bwd_001.md",
+      "type": "related",
+      "reason": "同一算子的反向版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md",
+      "type": "related",
+      "reason": "同一算子的反向两遍版"
+     }
+    ]
+   },
+   {
+    "idx": 111,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一归一化 kernel 家族（grid-stride + 权重缓存 + fp32 方差）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_bwd_001.md",
+      "type": "related",
+      "reason": "同一算子的反向版"
+     }
+    ]
+   },
+   {
+    "idx": 112,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_qkv_rmsnorm_rope_001.md",
+      "type": "same_topic",
+      "reason": "同一归一化+位置编码融合"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_rmsnorm_sigmoid_001.md",
+      "type": "related",
+      "reason": "共享归一化融合 + fp32 归约"
+     }
+    ]
+   },
+   {
+    "idx": 113,
+    "kept": [
+     {
+      "target_id": "runbooks/memory-sram/exp_rope_npu_001.md",
+      "type": "same_topic",
+      "reason": "同一 cos/sin 跨头复用技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_triton_001.md",
+      "type": "same_topic",
+      "reason": "同一 cos/sin 跨头复用技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_triton_rope_001.md",
+      "type": "related",
+      "reason": "共享分半偏移的向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "related",
+      "reason": "共享位置编码向量化加载"
+     }
+    ]
+   },
+   {
+    "idx": 114,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "related",
+      "reason": "共享位置编码向量化加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_triton_rope_001.md",
+      "type": "related",
+      "reason": "共享分半偏移的向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     }
+    ]
+   },
+   {
+    "idx": 115,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_matmul_rope_001.md",
+      "type": "same_topic",
+      "reason": "同一 RoPE 融合进矩阵乘"
+     }
+    ]
+   },
+   {
+    "idx": 116,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "related",
+      "reason": "共享位置编码向量化加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_triton_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     }
+    ]
+   },
+   {
+    "idx": 117,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_003.md",
+      "type": "related",
+      "reason": "共享 constexpr 编译期双路径（完整/边界）模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_oai_001.md",
+      "type": "related",
+      "reason": "共享交错/非交错布局的向量化处理"
+     }
+    ]
+   },
+   {
+    "idx": 118,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_001.md",
+      "type": "same_topic",
+      "reason": "同一 cos/sin 跨头复用技术"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "related",
+      "reason": "共享位置编码向量化加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_triton_rope_001.md",
+      "type": "related",
+      "reason": "共享分半偏移的向量化旋转"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_rope_npu_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用"
+     }
+    ]
+   },
+   {
+    "idx": 119,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_embedding_backward_001.md",
+      "type": "related",
+      "reason": "共享稀疏梯度写回的批量化/原子策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md",
+      "type": "related",
+      "reason": "同一权重梯度 scatter 归约家族"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md",
+      "type": "related",
+      "reason": "共享 scatter 分桶对齐写回"
+     }
+    ]
+   },
+   {
+    "idx": 120,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_backward_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride 归约循环"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rmsnorm_fwd_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride 行循环调度"
+     }
+    ]
+   },
+   {
+    "idx": 121,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_hstu_attn_bwd_001.md",
+      "type": "related",
+      "reason": "共享 attention 类反向分块与重算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_flash_attn_gridstride_001.md",
+      "type": "related",
+      "reason": "共享 attention 类分块流水调度"
+     }
+    ]
+   },
+   {
+    "idx": 122,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_bwd_q_001.md",
+      "type": "same_topic",
+      "reason": "同一反向梯度混合精度模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_flashattn_bwd_kv_001.md",
+      "type": "same_topic",
+      "reason": "同一反向梯度混合精度模式"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sum_scale_001.md",
+      "type": "related",
+      "reason": "共享块大小调优"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+      "type": "related",
+      "reason": "共享 fp32 高精度累加"
+     }
+    ]
+   },
+   {
+    "idx": 123,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax 迭代 max/sum 更新"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_non_inner_001.md",
+      "type": "related",
+      "reason": "共享 online softmax + 单/双遍 dispatch"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "同一 online softmax 单遍稳定算法"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 前向实现"
+     }
+    ]
+   },
+   {
+    "idx": 124,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sort_bitonic_001.md",
+      "type": "related",
+      "reason": "共享块内排序/洗牌的局部化策略"
+     }
+    ]
+   },
+   {
+    "idx": 125,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级前向 grid-stride + fp32 非线性模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级前向 grid-stride + fp32 非线性模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_geglu_flat_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride + flat 1D 化访存"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "共享门控激活 + fp32 中间精度"
+     }
+    ]
+   },
+   {
+    "idx": 126,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级反向 autotune BLOCK_M(1-32) 策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "related",
+      "reason": "同一算子前向的同策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_001.md",
+      "type": "related",
+      "reason": "共享门控反向 + fp32 导数计算"
+     }
+    ]
+   },
+   {
+    "idx": 127,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级前向 grid-stride + fp32 非线性模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sigmoid_grid_stride_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级前向 grid-stride + fp32 非线性模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_bwd_001.md",
+      "type": "related",
+      "reason": "同一算子反向的同策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "共享门控激活 + fp32 中间精度"
+     }
+    ]
+   },
+   {
+    "idx": 128,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_hist_count_001.md",
+      "type": "related",
+      "reason": "共享寄存器累计替代逐元素写回"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_001.md",
+      "type": "related",
+      "reason": "同一算子家族的两遍归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_non_inner_001.md",
+      "type": "related",
+      "reason": "同一 softmax 家族的单/双遍 dispatch"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_log_softmax_backward_001.md",
+      "type": "related",
+      "reason": "同一算子家族的反向两遍"
+     }
+    ]
+   },
+   {
+    "idx": 129,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_inner_002.md",
+      "type": "related",
+      "reason": "同一 softmax 家族的向量化累计变体"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 避免物化 score 矩阵"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_online_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 迭代更新"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "同一 online softmax 单遍稳定算法"
+     }
+    ]
+   },
+   {
+    "idx": 130,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax 迭代 max/sum 更新"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md",
+      "type": "same_topic",
+      "reason": "同一 online softmax 主循环结构"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_crossentropy_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 归约"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_softmax_non_inner_001.md",
+      "type": "related",
+      "reason": "共享 online softmax + 单/双遍 dispatch"
+     },
+     {
+      "target_id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md",
+      "type": "related",
+      "reason": "同一 online softmax 单遍稳定算法"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_fwd_001.md",
+      "type": "related",
+      "reason": "共享 online softmax 前向实现"
+     }
+    ]
+   },
+   {
+    "idx": 131,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_003.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（V4 双路径）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_004.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（分层 dispatch）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_solve_tril_002.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（preload 消除重读）"
+     },
+     {
+      "target_id": "runbooks/meta-skills/exp_solve_tril_006.md",
+      "type": "related",
+      "reason": "同一 solve_tril 家族的负优化排除清单"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_update_005.md",
+      "type": "related",
+      "reason": "同为消除冗余 mask/边界检查指令"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_007.md",
+      "type": "related",
+      "reason": "同为消除冗余 mask/边界检查指令"
+     }
+    ]
+   },
+   {
+    "idx": 132,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/constexpr-branch-elimination.md",
+      "type": "same_topic",
+      "reason": "同一 constexpr 编译期消除/展开机制"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_001.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（V1 冗余 mask）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_004.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（分层 dispatch）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_solve_tril_002.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（preload 消除重读）"
+     },
+     {
+      "target_id": "runbooks/meta-skills/exp_solve_tril_006.md",
+      "type": "related",
+      "reason": "同一 solve_tril 家族的负优化排除清单"
+     },
+     {
+      "target_id": "runbooks/portability/constexpr-launch-specialization.md",
+      "type": "related",
+      "reason": "共享 constexpr 启动级特化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/pow2-block-constexpr.md",
+      "type": "related",
+      "reason": "共享 BLOCK 取 2 幂并 constexpr 化"
+     }
+    ]
+   },
+   {
+    "idx": 133,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_001.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（V1 冗余 mask）"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_solve_tril_003.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（V4 双路径）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_solve_tril_002.md",
+      "type": "related",
+      "reason": "同一 solve_tril 优化家族（preload 消除重读）"
+     },
+     {
+      "target_id": "runbooks/meta-skills/exp_solve_tril_006.md",
+      "type": "related",
+      "reason": "同一 solve_tril 家族的负优化排除清单"
+     },
+     {
+      "target_id": "runbooks/portability/exp_solve_tril_005.md",
+      "type": "related",
+      "reason": "同一 solve_tril 家族的迁移 launch 参数审计"
+     },
+     {
+      "target_id": "runbooks/meta-skills/multi-strategy-dispatch.md",
+      "type": "related",
+      "reason": "共享按参数分派多 kernel 的策略"
+     }
+    ]
+   },
+   {
+    "idx": 134,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_shuffle_blockwise_001.md",
+      "type": "related",
+      "reason": "共享块内局部排序/洗牌策略"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_topk_pad_001.md",
+      "type": "related",
+      "reason": "共享极值 padding 处理非整除边界"
+     }
+    ]
+   },
+   {
+    "idx": 135,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_flash_attn_decode_001.md",
+      "type": "same_topic",
+      "reason": "同一稀疏 topk 按需 gather 技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sparse_bwd_001.md",
+      "type": "related",
+      "reason": "共享稀疏 gather 优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sparse_attn_backward_dq_001.md",
+      "type": "related",
+      "reason": "共享稀疏迭代逻辑"
+     },
+     {
+      "target_id": "ops/sparse-flash-attention.md",
+      "type": "related",
+      "reason": "同一稀疏注意力场景的算子卡"
+     }
+    ]
+   },
+   {
+    "idx": 136,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sparse_attn_topk_001.md",
+      "type": "same_topic",
+      "reason": "同一稀疏 topk 按需 gather 技术"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_attn_sparse_bwd_001.md",
+      "type": "related",
+      "reason": "共享稀疏 gather 优化"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sparse_attn_backward_dq_001.md",
+      "type": "related",
+      "reason": "共享稀疏迭代逻辑"
+     },
+     {
+      "target_id": "ops/sparse-flash-attention.md",
+      "type": "related",
+      "reason": "同一稀疏注意力场景的算子卡"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_flashattn_gqa_001.md",
+      "type": "related",
+      "reason": "共享 SIMD 索引选择"
+     }
+    ]
+   },
+   {
+    "idx": 137,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reject_sampler_001.md",
+      "type": "same_topic",
+      "reason": "同一拒绝采样验证的向量化改造"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rejection_sample_001.md",
+      "type": "same_topic",
+      "reason": "同一投机采样验证的向量化与 bitmask 传播"
+     }
+    ]
+   },
+   {
+    "idx": 138,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_delta_rule_001.md",
+      "type": "same_topic",
+      "reason": "同一门控 delta 递推的融合实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_delta_rule_npu_001.md",
+      "type": "same_topic",
+      "reason": "同一门控 delta 递推的融合实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md",
+      "type": "related",
+      "reason": "同一 SSM 家族的状态重算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md",
+      "type": "related",
+      "reason": "同一 SSM chunked 前向家族"
+     }
+    ]
+   },
+   {
+    "idx": 139,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_flat_001.md",
+      "type": "same_topic",
+      "reason": "同一算子反向的 flat 布局版"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_hstu_attn_bwd_001.md",
+      "type": "related",
+      "reason": "共享反向激活重算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_entropy_backward_001.md",
+      "type": "related",
+      "reason": "共享重算换带宽"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "同一算子前向"
+     }
+    ]
+   },
+   {
+    "idx": 140,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_bwd_001.md",
+      "type": "same_topic",
+      "reason": "同一算子反向的非 flat 版"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_sdpa_bwd_reduce_001.md",
+      "type": "related",
+      "reason": "共享 multibuffer 软件流水"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_moe_scatter_001.md",
+      "type": "related",
+      "reason": "共享 num_stages 软件流水"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_tv_distance_001.md",
+      "type": "related",
+      "reason": "共享 num_stages 软件流水"
+     }
+    ]
+   },
+   {
+    "idx": 141,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_silu_fwd_001.md",
+      "type": "same_topic",
+      "reason": "同一元素级前向 grid-stride + fp32 非线性模式"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_sigmoid_grid_stride_001.md",
+      "type": "related",
+      "reason": "共享 grid-stride + fp32 激活计算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_geglu_flat_001.md",
+      "type": "related",
+      "reason": "共享门控激活 + flat 访存"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_swiglu_flat_001.md",
+      "type": "related",
+      "reason": "同一算子的 flat 布局版"
+     }
+    ]
+   },
+   {
+    "idx": 142,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_siso_001.md",
+      "type": "related",
+      "reason": "共享交错/非交错布局的向量化处理"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_swiglu_flat_001.md",
+      "type": "related",
+      "reason": "同一算子的 flat 布局版"
+     }
+    ]
+   },
+   {
+    "idx": 143,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_fused_gating_001.md",
+      "type": "related",
+      "reason": "共享门控融合 + fp32 非线性计算"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md",
+      "type": "related",
+      "reason": "同一算子前向（未量化版）"
+     },
+     {
+      "target_id": "runbooks/memory-sram/exp_swiglu_flat_001.md",
+      "type": "related",
+      "reason": "同一算子的 flat 布局版"
+     }
+    ]
+   },
+   {
+    "idx": 144,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_topp_filter_001.md",
+      "type": "same_topic",
+      "reason": "同一 top-p 采样家族的全向量化无分支实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_multinomial_001.md",
+      "type": "related",
+      "reason": "共享采样类的向量化实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_spec_decode_verify_scalar.md",
+      "type": "related",
+      "reason": "共享采样验证的向量化改造"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_reject_sampler_001.md",
+      "type": "related",
+      "reason": "共享采样验证的向量化改造"
+     }
+    ]
+   },
+   {
+    "idx": 145,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_top_p_sampling_001.md",
+      "type": "same_topic",
+      "reason": "同一 top-p 采样家族的全向量化无分支实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_multinomial_001.md",
+      "type": "related",
+      "reason": "共享采样类的向量化实现"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_spec_decode_verify_scalar.md",
+      "type": "related",
+      "reason": "共享采样验证的向量化改造"
+     }
+    ]
+   },
+   {
+    "idx": 146,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_matmul_small_tile_001.md",
+      "type": "related",
+      "reason": "共享微 tile 配置策略"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_inverse_001.md",
+      "type": "related",
+      "reason": "共享 16x16 原子块粒度"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md",
+      "type": "related",
+      "reason": "共享 16x16 原子块粒度"
+     }
+    ]
+   },
+   {
+    "idx": 147,
+    "kept": [
+     {
+      "target_id": "runbooks/compute-pipeline/exp_partial_rope_001.md",
+      "type": "related",
+      "reason": "共享位置编码向量化加载"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     },
+     {
+      "target_id": "runbooks/compute-pipeline/exp_rope_triton_001.md",
+      "type": "related",
+      "reason": "共享 cos/sin 复用与向量化旋转"
+     }
+    ]
+   }
+  ]
+ }
+}

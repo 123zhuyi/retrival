@@ -1,0 +1,1878 @@
+[
+ {
+  "idx": 0,
+  "id": "SPEC-Knowledge-Unit.md"
+ },
+ {
+  "idx": 1,
+  "id": "SPEC-Retrieve-legacy.md"
+ },
+ {
+  "idx": 2,
+  "id": "ascend-910b.md"
+ },
+ {
+  "idx": 3,
+  "id": "ascend-patterns.md"
+ },
+ {
+  "idx": 4,
+  "id": "op-class-attention.md"
+ },
+ {
+  "idx": 5,
+  "id": "op-class-convolution.md"
+ },
+ {
+  "idx": 6,
+  "id": "op-class-elementwise.md"
+ },
+ {
+  "idx": 7,
+  "id": "op-class-embedding.md"
+ },
+ {
+  "idx": 8,
+  "id": "op-class-fused_ops.md"
+ },
+ {
+  "idx": 9,
+  "id": "op-class-gather_scatter.md"
+ },
+ {
+  "idx": 10,
+  "id": "op-class-loss.md"
+ },
+ {
+  "idx": 11,
+  "id": "op-class-matmul.md"
+ },
+ {
+  "idx": 12,
+  "id": "op-class-normalization.md"
+ },
+ {
+  "idx": 13,
+  "id": "op-class-reduction.md"
+ },
+ {
+  "idx": 14,
+  "id": "op-class-rope.md"
+ },
+ {
+  "idx": 15,
+  "id": "op-class-softmax.md"
+ },
+ {
+  "idx": 16,
+  "id": "op-class-solve_tril.md"
+ },
+ {
+  "idx": 17,
+  "id": "op-class-ssm.md"
+ },
+ {
+  "idx": 18,
+  "id": "skeleton-flash_attention_causal.md"
+ },
+ {
+  "idx": 19,
+  "id": "skeleton-gemm_basic.md"
+ },
+ {
+  "idx": 20,
+  "id": "skeleton-moe_dispatch.md"
+ },
+ {
+  "idx": 21,
+  "id": "skeleton-rmsnorm_fused.md"
+ },
+ {
+  "idx": 22,
+  "id": "triton-api-cheatsheet.md"
+ },
+ {
+  "idx": 23,
+  "id": "ops/add-broadcast-alpha.md"
+ },
+ {
+  "idx": 24,
+  "id": "ops/apply-rotary-pos-emb.md"
+ },
+ {
+  "idx": 25,
+  "id": "ops/block-sparse-attention-grad.md"
+ },
+ {
+  "idx": 26,
+  "id": "ops/block-sparse-attention.md"
+ },
+ {
+  "idx": 27,
+  "id": "ops/chunk-gated-delta-rule-fwd-h.md"
+ },
+ {
+  "idx": 28,
+  "id": "ops/elementwise-abs.md"
+ },
+ {
+  "idx": 29,
+  "id": "ops/elementwise-add.md"
+ },
+ {
+  "idx": 30,
+  "id": "ops/flash-attention-score-grad.md"
+ },
+ {
+  "idx": 31,
+  "id": "ops/flash-attention-score.md"
+ },
+ {
+  "idx": 32,
+  "id": "ops/fused-bias-leaky-relu.md"
+ },
+ {
+  "idx": 33,
+  "id": "ops/fused-floyd-attention-grad.md"
+ },
+ {
+  "idx": 34,
+  "id": "ops/fused-floyd-attention.md"
+ },
+ {
+  "idx": 35,
+  "id": "ops/fused-infer-attention-score.md"
+ },
+ {
+  "idx": 36,
+  "id": "ops/gdn-chunked-linear-attention.md"
+ },
+ {
+  "idx": 37,
+  "id": "ops/incre-flash-attention.md"
+ },
+ {
+  "idx": 38,
+  "id": "ops/kv-quant-sparse-flash-attention.md"
+ },
+ {
+  "idx": 39,
+  "id": "ops/lightning-indexer.md"
+ },
+ {
+  "idx": 40,
+  "id": "ops/mla-preprocess.md"
+ },
+ {
+  "idx": 41,
+  "id": "ops/mla-prolog-v3.md"
+ },
+ {
+  "idx": 42,
+  "id": "ops/mla-prolog.md"
+ },
+ {
+  "idx": 43,
+  "id": "ops/moe-compute-expert-tokens.md"
+ },
+ {
+  "idx": 44,
+  "id": "ops/moe-finalize-routing-v2-grad.md"
+ },
+ {
+  "idx": 45,
+  "id": "ops/moe-finalize-routing-v2.md"
+ },
+ {
+  "idx": 46,
+  "id": "ops/moe-finalize-routing.md"
+ },
+ {
+  "idx": 47,
+  "id": "ops/moe-gating-top-k-softmax-v2.md"
+ },
+ {
+  "idx": 48,
+  "id": "ops/moe-gating-top-k-softmax.md"
+ },
+ {
+  "idx": 49,
+  "id": "ops/moe-init-routing-quant-v2.md"
+ },
+ {
+  "idx": 50,
+  "id": "ops/moe-init-routing-quant.md"
+ },
+ {
+  "idx": 51,
+  "id": "ops/moe-init-routing-v2-grad.md"
+ },
+ {
+  "idx": 52,
+  "id": "ops/moe-init-routing-v2.md"
+ },
+ {
+  "idx": 53,
+  "id": "ops/moe-init-routing-v3.md"
+ },
+ {
+  "idx": 54,
+  "id": "ops/moe-init-routing.md"
+ },
+ {
+  "idx": 55,
+  "id": "ops/moe-token-permute-grad.md"
+ },
+ {
+  "idx": 56,
+  "id": "ops/moe-token-permute-with-ep-grad.md"
+ },
+ {
+  "idx": 57,
+  "id": "ops/moe-token-permute-with-ep.md"
+ },
+ {
+  "idx": 58,
+  "id": "ops/moe-token-permute-with-routing-map.md"
+ },
+ {
+  "idx": 59,
+  "id": "ops/moe-token-permute.md"
+ },
+ {
+  "idx": 60,
+  "id": "ops/moe-token-unpermute-grad.md"
+ },
+ {
+  "idx": 61,
+  "id": "ops/moe-token-unpermute-with-ep.md"
+ },
+ {
+  "idx": 62,
+  "id": "ops/moe-token-unpermute.md"
+ },
+ {
+  "idx": 63,
+  "id": "ops/nsa-compress-attention-infer.md"
+ },
+ {
+  "idx": 64,
+  "id": "ops/nsa-compress-attention.md"
+ },
+ {
+  "idx": 65,
+  "id": "ops/nsa-compress-grad.md"
+ },
+ {
+  "idx": 66,
+  "id": "ops/nsa-compress-with-cache.md"
+ },
+ {
+  "idx": 67,
+  "id": "ops/nsa-selected-attention.md"
+ },
+ {
+  "idx": 68,
+  "id": "ops/prompt-flash-attention.md"
+ },
+ {
+  "idx": 69,
+  "id": "ops/quant-lightning-indexer.md"
+ },
+ {
+  "idx": 70,
+  "id": "ops/rain-fusion-attention.md"
+ },
+ {
+  "idx": 71,
+  "id": "ops/recurrent-gated-delta-rule.md"
+ },
+ {
+  "idx": 72,
+  "id": "ops/ring-attention-update.md"
+ },
+ {
+  "idx": 73,
+  "id": "ops/rmsnorm-rope.md"
+ },
+ {
+  "idx": 74,
+  "id": "ops/rope-pointer-addressing.md"
+ },
+ {
+  "idx": 75,
+  "id": "ops/sparse-flash-attention.md"
+ },
+ {
+  "idx": 76,
+  "id": "runbooks/portability/ascend-950-cv-datapath-regbase.md"
+ },
+ {
+  "idx": 77,
+  "id": "runbooks/portability/cdiv-kernel-vs-host.md"
+ },
+ {
+  "idx": 78,
+  "id": "runbooks/portability/constexpr-launch-specialization.md"
+ },
+ {
+  "idx": 79,
+  "id": "runbooks/portability/exp_api_001.md"
+ },
+ {
+  "idx": 80,
+  "id": "runbooks/portability/exp_api_002.md"
+ },
+ {
+  "idx": 81,
+  "id": "runbooks/portability/exp_api_003.md"
+ },
+ {
+  "idx": 82,
+  "id": "runbooks/portability/exp_api_004.md"
+ },
+ {
+  "idx": 83,
+  "id": "runbooks/portability/exp_ascend_blockptr_boundary_scalar_001.md"
+ },
+ {
+  "idx": 84,
+  "id": "runbooks/portability/exp_ascend_compile_hint_001.md"
+ },
+ {
+  "idx": 85,
+  "id": "runbooks/portability/exp_ascend_core_num_001.md"
+ },
+ {
+  "idx": 86,
+  "id": "runbooks/portability/exp_ascend_grid_001.md"
+ },
+ {
+  "idx": 87,
+  "id": "runbooks/portability/exp_ascend_grid_large_shape_001.md"
+ },
+ {
+  "idx": 88,
+  "id": "runbooks/portability/exp_ascend_int64_address_001.md"
+ },
+ {
+  "idx": 89,
+  "id": "runbooks/portability/exp_ascend_int_compare_scalar_001.md"
+ },
+ {
+  "idx": 90,
+  "id": "runbooks/portability/exp_ascend_parallel_pattern_001.md"
+ },
+ {
+  "idx": 91,
+  "id": "runbooks/portability/exp_ascend_split_001.md"
+ },
+ {
+  "idx": 92,
+  "id": "runbooks/portability/exp_ascend_where_001.md"
+ },
+ {
+  "idx": 93,
+  "id": "runbooks/portability/exp_attn_bwd_q_down_001.md"
+ },
+ {
+  "idx": 94,
+  "id": "runbooks/portability/exp_attn_sda_001.md"
+ },
+ {
+  "idx": 95,
+  "id": "runbooks/portability/exp_constexpr_001.md"
+ },
+ {
+  "idx": 96,
+  "id": "runbooks/portability/exp_entropy_backward_npu_001.md"
+ },
+ {
+  "idx": 97,
+  "id": "runbooks/portability/exp_flashattn_bwd_kv_ascend_001.md"
+ },
+ {
+  "idx": 98,
+  "id": "runbooks/portability/exp_fused_matmul_rms_rope_001.md"
+ },
+ {
+  "idx": 99,
+  "id": "runbooks/portability/exp_gqa_paged_npu_001.md"
+ },
+ {
+  "idx": 100,
+  "id": "runbooks/portability/exp_matmul_ascend_001.md"
+ },
+ {
+  "idx": 101,
+  "id": "runbooks/portability/exp_matmul_ascend_wavefront_001.md"
+ },
+ {
+  "idx": 102,
+  "id": "runbooks/portability/exp_rope_llama4_npu_001.md"
+ },
+ {
+  "idx": 103,
+  "id": "runbooks/portability/exp_rope_matmul_001.md"
+ },
+ {
+  "idx": 104,
+  "id": "runbooks/portability/exp_scalar_cast_001.md"
+ },
+ {
+  "idx": 105,
+  "id": "runbooks/portability/exp_sda_bwd_kv_ascend_001.md"
+ },
+ {
+  "idx": 106,
+  "id": "runbooks/portability/exp_sda_bwd_q_001.md"
+ },
+ {
+  "idx": 107,
+  "id": "runbooks/portability/exp_sda_fwd_ascend_001.md"
+ },
+ {
+  "idx": 108,
+  "id": "runbooks/portability/exp_slice_001.md"
+ },
+ {
+  "idx": 109,
+  "id": "runbooks/portability/exp_slice_002.md"
+ },
+ {
+  "idx": 110,
+  "id": "runbooks/portability/exp_solve_tril_005.md"
+ },
+ {
+  "idx": 111,
+  "id": "runbooks/portability/exp_sparse_flash_attn_prefill_001.md"
+ },
+ {
+  "idx": 112,
+  "id": "runbooks/portability/no-pytorch-in-forward.md"
+ },
+ {
+  "idx": 113,
+  "id": "runbooks/portability/npu-op-replace-golden.md"
+ },
+ {
+  "idx": 114,
+  "id": "runbooks/portability/triton-ascend-mask-codegen-traps.md"
+ },
+ {
+  "idx": 115,
+  "id": "runbooks/algorithm-numerics/atomic-add-cross-tile-reduction.md"
+ },
+ {
+  "idx": 116,
+  "id": "runbooks/algorithm-numerics/atomic-granularity.md"
+ },
+ {
+  "idx": 117,
+  "id": "runbooks/algorithm-numerics/coord-compare-float32.md"
+ },
+ {
+  "idx": 118,
+  "id": "runbooks/algorithm-numerics/dequant-domain-dtype-split.md"
+ },
+ {
+  "idx": 119,
+  "id": "runbooks/algorithm-numerics/exp-stable-softmax-rmsnorm.md"
+ },
+ {
+  "idx": 120,
+  "id": "runbooks/algorithm-numerics/exp_stability_001.md"
+ },
+ {
+  "idx": 121,
+  "id": "runbooks/algorithm-numerics/exp_stability_002.md"
+ },
+ {
+  "idx": 122,
+  "id": "runbooks/algorithm-numerics/exp_stability_003.md"
+ },
+ {
+  "idx": 123,
+  "id": "runbooks/algorithm-numerics/exp_stability_004.md"
+ },
+ {
+  "idx": 124,
+  "id": "runbooks/algorithm-numerics/fp32-precision-contract.md"
+ },
+ {
+  "idx": 125,
+  "id": "runbooks/algorithm-numerics/fp32-reduction-accumulator.md"
+ },
+ {
+  "idx": 126,
+  "id": "runbooks/algorithm-numerics/gemm-low-dtype-fp32-accum.md"
+ },
+ {
+  "idx": 127,
+  "id": "runbooks/algorithm-numerics/math-normalize-precondition.md"
+ },
+ {
+  "idx": 128,
+  "id": "runbooks/algorithm-numerics/online-softmax-flash-attention.md"
+ },
+ {
+  "idx": 129,
+  "id": "runbooks/algorithm-numerics/split-kernel-gm-roundtrip.md"
+ },
+ {
+  "idx": 130,
+  "id": "runbooks/algorithm-numerics/two-pass-reduce-then-apply.md"
+ },
+ {
+  "idx": 131,
+  "id": "runbooks/memory-sram/bf16-fused-dequant-blockk128.md"
+ },
+ {
+  "idx": 132,
+  "id": "runbooks/memory-sram/block-ptr-vs-scalar-load.md"
+ },
+ {
+  "idx": 133,
+  "id": "runbooks/memory-sram/blockm-256-large-m.md"
+ },
+ {
+  "idx": 134,
+  "id": "runbooks/memory-sram/device-side-gather-strided-load.md"
+ },
+ {
+  "idx": 135,
+  "id": "runbooks/memory-sram/exp_ascend_large_shape_block_001.md"
+ },
+ {
+  "idx": 136,
+  "id": "runbooks/memory-sram/exp_attn_bwd_hstu_001.md"
+ },
+ {
+  "idx": 137,
+  "id": "runbooks/memory-sram/exp_attn_causal_mask_001.md"
+ },
+ {
+  "idx": 138,
+  "id": "runbooks/memory-sram/exp_attn_fp8_ub_slice_001.md"
+ },
+ {
+  "idx": 139,
+  "id": "runbooks/memory-sram/exp_attn_ptr_setup_001.md"
+ },
+ {
+  "idx": 140,
+  "id": "runbooks/memory-sram/exp_attn_sinks_001.md"
+ },
+ {
+  "idx": 141,
+  "id": "runbooks/memory-sram/exp_attn_sparse_bwd_001.md"
+ },
+ {
+  "idx": 142,
+  "id": "runbooks/memory-sram/exp_cache_store_001.md"
+ },
+ {
+  "idx": 143,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_001.md"
+ },
+ {
+  "idx": 144,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_bwd_001.md"
+ },
+ {
+  "idx": 145,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_prefill_002.md"
+ },
+ {
+  "idx": 146,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_states_001.md"
+ },
+ {
+  "idx": 147,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_update_001.md"
+ },
+ {
+  "idx": 148,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_update_003.md"
+ },
+ {
+  "idx": 149,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_update_004.md"
+ },
+ {
+  "idx": 150,
+  "id": "runbooks/memory-sram/exp_causal_conv1d_varlen_opt_001.md"
+ },
+ {
+  "idx": 151,
+  "id": "runbooks/memory-sram/exp_chunk_gated_delta_001.md"
+ },
+ {
+  "idx": 152,
+  "id": "runbooks/memory-sram/exp_elem_add_001_20260526.md"
+ },
+ {
+  "idx": 153,
+  "id": "runbooks/memory-sram/exp_elemwise_add_001_20260526.md"
+ },
+ {
+  "idx": 154,
+  "id": "runbooks/memory-sram/exp_embedding_001.md"
+ },
+ {
+  "idx": 155,
+  "id": "runbooks/memory-sram/exp_flash_attn_001.md"
+ },
+ {
+  "idx": 156,
+  "id": "runbooks/memory-sram/exp_flashattn_fwd_001.md"
+ },
+ {
+  "idx": 157,
+  "id": "runbooks/memory-sram/exp_flashattn_gqa_001.md"
+ },
+ {
+  "idx": 158,
+  "id": "runbooks/memory-sram/exp_fuse_tlx_001.md"
+ },
+ {
+  "idx": 159,
+  "id": "runbooks/memory-sram/exp_fused_add_layernorm_001.md"
+ },
+ {
+  "idx": 160,
+  "id": "runbooks/memory-sram/exp_fused_attention_002.md"
+ },
+ {
+  "idx": 161,
+  "id": "runbooks/memory-sram/exp_fused_norm_rope_001.md"
+ },
+ {
+  "idx": 162,
+  "id": "runbooks/memory-sram/exp_fused_qkvzba_split_001.md"
+ },
+ {
+  "idx": 163,
+  "id": "runbooks/memory-sram/exp_fused_rms_norm_001.md"
+ },
+ {
+  "idx": 164,
+  "id": "runbooks/memory-sram/exp_fused_split_qk_norm_001.md"
+ },
+ {
+  "idx": 165,
+  "id": "runbooks/memory-sram/exp_gather_001.md"
+ },
+ {
+  "idx": 166,
+  "id": "runbooks/memory-sram/exp_gather_flat_001.md"
+ },
+ {
+  "idx": 167,
+  "id": "runbooks/memory-sram/exp_geglu_bwd_001.md"
+ },
+ {
+  "idx": 168,
+  "id": "runbooks/memory-sram/exp_gemma_rmsnorm_001.md"
+ },
+ {
+  "idx": 169,
+  "id": "runbooks/memory-sram/exp_gn_backward_001.md"
+ },
+ {
+  "idx": 170,
+  "id": "runbooks/memory-sram/exp_gn_wb_backward_001.md"
+ },
+ {
+  "idx": 171,
+  "id": "runbooks/memory-sram/exp_grouped_attn_stage1_001.md"
+ },
+ {
+  "idx": 172,
+  "id": "runbooks/memory-sram/exp_groupnorm_001.md"
+ },
+ {
+  "idx": 173,
+  "id": "runbooks/memory-sram/exp_grpo_bwd_001.md"
+ },
+ {
+  "idx": 174,
+  "id": "runbooks/memory-sram/exp_hstu_attn_fwd_001.md"
+ },
+ {
+  "idx": 175,
+  "id": "runbooks/memory-sram/exp_idx_copy_001.md"
+ },
+ {
+  "idx": 176,
+  "id": "runbooks/memory-sram/exp_kda_bwd_intra_memory_opt_001.md"
+ },
+ {
+  "idx": 177,
+  "id": "runbooks/memory-sram/exp_layernorm_bwd_001.md"
+ },
+ {
+  "idx": 178,
+  "id": "runbooks/memory-sram/exp_layernorm_bwd_fused_001.md"
+ },
+ {
+  "idx": 179,
+  "id": "runbooks/memory-sram/exp_layernorm_fwd_001.md"
+ },
+ {
+  "idx": 180,
+  "id": "runbooks/memory-sram/exp_lightning_attn_decode_001.md"
+ },
+ {
+  "idx": 181,
+  "id": "runbooks/memory-sram/exp_logits_penalty_fusion_001.md"
+ },
+ {
+  "idx": 182,
+  "id": "runbooks/memory-sram/exp_masked_fill_001.md"
+ },
+ {
+  "idx": 183,
+  "id": "runbooks/memory-sram/exp_matmul_001.md"
+ },
+ {
+  "idx": 184,
+  "id": "runbooks/memory-sram/exp_matmul_003.md"
+ },
+ {
+  "idx": 185,
+  "id": "runbooks/memory-sram/exp_matmul_004.md"
+ },
+ {
+  "idx": 186,
+  "id": "runbooks/memory-sram/exp_matmul_005.md"
+ },
+ {
+  "idx": 187,
+  "id": "runbooks/memory-sram/exp_mla_paged_attn_001.md"
+ },
+ {
+  "idx": 188,
+  "id": "runbooks/memory-sram/exp_moe_binned_scatter_001.md"
+ },
+ {
+  "idx": 189,
+  "id": "runbooks/memory-sram/exp_moe_gather_001.md"
+ },
+ {
+  "idx": 190,
+  "id": "runbooks/memory-sram/exp_moe_scatter_001.md"
+ },
+ {
+  "idx": 191,
+  "id": "runbooks/memory-sram/exp_outer_product_001.md"
+ },
+ {
+  "idx": 192,
+  "id": "runbooks/memory-sram/exp_padded_gather_001.md"
+ },
+ {
+  "idx": 193,
+  "id": "runbooks/memory-sram/exp_paged_attn_decode_001.md"
+ },
+ {
+  "idx": 194,
+  "id": "runbooks/memory-sram/exp_paged_attn_flash_001.md"
+ },
+ {
+  "idx": 195,
+  "id": "runbooks/memory-sram/exp_paged_gqa_001.md"
+ },
+ {
+  "idx": 196,
+  "id": "runbooks/memory-sram/exp_paged_kv_cache_001.md"
+ },
+ {
+  "idx": 197,
+  "id": "runbooks/memory-sram/exp_paged_prefill_001.md"
+ },
+ {
+  "idx": 198,
+  "id": "runbooks/memory-sram/exp_perf_002.md"
+ },
+ {
+  "idx": 199,
+  "id": "runbooks/memory-sram/exp_perf_003.md"
+ },
+ {
+  "idx": 200,
+  "id": "runbooks/memory-sram/exp_perf_004.md"
+ },
+ {
+  "idx": 201,
+  "id": "runbooks/memory-sram/exp_perf_006.md"
+ },
+ {
+  "idx": 202,
+  "id": "runbooks/memory-sram/exp_perf_008.md"
+ },
+ {
+  "idx": 203,
+  "id": "runbooks/memory-sram/exp_perf_009.md"
+ },
+ {
+  "idx": 204,
+  "id": "runbooks/memory-sram/exp_perf_011.md"
+ },
+ {
+  "idx": 205,
+  "id": "runbooks/memory-sram/exp_perf_015.md"
+ },
+ {
+  "idx": 206,
+  "id": "runbooks/memory-sram/exp_perf_016.md"
+ },
+ {
+  "idx": 207,
+  "id": "runbooks/memory-sram/exp_rmsnorm_001.md"
+ },
+ {
+  "idx": 208,
+  "id": "runbooks/memory-sram/exp_rmsnorm_add_001.md"
+ },
+ {
+  "idx": 209,
+  "id": "runbooks/memory-sram/exp_rmsnorm_backward_001.md"
+ },
+ {
+  "idx": 210,
+  "id": "runbooks/memory-sram/exp_rmsnorm_backward_tiled_001.md"
+ },
+ {
+  "idx": 211,
+  "id": "runbooks/memory-sram/exp_rmsnorm_bwd_fused_001.md"
+ },
+ {
+  "idx": 212,
+  "id": "runbooks/memory-sram/exp_rmsnorm_bwd_large_cols_001.md"
+ },
+ {
+  "idx": 213,
+  "id": "runbooks/memory-sram/exp_rmsnorm_fused_001.md"
+ },
+ {
+  "idx": 214,
+  "id": "runbooks/memory-sram/exp_rmsnorm_fused_quant_001.md"
+ },
+ {
+  "idx": 215,
+  "id": "runbooks/memory-sram/exp_rmsnorm_grad_dw_001.md"
+ },
+ {
+  "idx": 216,
+  "id": "runbooks/memory-sram/exp_rmsnorm_grad_dx_001.md"
+ },
+ {
+  "idx": 217,
+  "id": "runbooks/memory-sram/exp_rmsnorm_infer_001.md"
+ },
+ {
+  "idx": 218,
+  "id": "runbooks/memory-sram/exp_rmsnorm_notiling_001.md"
+ },
+ {
+  "idx": 219,
+  "id": "runbooks/memory-sram/exp_rmsnorm_npu_001.md"
+ },
+ {
+  "idx": 220,
+  "id": "runbooks/memory-sram/exp_rmsnorm_tiled_001.md"
+ },
+ {
+  "idx": 221,
+  "id": "runbooks/memory-sram/exp_rope_forward_001.md"
+ },
+ {
+  "idx": 222,
+  "id": "runbooks/memory-sram/exp_rope_npu_001.md"
+ },
+ {
+  "idx": 223,
+  "id": "runbooks/memory-sram/exp_scatter_001.md"
+ },
+ {
+  "idx": 224,
+  "id": "runbooks/memory-sram/exp_scatter_moe_padded_001.md"
+ },
+ {
+  "idx": 225,
+  "id": "runbooks/memory-sram/exp_scatter_npu_001.md"
+ },
+ {
+  "idx": 226,
+  "id": "runbooks/memory-sram/exp_scatter_wgrad_moe_001.md"
+ },
+ {
+  "idx": 227,
+  "id": "runbooks/memory-sram/exp_sdpa_bwd_reduce_001.md"
+ },
+ {
+  "idx": 228,
+  "id": "runbooks/memory-sram/exp_sdpa_flash_001.md"
+ },
+ {
+  "idx": 229,
+  "id": "runbooks/memory-sram/exp_sdpa_infer_001.md"
+ },
+ {
+  "idx": 230,
+  "id": "runbooks/memory-sram/exp_skip_layernorm_001.md"
+ },
+ {
+  "idx": 231,
+  "id": "runbooks/memory-sram/exp_softmax_backward_001.md"
+ },
+ {
+  "idx": 232,
+  "id": "runbooks/memory-sram/exp_softmax_backward_non_inner_001.md"
+ },
+ {
+  "idx": 233,
+  "id": "runbooks/memory-sram/exp_solve_tril_002.md"
+ },
+ {
+  "idx": 234,
+  "id": "runbooks/memory-sram/exp_sparse_attn_backward_dq_001.md"
+ },
+ {
+  "idx": 235,
+  "id": "runbooks/memory-sram/exp_spec_dec_reject_001.md"
+ },
+ {
+  "idx": 236,
+  "id": "runbooks/memory-sram/exp_spec_dec_verify_001.md"
+ },
+ {
+  "idx": 237,
+  "id": "runbooks/memory-sram/exp_speculative_recovery_001.md"
+ },
+ {
+  "idx": 238,
+  "id": "runbooks/memory-sram/exp_sum_scale_001.md"
+ },
+ {
+  "idx": 239,
+  "id": "runbooks/memory-sram/exp_swiglu_flat_001.md"
+ },
+ {
+  "idx": 240,
+  "id": "runbooks/memory-sram/exp_tensor_create_001.md"
+ },
+ {
+  "idx": 241,
+  "id": "runbooks/memory-sram/exp_topk_pad_001.md"
+ },
+ {
+  "idx": 242,
+  "id": "runbooks/memory-sram/exp_tv_distance_001.md"
+ },
+ {
+  "idx": 243,
+  "id": "runbooks/memory-sram/gather-random-address-slow.md"
+ },
+ {
+  "idx": 244,
+  "id": "runbooks/memory-sram/host-flatten-to-2d.md"
+ },
+ {
+  "idx": 245,
+  "id": "runbooks/memory-sram/input-contiguous.md"
+ },
+ {
+  "idx": 246,
+  "id": "runbooks/memory-sram/layout-bthd-to-bhtd.md"
+ },
+ {
+  "idx": 247,
+  "id": "runbooks/memory-sram/normalize-dim-to-last.md"
+ },
+ {
+  "idx": 248,
+  "id": "runbooks/memory-sram/overlapping-t-tiling.md"
+ },
+ {
+  "idx": 249,
+  "id": "runbooks/memory-sram/pad-next-pow2-extremum.md"
+ },
+ {
+  "idx": 250,
+  "id": "runbooks/memory-sram/parallel-axis-align.md"
+ },
+ {
+  "idx": 251,
+  "id": "runbooks/memory-sram/pergroup-blockk-align.md"
+ },
+ {
+  "idx": 252,
+  "id": "runbooks/memory-sram/pertensor-scale-materialize.md"
+ },
+ {
+  "idx": 253,
+  "id": "runbooks/memory-sram/pow2-block-constexpr.md"
+ },
+ {
+  "idx": 254,
+  "id": "runbooks/memory-sram/preload-extract-slice-eliminate-reread.md"
+ },
+ {
+  "idx": 255,
+  "id": "runbooks/memory-sram/register-shift-sliding-window.md"
+ },
+ {
+  "idx": 256,
+  "id": "runbooks/memory-sram/row-width-512b-align.md"
+ },
+ {
+  "idx": 257,
+  "id": "runbooks/memory-sram/tiling-budget-and-layout-driven-selection.md"
+ },
+ {
+  "idx": 258,
+  "id": "runbooks/memory-sram/triton-ascend-strided2-interleave-contract.md"
+ },
+ {
+  "idx": 259,
+  "id": "runbooks/memory-sram/ub-aware-block-adaptive.md"
+ },
+ {
+  "idx": 260,
+  "id": "runbooks/memory-sram/ub-fill-and-compute-hoist.md"
+ },
+ {
+  "idx": 261,
+  "id": "runbooks/memory-sram/vectorized-coalesced-io.md"
+ },
+ {
+  "idx": 262,
+  "id": "runbooks/autotuning/autotune-debug.md"
+ },
+ {
+  "idx": 263,
+  "id": "runbooks/autotuning/autotune-num-warps-stages.md"
+ },
+ {
+  "idx": 264,
+  "id": "runbooks/autotuning/exp_perf_001.md"
+ },
+ {
+  "idx": 265,
+  "id": "runbooks/autotuning/exp_perf_017.md"
+ },
+ {
+  "idx": 266,
+  "id": "runbooks/autotuning/triton-ascend-microkernel-autotune-noise.md"
+ },
+ {
+  "idx": 267,
+  "id": "runbooks/meta-skills/attention-fusion-failure-diagnosis.md"
+ },
+ {
+  "idx": 268,
+  "id": "runbooks/meta-skills/cross-run-benchmark-noise.md"
+ },
+ {
+  "idx": 269,
+  "id": "runbooks/meta-skills/debugging-checklist.md"
+ },
+ {
+  "idx": 270,
+  "id": "runbooks/meta-skills/dot-vs-matmul-precision-diagnosis.md"
+ },
+ {
+  "idx": 271,
+  "id": "runbooks/meta-skills/exp_bonus_renew_001.md"
+ },
+ {
+  "idx": 272,
+  "id": "runbooks/meta-skills/exp_debug_001.md"
+ },
+ {
+  "idx": 273,
+  "id": "runbooks/meta-skills/exp_debug_002.md"
+ },
+ {
+  "idx": 274,
+  "id": "runbooks/meta-skills/exp_debug_003.md"
+ },
+ {
+  "idx": 275,
+  "id": "runbooks/meta-skills/exp_debug_004.md"
+ },
+ {
+  "idx": 276,
+  "id": "runbooks/meta-skills/exp_debug_005.md"
+ },
+ {
+  "idx": 277,
+  "id": "runbooks/meta-skills/exp_debug_triton_branch_type_mismatch_001.md"
+ },
+ {
+  "idx": 278,
+  "id": "runbooks/meta-skills/exp_solve_tril_006.md"
+ },
+ {
+  "idx": 279,
+  "id": "runbooks/meta-skills/fp16-intermediate-overflow-diagnosis.md"
+ },
+ {
+  "idx": 280,
+  "id": "runbooks/meta-skills/gpu-to-ascend-migration-checklist.md"
+ },
+ {
+  "idx": 281,
+  "id": "runbooks/meta-skills/multi-strategy-dispatch.md"
+ },
+ {
+  "idx": 282,
+  "id": "runbooks/meta-skills/pipeline-diagram-driven-diagnosis.md"
+ },
+ {
+  "idx": 283,
+  "id": "runbooks/meta-skills/precompute-dispatch.md"
+ },
+ {
+  "idx": 284,
+  "id": "runbooks/meta-skills/profiling-bottleneck-checklist.md"
+ },
+ {
+  "idx": 285,
+  "id": "runbooks/meta-skills/quant-fusion-int8-precision-diagnosis.md"
+ },
+ {
+  "idx": 286,
+  "id": "runbooks/meta-skills/quant-matmul-autotune-strategy.md"
+ },
+ {
+  "idx": 287,
+  "id": "runbooks/meta-skills/semantic-correctness.md"
+ },
+ {
+  "idx": 288,
+  "id": "runbooks/meta-skills/shape-driven-operator-decision-tree.md"
+ },
+ {
+  "idx": 289,
+  "id": "runbooks/compute-pipeline/async-task-cube-vector.md"
+ },
+ {
+  "idx": 290,
+  "id": "runbooks/compute-pipeline/care-padding-false-ilp.md"
+ },
+ {
+  "idx": 291,
+  "id": "runbooks/compute-pipeline/chunk-recurrence-pingpong-dispatch.md"
+ },
+ {
+  "idx": 292,
+  "id": "runbooks/compute-pipeline/composite-kernel-decomposition.md"
+ },
+ {
+  "idx": 293,
+  "id": "runbooks/compute-pipeline/constexpr-branch-elimination.md"
+ },
+ {
+  "idx": 294,
+  "id": "runbooks/compute-pipeline/core-mapping-strategy-selection.md"
+ },
+ {
+  "idx": 295,
+  "id": "runbooks/compute-pipeline/cube-core-num-fixed.md"
+ },
+ {
+  "idx": 296,
+  "id": "runbooks/compute-pipeline/cv-preload-and-bandwidth-arbitration.md"
+ },
+ {
+  "idx": 297,
+  "id": "runbooks/compute-pipeline/diagonal-core-mapping-l2-bank-conflict.md"
+ },
+ {
+  "idx": 298,
+  "id": "runbooks/compute-pipeline/dynamic-vector-core-num.md"
+ },
+ {
+  "idx": 299,
+  "id": "runbooks/compute-pipeline/exp_addmm_ascend_001.md"
+ },
+ {
+  "idx": 300,
+  "id": "runbooks/compute-pipeline/exp_attn_ascend_dual_pipeline_001.md"
+ },
+ {
+  "idx": 301,
+  "id": "runbooks/compute-pipeline/exp_attn_bwd_q_001.md"
+ },
+ {
+  "idx": 302,
+  "id": "runbooks/compute-pipeline/exp_attn_qk_cube_001.md"
+ },
+ {
+  "idx": 303,
+  "id": "runbooks/compute-pipeline/exp_attn_reduce_stage2_001.md"
+ },
+ {
+  "idx": 304,
+  "id": "runbooks/compute-pipeline/exp_attn_sinks_prefill_001.md"
+ },
+ {
+  "idx": 305,
+  "id": "runbooks/compute-pipeline/exp_backward_sum_001.md"
+ },
+ {
+  "idx": 306,
+  "id": "runbooks/compute-pipeline/exp_block_inverse_001.md"
+ },
+ {
+  "idx": 307,
+  "id": "runbooks/compute-pipeline/exp_block_matmul_inv_001.md"
+ },
+ {
+  "idx": 308,
+  "id": "runbooks/compute-pipeline/exp_bmm_grouped_001.md"
+ },
+ {
+  "idx": 309,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_003.md"
+ },
+ {
+  "idx": 310,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_004.md"
+ },
+ {
+  "idx": 311,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_005.md"
+ },
+ {
+  "idx": 312,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_006.md"
+ },
+ {
+  "idx": 313,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_prefill_007.md"
+ },
+ {
+  "idx": 314,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_update_002.md"
+ },
+ {
+  "idx": 315,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_update_005.md"
+ },
+ {
+  "idx": 316,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_update_006.md"
+ },
+ {
+  "idx": 317,
+  "id": "runbooks/compute-pipeline/exp_causal_conv1d_update_007.md"
+ },
+ {
+  "idx": 318,
+  "id": "runbooks/compute-pipeline/exp_celoss_001.md"
+ },
+ {
+  "idx": 319,
+  "id": "runbooks/compute-pipeline/exp_celoss_bwd_001.md"
+ },
+ {
+  "idx": 320,
+  "id": "runbooks/compute-pipeline/exp_celoss_smooth_001.md"
+ },
+ {
+  "idx": 321,
+  "id": "runbooks/compute-pipeline/exp_celoss_smooth_bwd_001.md"
+ },
+ {
+  "idx": 322,
+  "id": "runbooks/compute-pipeline/exp_chunk_cumsum_001.md"
+ },
+ {
+  "idx": 323,
+  "id": "runbooks/compute-pipeline/exp_chunk_fwd_001.md"
+ },
+ {
+  "idx": 324,
+  "id": "runbooks/compute-pipeline/exp_chunk_kkt_001.md"
+ },
+ {
+  "idx": 325,
+  "id": "runbooks/compute-pipeline/exp_crossentropy_001.md"
+ },
+ {
+  "idx": 326,
+  "id": "runbooks/compute-pipeline/exp_crossentropy_backward_001.md"
+ },
+ {
+  "idx": 327,
+  "id": "runbooks/compute-pipeline/exp_cube1_qk_gemm_001.md"
+ },
+ {
+  "idx": 328,
+  "id": "runbooks/compute-pipeline/exp_digit_hist_001.md"
+ },
+ {
+  "idx": 329,
+  "id": "runbooks/compute-pipeline/exp_element_mul_001.md"
+ },
+ {
+  "idx": 330,
+  "id": "runbooks/compute-pipeline/exp_embedding_backward_001.md"
+ },
+ {
+  "idx": 331,
+  "id": "runbooks/compute-pipeline/exp_entropy_backward_001.md"
+ },
+ {
+  "idx": 332,
+  "id": "runbooks/compute-pipeline/exp_entropy_backward_d_weight_001.md"
+ },
+ {
+  "idx": 333,
+  "id": "runbooks/compute-pipeline/exp_entropy_backward_fused_001.md"
+ },
+ {
+  "idx": 334,
+  "id": "runbooks/compute-pipeline/exp_entropy_epilogue_001.md"
+ },
+ {
+  "idx": 335,
+  "id": "runbooks/compute-pipeline/exp_expand_serial_001.md"
+ },
+ {
+  "idx": 336,
+  "id": "runbooks/compute-pipeline/exp_flash_attn_gridstride_001.md"
+ },
+ {
+  "idx": 337,
+  "id": "runbooks/compute-pipeline/exp_flashattn_bwd_kv_001.md"
+ },
+ {
+  "idx": 338,
+  "id": "runbooks/compute-pipeline/exp_flashattn_splitk_gqa_001.md"
+ },
+ {
+  "idx": 339,
+  "id": "runbooks/compute-pipeline/exp_fused_attention_001.md"
+ },
+ {
+  "idx": 340,
+  "id": "runbooks/compute-pipeline/exp_fused_attn_preprocess_001.md"
+ },
+ {
+  "idx": 341,
+  "id": "runbooks/compute-pipeline/exp_fused_delta_rule_001.md"
+ },
+ {
+  "idx": 342,
+  "id": "runbooks/compute-pipeline/exp_fused_delta_rule_npu_001.md"
+ },
+ {
+  "idx": 343,
+  "id": "runbooks/compute-pipeline/exp_fused_entropy_001.md"
+ },
+ {
+  "idx": 344,
+  "id": "runbooks/compute-pipeline/exp_fused_gating_001.md"
+ },
+ {
+  "idx": 345,
+  "id": "runbooks/compute-pipeline/exp_fused_gemm_scale_001.md"
+ },
+ {
+  "idx": 346,
+  "id": "runbooks/compute-pipeline/exp_fused_index_001.md"
+ },
+ {
+  "idx": 347,
+  "id": "runbooks/compute-pipeline/exp_fused_matmul_norm_sigmoid_001.md"
+ },
+ {
+  "idx": 348,
+  "id": "runbooks/compute-pipeline/exp_fused_matmul_rms_001.md"
+ },
+ {
+  "idx": 349,
+  "id": "runbooks/compute-pipeline/exp_fused_matmul_rmsnorm_001.md"
+ },
+ {
+  "idx": 350,
+  "id": "runbooks/compute-pipeline/exp_fused_matmul_rope_001.md"
+ },
+ {
+  "idx": 351,
+  "id": "runbooks/compute-pipeline/exp_fused_norm_rope_matmul_001.md"
+ },
+ {
+  "idx": 352,
+  "id": "runbooks/compute-pipeline/exp_fused_qkv_rmsnorm_rope_001.md"
+ },
+ {
+  "idx": 353,
+  "id": "runbooks/compute-pipeline/exp_fused_rmsnorm_sigmoid_001.md"
+ },
+ {
+  "idx": 354,
+  "id": "runbooks/compute-pipeline/exp_fused_transformer_block_001.md"
+ },
+ {
+  "idx": 355,
+  "id": "runbooks/compute-pipeline/exp_geglu_flat_001.md"
+ },
+ {
+  "idx": 356,
+  "id": "runbooks/compute-pipeline/exp_gelu_bwd_001.md"
+ },
+ {
+  "idx": 357,
+  "id": "runbooks/compute-pipeline/exp_gelu_fwd_001.md"
+ },
+ {
+  "idx": 358,
+  "id": "runbooks/compute-pipeline/exp_grouped_gemm_001.md"
+ },
+ {
+  "idx": 359,
+  "id": "runbooks/compute-pipeline/exp_grouped_gemm_bkmajor_001.md"
+ },
+ {
+  "idx": 360,
+  "id": "runbooks/compute-pipeline/exp_grouped_gemm_bnmajor_001.md"
+ },
+ {
+  "idx": 361,
+  "id": "runbooks/compute-pipeline/exp_grouped_matmul_001.md"
+ },
+ {
+  "idx": 362,
+  "id": "runbooks/compute-pipeline/exp_grouped_matmul_bkmajor_001.md"
+ },
+ {
+  "idx": 363,
+  "id": "runbooks/compute-pipeline/exp_grpo_loss_001.md"
+ },
+ {
+  "idx": 364,
+  "id": "runbooks/compute-pipeline/exp_hist_count_001.md"
+ },
+ {
+  "idx": 365,
+  "id": "runbooks/compute-pipeline/exp_hstu_attn_bwd_001.md"
+ },
+ {
+  "idx": 366,
+  "id": "runbooks/compute-pipeline/exp_hstu_attn_sched_001.md"
+ },
+ {
+  "idx": 367,
+  "id": "runbooks/compute-pipeline/exp_kda_bwd_intra_scalar_opt_001.md"
+ },
+ {
+  "idx": 368,
+  "id": "runbooks/compute-pipeline/exp_kda_bwd_scalar_loop_to_dot_001.md"
+ },
+ {
+  "idx": 369,
+  "id": "runbooks/compute-pipeline/exp_kda_bwd_wy_scalar_opt_001.md"
+ },
+ {
+  "idx": 370,
+  "id": "runbooks/compute-pipeline/exp_kda_bwd_wy_structure_opt_001.md"
+ },
+ {
+  "idx": 371,
+  "id": "runbooks/compute-pipeline/exp_launch_diagonal_001.md"
+ },
+ {
+  "idx": 372,
+  "id": "runbooks/compute-pipeline/exp_layernorm_npu_001.md"
+ },
+ {
+  "idx": 373,
+  "id": "runbooks/compute-pipeline/exp_layernorm_npu_simd_001.md"
+ },
+ {
+  "idx": 374,
+  "id": "runbooks/compute-pipeline/exp_lightning_attn_001.md"
+ },
+ {
+  "idx": 375,
+  "id": "runbooks/compute-pipeline/exp_linear_persistent_001.md"
+ },
+ {
+  "idx": 376,
+  "id": "runbooks/compute-pipeline/exp_log_softmax_001.md"
+ },
+ {
+  "idx": 377,
+  "id": "runbooks/compute-pipeline/exp_log_softmax_backward_001.md"
+ },
+ {
+  "idx": 378,
+  "id": "runbooks/compute-pipeline/exp_matmul_002.md"
+ },
+ {
+  "idx": 379,
+  "id": "runbooks/compute-pipeline/exp_matmul_ascend_diag_001.md"
+ },
+ {
+  "idx": 380,
+  "id": "runbooks/compute-pipeline/exp_matmul_bias_fused_001.md"
+ },
+ {
+  "idx": 381,
+  "id": "runbooks/compute-pipeline/exp_matmul_diag_tiling_001.md"
+ },
+ {
+  "idx": 382,
+  "id": "runbooks/compute-pipeline/exp_matmul_qn_001.md"
+ },
+ {
+  "idx": 383,
+  "id": "runbooks/compute-pipeline/exp_matmul_small_tile_001.md"
+ },
+ {
+  "idx": 384,
+  "id": "runbooks/compute-pipeline/exp_matmul_swizzle_hardware_hint_001.md"
+ },
+ {
+  "idx": 385,
+  "id": "runbooks/compute-pipeline/exp_matmul_triton_base_001.md"
+ },
+ {
+  "idx": 386,
+  "id": "runbooks/compute-pipeline/exp_matmul_vec_parallel_001.md"
+ },
+ {
+  "idx": 387,
+  "id": "runbooks/compute-pipeline/exp_mhc_fused_gemm_sqrsum_001.md"
+ },
+ {
+  "idx": 388,
+  "id": "runbooks/compute-pipeline/exp_mhc_post_fusion_001.md"
+ },
+ {
+  "idx": 389,
+  "id": "runbooks/compute-pipeline/exp_mm_grouped_reorder_001.md"
+ },
+ {
+  "idx": 390,
+  "id": "runbooks/compute-pipeline/exp_moe_wgrad_npu_001.md"
+ },
+ {
+  "idx": 391,
+  "id": "runbooks/compute-pipeline/exp_multinomial_001.md"
+ },
+ {
+  "idx": 392,
+  "id": "runbooks/compute-pipeline/exp_partial_matmul_001.md"
+ },
+ {
+  "idx": 393,
+  "id": "runbooks/compute-pipeline/exp_partial_matmul_dynamic_001.md"
+ },
+ {
+  "idx": 394,
+  "id": "runbooks/compute-pipeline/exp_partial_rope_001.md"
+ },
+ {
+  "idx": 395,
+  "id": "runbooks/compute-pipeline/exp_perf_007.md"
+ },
+ {
+  "idx": 396,
+  "id": "runbooks/compute-pipeline/exp_perf_010.md"
+ },
+ {
+  "idx": 397,
+  "id": "runbooks/compute-pipeline/exp_perf_012.md"
+ },
+ {
+  "idx": 398,
+  "id": "runbooks/compute-pipeline/exp_perf_013.md"
+ },
+ {
+  "idx": 399,
+  "id": "runbooks/compute-pipeline/exp_perf_014.md"
+ },
+ {
+  "idx": 400,
+  "id": "runbooks/compute-pipeline/exp_qwen2vl_mrope_001.md"
+ },
+ {
+  "idx": 401,
+  "id": "runbooks/compute-pipeline/exp_radix_convert_001.md"
+ },
+ {
+  "idx": 402,
+  "id": "runbooks/compute-pipeline/exp_radix_sort_scatter_001.md"
+ },
+ {
+  "idx": 403,
+  "id": "runbooks/compute-pipeline/exp_recompute_w_u_001.md"
+ },
+ {
+  "idx": 404,
+  "id": "runbooks/compute-pipeline/exp_reduce_split_001.md"
+ },
+ {
+  "idx": 405,
+  "id": "runbooks/compute-pipeline/exp_reject_sampler_001.md"
+ },
+ {
+  "idx": 406,
+  "id": "runbooks/compute-pipeline/exp_rejection_sample_001.md"
+ },
+ {
+  "idx": 407,
+  "id": "runbooks/compute-pipeline/exp_rmsnorm_backward_npu_001.md"
+ },
+ {
+  "idx": 408,
+  "id": "runbooks/compute-pipeline/exp_rmsnorm_bwd_001.md"
+ },
+ {
+  "idx": 409,
+  "id": "runbooks/compute-pipeline/exp_rmsnorm_fwd_001.md"
+ },
+ {
+  "idx": 410,
+  "id": "runbooks/compute-pipeline/exp_rmsnorm_kv_001.md"
+ },
+ {
+  "idx": 411,
+  "id": "runbooks/compute-pipeline/exp_rmsnorm_rope_001.md"
+ },
+ {
+  "idx": 412,
+  "id": "runbooks/compute-pipeline/exp_rope_001.md"
+ },
+ {
+  "idx": 413,
+  "id": "runbooks/compute-pipeline/exp_rope_backward_001.md"
+ },
+ {
+  "idx": 414,
+  "id": "runbooks/compute-pipeline/exp_rope_matmul_fused_001.md"
+ },
+ {
+  "idx": 415,
+  "id": "runbooks/compute-pipeline/exp_rope_mqa_001.md"
+ },
+ {
+  "idx": 416,
+  "id": "runbooks/compute-pipeline/exp_rope_siso_001.md"
+ },
+ {
+  "idx": 417,
+  "id": "runbooks/compute-pipeline/exp_rope_triton_001.md"
+ },
+ {
+  "idx": 418,
+  "id": "runbooks/compute-pipeline/exp_scatter_wgrad_001.md"
+ },
+ {
+  "idx": 419,
+  "id": "runbooks/compute-pipeline/exp_sda_bwd_reduce_001.md"
+ },
+ {
+  "idx": 420,
+  "id": "runbooks/compute-pipeline/exp_sdpa_bwd_kv_001.md"
+ },
+ {
+  "idx": 421,
+  "id": "runbooks/compute-pipeline/exp_sdpa_bwd_q_001.md"
+ },
+ {
+  "idx": 422,
+  "id": "runbooks/compute-pipeline/exp_sdpa_infer_ascend_001.md"
+ },
+ {
+  "idx": 423,
+  "id": "runbooks/compute-pipeline/exp_shuffle_blockwise_001.md"
+ },
+ {
+  "idx": 424,
+  "id": "runbooks/compute-pipeline/exp_sigmoid_grid_stride_001.md"
+ },
+ {
+  "idx": 425,
+  "id": "runbooks/compute-pipeline/exp_silu_bwd_001.md"
+ },
+ {
+  "idx": 426,
+  "id": "runbooks/compute-pipeline/exp_silu_fwd_001.md"
+ },
+ {
+  "idx": 427,
+  "id": "runbooks/compute-pipeline/exp_softmax_inner_002.md"
+ },
+ {
+  "idx": 428,
+  "id": "runbooks/compute-pipeline/exp_softmax_non_inner_001.md"
+ },
+ {
+  "idx": 429,
+  "id": "runbooks/compute-pipeline/exp_softmax_online_001.md"
+ },
+ {
+  "idx": 430,
+  "id": "runbooks/compute-pipeline/exp_solve_tril_001.md"
+ },
+ {
+  "idx": 431,
+  "id": "runbooks/compute-pipeline/exp_solve_tril_003.md"
+ },
+ {
+  "idx": 432,
+  "id": "runbooks/compute-pipeline/exp_solve_tril_004.md"
+ },
+ {
+  "idx": 433,
+  "id": "runbooks/compute-pipeline/exp_sort_bitonic_001.md"
+ },
+ {
+  "idx": 434,
+  "id": "runbooks/compute-pipeline/exp_sparse_attn_topk_001.md"
+ },
+ {
+  "idx": 435,
+  "id": "runbooks/compute-pipeline/exp_sparse_flash_attn_decode_001.md"
+ },
+ {
+  "idx": 436,
+  "id": "runbooks/compute-pipeline/exp_spec_decode_verify_scalar.md"
+ },
+ {
+  "idx": 437,
+  "id": "runbooks/compute-pipeline/exp_ssm_gated_delta_001.md"
+ },
+ {
+  "idx": 438,
+  "id": "runbooks/compute-pipeline/exp_swiglu_bwd_001.md"
+ },
+ {
+  "idx": 439,
+  "id": "runbooks/compute-pipeline/exp_swiglu_bwd_flat_001.md"
+ },
+ {
+  "idx": 440,
+  "id": "runbooks/compute-pipeline/exp_swiglu_fwd_001.md"
+ },
+ {
+  "idx": 441,
+  "id": "runbooks/compute-pipeline/exp_swiglu_oai_001.md"
+ },
+ {
+  "idx": 442,
+  "id": "runbooks/compute-pipeline/exp_swiglu_quant_001.md"
+ },
+ {
+  "idx": 443,
+  "id": "runbooks/compute-pipeline/exp_top_p_sampling_001.md"
+ },
+ {
+  "idx": 444,
+  "id": "runbooks/compute-pipeline/exp_topp_filter_001.md"
+ },
+ {
+  "idx": 445,
+  "id": "runbooks/compute-pipeline/exp_tril_solve_001.md"
+ },
+ {
+  "idx": 446,
+  "id": "runbooks/compute-pipeline/exp_triton_rope_001.md"
+ },
+ {
+  "idx": 447,
+  "id": "runbooks/compute-pipeline/for-loop-tiling-ilp.md"
+ },
+ {
+  "idx": 448,
+  "id": "runbooks/compute-pipeline/grid-by-output-count.md"
+ },
+ {
+  "idx": 449,
+  "id": "runbooks/compute-pipeline/grid-cap-to-core-num.md"
+ },
+ {
+  "idx": 450,
+  "id": "runbooks/compute-pipeline/grid-limit-65535.md"
+ },
+ {
+  "idx": 451,
+  "id": "runbooks/compute-pipeline/grid-strict-match-num-cores.md"
+ },
+ {
+  "idx": 452,
+  "id": "runbooks/compute-pipeline/int-compare-cast-float32.md"
+ },
+ {
+  "idx": 453,
+  "id": "runbooks/compute-pipeline/int32-index-cast.md"
+ },
+ {
+  "idx": 454,
+  "id": "runbooks/compute-pipeline/load-balance-formula.md"
+ },
+ {
+  "idx": 455,
+  "id": "runbooks/compute-pipeline/load-balance-grid-sizing.md"
+ },
+ {
+  "idx": 456,
+  "id": "runbooks/compute-pipeline/loop-invariant-code-motion.md"
+ },
+ {
+  "idx": 457,
+  "id": "runbooks/compute-pipeline/loop-invariant-group-hoisting.md"
+ },
+ {
+  "idx": 458,
+  "id": "runbooks/compute-pipeline/multibuffer-empirical.md"
+ },
+ {
+  "idx": 459,
+  "id": "runbooks/compute-pipeline/no-continue-break.md"
+ },
+ {
+  "idx": 460,
+  "id": "runbooks/compute-pipeline/operator-fusion-patterns.md"
+ },
+ {
+  "idx": 461,
+  "id": "runbooks/compute-pipeline/pad-slot-early-exit.md"
+ },
+ {
+  "idx": 462,
+  "id": "runbooks/compute-pipeline/persistent-kernel-pattern.md"
+ },
+ {
+  "idx": 463,
+  "id": "runbooks/compute-pipeline/scalar-load-channel-index.md"
+ },
+ {
+  "idx": 464,
+  "id": "runbooks/compute-pipeline/scalar-loop-to-dot.md"
+ },
+ {
+  "idx": 465,
+  "id": "runbooks/compute-pipeline/swizzle2d-block-reorder.md"
+ },
+ {
+  "idx": 466,
+  "id": "runbooks/compute-pipeline/triton-ascend-shifted-load-degradation.md"
+ },
+ {
+  "idx": 467,
+  "id": "runbooks/compute-pipeline/triton-ascend-trans-scalarization.md"
+ },
+ {
+  "idx": 468,
+  "id": "runbooks/compute-pipeline/work-stealing-dynamic-load-balance.md"
+ }
+]
