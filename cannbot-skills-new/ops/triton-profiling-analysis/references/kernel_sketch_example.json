@@ -1,0 +1,50 @@
+{
+  "code_md5_prefix": "33310c4a4c",
+  "op": "201_GDN ChunkGatedDeltaRuleFwdH",
+  "derived_by": "agent judgment，三方锚定：设计意图 sketch.txt + 实现现实 ir_dump/*_ttir.mlir + 任务输入规格（2026-10-26 v2，修正初版 k/w 少算 V/BV 倍的错误——教训：未查设计草图的 grid 分解凭记忆断言）",
+  "comment": "机械符号表：in0=k[1,4,T,128] in1=w[1,8,T,128] in2=u in3=g(fp32) in5=hi[1,8,128,128]；nseg/total_len 来自 cu 探测。设计锚点：sketch.txt @architecture_decision v-dim-program-split（BV=64 两半，programs=B*Hv*(V//BV)）——每个 v-block 程序整宽读 k/w，故 k/w 搬运含 NVB=V/BV 复制因子。",
+  "constants": {"BT": 64, "BV": 64},
+  "aliases": {
+    "K": "in0_d3",
+    "Hv": "in1_d1",
+    "V": "in1_d3",
+    "Tlen": "in0_d2",
+    "NVB": "cdiv(V,BV)",
+    "NT": "nseg*cdiv(cdiv(total_len,nseg),BT)",
+    "U": "NT*Hv",
+    "NCH": "nseg",
+    "programs": "nseg*Hv*NVB"
+  },
+  "kernels": {
+    "gdn_fwd_h_kernel": {
+      "semantics": "grid=(nseg,Hv,V/BV) 每 program：chunk 维串行递推，状态 [BK,BV] fp32 驻留 UB；每 (chunk,program)：dot1 w[BT,K]@h[K,BV] + dot2 k^T[K,BT]@v_dec[BT,BV]（CUBE）；v_new=u−w@h、v_dec 缩放、exp 衰减（VECTOR）；GM 读 k/w/u/g(+链首hi)，GM 写 v_new/h(逐chunk)/ht(链尾)。k/w 为 K 全宽 tile，每个 v-block 程序各自整读一份（设计决策的已知代价）",
+      "design_refs": [
+        "sketch.txt L2 @architecture_decision(v-dim-program-split)：V 切 BV=64 两半 → programs=B*Hv*2",
+        "sketch.txt L25 grid = (B_or_N * Hv * (V // BV))",
+        "sketch.txt L43 状态 [BK,BV] fp32=32KB 驻留 UB"
+      ],
+      "ir_refs": [
+        "gdn_fwd_h_kernel_ttir.mlir L64 循环外 hi tensor<128x64xbf16>=16384B（链首一次）",
+        "L119 w tensor<64x128xbf16>=16384B（逐迭代）",
+        "L127 b_kt(k) tensor<128x64xbf16>=16384B（逐迭代）",
+        "L129 g tensor<64x1xf32>=256B（逐迭代）",
+        "L146 u tensor<64x64xbf16>=8192B（逐迭代）",
+        "L106 h store 128x64、L157 v_new store 64x64、L177 ht store 128x64"
+      ],
+      "exprs": {
+        "c_flop": "4*BT*K*BV*U*NVB",
+        "v_flop": "(4*BT*BV + BT + 3*K*BV)*2*U*NVB",
+        "gm_in": "(4*BT*K + 2*BT*BV + 4*BT)*U*NVB + NCH*Hv*K*V*2",
+        "gm_out": "(2*BT*BV + 2*K*BV)*U*NVB + NCH*Hv*K*V*2",
+        "fixp_bytes": "(BT*BV + K*BV)*4*U*NVB"
+      },
+      "redundancy_notes": [
+        "无效搬运 #1（设计代价）：k/w 每 v-block 重复整读，MTE2 含 NVB=2 复制因子 → 实现读入 ≈2.0× 任务下限（c1: 6.86MB vs 3.42MB）。这是 v-dim-program-split 决策换核利用率 8→16 的已知代价，非实现 bug",
+        "优化机会：单 program 内循环两 v-half、k/w 读一次驻留 UB 共享 → MTE2 可省 ~40%（注意 BV=128 直接切有 UB corruption 后端缺陷史，须走共享形态而非加大 BV）",
+        "无效搬运 #2：h 每 chunk 全量落盘占 MTE3 2/3（NT*Hv*K*BV*NVB）；仅推理（下游只消费链尾 ht）时可省。201_GDN 训练主链消费 per-chunk h，当前不可省",
+        "g fp32 读（4B/elem）占比 <1%，转 bf16 收益微小",
+        "IR 对账：ir_est(c1) = 16programs × 10NT × 41216B + 16×16384B = 6.86MB，与草图 gm_in 偏差 <0.1%（机械闸自动复核）"
+      ]
+    }
+  }
+}

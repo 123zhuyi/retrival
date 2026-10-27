@@ -1,0 +1,82 @@
+{
+  "eval_mode": "text",
+  "evals": [
+    {
+      "id": 1,
+      "title": "上板 bound 判定与无 bound 分支",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "拿到一个 Triton-Ascend kernel 后，性能分析第一步做什么？上板数据里 PipeUtilization.csv 显示 aiv_vec_ratio=45%、ai*_mte2_ratio=40%、其余更低，判定结论是什么？下一步走哪个分支？不需要执行任何工具调用。",
+      "expected_output": "回复应说明第一步必须抓上板数据判 bound（上板快且直接回答 bound 在哪，禁止跳过直接仿真）。bound 定义：某 pipe 占比最高且 >50%（SCALAR 特例 >30%）即达成 bound。本例所有占比均 <50%，判「无 bound」，说明空泡吞掉了执行时间，必须进入仿真数据定位气泡成因（消气泡、使能双流水、增加并行度），而不是优化某个 pipe。",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 2,
+      "title": "两路数据的分工与终止条件",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "上板数据和仿真数据在性能分析里各回答什么问题？各自的理想优化终止条件是什么？为什么优化一轮之后旧结论不能再用？不需要执行任何工具调用。",
+      "expected_output": "回复应说明：上板数据定位当前 bound（优化性价比最高的 pipe）并按 bound 类型给优化建议，理想终止是某 pipe 达 80% 理论性能（用时≈80%×数据量/理论带宽或计算量/理论算力）；仿真数据定位 pipe 中气泡出现的原因、消除气泡让某 pipe 占比超 50% 达成 bound，理想终止是所有管线实现掩盖、某 pipe 占比超 80% 形成绝对 bound。优化会改变各 pipe 占比（bound 转移），所以每轮优化后必须重新上板判定，禁止沿用旧结论。",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 3,
+      "title": "trace.json 气泡分析方法",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "拿到仿真 trace.json 后怎么分析 pipe 气泡？pipe 间的掩盖失效怎么判定？空泡具体在等谁怎么查？一个完整计算核心有多少个 pipe？不需要执行任何工具调用。",
+      "expected_output": "回复应说明：解析 trace.json，按 pid 找到对应核（coreN.cubecoreN/veccoreN），筛选 ph=X 的事件得到各 pipe（tid）的活跃/空泡区间；pipe 对重叠度 = 交集/并集，<10% 命中掩盖失效（C_MTE2_MTE1/C_MTE1_MAC/C_MAC_FIXPIPE/V_MTE2_VEC/V_VEC_MTE3/V_C 六类）；筛选 WAIT_FLAG 事件定位空泡在等哪个 pipe（MTE*_WAIT=数据阻塞、SCALAR_WAIT=标量阻塞、指向其他计算核心=CV 阻塞）；一个完整计算核心 1C+2V 共 18 个 pipe，各有唯一 ID，pipe 清单应从 trace metadata 动态发现而非硬编码。",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 4,
+      "title": "10 次规则与流水重排",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "无 bound 的算子消气泡尝试了很多轮仍没有 pipe 占比超过 50%，接下来怎么办？流水重排的方法是什么？以 attention（topk→mm→softmax→mm）为例说明依赖图怎么建。不需要执行任何工具调用。",
+      "expected_output": "回复应说明 10 次规则：消气泡尝试 10 次仍未达成阈值（某 pipe 占比超 50%），则不再继续消气泡，转入取当前占比靠前的 pipe 按 bound 优化，或尝试重排流水。重排方法：根据计算草图列计算块并标注执行单元（cube=mm 类 / vector=softmax、topk 类）、建依赖图、结合实测数据排布——无依赖的块并行排布（如 topk[vector] 与 mm(q,k)[cube] 可互相掩盖），有依赖的串行（1,2→3→4 中 3 等 1、2，4 等 3）。还应提及重排后必须重新上板判 bound，且本 skill 只给排布方案、落地交主 agent/latency-optimizer。",
+      "files": [],
+      "expectations": []
+    }
+  ],
+  "skill_name": "triton-profiling-analysis"
+}
