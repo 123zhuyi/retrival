@@ -1,0 +1,50 @@
+experience_id: exp_triton_rope_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Rotary Positional Embedding
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    num_tokens:
+    - '>=1'
+    head_dim:
+    - '>=rope_dim'
+    rope_dim:
+    - '>=2'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_chunked_processing: The kernel explicitly calculates offsets for the
+    first and second halves of the head dimension (`first_half_q_offsets`, `second_half_q_offsets`)
+    based on the `IS_NEOX_STYLE` flag. This enables loading contiguous blocks of memory
+    for the rotation calculation, maximizing memory bandwidth utilization and allowing
+    the compiler to generate efficient SIMD instructions for the `x1*cos - x2*sin`
+    operations.
+- padded_access_with_masking: The kernel utilizes padding parameters (`pad_n_qh`,
+    `pad_rope_dim`) to calculate static, aligned memory offsets for vectorized loads.
+    It simultaneously applies runtime masks (`first_q_mask`, `cos_mask`) to handle
+    cases where the actual dimensions are smaller than the padded block size. This
+    strategy ensures memory access alignment for performance while maintaining correctness
+    for arbitrary tensor shapes without expensive global memory re-padding.
+- loop_tiling_over_tokens: The kernel employs a grid-stride loop (`tl.range`) over
+    the `num_tokens` dimension, allowing a single kernel launch to process the entire
+    sequence. This significantly reduces kernel launch overhead compared to launching
+    a separate kernel instance for each token or head, and improves data locality
+    by keeping cos/sin values in registers/cache across head iterations.
+performance_boost: 25%
+note: Supports both Neox-style (chunked) and non-Neox-style (interleaved) RoPE, as
+  well as partial RoPE application where rope_dim < head_dim. It also handles both
+  pre-computed cos/sin tensors and position-indexed lookups.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/172-_triton_rope.py

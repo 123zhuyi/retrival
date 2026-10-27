@@ -1,0 +1,44 @@
+experience_id: exp_ascend_blockptr_boundary_scalar_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: memory_access
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 硬件约束
+framework_tag:
+- Triton
+optimization_points:
+- 现象: 使用tl.make_block_ptr + boundary_check时，Ascend后端会为每个维度、每个元素生成逐元素标量边界判断，导致aiv_scalar_ratio和aic_scalar_ratio同时升高
+- 根因: boundary_check生成的掩码比较涉及i32 LT/GT等操作，在Ascend上标量降级；同时block_ptr结构体本身的地址偏移计算也走Scalar单元
+- 适用条件: 边界tile（最后一个tile）需要boundary_check，或所有tile都统一开启boundary_check
+- 解决方案: 对频繁执行的小tile load/store，改用手动指针+向量化mask；对完整tile可用ALIGNED constexpr走无boundary_check路径
+- 典型症状: aiv_scalar_ratio > 30%，代码中存在大量tl.make_block_ptr + boundary_check调用
+code_snippet:
+  Triton: "# 高标量开销写法\n\
+    p = tl.make_block_ptr(base, (T, K), (H*K, 1), (i_t, i_k*BK), (BC, BK), (1, 0))\n\
+    x = tl.load(p, boundary_check=(0, 1))\n\
+    \n\
+    # 优化写法：完整tile走无boundary_check\n\
+    if ALIGNED:\n\
+    \    p = tl.make_block_ptr(base, (T, K), (H*K, 1), (i_t, i_k*BK), (BC, BK), (1, 0))\n\
+    \    x = tl.load(p)\n\
+    else:\n\
+    \    o_i = tl.arange(0, BC)\n\
+    \    o_k = tl.arange(0, BK)\n\
+    \    mask = ((i_t + o_i) < T)[:, None] & ((i_k*BK + o_k) < K)[None, :]\n\
+    \    p = base + (i_t + o_i[:, None]) * H * K + o_k[None, :]\n\
+    \    x = tl.load(p, mask=mask, other=0.0)"
+performance_boost: 60%
+note: 不要无条件替换所有block_ptr。对大块、确定性访存，block_ptr仍可能提供更好的预取和更简洁的代码。优化重点是小tile、边界检查密集的场景。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/zy_design.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

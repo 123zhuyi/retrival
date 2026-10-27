@@ -1,0 +1,34 @@
+experience_id: exp_debug_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 调试排查
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 调试排查
+framework_tag:
+- Triton
+optimization_points:
+- mask检查: 所有`tl.load/tl.store`操作必须配备mask或boundary_check，防止内存越界访问
+- stride检查: 确认stride参数与张量实际内存布局匹配，避免因stride错误导致的偏移计算偏差
+- 索引检查: 所有数组索引需通过条件判断（如`offset < n_elements`）确保不越界
+code_snippet:
+  Triton: "# ========== 内存访问正确/错误示例 ==========\n@triton.jit\ndef memory_access_correct_kernel(input_ptr,\
+    \ output_ptr, n_elements, stride, BLOCK_SIZE: tl.constexpr):\n    pid = tl.program_id(0)\n\
+    \    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    \n    # 正确: 所有load/store带mask防越界\n\
+    \    mask = offsets < n_elements\n    data = tl.load(input_ptr + offsets * stride,\
+    \ mask=mask)  # stride参数正确匹配\n    tl.store(output_ptr + offsets * stride, data\
+    \ * 2, mask=mask)\n    \n    # 错误: 无mask的load/store（易越界）\n    # data = tl.load(input_ptr\
+    \ + offsets * stride)\n    # 错误: stride参数错误（如误用stride=2而非实际stride）\n    # data\
+    \ = tl.load(input_ptr + offsets * 2, mask=mask)\n    # 错误: 索引未检查（如offsets无上限判断）\n\
+    \    # offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE + 100)"
+performance_boost: 0%
+note: 内存访问问题是Triton kernel最常见的崩溃原因，910b系列平台下越界访问会直接触发设备异常；stride参数错误会导致数据读取错乱，需与张量实际stride严格一致
+version: v1.0

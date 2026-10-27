@@ -1,0 +1,43 @@
+experience_id: exp_backward_sum_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Element-wise Multiplication + Sum Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    o_len:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorization_alignment: Align BLOCK_SIZE_D to the hardware's vector width (e.g.,
+    128 for fp16/bf16 on Ascend 910 series) to ensure the Vector Unit processes data
+    efficiently without remainder handling, maximizing throughput for the element-wise
+    multiplication.
+- memory_coalescing: Ensure the stride for the HEAD_DIM (stride_od, stride_dod) is
+    1 (contiguous). This allows the memory controller to issue contiguous load instructions,
+    significantly reducing memory access latency compared to strided loads.
+- block_size_tuning: Increase BLOCK_SIZE_O to improve data reuse and hide memory latency.
+    By processing more sequence elements per program ID, the kernel can better saturate
+    the compute units while keeping the intermediate accumulation in registers or
+    high-speed cache (L0C/UB).
+performance_boost: 25%
+note: This kernel computes the gradient for the scale parameter in normalization layers
+  (e.g., RMSNorm backward). The current implementation is functionally correct but
+  requires tuning of block sizes and alignment to achieve peak performance on Ascend
+  hardware.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/021-backward_sum_o_do.py

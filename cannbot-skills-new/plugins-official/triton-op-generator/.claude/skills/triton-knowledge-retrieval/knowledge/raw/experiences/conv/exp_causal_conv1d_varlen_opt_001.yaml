@@ -1,0 +1,48 @@
+experience_id: exp_causal_conv1d_varlen_opt_001
+category: conv
+experience_type: Memory Access Optimization
+operator_type: Convolution Operations
+compute_pattern: Causal Conv1D with Variable-Length Sequences and State Update
+data_type:
+  - bf16
+  - fp16
+hardware:
+  - 910b2
+core_param:
+  D:
+    - '>=1024'
+  W:
+    - '4'
+  seqlen:
+    - '<=6'
+  batch:
+    - '<=4'
+optimization_level: advanced
+tensor_shape:
+  - nd
+performance_boost: 22%
+status: draft
+composite_score: 75
+
+optimization_points:
+  - constexpr_strides: "将 conv_states 的 stride_line 和 stride_state 声明为 tl.constexpr，
+      使编译器在编译期完成地址偏移常量折叠，消除运行时乘法指令。贡献度 40%。"
+  - block_d_256: "BLOCK_D 从 128 增大到 256，将 dim=4096 时的 grid 程序数从 32 降为 16，
+      每程序工作量翻倍，减少调度开销。UB 占用仍远低于 192KB。贡献度 35%。"
+  - care_padding_false: "所有 tl.load 使用 care_padding=False，消除 MTE2→Vector 同步屏障，
+      提升 load/compute 流水线并行度。贡献度 25%。"
+  - conditional_window_shift: "使用 tl.where 条件更新滑动窗口（prev0/prev1/prev2），
+      避免循环超出有效 token 范围后用零值覆盖历史状态。这是功能正确性修复但也影响性能。"
+  - bool_to_int32: "将 bool tensor (has_initial_state) 在 host 侧转为 int32，
+      kernel 中用 int32 > 0 比较替代直接 bool mask，避免 i8 mask 编译错误。"
+  - float32_compare: "标量整数比较 (cache_idx >= 0) 转换为 float32 比较，
+      避免 int32 CMP scalar fallback。"
+
+note: "此算子为 Causal Conv1D with variable-length sequences, conv_states update,
+  optional bias and SiLU activation。关键挑战：(1) if/else 分支类型一致性约束；
+  (2) bool tensor 在 Ascend 上的 i8 类型问题；(3) 循环超出有效范围时窗口移位逻辑保护。
+  最终实现 8.47x 加速比（vs PyTorch baseline），优化后 1.22x vs Phase 3 基线。"
+
+version: v1.0
+code_snippet:
+  description: "Causal Conv1D forward + state update, 2D grid (batch, cdiv(dim,BLOCK_D)), sliding window register reuse"

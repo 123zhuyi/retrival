@@ -1,0 +1,52 @@
+experience_id: exp_layernorm_bwd_fused_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: LayerNorm Backward
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_cols:
+    - '>=1'
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_workload_tiling: The heuristic `BLOCK_SIZE_M = ceil_div(4096, n_cols)` dynamically
+    adjusts the row block size based on the hidden dimension (n_cols). This ensures
+    that each program instance processes a consistent amount of data (~4096 elements),
+    which optimizes hardware utilization and load balancing regardless of the matrix
+    aspect ratio (e.g., long sequences vs. large hidden sizes).
+- in_loop_atomic_reduction: The kernel employs `tl.atomic_add` to accumulate gradients
+    for weights (`dW`) and biases (`dB`) directly within the column iteration loop.
+    This strategy avoids the need for a separate global reduction kernel or storing
+    large intermediate partial sums, thereby reducing global memory pressure and kernel
+    launch overhead.
+- register_efficient_reduction_passes: The computation is split into two distinct
+    passes over the column dimension. The first pass computes row-wise reduction statistics
+    (`ds_dx_hat`, `ds`) and weight gradients. The second pass computes the final input
+    gradients (`dX`) using the statistics from the first pass. This design minimizes
+    register pressure by avoiding the need to keep the entire intermediate `dY_W`
+    matrix in registers, trading off slightly increased memory bandwidth (reloading
+    inputs) for better occupancy.
+- fused_residual_backpropagation: The kernel conditionally adds the residual gradient
+    (`dS_out`) directly during the `dX` computation loop. This fuses the backward
+    pass of the residual addition operation with LayerNorm, eliminating a separate
+    kernel launch and reducing global memory read/write operations for the gradient
+    tensors.
+performance_boost: 35%
+note: The double loop over columns increases memory bandwidth usage (reloading S and
+  dY) but is necessary to fit the reduction logic within register limits. Atomic operations
+  on dW/dB may cause contention if the grid size is very small.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/251-_fused_add_layernorm_bwd_kernel.py

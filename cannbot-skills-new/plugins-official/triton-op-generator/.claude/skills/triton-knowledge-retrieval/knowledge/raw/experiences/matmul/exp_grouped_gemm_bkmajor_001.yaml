@@ -1,0 +1,50 @@
+experience_id: exp_grouped_gemm_bkmajor_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Grouped Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=1'
+    K:
+    - '>=1'
+    num_groups:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_load_balancing: The kernel implements a work-stealing scheduler using a
+    `while` loop and a global block counter (`cur_block`). This allows cores to dynamically
+    fetch tasks from the pool of matrix blocks across different groups. This is critical
+    for Grouped GEMM where matrix dimensions vary significantly, preventing load imbalance
+    where some cores sit idle while others process large groups.
+- hardware_specific_padding: Utilizes `dl.compile_hint` with the argument "dot_pad_only_k".
+    This provides specific instructions to the backend compiler (likely Ascend NPU)
+    regarding how to handle padding for the dot product instruction. It optimizes
+    the hardware instruction generation to handle boundary conditions (K-dimension
+    padding) efficiently without excessive software overhead.
+- layout_adaptation: The kernel handles matrix B in a K-major layout (indicated by
+    the stride logic and function name). It performs an explicit transpose (`tl.trans(b)`)
+    on the loaded tile before the `tl.dot` operation. This allows the kernel to support
+    non-standard data layouts for B while maintaining the high-throughput dot product
+    computation flow required by the hardware.
+performance_boost: 35%
+note: This kernel is specifically designed for scenarios involving batches of matrices
+  of varying sizes (Grouped GEMM) on Ascend hardware. The `dl` hints are proprietary
+  extensions for the Ascend software stack.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/070-m_grouped_gemm_bKmajor_kernel.py

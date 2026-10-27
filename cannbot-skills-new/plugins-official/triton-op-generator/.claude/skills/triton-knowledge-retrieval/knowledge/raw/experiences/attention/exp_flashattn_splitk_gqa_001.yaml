@@ -1,0 +1,49 @@
+experience_id: exp_flashattn_splitk_gqa_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Split-K Grouped Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    head_size:
+    - '>=64'
+    kv_len:
+    - '>=1024'
+    num_heads_q:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- split_k_parallelism: The sequence dimension (K) is partitioned into SPLIT_K chunks,
+    allowing multiple thread blocks to compute partial attention scores in parallel.
+    This reduces the per-block memory footprint and increases occupancy for long sequences.
+- online_softmax: Implements the iterative online softmax algorithm (updating m_i
+    and l_i) within the main loop. This avoids materializing the full N x M attention
+    matrix in global memory, significantly reducing memory bandwidth consumption.
+- paged_kv_cache: Utilizes Block_offsets to load K and V tiles, supporting non-contiguous
+    memory layouts. This is crucial for inference frameworks (like vLLM) that use
+    paged attention to manage variable-length sequences and KV cache efficiently.
+- gqa_head_tiling: The BLOCK_H parameter enables processing multiple query heads simultaneously
+    against a single KV head. This optimization increases data reuse and arithmetic
+    intensity for Grouped Query Attention (GQA) and Multi-Query Attention (MQA) workloads.
+- logit_softcapping: Directly integrates the tanh-based logit softcapping logic (qk
+    = tanh(qk/cap) * cap) into the kernel loop, eliminating the need for a separate
+    post-processing pass for models requiring this feature (e.g., Gemma).
+- head_dim_vectorization: Handles head dimensions that are not multiples of the tile
+    size using BLOCK_DMODEL1, ensuring vectorized memory loads and efficient compute
+    utilization for various head sizes (e.g., 128).
+performance_boost: 35%
+note: This kernel represents the first stage of a split-K attention implementation.
+  A second reduction kernel is required to aggregate the partial outputs (Acc_out,
+  m_i, l_i) produced by each split_k_id.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/017-_fwd_grouped_split_kernel.py

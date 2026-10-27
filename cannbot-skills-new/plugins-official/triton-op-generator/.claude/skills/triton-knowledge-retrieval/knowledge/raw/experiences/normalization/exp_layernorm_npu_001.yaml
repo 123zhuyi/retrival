@@ -1,0 +1,71 @@
+experience_id: exp_layernorm_npu_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Layer Normalization / RMSNorm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- Operator Fusion: Fuses the computation of mean, variance, and the final affine transformation
+    (y = (x - mean) * rstd * w + b) into a single kernel launch. This eliminates the
+    need to write intermediate statistics to global memory and read them back for
+    the normalization step, significantly reducing memory bandwidth pressure.
+- Weight Broadcasting: Loads the weight (W) and bias (B) tensors once per program
+    instance (per block) and broadcasts them across the BLOCK_M dimension. This optimization
+    minimizes redundant memory accesses for the normalization parameters which are
+    constant across the row dimension.
+- Heuristic Specialization: Utilizes `@triton.heuristics` to generate specialized
+    kernels at compile time for optional features such as Bias (`HAS_BIAS`), Residual
+    connection (`HAS_Z`), and RMS Norm (`IS_RMS_NORM`). This removes dynamic branching
+    overhead from the main computation loop, ensuring the instruction pipeline remains
+    efficient.
+- Grouped Execution: Implements a grouped execution strategy using `program_id(1)`
+    to handle multiple independent Layer Normalization instances (e.g., in batched
+    or grouped scenarios) within a single grid launch, improving hardware utilization.
+- Precision Management: Explicitly casts input data to `float32` before computing
+    the sum (mean) and sum of squares (variance). This ensures numerical stability
+    during the reduction operations, which is critical for the convergence of models
+    using lower precision inputs like fp16 or bf16.
+- single_pass_algorithm: The kernel implements a one-pass algorithm where the input
+    tile is loaded once to compute both the mean (if applicable) and variance. This
+    significantly reduces global memory access bandwidth compared to a two-pass approach
+    (one pass for statistics, one for normalization), effectively halving the read
+    traffic for the input tensor X.
+- comprehensive_operator_fusion: The kernel fuses multiple distinct operations into
+    a single kernel launch LayerNorm/RMSNorm calculation, Affine transformation (Weight/Bias
+    multiplication and addition), and a Gating mechanism (Z * Sigmoid(Z)). This eliminates
+    the need to write intermediate results to high-bandwidth memory (HBM) and reduces
+    kernel launch latency.
+- numerical_stability_precision: Intermediate calculations for mean and variance are
+    explicitly upcast to `tl.float32` before the reduction sum (`tl.sum`). This prevents
+    precision loss and overflow/underflow issues that are common when performing reductions
+    directly on fp16 or bf16 data types, ensuring the stability of the backward pass.
+- compile_time_specialization: The use of `@triton.heuristics` allows the kernel to
+    specialize at compile time based on the presence of optional arguments (Bias `B`,
+    Residual `Z`, and Norm type). This removes dynamic branching overhead inside the
+    main computation loop, generating highly optimized assembly code for specific
+    model configurations (e.g., SwiGLU vs standard FFN).
+performance_boost: 30%
+note: This kernel is specifically designed for NPU architectures (indicated by the
+  _npu suffix) and supports flexible execution modes including RMSNorm and pre/post-gating
+  normalization, making it highly suitable for modern Transformer architectures like
+  LLaMA.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/181-_layer_norm_fwd_1pass_kernel_npu.py

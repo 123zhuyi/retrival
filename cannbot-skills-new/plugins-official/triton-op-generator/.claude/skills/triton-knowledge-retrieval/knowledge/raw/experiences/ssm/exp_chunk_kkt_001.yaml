@@ -1,0 +1,44 @@
+experience_id: exp_chunk_kkt_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BT:
+    - '>=64'
+    BK:
+    - '>=32'
+    K:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_abstraction: Utilizes tl.make_block_ptr for all tensor loads (k, beta,
+    g_cumsum) and stores (A). This abstracts complex pointer arithmetic, enables automatic
+    vectorization of memory operations, and efficiently handles 2D block traversals.
+- tiled_accumulation: Implements a tiled reduction loop over the K dimension using
+    block size BK. The intermediate result b_A is accumulated in registers/SRAM (float32)
+    across iterations, significantly reducing global memory access pressure compared
+    to a naive implementation.
+- vectorized_masking: Applies the causal mask and boundary checks using vectorized
+    operations (tl.where and boundary_check flags in load/store). This avoids expensive
+    scalar branching inside the kernel loop, improving pipeline efficiency.
+- fused_operations: Fuses the matrix multiplication (K @ K.T), gating (safe_exp),
+    scaling (beta), and masking into a single kernel. This minimizes memory write-read
+    overhead for intermediate results.
+performance_boost: 35%
+note: This kernel is specifically designed for chunked attention mechanisms requiring
+  the K*K^T computation. It supports variable sequence lengths via cu_seqlens and
+  optional gating via g_cumsum.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/158-chunk_scaled_dot_kkt_fwd_kernel.py

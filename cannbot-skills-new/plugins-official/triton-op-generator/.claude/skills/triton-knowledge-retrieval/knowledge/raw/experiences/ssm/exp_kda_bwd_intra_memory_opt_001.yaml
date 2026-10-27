@@ -1,0 +1,48 @@
+experience_id: exp_kda_bwd_intra_memory_opt_001
+match_cond:
+  operator_type: SSM
+  compute_pattern: chunk_kda_bwd_intra
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    T:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 内存访问优化
+framework_tag:
+- Triton
+optimization_points:
+- 瓶颈: AIV MTE2=37.9%，主要由转置load非合并访存和冗余load导致
+- 优化1-转置load合并化: Phase 2中dAqk/dAkk转置加载从stride=(1, H*BT)改为行优先加载+tl.trans寄存器转置
+- 优化2-消除冗余load: Phase 1.5加载的b_q在Phase 2.5复用；Phase 1加载的b_b在Phase 2.5复用；b_g在Phase 1.5复用
+- 优化3-手动指针load替代block_ptr: 虽然主要目标是消除scalar，但也减少block_ptr结构体创建开销
+- 注意: 寄存器复用需考虑tl.debug_barrier()是否导致spill，需实测验证
+- 预期效果: AIV MTE2从37.9%降至<25%
+code_snippet:
+  Triton: "# 转置 load 合并化\n\
+    # 反模式：列方向 stride=H*BT\n\
+    p_dAqk = tl.make_block_ptr(dAqk_local, (BT, T_local), (1, H*BT),\n\
+    \                         (i_i*BC, i_t*BT+i_j*BC), (BC, BC), (0, 1))\n\
+    b_dAqk = tl.load(p_dAqk, boundary_check=(0, 1))\n\
+    \n\
+    # 正模式：行优先 + 寄存器转置\n\
+    row_idx = i_t * BT + i_j * BC + o_i[:, None]\n\
+    col_idx = i_i * BC + o_i[None, :]\n\
+    dAqk_mask = (row_idx < T_local)[:, None] & (col_idx < BT)[None, :]\n\
+    p_dAqk_row = dAqk_local + row_idx * H * BT + col_idx\n\
+    b_dAqk_row = tl.load(p_dAqk_row, mask=dAqk_mask, other=0.0)\n\
+    b_dAqk = tl.trans(b_dAqk_row)"
+performance_boost: 35%
+note: 此经验与exp_perf_015通用转置load合并化技术对应，但提供了KDA intra kernel的具体上下文和mask计算示例。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

@@ -1,0 +1,40 @@
+experience_id: exp_rmsnorm_grad_dx_001
+match_cond:
+  operator_type: Normalization Operations
+  compute_pattern: Element-wise + Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    N:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- Single-Pass Tiling: The baseline implementation iterates over the input tensor twice
+    (once for reduction statistics `row_sum_stats`, once for gradient calculation
+    `dx`), resulting in 2x global memory bandwidth consumption. The optimization tiles
+    the row data to fit into the on-chip Unified Buffer (UB), allowing the reduction
+    and gradient computation to be completed in a single pass. This reduces global
+    memory read traffic by approximately 50%.
+- Vectorized Memory Access: Ensures that memory load/store operations utilize the
+    hardware's maximum vector width (e.g., 128-bit or 256-bit) by aligning `BLOCK_SIZE`
+    and pointer offsets. This maximizes the efficiency of the memory bus and reduces
+    the number of instructions issued for data movement.
+- Software Pipelining: Overlaps memory load instructions with arithmetic computations.
+    By prefetching the next tile while computing the current tile, the kernel effectively
+    hides memory latency and ensures the compute pipeline remains saturated.
+performance_boost: 40%
+note: The optimization assumes that the tile size (N) or the chunked block size fits
+  within the available on-chip memory (UB). For extremely large N, chunking must be
+  carefully managed to avoid UB overflow while still maximizing data reuse.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/131-rms_norm_grad_dx_kernel.py

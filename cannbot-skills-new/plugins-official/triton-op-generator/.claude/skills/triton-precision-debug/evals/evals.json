@@ -1,0 +1,152 @@
+{
+  "skill_name": "triton-precision-debug",
+  "eval_mode": "text",
+  "evals": [
+    {
+      "id": 1,
+      "title": "五阶隔离法完整工作流",
+      "config": {
+        "max_tokens": 120000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 150000
+        },
+        "ascend_platforms": ["A2"]
+      },
+      "prompt": "请介绍 Triton-Ascend 算子精度对齐的五阶隔离法，每个阶段做什么？",
+      "expected_output": "回复应覆盖五阶隔离法的完整流程：Stage 0 预检查（shape/NaN/Inf/dtype/内存初始化）、Stage 1 端到端差异定位（min-reproduction）、Stage 2 逐操作微基准隔离（原子算子拆分对比）、Stage 3 ULP 级重写、Stage 4 编译器标志调查与规避。说明每阶段的目标和输入输出条件。",
+      "files": [],
+      "expectations": [
+      ]
+    },
+    {
+      "id": 2,
+      "title": "MERE/MARE 校验失败诊断",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000
+        },
+        "ascend_platforms": ["A2"]
+      },
+      "prompt": "我的 Triton-Ascend 算子在 MARE 校验时发现精度不达标，该怎么排查？",
+      "expected_output": "回复应说明 MARE 校验失败时按五阶隔离法逐步排查，从预检查开始，逐步定位差异区域，通过 micro-benchmark 逐操作隔离。",
+      "files": [],
+      "expectations": [
+      ]
+    },
+    {
+      "id": 3,
+      "title": "ULP 级精度问题根因分析",
+      "config": {
+        "max_tokens": 120000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 150000
+        },
+        "ascend_platforms": ["A2"]
+      },
+      "prompt": "Triton-Ascend 算子在量化场景下出现精度偏差，怀疑是常量除法精度问题，应该怎么定位和修复？",
+      "expected_output": "回复应使用五阶隔离法定位精度问题，说明 ULP 级重写的方法和编译器标志调整策略，并提及量化场景中常量除法精度偏差的处理方式。",
+      "files": [],
+      "expectations": [
+      ]
+    },
+    {
+      "id": 4,
+      "title": "信息不足场景：追问精度问题细节",
+      "config": {
+        "max_tokens": 80000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 100000
+        },
+        "ascend_platforms": ["A2"]
+      },
+      "prompt": "我的算子精度不对，帮我看看什么问题。",
+      "expected_output": "回复应主动追问关键信息：算子类型和输入输出规格、精度校验方式（MERE/MARE）、具体的精度偏差数值或比例、是否已有最小复现用例、相关代码或编译日志。不应在没有足够信息的情况下直接给出修复方案。",
+      "files": [],
+      "expectations": [
+      ]
+    },
+    {
+      "id": 5,
+      "title": "正向看护：区分精度调试技能",
+      "config": {
+        "max_tokens": 120000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 150000
+        },
+        "ascend_platforms": ["A2"],
+        "distractor_skills": ["ascendc-precision-debug", "ops-precision-standard", "pypto-op-design"]
+      },
+      "prompt": "我的 Triton-Ascend 算子精度对齐不过，ULP 级别的差异怎么排查？",
+      "expected_output": "回复应聚焦 Triton-Ascend 场景的五阶隔离法精度调试流程，特别是如何处理编译器标量/向量浮点行为差异和常量除法精度偏差等 Triton 特有的隐蔽问题。",
+      "files": [],
+      "expectations": [
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Stage 0 先排除基础错误",
+      "config": {
+        "max_tokens": 90000,
+        "ascend_platforms": ["A2"],
+        "eval_mode": "text"
+      },
+      "prompt": "出现 ULP 级差异后，能否直接调整编译器选项？Stage 0 应先确认什么？",
+      "expected_output": "回复应禁止跳步，先确认输出 shape、dtype、NaN/Inf 分布和内存初始化等基础条件与参考一致；只有排除未初始化、越界、类型或形状问题后，才进入端到端差异定位和逐操作微基准。",
+      "expectations": [],
+      "files": []
+    },
+    {
+      "id": 7,
+      "title": "微基准隔离 Scalar 与 Vector 路径",
+      "config": {
+        "max_tokens": 110000,
+        "ascend_platforms": ["A2"],
+        "eval_mode": "text"
+      },
+      "prompt": "怀疑 scale=max_val/255.0 在 Triton 中出现 1 ULP 差异，怎样确认是 scalar/vector 编译路径而不是凭直觉改公式？",
+      "expected_output": "回复应把常量除法拆成独立微基准，对同一输入分别测试 scalar 与 vector 执行路径，并和 Torch 参考逐值比较原始值及量化结果；先用证据锁定差异操作，再选择强制 vector 化或等价重写，不能仅靠端到端猜测。",
+      "expectations": [],
+      "files": []
+    },
+    {
+      "id": 8,
+      "title": "多 kernel 代码的 AST 结构适配",
+      "config": {
+        "max_tokens": 100000,
+        "ascend_platforms": ["A2"],
+        "eval_mode": "text"
+      },
+      "prompt": "为了隔离精度问题新增一个辅助 @triton.jit kernel 后，静态检查只识别原来的 kernel，应该删除辅助 kernel 吗？",
+      "expected_output": "回复应先确认辅助 kernel 是真实调用链的一部分，并按多 kernel 场景调整 AST/调用结构使检查器能识别，而不是为通过检查删除必要计算或退化到 PyTorch；随后仍需用失败 case 做端到端和微基准验证。",
+      "expectations": [],
+      "files": []
+    },
+    {
+      "id": 9,
+      "title": "坐标或权重查表校正",
+      "config": {
+        "max_tokens": 120000,
+        "ascend_platforms": ["A2"],
+        "eval_mode": "text"
+      },
+      "prompt": "量化坐标计算反复受 NPU 浮点除法舍入影响，已用微基准确认为根因。查表修复应怎样组织，哪些计算留在 kernel？",
+      "expected_output": "回复应建议在 host 侧按参考语义预生成有限坐标/权重查找表并作为输入传入；kernel 只负责查表、fp32 累加和最终按输入 dtype 输出。应控制表规模并在全部失败 case 上验证功能与精度，不在 kernel 内重复高风险除法。",
+      "expectations": [],
+      "files": []
+    },
+    {
+      "id": 10,
+      "title": "修复后必须回到完整验证",
+      "config": {
+        "max_tokens": 90000,
+        "ascend_platforms": ["A2"],
+        "eval_mode": "text"
+      },
+      "prompt": "某一个最小输入 case 在修复后精度通过，是否可以直接宣布问题解决？",
+      "expected_output": "回复应说明不能；最小 case 只证明局部根因假设，应重新运行原失败 case、边界 shape/dtype 和完整 verifier case 集，确认 shape、NaN/Inf、MERE/MARE 等门限全部通过，并检查修复没有引入性能或功能回退。",
+      "expectations": [],
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+experience_id: exp_fused_qkv_rmsnorm_rope_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Fused QKV Split + RMSNorm + RoPE
+  data_type:
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    batch_size:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Aggressively fuses Split, RMSNorm, Affine (Linear), and RoPE operations
+    into a single kernel. This minimizes global memory access by keeping intermediate
+    data in high-speed SRAM/Registers throughout the computation pipeline.
+- precision_control: Performs the variance calculation and reciprocal square root
+    in FP32 (float32) to ensure numerical stability during normalization, while storing
+    weights and activations in BF16 to optimize memory bandwidth and storage.
+- rope_implementation: Implements RoPE using `tl.extract_slice` and `tl.insert_slice`
+    to handle the rotation of the first and second halves of the head dimension. This
+    avoids complex indexing arithmetic within the inner loop.
+- redundant_load_optimization: The kernel currently loads `pos_idx`, `cos`, and `sin`
+    inside both the Q and K processing loops. Since Q and K share the same position
+    ID for a given token, these values should be loaded once per row iteration and
+    reused to reduce global memory read pressure.
+- vectorized_memory_access: Utilizes block-level loading (`Q_BLOCK_SIZE`, `KV_BLOCK_SIZE`)
+    to coalesce memory accesses, ensuring that consecutive memory transactions are
+    handled efficiently by the memory controller.
+performance_boost: 25%
+note: The kernel processes Q, K, and V sequentially. While this improves data locality
+  for the input tensor, the redundant loading of RoPE embeddings (`cos`/`sin`) for
+  Q and K is a specific optimization target. Ensure `BLOCK_SIZE` is aligned with the
+  hardware's cache line size (e.g., 128 bytes) for best results.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/161-split_qkv_rmsnorm_rope_kernel.py

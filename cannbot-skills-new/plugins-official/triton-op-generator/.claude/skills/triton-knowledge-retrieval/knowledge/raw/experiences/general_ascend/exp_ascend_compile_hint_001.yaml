@@ -1,0 +1,37 @@
+experience_id: exp_ascend_compile_hint_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: memory_access
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: medium
+  tensor_shape:
+  - nd
+experience_type: 调优经验
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: 对block_ptr确定性访存或普通load/store添加tl.extra.cann.extension.compile_hint(b_x, \"mayDiscretememaccess\")会限制编译器优化，导致额外开销
+- 典型场景: 在b_h/b_dh/b_dv/b_beta/b_A等数据上添加compile_hint，实测移除b_dv hint alone可降低25%延迟
+- 解决方案: 完全移除冗余compile_hint，让编译器自主优化确定性访存模式
+- 注意: compile_hint在某些特定场景（如care_padding控制、异步调度）仍有价值，不应无差别移除所有hint
+- 典型收益: 单独移除b_dv hint降低约25% task duration；移除其他冗余hint有类似小幅收益
+code_snippet:
+  Triton: "# 反模式：对 block_ptr 加载数据加 compile_hint\n\
+    b_h = tl.load(p_h, boundary_check=(0, 1))\n\
+    tl.extra.cann.extension.compile_hint(b_h, \"mayDiscretememaccess\")\n\
+    \n\
+    # 正模式：移除冗余 hint\n\
+    b_h = tl.load(p_h, boundary_check=(0, 1))\n\
+    # 不再加 compile_hint"
+performance_boost: 25%
+note: 此优化针对的是过度使用compile_hint的情况。如果原始kernel没有加hint，则无需此优化。移除hint后应验证性能和精度无回退。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/zy_design.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/optimization_plan.md
+version: v1.0

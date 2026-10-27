@@ -1,0 +1,52 @@
+experience_id: exp_solve_tril_003
+match_cond:
+  operator_type: Linear Algebra Operations
+  compute_pattern: Triangular Matrix Inverse / solve_tril / constexpr loop unrolling dual path
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    block_size:
+    - 16
+    - 32
+    - 64
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- constexpr_dual_path_full_vs_boundary: "当 kernel 处理固定大小 tile 时，绝大多数 chunk 是完整 tile（99%），仅最后一个可能是边界不完整 tile。用 `if T - chunk_offset >= BT` 分支：(1) 快速路径使用 `range(2, BT)` 其中 BT 是 `tl.constexpr`，编译器完全展开循环 + extract_slice offset 静态优化为零开销；(2) 慢速路径使用运行时 `range(2, min(16, remaining))`，仍从寄存器提取数据。两个路径统一数据来源（均 extract_slice），区别仅在于循环展开程度。"
+- constexpr_static_unroll_benefit: "`range(2, BT)` 当 BT 是 constexpr 时，Triton 编译器在编译期：(1) 完全展开循环体；(2) extract_slice 的 offset 参数 `(i, 0)` 中的 i 为编译期常量，生成静态偏移指令（零 ALU）；(3) 消除循环分支预测开销。"
+- boundary_path_still_register: "慢速（边界）路径虽然循环未展开，但同样使用 extract_slice 从预加载的寄存器块读取——消除 HBM 访问的收益对所有 chunk 均等。"
+- excluded_approaches: "被排除的方案：(a) 统一运行时循环（失去 constexpr 展开优化，性能回退到 V1 水平）；(b) 慢速路径保留 tl.load（不如 extract_slice 统一简洁，且边界块 HBM 读取无性能优势）。"
+- applicability: "适用于所有以固定 tile 处理数据、且 tile 大小是 constexpr 的 kernel。只要存在'完整 tile'和'边界不完整 tile'两种情况，即可用此双路径模式。"
+performance_boost: "此模式保证快速路径（99% chunk）达到最优展开性能，避免统一运行时循环导致的性能退化"
+note: "此为 V4 最终方案的路径选择策略（V4 混合模式）。V3（统一运行时循环）被排除——虽然代码更简洁，但失去 constexpr 展开后性能回退到 V1 水平。"
+version: v1.0
+source: solve_tril_analyze.md §9.5 V4 优化（最终方案 V4 混合模式）
+code_snippet:
+  dual_path: |
+    neg_A = -b_A  # 预加载到寄存器
+
+    if T - i_t * 16 >= BT:
+        # 快速路径：完整 chunk，BT 是 constexpr → 循环完全展开
+        for i in range(2, BT):
+            b_a = tl.extract_slice(neg_A, (i, 0), (1, 16), (1, 1))
+            b_a = tl.reshape(b_a, (16,))
+            b_a = b_a + tl.sum(b_a[:, None] * b_A, 0)
+            b_A = tl.where((o_i == i)[:, None], b_a, b_A)
+    else:
+        # 慢速路径：边界 chunk，运行时循环 → 仍从寄存器读
+        for i in range(2, min(16, T - i_t * 16)):
+            b_a = tl.extract_slice(neg_A, (i, 0), (1, 16), (1, 1))
+            b_a = tl.reshape(b_a, (16,))
+            b_a = b_a + tl.sum(b_a[:, None] * b_A, 0)
+            b_A = tl.where((o_i == i)[:, None], b_a, b_A)

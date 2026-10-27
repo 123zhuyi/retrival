@@ -1,0 +1,48 @@
+experience_id: exp_lightning_attn_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Linear Attention with Decay
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n:
+    - '>=1024'
+    d:
+    - '>=64'
+    e:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- heterogeneous_async_scheduling: The kernel utilizes `dl.async_task` to explicitly
+    separate vector operations (decay factor calculation) into the Vector unit and
+    matrix multiplication operations into the Cube unit. This allows the hardware
+    to execute these pipelines in parallel, hiding the latency of scalar/vector computations
+    behind the heavy matrix math.
+- hardware_specific_synchronization: Implements `dl.set_cross_flag(dl.SyncFlag.V2C,
+    0)` to manage synchronization between the Vector unit (producer of decay factors)
+    and the Cube unit (consumer). This ensures data readiness without stalling the
+    pipeline, optimizing the data flow between different NPU processing elements.
+- workspace_reuse_strategy: Pre-calculates complex exponential decay factors (`q_decay`,
+    `k_trans_decay`, `block_decay`, `diag_decay`) once per block and stores them in
+    a designated workspace. This avoids redundant transcendental function calls (`tl.exp`)
+    inside the main computation loop, significantly reducing instruction count.
+- block_wise_state_accumulation: Optimizes the linear attention recurrence by maintaining
+    a running state `kv` in registers/local memory. The update rule `kv = block_decay
+    * kv + dot(k_trans * k_trans_decay, v)` is fused within the loop, minimizing global
+    memory access for the KV cache and maximizing data reuse.
+performance_boost: 45%
+note: This kernel is specifically designed for the Ascend NPU architecture using the
+  `dl` dialect. It is highly effective for long-context scenarios (large n) where
+  the linear complexity of Lightning Attention outperforms standard quadratic attention.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/068-_fwd_loop_kernel.py

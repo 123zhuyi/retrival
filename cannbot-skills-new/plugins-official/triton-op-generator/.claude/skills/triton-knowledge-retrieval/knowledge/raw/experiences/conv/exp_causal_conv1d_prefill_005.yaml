@@ -1,0 +1,36 @@
+experience_id: exp_causal_conv1d_prefill_005
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Prefill (batching)
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    batch:
+    - '>=1'
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- pad_slot_early_exit: "在 kernel 入口处检查 `cache_idx == pad_slot_id`（-1），匹配时立即 return，不做任何计算。释放对应的 compute unit 给其他有用的 program，提升整体硬件利用率。"
+- continuous_batching_support: "通过 cache_indices 间接映射 batch_id → cache_slot，支持：(1) beam search 场景多条序列共享同一 cache slot；(2) 动态 batch 大小（pad_slot_id=-1 标记无效序列）；(3) 无需为 padding 序列分配额外物理资源。"
+- zero_cost_skip: "`tl.load(cache_indices_ptr + pid_batch)` + `if ... return` 的开销仅为 1 次 load + 1 次整数比较，远小于执行完整卷积循环的成本（~seq_len 次 load/store/FMA）。在 batch 中有 ≥10% 填充序列时收益显著。"
+- applicability_general: "适用于所有使用间接索引映射 batch 的 kernel（如 attention with KV-cache page table、embedding lookup with dynamic indices、MoE routing），只要能用单次 load + compare 判断是否需要跳过计算。"
+performance_boost: "在有 padding 序列的 batch 中节省无效计算比例（如 25% padding→~25% 资源节省）；最小开销仅 1 load + 1 cmp"
+note: "pad_slot 机制不仅节省无效计算，更重要的是让 SM/SIMT 单元可被其他有用工作抢占——在 Ascend 的 grid-stride 调度下，提前退出的 program 对应的 tile 可被重新分配给其他 tasks。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_prefill_analysis.md §7.2 创新5
+code_snippet:
+  early_exit: |
+    cache_idx = tl.load(cache_indices_ptr + pid_batch)
+    if cache_idx == pad_slot_id:   # -1
+        return                      # 立即释放 compute unit

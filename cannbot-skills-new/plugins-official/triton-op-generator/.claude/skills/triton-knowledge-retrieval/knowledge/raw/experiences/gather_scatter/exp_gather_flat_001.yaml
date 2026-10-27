@@ -1,0 +1,43 @@
+experience_id: exp_gather_flat_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Gather
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    N:
+    - '>=4096'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- large_block_processing: The kernel utilizes a heuristic to set BLOCK_SIZE to 4096,
+    processing a large chunk of elements per program ID. This significantly increases
+    instruction-level parallelism (ILP) and helps hide the high memory latency typically
+    associated with irregular gather operations.
+- stride_based_addressing: The input address is calculated efficiently as `base +
+    cur_index * inp_dim_stride`. This allows the kernel to perform gathers along a
+    specific dimension of a multi-dimensional tensor without requiring the input tensor
+    to be flattened or reshaped beforehand, saving memory bandwidth and pre-processing
+    time.
+- vectorized_masking: The kernel employs a mask for both loading indices and storing
+    results. This ensures safe memory access for the tail end of the tensor where
+    the total size N is not a multiple of BLOCK_SIZE, avoiding out-of-bounds errors
+    without expensive conditional branching inside the loop.
+performance_boost: 25%
+note: This kernel is optimized for flat gather operations where indices are provided
+  in a 1D flattened format. The use of `base_offset` makes it suitable for batched
+  operations or gathering with a base offset.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/123-_gather_flat_kernel_fixed.py

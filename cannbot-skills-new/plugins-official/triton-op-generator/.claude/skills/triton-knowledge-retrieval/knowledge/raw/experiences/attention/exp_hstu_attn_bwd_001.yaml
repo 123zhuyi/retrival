@@ -1,0 +1,63 @@
+experience_id: exp_hstu_attn_bwd_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: HSTU Attention Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_dim:
+    - '>=64'
+    seq_len:
+    - '>0'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- activation_recomputation: The kernel recomputes the QK dot product and SiLU activation
+    during the backward pass instead of loading them from global memory. This trades
+    compute for memory bandwidth, which is crucial for long sequences to avoid storing
+    the large attention score matrix.
+- fused_activation_backward: The gradient of the SiLU activation is computed in-place
+    and fused with the matrix multiplication logic. The term `sig_trans * (1 + qk_trans
+    * (1 - sig_trans))` is calculated directly in registers to update `dqk_trans`,
+    minimizing memory reads/writes for intermediate states.
+- block_wise_accumulation: Gradients for Keys (`dk`) and Values (`dv`) are accumulated
+    across multiple blocks of the sequence. The kernel accepts `dk` and `dv` as input
+    arguments, updates them via `+=`, and returns them, allowing the host to loop
+    over sequence blocks without exceeding on-chip memory limits.
+- vectorized_masking: Causal masking is applied using `tl.where` on the full tensor
+    block. This leverages the hardware's vectorized selection capabilities to handle
+    the causal dependency efficiently without breaking the matrix multiplication pipeline
+    with scalar loops.
+- packed_sequence_handling: Utilizes seq_offsets to dynamically load sequence start
+    and end indices for each batch. This enables efficient processing of variable-length
+    sequences (packed format) without padding, significantly reducing wasted computation
+    and memory bandwidth on padding tokens.
+- block_tiling_strategy: Implements a loop over the sequence dimension (start_n) with
+    a configurable BLOCK_N size. This tiling strategy allows the kernel to process
+    long sequences in chunks that fit into the GPU's high-speed memory (SRAM/Cache),
+    maximizing data reuse and minimizing global memory access latency.
+- pointer_arithmetic_optimization: Pre-calculates base offsets for Q, K, V, and Grad
+    tensors based on batch and head indices outside the inner processing loop. This
+    minimizes redundant address arithmetic operations inside the performance-critical
+    loop, freeing up compute cycles for the actual attention logic.
+- conditional_bias_support: Efficiently handles optional bias terms by calculating
+    the bias offset only if HAS_BIAS is true and passing the adjusted pointer to the
+    sub-kernel. This design avoids unnecessary memory access or branching logic when
+    bias is not present in the model.
+performance_boost: 25%
+note: This kernel acts as the outer wrapper for the HSTU attention backward pass,
+  managing batch/head dispatch and sequence tiling. It delegates the core computation
+  to the _hstu_attn_bwd_one_col_block function.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/010-_hstu_attn_bwd.py

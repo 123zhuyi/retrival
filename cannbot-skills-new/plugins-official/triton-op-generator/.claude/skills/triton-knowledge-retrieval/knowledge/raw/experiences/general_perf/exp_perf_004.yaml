@@ -1,0 +1,38 @@
+experience_id: exp_perf_004
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 内存访问优化
+framework_tag:
+- Triton
+optimization_points:
+- 精准设计: stride参数需严格匹配张量的内存布局（通过tensor.stride()验证），错误设置会导致非连续访存/数据错位
+- 避坑要点: 避免随意设置stride值，优先使用张量原生stride；多维stride需按“高维到低维”顺序传递
+- 性能影响: 错误的stride设置会导致访存效率下降50%以上，甚至出现计算结果错误
+code_snippet:
+  Triton: "# 正确的stride使用示例\n@triton.jit\ndef stride_opt_kernel(input_ptr, output_ptr,\
+    \ M, N, stride_m, stride_n, BLOCK_M: tl.constexpr=128, BLOCK_N: tl.constexpr=128):\n\
+    \    pid = triton.program_id(0)\n    rm = pid // (N // BLOCK_N)\n    rn = pid\
+    \ % (N // BLOCK_N)\n    \n    # 正确的stride计算: 基于原生stride，按维度顺序计算偏移\n    offsets_m\
+    \ = rm * BLOCK_M + tl.arange(0, BLOCK_M)[:, None]\n    offsets_n = rn * BLOCK_N\
+    \ + tl.arange(0, BLOCK_N)[None, :]\n    # 验证: stride_m对应M维度步幅，stride_n对应N维度步幅\n\
+    \    input_offsets = offsets_m * stride_m + offsets_n * stride_n\n    mask = (offsets_m\
+    \ < M) & (offsets_n < N)\n    \n    data = tl.load(input_ptr + input_offsets,\
+    \ mask=mask)\n    result = data + 1.0\n    tl.store(output_ptr + input_offsets,\
+    \ result, mask=mask)\n\n# 调用时传递原生stride（核心正确操作）\ndef forward(input_tensor):\n\
+    \    M, N = input_tensor.shape\n    output = torch.empty_like(input_tensor)\n\
+    \    grid = (triton.cdiv(M, 128) * triton.cdiv(N, 128),)\n    # 传递tensor.stride()原生步幅，避免手动计算错误\n\
+    \    stride_opt_kernel[grid](input_tensor, output, M, N, input_tensor.stride(0),\
+    \ input_tensor.stride(1), BLOCK_M=128, BLOCK_N=128)\n    return output"
+performance_boost: 20%
+note: 所有带多维内存访问的Triton kernel都需严格验证stride参数，优先传递tensor.stride()的原生值，避免手动计算；910b2/910b3平台对stride不连续的访存惩罚尤为严重
+version: v1.0

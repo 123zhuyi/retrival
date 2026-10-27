@@ -1,0 +1,48 @@
+experience_id: exp_swiglu_quant_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise and Row-wise Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    TOTAL_COLS:
+    - '>=128'
+    total_rows:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the SwiGLU activation function (x1 * sigmoid(x1) * x2) with
+    the per-row dynamic quantization process. This eliminates the need to write intermediate
+    activation results to global memory (HBM), significantly reducing memory bandwidth
+    consumption and latency.
+- vectorized_memory_access: Utilizes wide vector loads to fetch the entire input row
+    (`TOTAL_COLS`) in a single transaction for the activation phase, and processes
+    the quantization phase in `COL_BLOCK_SIZE` chunks. This maximizes memory bus utilization
+    and improves data reuse within registers.
+- dynamic_workload_distribution: Dynamically calculates the total number of rows (`total_rows`)
+    based on the `group_list_ptr` (supporting both cumulative sum and list formats)
+    and partitions the work evenly across `NUM_CORES`. This ensures load balancing
+    even in scenarios with variable batch sizes, such as Mixture of Experts (MoE)
+    routing.
+- hardware_accelerated_casting: Leverages Triton's `cast` primitive with `overflow_mode="saturate"`
+    to perform the clamping and type conversion (float to int8) efficiently using
+    dedicated hardware instructions, avoiding slower software-based min/max clamping
+    logic.
+performance_boost: 35%
+note: This kernel is optimized for scenarios requiring immediate quantization after
+  activation, such as in MoE layers or quantized inference paths. The `GROUP_LIST_TYPE`
+  parameter provides flexibility for different input metadata formats.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/146-_swiglu_quant_kernel.py

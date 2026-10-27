@@ -1,0 +1,43 @@
+experience_id: exp_celoss_smooth_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Cross Entropy Loss with Label Smoothing
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    C:
+    - '>=1024'
+    D:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- numerical_stability: Implements the Log-Sum-Exp trick (calculating max, then exp(x-max),
+    then log(sum) + max) to prevent overflow/underflow when computing softmax probabilities
+    in low precision (fp16/bf16).
+- two_pass_algorithm: Separates the computation into two passes over the class dimension.
+    The first pass calculates the log-partition function (normalization term), and
+    the second pass computes the weighted loss. This avoids redundant expensive exponential
+    and logarithmic calculations during the loss accumulation.
+- vectorized_batch_processing: Utilizes BLOCK_D to process multiple samples (or sequence
+    tokens) in parallel within a single kernel thread. This maximizes memory bandwidth
+    utilization and instruction throughput by amortizing the loop overhead over the
+    batch dimension.
+- efficient_smoothing_logic: Uses vectorized `tl.where` operations to apply label
+    smoothing factors based on target indices, avoiding scalar loops or complex gather
+    operations for the smoothing distribution.
+performance_boost: 30%
+note: This kernel reads the input tensor twice (once for max/sum, once for loss).
+  It is optimized for scenarios where C (number of classes) is large (e.g., vocabulary
+  size in LLMs).
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/110-celoss_indices_smooth_kernel.py

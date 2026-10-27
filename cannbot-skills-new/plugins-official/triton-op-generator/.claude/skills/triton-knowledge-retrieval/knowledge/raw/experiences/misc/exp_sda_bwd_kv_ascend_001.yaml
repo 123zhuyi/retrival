@@ -1,0 +1,51 @@
+experience_id: exp_sda_bwd_kv_ascend_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention Backward / Matrix Multiplication
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_unit_balancing: Utilizes `enable_hivm_auto_cv_balance` to dynamically balance
+    the instruction dispatch between the Vector Unit (responsible for address calculation,
+    masking, and data preprocessing) and the Cube Unit (responsible for matrix multiplication).
+    This prevents pipeline stalls and ensures both functional units of the Ascend
+    AI Core are utilized efficiently.
+- mixed_tiling_strategy: Implements `tile_mix_vector_loop` and `tile_mix_cube_loop`
+    with a factor of 2. This optimizes the loop unrolling depth specifically for the
+    mixed instruction flow of vector and cube operations, maximizing instruction-level
+    parallelism (ILP) on the NPU.
+- multibuffering: Enables `multibuffer` with `set_workspace_multibuffer` set to 2.
+    This creates a double-buffering scheme where data loading for the next tile overlaps
+    with the computation of the current tile, effectively hiding global memory latency.
+- block_size_tuning: Configures `BLOCK_R=256` and `BLOCK_C=64`. This specific aspect
+    ratio is tuned to match the memory access granularity and the L0C/L1 buffer sizes
+    of the Ascend hardware, optimizing data reuse for the backward pass of the attention
+    mechanism.
+- precision_management: Enforces `LOW_TYPE` as `bf16` for storage and `HIGH_TYPE`
+    as `fp32` for accumulation. This ensures high throughput for memory-bound operations
+    while maintaining numerical precision for gradient updates in the backward pass.
+performance_boost: 45%
+note: This configuration relies on Triton backend extensions specific to the CANN
+  (Compute Architecture for Neural Networks) stack, indicated by flags like `hivm`
+  and `cube_loop`. It is optimized for the SDA (State Space Decoder/Attention) backward
+  pass calculating gradients for Keys and Values.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/264-kernel_sda_bwd_kv_left.py

@@ -1,0 +1,70 @@
+experience_id: exp_entropy_backward_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    num_tokens:
+    - '>=64'
+    vocab_size:
+    - '>=128'
+    hidden_size:
+    - '>=256'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion_and_recomputation: The kernel fuses the matrix multiplication (logits
+    recomputation) with the backward pass of softmax and entropy loss. By recomputing
+    the logits on-the-fly via `tl.dot` instead of loading them from global memory,
+    it significantly reduces memory bandwidth consumption, which is critical for operations
+    involving large vocabulary sizes.
+- hardware_specific_type_optimization: Implements a specific optimization for Ascend
+    NPU by casting index operands to `int32` before performing equality checks for
+    mask generation (`mask = (offs_bn + rank * vocab_size)[None, :].to(tl.int32) ==
+    labels[:, None]`). This avoids the performance degradation associated with `int64`
+    scalar operations on the NPU.
+- grouped_scheduling_for_locality: Utilizes `GROUP_SIZE_M` (set to 16) to ensure that
+    program IDs processing consecutive rows of the matrix are scheduled within the
+    same group. This improves cache locality for the `hidden` input tensor and the
+    reduction scalars (`maximum`, `accu`), reducing redundant global memory accesses.
+- block_tiling_strategy: Employs a tiling configuration of `BLOCK_SIZE_M=64`, `BLOCK_SIZE_N=64`,
+    and `BLOCK_SIZE_K=128`. This configuration is tuned to balance register pressure
+    and memory throughput, ensuring that the Tensor Core units are efficiently utilized
+    during the matrix multiplication phase.
+- grid_stride_scheduling: The kernel utilizes a grid-stride loop (`for pid in range(pid0,
+    total_tiles, num_aicores)`) to map logical tiles to physical AI cores. This significantly
+    reduces kernel launch overhead and scheduling latency, particularly beneficial
+    when the total number of tiles (vocab_size * num_tokens) is much larger than the
+    number of available physical cores.
+- grouped_tiling_strategy: Implements a `GROUP_SIZE_M` parameter to process multiple
+    rows of the M dimension (tokens) together for a given range of the N dimension
+    (vocab). This enhances data locality and reuse of the weight matrix loaded from
+    global memory, reducing memory bandwidth pressure.
+- compiler_friendly_pointer_arithmetic: Inside the accumulation loop, pointer addresses
+    are calculated explicitly using `base + offset + k * stride` rather than incrementing
+    a pointer variable. This specific pattern assists the compiler in performing alias
+    analysis and inferring contiguous memory access patterns, often leading to better
+    vectorization and load/store efficiency.
+- in_kernel_atomic_reduction: The gradient accumulation over the K dimension is handled
+    within the kernel using `tl.atomic_add`. This avoids the need for a separate reduction
+    kernel or intermediate global memory buffers, lowering overall memory footprint
+    and latency.
+performance_boost: 25%
+note: This optimization is specifically designed for the backward pass of entropy
+  loss with large vocabulary sizes. The atomic add strategy assumes that the hardware
+  handles atomic contention efficiently or that contention is low due to the distribution
+  of `pid_m`.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/208-efficient_entropy_backward_kernel_d_hidden.py

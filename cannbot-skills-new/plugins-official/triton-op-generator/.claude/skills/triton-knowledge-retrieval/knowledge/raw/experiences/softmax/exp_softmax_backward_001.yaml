@@ -1,0 +1,45 @@
+experience_id: exp_softmax_backward_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Softmax Backward
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_reduction_strategy: The kernel decouples the computation into two distinct
+    loops a reduction phase to compute the scale (sum of output * gradient) and an
+    update phase to calculate the input gradient. This approach avoids the need to
+    store intermediate results for the entire row in registers or scratchpad, which
+    is critical for handling large N dimensions that exceed register capacity.
+- explicit_cache_eviction_policy: In the reduction loop, the `eviction_policy="evict_last"`
+    argument is used for the `out` tensor. This explicitly instructs the memory subsystem
+    to retain the loaded `out` data in the cache (L1/L2), as it will be accessed again
+    in the subsequent update loop. This optimization significantly reduces global
+    memory bandwidth pressure by maximizing data reuse across the two passes.
+- adaptive_tiling_and_heuristics: The kernel utilizes `triton.autotune` and runtime
+    heuristics to dynamically select the optimal `TILE_M` and `TILE_N` based on the
+    input shapes M and N. This ensures that the memory access patterns are fully coalesced
+    and that the GPU occupancy is maximized for varying batch sizes and sequence lengths.
+performance_boost: 30%
+note: The `ONE_TILE_PER_CTA` path provides a fast-path for smaller N dimensions where
+  the data fits in a single tile, bypassing the overhead of the two-pass loop structure.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/129-softmax_backward_kernel_inner.py

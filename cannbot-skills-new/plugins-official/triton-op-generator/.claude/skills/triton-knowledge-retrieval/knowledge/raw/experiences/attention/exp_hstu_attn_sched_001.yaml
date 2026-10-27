@@ -1,0 +1,45 @@
+experience_id: exp_hstu_attn_sched_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: HSTU Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    head_dim:
+    - '>=64'
+    seq_len:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- static_task_scheduling: Implements a static scheduling strategy using a loop `for
+    col in range(core_id, tasks, CORE_NUM)` to distribute work across AICores. This
+    stride-based assignment ensures load balancing for variable-length sequences without
+    the overhead of dynamic launch.
+- ragged_tensor_processing: Utilizes `seq_offsets` to dynamically calculate `seq_start`
+    and `seq_end` within the kernel. This allows efficient processing of batches with
+    varying sequence lengths (ragged tensors) by skipping padding and only computing
+    valid regions.
+- symmetric_compute_dispatch: The kernel dispatches two compute calls per iteration
+    using `start_m_1` and `start_m_2`. The calculation `start_m_2 = seq_len - start_m_1
+    - BLOCK_M` indicates a mirrored processing pattern, likely optimizing for the
+    specific data access patterns or causal dependencies of the HSTU architecture.
+- block_ptr_mask_loading: Uses `tl.make_block_ptr` to load the causal mask with 2D
+    blocking `(BLOCK_M, BLOCK_M)`, optimizing global memory access efficiency for
+    the mask tensor.
+performance_boost: 15%
+note: This scheduling logic is specifically designed for HSTU (Hierarchical Sequential
+  Transduction Unit) attention mechanisms. The dual compute calls handle the specific
+  algorithmic requirements of HSTU, potentially processing sequence segments from
+  both ends to maximize locality or satisfy specific causal constraints.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/007-_hstu_attn_fwd.py

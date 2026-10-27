@@ -1,0 +1,56 @@
+experience_id: exp_attn_sinks_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention with Sinks
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D:
+    - '>=64'
+    block_group_size:
+    - '>=1'
+    PAGE_SIZE:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax: Implements the FlashAttention-style online softmax algorithm within
+    the main loop. By iteratively updating the maximum value (history_max) and the
+    normalization sum (l) using the 're_scale' factor, the kernel avoids materializing
+    the large N x N attention matrix in high-bandwidth memory (HBM), significantly
+    reducing memory access overhead.
+- paged_attention: Utilizes a block table mechanism (block_tables) to map logical
+    page indices to physical memory blocks. This allows the kernel to efficiently
+    handle non-contiguous KV cache storage, which is essential for managing variable-length
+    sequences and dynamic memory allocation in LLM inference without memory fragmentation.
+- attention_sinks_integration: Explicitly loads pre-computed attention scores for
+    'sink' tokens (the first few tokens of a sequence) and incorporates them into
+    the online softmax statistics. The sink scores are initialized into history_max
+    and l, and later re-scaled and added to the final accumulator, ensuring generation
+    stability even when using sliding windows.
+- sliding_window_optimization: Calculates the start page (start_page_num) and start
+    KV length (start_kv_len) based on the sliding_window_size. The kernel applies
+    a mask (mask_page) to ignore tokens outside the sliding window, thereby reducing
+    the number of load operations and matrix multiplications for long sequences.
+- head_grouping_vectorization: Processes multiple query heads simultaneously (defined
+    by block_group_size) within a single program instance. This batches the computation
+    of QK scores and value accumulation, improving instruction-level parallelism and
+    better utilizing the hardware's vector units compared to processing heads one
+    by one.
+performance_boost: 40%
+note: This kernel is specifically optimized for the decoding phase of LLMs. It assumes
+  that sink scores are pre-computed and passed as an argument. The use of tl.dot for
+  matrix multiplication ensures high throughput on supported hardware.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/173-attention_sinks_kernel.py

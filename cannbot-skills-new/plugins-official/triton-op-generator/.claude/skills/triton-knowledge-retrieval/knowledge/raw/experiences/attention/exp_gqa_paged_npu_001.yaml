@@ -1,0 +1,50 @@
+experience_id: exp_gqa_paged_npu_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: GQA Paged Attention
+  data_type:
+  - bf16
+  - fp16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_DMODEL:
+    - '>=64'
+    BLOCK_N:
+    - '>=128'
+    q_heads_per_kv_head:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vector_sub_block_parallelism: Utilizes `tl.parallel(0, 2, bind_sub_block=True)`
+    to map the processing of query heads to the two independent vector units within
+    a single AICore. This parallelizes the softmax and reduction operations, effectively
+    doubling the throughput for the vector-heavy parts of the attention mechanism.
+- cube_vector_pipeline: Explicitly separates computation into CUBE operations (QK
+    and PV matrix multiplications) and VECTOR operations (softmax, scaling, and accumulation).
+    This decoupling allows the NPU to fully utilize the dedicated Cube unit for high-throughput
+    matrix math while the Vector unit handles the non-linear operations, minimizing
+    pipeline stalls.
+- gqa_bandwidth_optimization: Implements Grouped-Query Attention by loading the K
+    and V tensors once per KV head and reusing them for multiple query heads within
+    the same group. This reduces the memory read bandwidth for KV cache by a factor
+    equal to the group size (q_heads_per_kv_head).
+- paged_kv_iteration: Iterates over physical memory blocks using a `block_table` to
+    handle paged KV caches. This allows the kernel to efficiently process long sequences
+    with non-contiguous memory layouts, typical in LLM serving, without requiring
+    data copying or defragmentation.
+code_snippet:
+  TritonPath: _paged_gqa_fwd_kernel_high_performance
+performance_boost: 45%
+note: This kernel is specifically optimized for Ascend NPU architecture (910 series)
+  leveraging the dual-vector core structure. It requires the Triton backend to support
+  `bind_sub_block`.
+version: v1.0

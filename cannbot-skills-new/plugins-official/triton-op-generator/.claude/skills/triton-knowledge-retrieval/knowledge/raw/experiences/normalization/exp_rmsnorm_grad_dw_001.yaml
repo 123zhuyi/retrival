@@ -1,0 +1,44 @@
+experience_id: exp_rmsnorm_grad_dw_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Element-wise Multiplication and Sum Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=512'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- 2D_Block_Tiling: The kernel utilizes a 2D tiling strategy defined by ROW_BLOCK_SIZE
+    and COL_BLOCK_SIZE. By processing the matrix in tiles rather than full rows or
+    columns, it maximizes data reuse within the GPU's SRAM, significantly reducing
+    the pressure on global memory bandwidth.
+- Partial_Sum_Reduction: Instead of performing atomic additions directly to the global
+    output tensor DW for every element (which causes severe contention), the kernel
+    computes partial sums per tile. These partial sums are stored in a temporary buffer
+    (indexed by row_pid), allowing for a more efficient final aggregation step (e.g.,
+    a separate reduction kernel or atomic add on a much smaller dataset).
+- Stride_Aware_Memory_Access: The kernel explicitly handles row and column strides
+    (x_stride_r, x_stride_c). This optimization allows the kernel to efficiently process
+    non-contiguous memory layouts (such as transposed or sliced tensors) without requiring
+    a pre-processing data copy or transpose operation.
+performance_boost: 35%
+note: This kernel outputs partial sums indexed by the row program ID. A subsequent
+  reduction step (e.g., a second kernel or atomic add) is required to aggregate these
+  partial sums into the final DW gradient.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/132-rms_norm_grad_dw_kernel.py

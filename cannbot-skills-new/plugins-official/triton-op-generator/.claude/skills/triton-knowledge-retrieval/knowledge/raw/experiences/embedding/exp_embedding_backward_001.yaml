@@ -1,0 +1,45 @@
+experience_id: exp_embedding_backward_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Scatter Add
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_elements:
+    - '>=1024'
+    embedding_dim:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- 2D_Block_Tiling: The kernel tiles the gradient matrix into 2D blocks (BLOCK_SIZE_M
+    x BLOCK_SIZE_N) rather than processing rows or columns individually. This improves
+    memory access coalescing for loading `grad_output` and maximizes the utilization
+    of memory bandwidth by processing larger contiguous chunks per transaction.
+- Software_Pipelining: Utilizes `tl.range` with the `num_stages` parameter to implement
+    software pipelining. This allows the hardware to overlap memory loads (indices
+    and gradients) for subsequent iterations with the atomic add operations of the
+    current iteration, effectively hiding global memory latency.
+- Batched_Atomic_Accumulation: Performs atomic updates on blocks of data rather than
+    individual scalar elements. By accumulating a block of gradients before writing
+    back, the kernel reduces the total number of atomic instructions issued and alleviates
+    pressure on the memory subsystem, though contention remains dependent on index
+    duplication.
+performance_boost: 35%
+note: This optimization is highly effective for large batch sizes and embedding dimensions.
+  Performance may be impacted by high rates of duplicate indices due to serialization
+  of atomic operations.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/091-embedding_backward_kernel.py

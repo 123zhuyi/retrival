@@ -1,0 +1,43 @@
+experience_id: exp_matmul_small_tile_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - <=64
+    n:
+    - <=64
+    k:
+    - <=64
+  optimization_level: base
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- micro_tiling_strategy: Adopts a 16x16x16 tile size (BLOCK_M, BLOCK_N, BLOCK_K).
+    This configuration is specifically optimized for small-scale matrix dimensions
+    where larger tiles would lead to under-utilization of compute units or excessive
+    boundary masking overhead.
+- precision_control: Enforces high-precision accumulation by disabling reduced-precision
+    modes (allow_tf32=False). This ensures numerical stability and IEEE 754 compliance
+    for the accumulator, which is critical for sensitive workloads despite the potential
+    performance trade-off.
+- lightweight_pipelining: Utilizes a shallow 3-stage software pipeline (num_stages=3).
+    Given the small memory footprint of the 16x16 tiles, a deeper pipeline is unnecessary
+    and would increase register pressure; this configuration effectively hides memory
+    latency without spilling.
+performance_boost: 15%
+note: This configuration is tailored for small matrix sizes (M,N,K <= 64). For larger
+  matrices, this tile size is suboptimal as it cannot saturate memory bandwidth or
+  compute throughput; larger block sizes (e.g., 128 or 256) are recommended.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/056-_tensor_matmul_kernel.py

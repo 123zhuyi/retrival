@@ -1,0 +1,42 @@
+experience_id: exp_matmul_ascend_diag_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=32'
+    n:
+    - '>=64'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- diagonal_partitioning: Implements a diagonal block distribution strategy using LCM
+    calculations when grid dimensions exceed BLOCK_THRESHOLD. This optimizes memory
+    access patterns and reduces bank conflicts compared to standard row-major traversal.
+- hardware_specific_hint: Utilizes `tl.compile_hint(..., "dot_pad_only_k")` to instruct
+    the backend compiler to pad only the K dimension for the dot product operation,
+    aligning with the Ascend Cube unit's requirements for efficient computation.
+- multi_core_scheduling: Explicitly distributes workload across 24 AI cores (`NUM_CORES
+    24`) using a strided loop, ensuring full utilization of the hardware's compute
+    resources.
+- autotuning_strategy: Employs `@triton.autotune` to search over optimal tile sizes
+    for N and K dimensions while keeping M fixed at 32, adapting to varying matrix
+    shapes.
+performance_boost: 25%
+note: The diagonal partitioning logic is triggered only when both M and N dimensions
+  are sufficiently large (>= 8 blocks). Otherwise, it falls back to sequential partitioning.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/031-matmul_kernel.py

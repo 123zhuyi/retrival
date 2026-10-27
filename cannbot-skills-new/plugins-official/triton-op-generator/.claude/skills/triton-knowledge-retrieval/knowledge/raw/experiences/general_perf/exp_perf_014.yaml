@@ -1,0 +1,46 @@
+experience_id: exp_perf_014
+match_cond:
+  operator_type: general
+  compute_pattern: scalar_elimination
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: medium
+  tensor_shape:
+  - nd
+experience_type: 标量消除
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: tl.cdiv在运行时执行整数除法和取余，取余操作在Ascend上始终标量降级，增加scalar开销
+- 核心方案: 当除数和被除数相关参数为tl.constexpr时，在编译期计算循环边界（如NK = K // BK + tl.where(K % BK > 0, 1, 0)）
+- 替代方案: 若被除数为运行时值，可用乘法和条件判断替代除法（如rows_in_chunk // BC + tl.where(rows_in_chunk % BC > 0, 1, 0)），仍比tl.cdiv更可控
+- 适用条件: 循环边界、tile数量等计算，其中K/V/BK/BV等维度通常为constexpr
+- 典型收益: 消除运行时整数除法+取余，降低Scalar单元占用
+code_snippet:
+  Triton: "# 反模式：运行时 tl.cdiv\n\
+    for i_k in range(tl.cdiv(K, BK)):\n\
+        for i_v in range(tl.cdiv(V, BV)):\n\
+            ...\n\
+    \n\
+    # 正模式：编译期常量循环边界\n\
+    NK = K // BK + (1 if K % BK != 0 else 0)\n\
+    NV = V // BV + (1 if V % BV != 0 else 0)\n\
+    for i_k in range(NK):\n\
+        for i_v in range(NV):\n\
+            ...\n\
+    \n\
+    # 运行时变长场景替代\n\
+    rows_in_chunk = T_local - i_t * BT\n\
+    NC_local_full = rows_in_chunk // BC + tl.where(rows_in_chunk % BC > 0, 1, 0)\n\
+    NC_local = tl.where(NC < NC_local_full, NC, NC_local_full)"
+performance_boost: 10%
+note: 当所有相关维度都是constexpr时，优化效果最大；若涉及运行时值，需评估替代方案引入的额外tl.where开销是否值得。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/scalar_opt_report.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

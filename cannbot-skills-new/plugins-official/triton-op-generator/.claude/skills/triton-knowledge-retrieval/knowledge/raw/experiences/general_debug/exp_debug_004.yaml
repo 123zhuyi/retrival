@@ -1,0 +1,32 @@
+experience_id: exp_debug_004
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 调试排查
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+  core_param: {}
+  optimization_level: medium
+  tensor_shape:
+  - nd
+experience_type: 调试排查
+framework_tag:
+- Triton
+optimization_points:
+- 并发写入保护: 多核心并发写入同一内存地址时，必须使用原子操作（如`tl.atomic_add`/`tl.atomic_max`）
+- 原子操作类型匹配: 原子操作的数据类型需与目标内存地址的数据类型严格匹配（如float32数据用float32原子操作）
+code_snippet:
+  Triton: "# ========== 并发与原子操作正确/错误示例 ==========\n@triton.jit\ndef atomic_op_correct_kernel(input_ptr,\
+    \ output_ptr, n_elements, BLOCK_SIZE: tl.constexpr):\n    pid = tl.program_id(0)\n\
+    \    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offsets\
+    \ < n_elements\n    data = tl.load(input_ptr + offsets, mask=mask)\n    \n   \
+    \ # 正确: 并发写入使用原子操作且类型匹配\n    tl.atomic_add(output_ptr + 0, data.sum().to(tl.float32))\
+    \  # float32原子操作匹配float32数据\n    \n    # 错误: 并发写入未用原子操作（数据竞争）\n    # tl.store(output_ptr\
+    \ + 0, tl.load(output_ptr + 0) + data.sum())\n    # 错误: 原子操作类型不匹配（float16数据用float32原子操作）\n\
+    \    # tl.atomic_add(output_ptr + 0, data.sum().to(tl.float16))"
+performance_boost: 0%
+note: 并发写入未用原子操作会导致数据竞争（结果随机错误），原子操作类型不匹配会触发编译失败；910b系列平台仅支持基础原子操作（add/max/min），需按需选择
+version: v1.0

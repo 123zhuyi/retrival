@@ -1,0 +1,50 @@
+experience_id: exp_rope_backward_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: RoPE Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    bs:
+    - '>=1'
+    hd:
+    - '>=64'
+    rope_dim:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: Implements a grid-stride loop (`for block_id in range(pid, total_blocks,
+    grid_size)`) to allow a single program to process multiple blocks. This increases
+    hardware utilization and load balancing, particularly when the total number of
+    sequence blocks is large or not evenly divisible by the grid size.
+- varlen_memory_optimization: Specialized logic for `IS_VARLEN` loads chunk metadata
+    (`chunk_indices_ptr`) to compute dynamic sequence offsets and masks. This avoids
+    padding to the maximum sequence length, significantly reducing memory bandwidth
+    consumption for ragged batches common in LLM inference.
+- vectorized_load_strategy: Uses compile-time branching (`ALIGNED`) to select the
+    optimal memory access pattern. When aligned, it loads the full RoPE dimension
+    in a single transaction for maximum throughput; otherwise, it splits loads into
+    two halves to handle unaligned addresses or non-contiguous memory layouts safely
+    without hardware penalties.
+- kv_cache_aware_indexing: Supports `HAS_KV_LENS` to correctly index `cos` and `sin`
+    tables based on the actual KV cache length per batch. This ensures correctness
+    for autoregressive decoding scenarios where the KV sequence length differs from
+    the current input sequence length.
+code_snippet:
+  TritonPath: _rope_backward_kernel
+performance_boost: 25%
+note: This kernel is highly optimized for variable-length sequence processing and
+  KV-cache scenarios in Transformer models. Ensure `TOKEN_BLOCK_SIZE` is tuned based
+  on the specific hardware's L1 cache size for optimal performance.
+version: v1.0

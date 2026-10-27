@@ -1,0 +1,48 @@
+experience_id: exp_sdpa_bwd_kv_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_tiling_strategy: The kernel tiles the SxS attention matrix into BLOCK_R x
+    BLOCK_C blocks (e.g., 128x64). This allows the sub-blocks of K and V to be loaded
+    once and reused across multiple Q blocks (inner loop over idx_r), significantly
+    reducing global memory access bandwidth for K and V.
+- software_pipelining_multibuffering: The autotune configuration includes a 'multibuffer'
+    parameter. When enabled, this implements software pipelining, overlapping the
+    loading of the next tile of data (K, V, Q) with the computation of the current
+    tile. This hides memory latency and improves compute unit utilization.
+- sram_gradient_accumulation: Gradients for K (dk) and V (dv) are accumulated in on-chip
+    memory (SRAM/Registers) as `block_dk` and `block_dv` across the inner loop iterations.
+    The results are only written back to global memory after processing all relevant
+    Q blocks for a specific K/V block. This minimizes expensive global memory write
+    operations.
+- mixed_precision_computation: The kernel utilizes mixed precision by performing accumulation
+    in float32 (HIGH_TYPE) to ensure numerical stability during the backward pass
+    (which is sensitive to precision loss), while storing inputs and outputs in bfloat16
+    (LOW_TYPE) to optimize memory bandwidth and storage.
+performance_boost: 25%
+note: This kernel is specifically optimized for the backward pass of Keys and Values
+  in Flash Attention. It assumes inputs are in standard ND format. The 'multibuffer'
+  optimization is particularly effective on hardware with high memory latency.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/221-kernel_sdpa_bwd_kv.py

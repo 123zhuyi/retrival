@@ -1,0 +1,48 @@
+experience_id: exp_matmul_bias_fused_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with Bias
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_tiling_strategy: The kernel employs a 2D tiling approach (BLOCK_M, BLOCK_N)
+    iterating over the K dimension (BLOCK_K). This strategy maximizes data reuse by
+    keeping tiles in the register file or cache (SRAM) across the reduction loop,
+    significantly reducing the pressure on global memory bandwidth.
+- operator_fusion: The bias addition operation is fused directly into the GEMM kernel
+    loop. By adding the bias to the accumulator before the final store, the kernel
+    eliminates the need for a separate element-wise addition kernel launch, thereby
+    reducing global memory read/write overhead and kernel launch latency.
+- hardware_acceleration: Utilization of `tl.dot` ensures the computation is mapped
+    to the hardware's specialized matrix units (e.g., Tensor Cores or equivalent vector
+    units). This provides significantly higher throughput for matrix multiplication
+    compared to standard scalar or vector FMA operations.
+- flexible_memory_layout: The kernel uses stride-based pointer arithmetic (`stride_xm`,
+    `stride_xk`, etc.) instead of assuming contiguous memory. This allows the kernel
+    to efficiently handle various data layouts (such as transposed matrices or non-contiguous
+    tensors) without requiring explicit data reordering or padding in global memory.
+performance_boost: 30%
+note: This implementation is particularly effective for large-scale matrix multiplications
+  where the cost of memory access dominates. The masking logic ensures correct execution
+  for matrix dimensions that are not integer multiples of the block sizes.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/147-matmul_bias_persistent_kernel.py

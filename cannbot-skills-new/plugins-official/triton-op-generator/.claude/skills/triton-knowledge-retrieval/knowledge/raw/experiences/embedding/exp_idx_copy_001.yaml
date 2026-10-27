@@ -1,0 +1,45 @@
+experience_id: exp_idx_copy_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Index Copy
+  data_type:
+  - int32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    c_len:
+    - '>0'
+    BLOCK_SIZE_N:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_pointer_utilization: The kernel utilizes `tl.make_block_ptr` for both source
+    and destination pointers. This abstraction allows the compiler to generate optimized
+    memory access instructions, ensuring better vectorization and cache line utilization
+    compared to manual pointer arithmetic.
+- ragged_tensor_handling: By employing `boundary_check=(0,)` during load and store
+    operations, the kernel efficiently processes variable-length sequences (ragged
+    tensors) without requiring padding to the maximum sequence length. This minimizes
+    memory bandwidth consumption and avoids unnecessary computation on padding tokens.
+- early_exit_condition: The implementation includes early exit checks (if `c_len <=
+    0` and if `pid_n * BLOCK_SIZE_N >= c_len`). This ensures that thread blocks corresponding
+    to empty sequences or out-of-bounds ranges terminate immediately, freeing up SM
+    resources for active blocks.
+- right_padding_offset: The source pointer calculation `(n_len - c_len)` dynamically
+    adjusts the base address to skip right-padding. This allows the kernel to read
+    contiguous valid data directly, optimizing memory access patterns for right-padded
+    inputs common in transformer architectures.
+performance_boost: 25%
+note: This kernel is specifically designed for scenarios involving variable-length
+  sequences and cumulative counts, such as gathering top-k indices in attention mechanisms.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/024-save_topk_idx_kernel.py

@@ -1,0 +1,65 @@
+experience_id: exp_hstu_attn_fwd_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=64'
+    n:
+    - '>=64'
+    k:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the QK matrix multiplication, SiLU activation, normalization,
+    and final weighted value matrix multiplication into a single kernel. This prevents
+    the intermediate attention matrix (M x N) from being written back to High Bandwidth
+    Memory (HBM), drastically reducing memory bandwidth consumption.
+- activation_inlining: The SiLU activation function (`x * sigmoid(x)`) and sequence
+    length normalization are computed directly on the accumulator registers of the
+    first dot product. This keeps the data in the high-speed register file/SRAM, eliminating
+    the latency of separate load/store operations for the activation step.
+- efficient_masking: Causal masking is applied via `tl.where` immediately after the
+    activation calculation but before the second dot product. This ensures that masked-out
+    positions contribute zero to the final accumulation without expensive branching
+    or global memory updates.
+- dtype_alignment: The intermediate activation result is cast to `v.dtype` before
+    the second dot product. This ensures the second matrix multiplication utilizes
+    the hardware's highest throughput data type (e.g., FP16/BF16) for the input operands,
+    maximizing the utilization of the compute units (Cube units).
+- block_ptr_abstraction: The kernel utilizes tl.make_block_ptr for Q, K, V, and Bias
+    tensors. This abstracts the 2D memory access patterns, allowing the compiler to
+    generate efficient vectorized load/store instructions and handle boundary conditions
+    (padding/masking) automatically compared to manual pointer arithmetic.
+- register_rematerialization: Offsets for the output store operation (offs_v_d, offs_m,
+    out_ptrs) are recalculated after the main compute loop rather than being kept
+    in registers throughout. This significantly reduces register pressure during the
+    heavy accumulation phase, preventing register spills and improving occupancy.
+- loop_tiling_data_reuse: The kernel implements a loop over start_n (sequence dimension)
+    while keeping the Q block loaded in registers/smem. This tiling strategy maximizes
+    data reuse of the Q block, reducing the memory bandwidth pressure for loading
+    Q repeatedly.
+- compile_time_specialization: Flags like CAUSAL, HAS_BIAS, and block sizes are passed
+    as tl.constexpr. This allows the Triton compiler to generate specialized kernel
+    variants for different configurations, removing runtime branching overhead inside
+    the critical path.
+performance_boost: 35%
+note: Optimized for HSTU (Hierarchical Sequential Transduction Unit) attention with
+  variable sequence lengths. The use of block pointers is crucial for handling the
+  irregular memory access patterns introduced by seq_offsets efficiently.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/006-_hstu_attn_fwd_compute.py

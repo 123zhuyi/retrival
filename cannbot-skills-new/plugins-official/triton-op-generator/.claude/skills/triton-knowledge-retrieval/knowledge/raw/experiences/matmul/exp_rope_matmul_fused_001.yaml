@@ -1,0 +1,44 @@
+experience_id: exp_rope_matmul_fused_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with RoPE Fusion
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- fused_rope_computation: Fuses the Rotary Positional Embedding (RoPE) operation directly
+    into the matrix multiplication kernel. This eliminates the need to write intermediate
+    rotated tensors to global memory (HBM), significantly reducing memory bandwidth
+    consumption and latency.
+- dual_path_accumulation: Separates the sine and cosine component calculations into
+    two distinct calls to `_single_rope_matmul_kernel`. This structure allows for
+    cleaner code generation and potentially better register pressure management by
+    handling the two parts of the rotation formula (x*cos - y*sin) independently before
+    accumulation.
+- dynamic_block_tiling: Utilizes configurable `BLOCK_M`, `BLOCK_N`, and `BLOCK_K`
+    sizes along with a `BLOCK_TRESHHOLD`. This enables the kernel to adapt its tiling
+    strategy based on the specific dimensions of the input matrices (M, N, K) to optimize
+    for the L0/L1 cache hierarchy of the NPU hardware.
+performance_boost: 25%
+note: This kernel is specifically designed for Transformer inference where RoPE is
+  applied before the QK projection or similar linear layers. It assumes the availability
+  of precomputed sine/cosine coefficients.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/058-_rope_matmul_kernel.py

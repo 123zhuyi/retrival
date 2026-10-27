@@ -1,0 +1,47 @@
+experience_id: exp_sdpa_bwd_q_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- autotuning_block_size: The kernel utilizes @triton.autotune to dynamically select
+    the optimal BLOCK_R and BLOCK_C (64 or 128) configurations. This allows the kernel
+    to adapt to varying sequence lengths and hardware cache hierarchies, maximizing
+    data reuse within the register file and L1 cache.
+- mixed_precision_computation: The kernel employs a mixed-precision strategy, using
+    bfloat16 (LOW_TYPE) for memory loads/stores to save bandwidth, while performing
+    accumulation in float32 (HIGH_TYPE). This is critical for the backward pass to
+    maintain numerical stability during the exponential and subtraction operations
+    involved in the softmax gradient calculation.
+- multibuffer_prefetching: The configuration includes a 'multibuffer' option. This
+    enables software pipelining to overlap memory access latency with computation,
+    ensuring the arithmetic units are not stalled while waiting for K and V tiles
+    to be loaded from global memory.
+- vectorized_memory_access: Pointer arithmetic is carefully constructed to ensure
+    memory accesses are coalesced. Masks are applied to handle boundary conditions
+    (sequence length not divisible by block size) without branching, maintaining high
+    throughput.
+code_snippet:
+  TritonPath: kernel_sdpa_bwd_q
+performance_boost: 30%
+note: Optimized for the backward pass of Scaled Dot-Product Attention (dQ calculation).
+  The mixed precision strategy is essential to avoid gradient instability.
+version: v1.0

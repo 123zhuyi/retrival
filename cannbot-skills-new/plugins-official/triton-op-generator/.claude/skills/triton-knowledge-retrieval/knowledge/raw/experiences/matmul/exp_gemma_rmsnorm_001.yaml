@@ -1,0 +1,43 @@
+experience_id: exp_gemma_rmsnorm_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm + Element-wise Add
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    dim:
+    - '>=1024'
+    batch:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the residual addition (hidden_state + residual) and RMSNorm
+    operations into a single kernel. This eliminates the need to write and read back
+    the intermediate addition result from global memory, significantly reducing memory
+    bandwidth pressure.
+- weight_hoisting: The weight tensor is loaded inside the row processing loop. An
+    optimization is to move the weight loading statement outside the `for row_start`
+    loop. Since weights are constant across the batch, this ensures the data is loaded
+    once and kept in registers or cache, minimizing redundant global memory accesses.
+- vectorized_reduction: Utilizes `tl.sum` on the squared values to compute variance
+    efficiently. This maps well to the vector units of the target hardware, allowing
+    for parallel reduction of the `dim` axis.
+- precision_control: Performs the reduction (variance calculation) in `float32` to
+    maintain numerical stability, while keeping the loads and stores in the lower
+    precision `fp16`/`bf16` to optimize memory throughput.
+performance_boost: 35%
+note: This kernel implements the specific Gemma variant of RMSNorm where the weight
+  is effectively added by 1.0 (w + 1.0) during scaling. It is optimized for scenarios
+  where the hidden dimension is large enough to saturate the memory bus.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/190-add_gemma_rms_norm_kernel.py

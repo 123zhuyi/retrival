@@ -1,0 +1,48 @@
+experience_id: exp_softmax_inner_002
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Softmax Reduction
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=TILE_N'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_accumulation_strategy: The kernel employs a vectorized reduction strategy
+    where intermediate max (m) and sum (z) values are maintained as vectors of size
+    TILE_N instead of scalars within the reduction loop. This avoids expensive horizontal
+    reduction operations (e.g., tl.max) inside the hot loop, replacing them with efficient
+    element-wise operations (tl.maximum). The final reduction to a scalar is performed
+    only once after the loop completes.
+- online_softmax_algorithm: Implements the numerically stable online softmax algorithm
+    adapted for the vectorized strategy. It updates the running max and sum using
+    the formula z = z * exp(m_old - m_new) + exp(x - m_new), ensuring stability against
+    overflow/underflow for large input values.
+- cache_eviction_policy: Utilizes eviction_policy="evict_first" in the second pass
+    (write-back). This optimizes L1 cache behavior by treating input data loads as
+    transient, preventing them from polluting the cache and evicting the accumulator
+    values or other critical data during the final normalization phase.
+- loop_specialization_and_tiling: The kernel tiles the reduction dimension N into
+    blocks of TILE_N. It specializes the loop logic for the main body and the boundary
+    (remainder) tiles. This removes redundant mask checks from the main loop body,
+    significantly improving instruction throughput and reducing branch mispredictions.
+performance_boost: 30%
+note: This optimization is particularly effective for large N dimensions where the
+  cost of horizontal reductions in the loop would be prohibitive. The vectorized approach
+  leverages the full width of the vector units.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/127-softmax_kernel_inner.py

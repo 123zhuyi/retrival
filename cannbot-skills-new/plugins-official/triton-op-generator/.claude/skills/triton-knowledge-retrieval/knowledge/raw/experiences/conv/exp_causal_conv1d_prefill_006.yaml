@@ -1,0 +1,51 @@
+experience_id: exp_causal_conv1d_prefill_006
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Prefill (fusion)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    dim:
+    - any
+    seqlen:
+    - any
+    width:
+    - 4
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- conv_bias_silu_triple_fusion: "将卷积计算 + Bias 加法 + SiLU 激活融合在单个 kernel 的每条 token 循环内。所有中间结果保留在寄存器中（fp32 精度），只产生一次最终的 fp16/bf16 store。相比 3 个独立 kernel launch（conv → add_bias → silu），消除了 2 次 HBM 写 + 2 次 HBM 读。"
+- fp32_activation_numerical_stability: "SiLU 激活 `acc / (1 + tl.exp(-acc))` 在 fp32 累加器上计算，而非提前 downcast 到 fp16。SiLU 中的 exp 对大负值敏感（exp(-x) → inf when x < -88 in fp16），fp32 提供足够范围避免 overflow。"
+- constexpr_fusion_control: "通过 `HAS_BIAS: tl.constexpr` 和 `ACTIVATION: tl.constexpr` 编译期开关控制融合路径。不需要 bias/activation 的场景编译器完全消除对应代码路径，零额外开销。"
+- register_resident_bias: "bias 向量在卷积循环外一次性加载到寄存器，循环内每次迭代复用。对于 seq_len=2048 的场景，节省了 2047 次重复的 bias load。"
+performance_boost: "消除 2 个额外 kernel launch（延迟降低约 30-40%）；Bias 寄存器驻留节省 2047 次 load"
+note: "此融合模式是 Prefill kernel 的标准融合配置，与 Update kernel 中的 Conv1D+State+SiLU 双缓冲融合互补。两者的共同原则：激活函数必须在 fp32 上计算以保证数值稳定性。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_prefill_analysis.md §7.2 创新4
+code_snippet:
+  triple_fusion: |
+    # 循环外：bias 一次性加载，寄存器驻留
+    if HAS_BIAS:
+        bias = tl.load(bias_ptr + d_offs, mask=mask_d)
+
+    for i in range(seq_len):
+        col3 = tl.load(x_ptrs + i * stride_x, mask=mask_d)
+        acc = col0*w0 + col1*w1 + col2*w2 + col3*w3  # fp32
+
+        if HAS_BIAS:
+            acc = acc + bias                          # fp32 bias add
+        if ACTIVATION:
+            acc = acc / (1 + tl.exp(-acc))            # fp32 SiLU
+
+        tl.store(y_ptrs + i * stride_y, acc.to(OUT_DTYPE), mask=mask_d)
+        col0 = col1; col1 = col2; col2 = col3

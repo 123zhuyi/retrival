@@ -1,0 +1,48 @@
+experience_id: exp_fused_entropy_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication fused with Softmax
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    num_tokens:
+    - '>=32'
+    hidden_size:
+    - '>=128'
+    vocab_size:
+    - '>=256'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: The kernel fuses the GEMM computation (hidden @ weight.T) with
+    the Softmax reduction and Entropy calculation. By fusing these stages, the kernel
+    avoids materializing the massive intermediate logits matrix (size num_tokens x
+    vocab_size) to global memory, significantly reducing memory bandwidth pressure.
+- online_softmax_algorithm: Implements a numerically stable online softmax reduction
+    within the main loop over the vocabulary dimension. It iteratively updates the
+    global maximum (_max) and the sum of exponentials (_accu) using the coefficient
+    exp(old_max - new_max), allowing for correct softmax calculation without storing
+    all logits simultaneously.
+- tensor_parallelism_support: The kernel is designed to work with Tensor Parallelism
+    by processing vocab_per_split. It computes partial maximums, accumulations, and
+    entropy terms per split, which are typically reduced in a subsequent step, enabling
+    efficient scaling of large vocabulary models.
+- autotuning_strategy: Utilizes @triton.autotune to select optimal block sizes (BLOCK_SIZE_M,
+    BLOCK_SIZE_N, BLOCK_SIZE_K) and pipeline configurations (num_stages, num_warps)
+    based on runtime input dimensions, ensuring high occupancy across different batch
+    sizes and vocabulary lengths.
+code_snippet:
+  TritonPath: efficient_entropy_kernel_general_mainloop
+performance_boost: 60%
+note: This kernel is specifically optimized for the final layer of Large Language
+  Models (LLMs) where the vocabulary size is large. It is most effective when the
+  vocabulary dimension is split across multiple devices (TP).
+version: v1.0

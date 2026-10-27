@@ -1,0 +1,48 @@
+experience_id: exp_silu_fwd_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: The kernel implements a grid-stride loop strategy over the row
+    dimension (for row_task_id in range(pid, num_row_task, grid_size)). This allows
+    a fixed number of thread blocks to process an arbitrarily large number of rows
+    by iterating over multiple chunks, significantly improving hardware utilization
+    and load balancing for tall matrices.
+- dynamic_block_tuning: The @triton.autotune decorator is configured to test BLOCK_SIZE_M
+    values from 1 to 32. This runtime tuning is essential to identify the optimal
+    tile size that maximizes instruction-level parallelism without exceeding register
+    file limits, adapting to the specific cache hierarchy of the target hardware.
+- precision_preservation: The computation explicitly casts input data to float32 (x_f32
+    = x_chunk.to(tl.float32)) before applying the SiLU activation. This prevents potential
+    precision loss or overflow issues inherent in the exponential calculation of the
+    sigmoid function when using low-precision data types like fp16 or bf16.
+- memory_coalescing: The inner loop processes columns in blocks of BLOCK_SIZE_N, and
+    pointer arithmetic is arranged to load contiguous memory segments. This ensures
+    memory accesses are coalesced, maximizing memory bandwidth throughput.
+performance_boost: 25%
+note: The grid-stride loop is particularly beneficial when the grid size is limited
+  or when the input matrix has a large number of rows. The float32 casting adds a
+  small conversion overhead but is critical for model accuracy.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/214-_silu_fwd_kernel.py

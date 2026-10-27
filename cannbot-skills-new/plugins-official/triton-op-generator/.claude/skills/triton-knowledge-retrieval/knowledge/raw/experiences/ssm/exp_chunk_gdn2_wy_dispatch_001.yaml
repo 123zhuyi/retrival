@@ -1,0 +1,61 @@
+experience_id: exp_chunk_gdn2_wy_dispatch_001
+match_cond:
+  operator_type: ssm/linear-recurrent
+  compute_pattern: gated delta rule chunkwise 前向（大 T 且小并行度 n_seg·H≲15）
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b1
+  core_param:
+    BT: 32
+    K: 64
+    V: 64
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 架构选择成功经验（chunked WY vs serial 交叉点）
+framework_tag:
+- Triton
+- Triton-Ascend
+optimization_points:
+- serial_vs_chunked_crossover: 逐 token serial 递推 kernel 在 910b1 上的性能地板是
+    per-token pipe 同步（BAR+SET/WAIT≈56%，每向量指令附 ~712cyc BAR）；当 n_seg·H≲15
+    且 T≳500 时 serial 并行度不足，应切换 chunked WY 骨架。成本模型：chunked ≈
+    2.85us·C·H + 5.5us·(T/32)·waves + 150us host vs serial ≈ 1.7us·T。94_Gdn2Fwd 50 case
+    实测：大 case 快 38%，全 case 几何平均快 ~26%
+- fla_style_two_kernel_wy: K1 并行 grid=(C·H,)（log 域 cumsum → Gram → Neumann 求逆
+    (I+L)^{-1}=(I−L)(I+L²)(I+L⁴)(I+L⁸) 4 dot 精确 → fp32 工作区）；K2 串行每 chunk 4 大
+    dot（状态传播 + 片内 WY 读出），fp32 状态 [BK,BV] 驻留 UB 跨 chunk 传递；融合 K2
+    优于分裂（state-pass/o-apply 分裂实测回退 8-13%）
+- bt32_compile_limit_910b1: BT=64 时 K1 全展开 60+ dot，编译 >400s 且 aicore trap；
+    单 kernel dot 总数必须控制在 ~20 以内（BT=32）
+- host_pretranspose_eliminate_gather: host 侧预转置 k,g 到 [B,H,K,T] 连续布局，消除
+    kernel 内转置寻址 gather——列步长 H·K 的 [BK,16] load 实测 ~22us/次，50× 于行 load
+- cost_model_dispatch: serial/chunked 必须 host 侧按成本模型（或实测覆写表）选路；
+    一刀切 chunked 在大 H/多 segment case 回退 0.45-0.70×
+precision_pitfalls:
+- dot 馈入中间量（WY 工作区）必须 fp32，bf16 工作区 MERE 8e-3~1.2e-2 过不了官方 verify
+- dot-cumsum 前缀和必须 gT @ tl.trans(LT)——右乘下三角得到的是后缀和，exp 溢出 NaN
+- mid-row 参考点指数分解防 e^{±320} 溢出（指数限制 e^{±40}）
+falsified_do_not_retry:
+- 单 kernel 内嵌 WY（Gram+Neumann 在串行 program 内，70 小 dot 依赖链 ~85us/chunk，慢 3×）
+- K2 分裂（state-pass / o-apply 拆开回退 8-13%）
+- 仿射/M 折叠减少 dot 数（同步主导下减少 dot ≠ 缩短关键路径，收益为零）
+- head-pair 交错（编译器已流水化）
+- serial 双 token 复合递推（+5.9% 回退）
+performance_boost: 大 case +38% / 全 case 几何平均 +26%（vs serial 骨架）
+note: 94_Gdn2Fwd-naive-default 10 轮探索收敛（best geomean 0.1176 系 framework 测量失真口径，
+  绝对延迟对比有效：impl avg 0.5983ms vs serial 0.3843ms 系 case 集不同所致，逐 case 公共集
+  对比 chunked 更快）。simulator 实测 chunked 路径同步仍 55-70%（后端固有）、MMAD ≤19.6%
+  （非 dot 硬件极限）。与 [[exp_perf_018_20260914]]（serial 骨架性能地板证伪集）互为对照：
+  serial 优化耗尽后的下一步是架构级切换而非指令级调优
+source_type: source_b
+source_session: 94_Gdn2Fwd-naive-default（对照任务）+ op_94_94_Gdn2Fwd_20260911_1314_5897
+metadata:
+  status: draft
+  usage_count: 0
+  last_used: null
+  created: 2026-09-14
+  updated: 2026-09-14
+version: v1.0

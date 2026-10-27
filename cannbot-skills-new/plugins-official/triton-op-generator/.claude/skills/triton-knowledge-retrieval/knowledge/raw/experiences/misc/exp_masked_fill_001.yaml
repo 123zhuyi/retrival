@@ -1,0 +1,54 @@
+experience_id: exp_masked_fill_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Masked Fill
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  - int32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    N:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- redundant_access_elimination: The current implementation writes the input to global
+    memory and then immediately reads it back to compute the masked overwrite. This
+    is optimized by computing the final value `tl.where(mask, value, input)` directly
+    in registers/SRAM, eliminating one global store and one global load per element.
+- vectorization_alignment: The `BLOCK_SIZE_SUB` should be tuned to align with the
+    hardware's burst read length (e.g., 32 bytes or 128 bytes) to ensure memory transactions
+    are fully utilized and to minimize the number of instructions issued for the loop.
+- loop_unrolling: The loop over `num_sub_blocks` can be unrolled or the block size
+    increased to reduce loop overhead, provided register pressure allows, ensuring
+    the pipeline is kept full with memory operations.
+- sub_block_vectorization: The kernel implements a two-level tiling strategy where
+    a main BLOCK_SIZE is divided into smaller BLOCK_SIZE_SUB chunks. This allows the
+    memory loads and stores to be precisely aligned with the hardware's vector width
+    (e.g., 128 bytes or specific cache line sizes), significantly improving memory
+    bandwidth utilization and reducing the number of instructions issued.
+- in_place_memory_update: The kernel performs the read-modify-write operation directly
+    on the input pointer `inp` without allocating an intermediate output buffer. This
+    reduces the total memory traffic by approximately 50% compared to an out-of-place
+    implementation, which is crucial for bandwidth-bound element-wise operations.
+- branchless_execution: The use of `tl.where` to select between the original value
+    and the fill value ensures that the execution path is divergence-free. This avoids
+    the performance penalties associated with conditional branching within SIMD groups
+    (warps/wavefronts) on the NPU/GPU.
+performance_boost: 25%
+note: The kernel relies on `runtime.get_tuned_config` to select optimal block sizes.
+  The in-place nature requires that the input tensor `inp` is not a view or constant
+  that prevents writing.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/143-masked_fill_kernel_self.py

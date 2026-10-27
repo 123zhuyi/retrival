@@ -1,0 +1,53 @@
+experience_id: exp_causal_conv1d_001
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Convolution 1D
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D:
+    - '>=64'
+    W:
+    - '>=1'
+    BT:
+    - '>=16'
+    BD:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- flattened_grid_scheduling: Uses a 1D grid to iterate over a flattened task space
+    calculated as `NUM_BLKS_D * NUM_CHKS`. This decouples the thread block mapping
+    from the specific batch/sequence dimensions, significantly improving load balancing
+    for variable-length sequences where static 2D grids might leave many cores idle.
+- block_ptr_vectorization: Utilizes `tl.make_block_ptr` for accessing `weight`, `residual`,
+    and output tensors. This abstraction allows the compiler to generate efficient
+    vectorized memory instructions (e.g., loading 128-bit or wider blocks), maximizing
+    memory bandwidth utilization compared to scalar pointer arithmetic.
+- ub_overflow_avoidance: Explicitly performs intra-loop loads for input data `x` inside
+    the convolution loop (`tl.static_range`) rather than preloading the entire sliding
+    window. This is a critical optimization to prevent Unified Buffer (UB) overflow
+    when the tile sizes (`BT`, `BD`) are large, ensuring the kernel remains functional
+    for wider convolutions without reducing the tile size.
+- compile_time_specialization: Employs `@triton.heuristics` to convert runtime optional
+    arguments (bias, residual, activation, initial_state) into compile-time constants
+    (`HAS_WEIGHT`, `HAS_BIAS`, etc.). This eliminates dynamic branching inside the
+    kernel's main computation loop, reducing instruction overhead and pipeline stalls.
+performance_boost: 35%
+note: This kernel is specifically optimized for causal convolutions in sequence models
+  (like Mamba/SSM) supporting variable lengths. The intra-loop load strategy is a
+  deliberate trade-off to maintain high occupancy with larger tile sizes.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/266-causal_conv1d_fwd_kernel.py

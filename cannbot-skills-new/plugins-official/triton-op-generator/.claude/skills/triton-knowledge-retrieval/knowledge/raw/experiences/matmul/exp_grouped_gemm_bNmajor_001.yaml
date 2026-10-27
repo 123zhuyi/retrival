@@ -1,0 +1,47 @@
+experience_id: exp_grouped_gemm_bNmajor_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Grouped Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_load_balancing: The kernel implements a dynamic scheduling strategy using
+    a while loop (`while cur_block < cur_count`) and a core stride (`total_cores`).
+    This effectively balances the workload across GPU/NPU cores when the matrix dimensions
+    (M) vary significantly between different groups, preventing idle cores.
+- hardware_specific_padding: Utilizes `dl.compile_hint` with the argument `"dot_pad_only_k"`
+    for loading both operands A and B. This provides a critical instruction to the
+    underlying compiler (likely for Ascend hardware) to optimize data padding specifically
+    for the K-dimension, ensuring the matrix multiplication unit (Cube) operates efficiently
+    without redundant memory loads.
+- memory_access_layout: The pointer arithmetic for matrix B (`offs_bk[:, None]*strideBK
+    + offs_bn[None, :]`) is specifically designed for an N-major (Column-major) memory
+    layout. This ensures memory coalescing when accessing the shared B matrix across
+    groups.
+- accumulator_precision: Maintains intermediate accumulation in `tl.float32` before
+    casting to the output dtype. This preserves numerical precision during the reduction
+    operation across the K dimension.
+performance_boost: 35%
+note: This kernel relies on the `dl` (DeepLink) module for compile hints, indicating
+  it is tailored for specific hardware architectures like Ascend 910B. It assumes
+  matrix B is contiguous in the N dimension.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/071-m_grouped_gemm_bNmajor_kernel.py

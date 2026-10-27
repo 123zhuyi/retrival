@@ -1,0 +1,48 @@
+experience_id: exp_softmax_backward_non_inner_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Softmax Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=128'
+    K:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_reduction_strategy: For large reduction dimensions (N), the kernel employs
+    a two-pass approach. The first pass iterates over tiles of N to accumulate the
+    'scale' (sum of output * gradient) in float32. The second pass iterates again
+    to compute the final gradient using the accumulated scale. This decouples the
+    reduction dependency from the element-wise computation, preventing register overflow.
+- adaptive_tiling_heuristic: The kernel utilizes the 'ONE_TILE_PER_CTA' heuristic
+    to optimize for different tensor sizes. If N fits within a single tile (TILE_N),
+    it bypasses the reduction loop entirely, performing a single load and compute.
+    If N is larger, it automatically switches to the looped tiling mode, ensuring
+    optimal performance across varying sequence lengths.
+- high_precision_accumulation: The intermediate 'scale' variable is explicitly defined
+    with 'tl.float32'. This ensures that the summation over the N dimension maintains
+    higher precision than the input type (fp16/bf16), which is crucial for numerical
+    stability in softmax backward propagation.
+- memory_coalescing: Data access is strided using 'offsets_n[:, None] * K + offsets_k',
+    ensuring that loads and stores are coalesced along the K dimension. This maximizes
+    memory bandwidth utilization on the NPU.
+performance_boost: 30%
+note: This implementation is specifically optimized for the "non-inner" dimension
+  case where the reduction happens along N. It effectively handles the boundary conditions
+  where N is not a multiple of TILE_N via masking.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/128-softmax_backward_kernel_non_inner.py

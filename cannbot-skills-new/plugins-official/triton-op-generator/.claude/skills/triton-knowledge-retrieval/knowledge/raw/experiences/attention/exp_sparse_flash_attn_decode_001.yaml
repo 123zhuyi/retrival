@@ -1,0 +1,47 @@
+experience_id: exp_sparse_flash_attn_decode_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Sparse Attention Decode with Fused Linear
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    topk:
+    - '>=32'
+    head_dim:
+    - '>=64'
+    num_heads:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sparse_data_access: Utilizes tle.index_select_simd to directly gather Top-K key/value
+    pairs based on Indices_ptr, bypassing the need to load the full KV cache and significantly
+    reducing memory traffic.
+- fused_projection: Integrates the weight matrix multiplication (W_ptr) for both the
+    Query (split into nope/rope) and the Output accumulation into the attention loop,
+    reducing kernel launch overhead and global memory footprint.
+- npu_cube_acceleration: Employs the cube1 intrinsic for the core Query-Key dot product,
+    ensuring maximum utilization of the Ascend NPU's dedicated matrix multiplication
+    units for high-throughput compute.
+- l1_l0_workspace_tiling: Manually manages workspace buffers (Wksp_Q, Wksp_K, Wksp_score,
+    etc.) to keep intermediate tensors (QK scores, Softmax weights) in high-speed
+    cache memory during the iterative reduction process.
+- vectorized_sparse_loading: Uses tle.sub_vec_id to distribute the loading of sparse
+    indices and vectors across the vector processing units, optimizing bandwidth for
+    non-contiguous memory access patterns.
+performance_boost: 45%
+note: This kernel relies on Ascend NPU specific intrinsics (tle, cube1). It is optimized
+  for decoding scenarios where the attention window is sparse (Top-K).
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/196-sparse_flash_attention_decode_kernel.py

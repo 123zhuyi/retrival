@@ -1,0 +1,49 @@
+experience_id: exp_flash_attn_gridstride_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Flash Attention
+  data_type:
+  - fp16
+  - bf16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_dim:
+    - '>=64'
+    block_m:
+    - '>=128'
+    block_n:
+    - '>=128'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: Implements a grid stride loop mechanism (`for block_idx in range(pid,
+    NUM_BLOCKS, 20)`) where a single program ID processes multiple sequence blocks.
+    This significantly increases hardware occupancy and amortizes kernel launch overhead,
+    which is critical for batch processing or long sequences.
+- software_pipelining: Utilizes a multi-stage execution strategy (`STAGE & 1` for
+    off-band and `STAGE & 2` for on-band). This decouples memory loading of K and
+    V tiles from the computation of QK^T, effectively hiding memory latency and keeping
+    the compute units busy.
+- adaptive_accumulator_storage: Dynamically selects the storage location for the accumulator
+    based on the `HEAD_DIM`. For dimensions < 256, it uses fast SRAM/Registers (`tl.zeros`);
+    for larger dimensions, it falls back to global memory (`acc` pointer) to prevent
+    expensive register spilling.
+- block_ptr_abstraction: Leverages `tl.make_block_ptr` to handle complex tensor strides
+    and offsets efficiently, allowing the compiler to generate optimized vectorized
+    load/store instructions for the NPU.
+performance_boost: 35%
+note: The grid stride factor (20) should be tuned based on the specific NPU's SM count
+  and the specific sequence length to maximize occupancy without causing resource
+  contention.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/012-_attn_fwd.py

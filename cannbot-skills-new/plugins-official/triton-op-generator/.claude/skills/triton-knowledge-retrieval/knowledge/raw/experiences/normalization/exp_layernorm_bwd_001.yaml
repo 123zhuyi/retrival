@@ -1,0 +1,64 @@
+experience_id: exp_layernorm_bwd_001
+match_cond:
+  operator_type: Normalization Operations
+  compute_pattern: LayerNorm Backward
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_cols:
+    - '>=4096'
+    n_rows:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- adaptive_tiling_strategy: The kernel utilizes a heuristic to dynamically determine
+    BLOCK_SIZE_M based on n_cols (specifically `ceil_div(4096, n_cols)`). This ensures
+    that the total tile size (BLOCK_SIZE_M * BLOCK_SIZE_N) remains relatively constant,
+    optimizing SRAM/L1 cache utilization regardless of the matrix aspect ratio.
+- fused_accumulation: Gradients for weights (dW) and bias (dB) are accumulated in
+    registers (dW_acc, dB_acc) inside the main loop over rows. This fuses the reduction
+    operation with the element-wise computation, significantly reducing global memory
+    traffic by avoiding intermediate writes.
+- grid_stride_loop: The workload distribution uses a grid-stride loop (`for row_task_id
+    in range(pid, num_row_tasks, num_programs)`). This allows the kernel to efficiently
+    handle any number of rows by load-balancing across all available program instances
+    without requiring the grid size to exactly match the problem size.
+- atomic_reduction_resolution: The final accumulation of dW and dB is handled via
+    `tl.atomic_add`. This allows multiple program instances to safely update the same
+    gradient memory locations in parallel, eliminating the need for a separate reduction
+    kernel or expensive global synchronization.
+- two_pass_reduction_strategy: The kernel implements a two-pass algorithm over the
+    column dimension. The first pass iterates over tiles to compute the reduction
+    statistics (c1 and c2) required for the DX gradient. The second pass iterates
+    again to compute the final DX, DW, and DB using these statistics. This avoids
+    materializing the full intermediate x_hat matrix, significantly reducing memory
+    bandwidth requirements for large column sizes.
+- column_major_tiling: To handle the "large cols" scenario where n_cols exceeds the
+    SRAM capacity, the kernel processes the column dimension in chunks of BLOCK_SIZE_N.
+    This tiling strategy ensures that data loaded into the cache is reused for both
+    the reduction phase and the gradient computation phase, optimizing data locality.
+- parallel_atomic_accumulation: The kernel utilizes tl.atomic_add for accumulating
+    DW and DB gradients. This allows different thread blocks (processing different
+    rows) to write to the same global memory locations for weights and biases without
+    synchronization, enabling high parallelism across the row dimension.
+- mixed_precision_accumulation: Intermediate accumulators (c1_acc, c2_acc) and computations
+    are explicitly cast to tl.float32. This preserves numerical precision during the
+    reduction operations, which is critical for the stability of the backward pass,
+    before casting the final DX result back to the original input dtype.
+performance_boost: 25%
+note: This kernel is specifically optimized for LayerNorm layers with a large number
+  of columns (hidden size). The atomic operations on DW/DB may become a bottleneck
+  if the number of rows is extremely small.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/237-_layernorm_bwd_large_cols_kernel.py

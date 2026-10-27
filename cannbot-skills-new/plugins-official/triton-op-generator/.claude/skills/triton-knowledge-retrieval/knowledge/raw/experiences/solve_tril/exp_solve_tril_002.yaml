@@ -1,0 +1,48 @@
+experience_id: exp_solve_tril_002
+match_cond:
+  operator_type: Linear Algebra Operations
+  compute_pattern: Triangular Matrix Inverse / solve_tril / preload register block extract
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    block_size:
+    - 16
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- preload_extract_slice_eliminate_hbm_read: "当矩阵块已在循环外通过单次 `tl.load(block_ptr)` 加载到寄存器后，循环内不应再用 `tl.load(A + row_offset)` 逐行重新从 HBM 读取。虽然 Triton 不支持 `b_A[i, :]` 动态寄存器索引，但可以使用 `tl.extract_slice(neg_A, (i, 0), (1, 16), (1, 1))` + `tl.reshape` 从寄存器块提取行数据，完全消除循环体内的 HBM 访问。"
+- why_triton_cannot_dynamic_index: "`b_A[i, :]` 在 Triton 中会报错 `ValueError('unsupported tensor index: int32[]')`——i 是运行时 int32，Triton 的 block tensor 不支持运行时动态索引。`tl.extract_slice` 是 Triton 支持的寄存器块子集提取原语，offset 为运行时变量时生成动态偏移指令（开销低于 global load）。"
+- preload_pattern: "循环前预加载并取反：`neg_A = -b_A`（或保留原值）。循环内 `b_a = tl.extract_slice(neg_A, (i, 0), (1, BLOCK), (1, 1))` + `b_a = tl.reshape(b_a, (BLOCK,))`。BLOCK=16 时 reshape 零开销。"
+- multi_block_extension: "对于分块矩阵（如 32×32 有 2 个对角块、64×64 有 4 个对角块），每个对角块独立预加载并独立 extract_slice，块间无依赖。"
+- tradeoff_analysis: "小 grid（B=1, T=512）场景下 preload 的额外寄存器操作开销可能与省下的 global load 抵消（实测 1.01x）。大 grid 场景累计效益显著（1.37x）。选择始终使用 extract_slice 可统一代码路径。"
+performance_boost: "1.01x-1.37x（BT=16, V4 vs V1）；1.25x-1.27x（BT=32, V4 vs V1，首次优化）；1.11x-1.13x（BT=64, V4 vs V1）"
+note: "此为 V4 优化的核心。与 V1（exp_solve_tril_001）组合后，ORIGINAL vs V4 累计加速比：BT=16 达 1.42x-2.54x，BT=32 达 1.26x-1.29x，BT=64 达 1.55x-1.57x。"
+version: v1.0
+source: solve_tril_analyze.md §9.5 V4 优化 + §9.6
+code_snippet:
+  preload_extract: |
+    # 循环外：预加载整个 16×16 块到寄存器
+    neg_A = -b_A  # b_A 已通过 tl.load(make_block_ptr(...)) 加载
+
+    # 循环内：从寄存器提取，零 HBM 访问
+    for i in range(2, BT):
+        b_a = tl.extract_slice(neg_A, (i, 0), (1, 16), (1, 1))
+        b_a = tl.reshape(b_a, (16,))
+        b_a = b_a + tl.sum(b_a[:, None] * b_A, 0)
+        b_A = tl.where((o_i == i)[:, None], b_a, b_A)
+  before_hbm_read: |
+    # 反模式：循环内逐行从 HBM 重新读取（数据已在寄存器中）
+    for i in range(2, min(16, T - i_t * 16)):
+        b_a = -tl.load(A + (i_t * 16 + i) * H*BT + o_i + offset)  # HBM read!
+        ...

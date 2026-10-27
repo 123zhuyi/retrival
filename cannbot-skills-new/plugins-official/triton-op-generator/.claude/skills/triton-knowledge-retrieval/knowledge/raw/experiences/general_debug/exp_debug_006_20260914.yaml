@@ -1,0 +1,47 @@
+experience_id: exp_debug_006_20260914
+match_cond:
+  operator_type: ssm/linear-recurrent
+  compute_pattern: 递推状态 kernel masked store 精度排查
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b1
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 调试排查
+framework_tag:
+- Triton
+- Triton-Ascend
+optimization_points:
+- fp32比较生成mask禁忌: 用 fp32 张量比较导出 mask（如 offs < K 的 K 为 fp32 或 offs 为 fp32）在并发下触发
+  非确定性 store 污染——实测表现为输出部分单元格随机丢 store、同代码重跑结果不一致；mask 必须由
+  int32 索引张量与 int32 标量比较产生
+- masked store丢单元格规避: 对存在 masked store 丢单元格风险的输出，改为 padded 输出 buffer +
+  无 mask 全量 store（pad 列由状态 0 pad 列计算恒为 0，写 0 无害），host 侧 slice 还原真实宽度，
+  与 final_state flat 全量写回同一策略
+- 多条带flat写回vb偏移: V 维拆多条带（NVB>1）时，final_state flat 写回的偏移必须含 vb*BV 项，
+  否则第二条带覆盖第一条带且输出宽度减半导致 shape mismatch
+code_snippet:
+  Triton: "# 错误: fp32 比较导出 mask（非确定 store 污染）\n# mk = offs_f32 < K_f32\n\
+    # 正确: int32 比较\nmk = offs_k < K          # offs_k=tl.arange(0,BK) int32, K int32 入参\n\
+    mv = offs_v < V\n\n# 无 mask 全量 store 到 padded 输出, host 侧 o = o_pad[..., :V]\n\
+    tl.store(o_ptr + o_base + tok * stride_ot + vb * BV + offs_vl, o_t.to(o_ptr.dtype.element_ty))\n\n\
+    # flat 写回含 vb 偏移: flat 布局 [n, h, k, vb*BV+vl]\n\
+    flat_offs = ((n * H + h) * BK + offs_k[:, None]) * (BV * NVB) + vb * BV + offs_vl[None, :]\n\
+    tl.store(fs_ptr + flat_offs, s_tile)"
+performance_boost: 0%
+note: 94_Gdn2Fwd iter_0 → iter_1 实测（50 case）：fp32 mask 版本 o 输出随机丢 store 且重跑不一致；
+  改 int32 mask + padded 无 mask store + vb 偏移修复后 50/50 全过。精度类问题优先怀疑 mask 生成方式
+  与 masked store，而非数值算法
+source_type: source_c
+source_session: op_94_94_Gdn2Fwd_20260911_1314_5897
+metadata:
+  status: draft
+  usage_count: 0
+  last_used: null
+  created: 2026-09-14
+  updated: 2026-09-14
+version: v1.0

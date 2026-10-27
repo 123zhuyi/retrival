@@ -1,0 +1,48 @@
+experience_id: exp_fused_transformer_block_001
+match_cond:
+  operator_type: Fused Operations
+  compute_pattern: MatMul + Sigmoid + RMSNorm + RoPE
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=1'
+    K:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- deep_operator_fusion: Fuses the sequence of Matrix Multiplication, Sigmoid activation,
+    RMSNorm, and Rotary Positional Embedding (RoPE) into a single kernel launch. This
+    eliminates the need to write intermediate results back to High Bandwidth Memory
+    (HBM) after each operation, significantly reducing memory bandwidth pressure and
+    latency.
+- asynchronous_pipeline_scheduling: Utilizes `dl.async_task` to dispatch workloads
+    to distinct hardware scopes (`cube` for matrix multiplication and `vector` for
+    element-wise/reduction operations). This allows the NPU to pipeline instructions,
+    enabling the Vector unit to process normalization and RoPE while the Cube unit
+    is handling the heavy GEMM computation, thereby improving overall hardware utilization.
+- hardware_specific_resource_isolation: Explicitly maps compute-intensive tasks to
+    the Cube engine and logic-intensive tasks (Sigmoid, Norm, RoPE) to the Vector
+    engine. This isolation prevents resource contention and leverages the specific
+    strengths of each processing unit within the Ascend architecture.
+performance_boost: 35%
+note: This kernel is highly optimized for Transformer architectures (e.g., LLaMA,
+  GPT-style models) where these operations occur sequentially in the attention or
+  MLP blocks. It requires a hardware backend that supports asynchronous task dispatching
+  between Cube and Vector units.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/080-fused_sigmoid_single_norm_rope_matmul_kernel.py

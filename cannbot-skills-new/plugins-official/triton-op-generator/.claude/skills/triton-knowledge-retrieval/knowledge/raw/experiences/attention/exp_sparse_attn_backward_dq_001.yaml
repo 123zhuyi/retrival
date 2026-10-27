@@ -1,0 +1,52 @@
+experience_id: exp_sparse_attn_backward_dq_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Sparse Attention Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    TOPK:
+    - '>=1'
+    BLOCK_SIZE_K:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sparse_iteration_logic: The kernel iterates only over `real_topk` indices derived
+    from the `t_ptr` (topk_idx). This avoids the O(N^2) complexity of standard attention
+    by skipping computation and memory loads for non-essential K/V blocks, significantly
+    reducing memory bandwidth requirements.
+- persistent_data_reuse: Tensors `do` (output gradient), `lse` (log-sum-exp), and
+    `d` (delta) are loaded once per Q token outside the inner K-block loop. These
+    values are held in registers/SRAM and reused for every TopK K-block update, minimizing
+    redundant global memory accesses.
+- block_ptr_efficiency: Utilizes `tl.make_block_ptr` with `tl.advance` for loading
+    K and V blocks. This facilitates efficient 2D block memory accesses, handles boundary
+    conditions automatically via `boundary_check`, and allows for padding optimization
+    which aligns with hardware memory transaction sizes.
+- math_instruction_selection: Uses `tl.exp2` (base-2 exponential) for the softmax
+    calculation (`p = tl.exp2(qk - lse)`). This is often more efficient on hardware
+    units than natural exponential (`tl.exp`), providing a slight performance boost
+    for the activation step.
+- loop_tiling_q: The `num_q_loop` parameter allows a single program instance to process
+    multiple Q tokens. This increases the arithmetic intensity of the kernel launch
+    and helps amortize the overhead of loading persistent data structures.
+performance_boost: 40%
+note: This kernel is designed for variable-length sequences (ragged tensors) utilizing
+  `cu_seqlens`. It assumes pre-computed TopK indices. Performance gains are most significant
+  when TOPK is much smaller than the total sequence length K.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/026-backward_dq.py

@@ -1,0 +1,52 @@
+experience_id: exp_kda_bwd_wy_structure_opt_001
+match_cond:
+  operator_type: SSM
+  compute_pattern: chunk_kda_bwd_wy_dqkg_fused
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 计算优化
+framework_tag:
+- Triton
+optimization_points:
+- 优化1-Phase split: 将i_k==0分支（计算dA/dv2/db）外提为独立的V-only循环，消除内循环的条件分支
+- 优化2-barrier外提: 将tl.debug_barrier()从i_v循环内移到循环后，barrier次数从NV×NK降为NK
+- 优化3-循环不变量外提: 预计算BT_arange[:, None]*V等循环不变地址分量，循环内仅做简单偏移
+- 优化4-stride预计算: 预计算H*K和H*V，避免循环内重复乘法
+- 优化5-K%BK==0快速路径: 当K能被BK整除时，BK_mask全True，跳过mask生成
+- 注意: Phase split需确保dv2写入完成后Phase 2才能读取dv，barrier位置需正确
+- 典型收益: Phase split和barrier外提各贡献显著延迟下降，与其他标量消除优化叠加达到3.33x加速
+code_snippet:
+  Triton: "# Phase split 示例\n\
+    # Phase 1: V-only loop（dA, dv2, db）\n\
+    for i_v in tl.range(tl.cdiv(V, BV), num_stages=2):\n\
+    \    b_dA += tl.dot(b_dv, tl.trans(b_v)) * scalar\n\
+    \    b_dvb = tl.dot(b_A, b_dv)\n\
+    \    b_dv2 = b_dvb * b_beta[:, None]\n\
+    \    b_db += tl.sum(b_dvb * b_v, 1)\n\
+    \    tl.store(p_dv2, casted_b_dv2, mask=BV_2d_mask)\n\
+    tl.debug_barrier()\n\
+    \n\
+    # Phase 2: K×V nested loop（dq, dk, dw, dgk）\n\
+    for i_k in range(...):\n\
+    \    for i_v in tl.range(...):\n\
+    \        # 无 if i_k==0 分支\n\
+    \        ..."
+performance_boost: 30%
+note: 此bundle聚焦kernel结构层面的优化，与标量消除优化正交互。实施时建议先完成标量消除，再做结构优化，便于独立验证每步效果。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/zy_design.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/optimization_plan.md
+version: v1.0

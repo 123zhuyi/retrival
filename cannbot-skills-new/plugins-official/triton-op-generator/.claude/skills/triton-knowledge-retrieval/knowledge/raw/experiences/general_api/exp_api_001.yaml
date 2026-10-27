@@ -1,0 +1,47 @@
+experience_id: exp_api_001
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法避坑
+framework_tag:
+- Triton
+optimization_points:
+- 控制流替代: 禁止`return`/`break`/`continue`，改用mask控制执行逻辑（仅执行有效区域）
+- 表达式替代: 禁止lambda表达式，改用内联函数或`tl.where`实现条件逻辑
+- 布尔运算: 禁止链式布尔运算（如`a and b and c`），分步计算mask后组合
+- 张量访问: 禁止张量直接索引（如`tensor[i]`），必须使用`tl.load/tl.store`进行内存访问
+- 偏移安全: 禁止if-else分支产生负偏移，用mask分离加载+`tl.maximum(offset, 0)`保证偏移非负
+code_snippet:
+  Triton: "# ========== 禁止语法及替代方案示例 ==========\n# 1. return/break/continue → mask控制\n\
+    @triton.jit\ndef no_break_continue_kernel(ptr, n, BLOCK_SIZE: tl.constexpr):\n\
+    \    pid = tl.program_id(0)\n    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n\
+    \    # 用mask替代break: 仅处理offsets < n的元素\n    mask = offsets < n\n    data = tl.load(ptr\
+    \ + offsets, mask=mask)\n    tl.store(ptr + offsets, data * 2, mask=mask)\n\n\
+    # 2. lambda表达式 → tl.where/内联函数\n# 错误: lambda\n# func = lambda x: x if x>0 else\
+    \ 0\n# 正确: tl.where\n@triton.jit\ndef no_lambda_kernel(ptr, output_ptr, n, BLOCK_SIZE:\
+    \ tl.constexpr):\n    offsets = tl.program_id(0)*BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n\
+    \    mask = offsets < n\n    data = tl.load(ptr + offsets, mask=mask)\n    result\
+    \ = tl.where(data > 0, data, 0.0)  # 替代lambda\n    tl.store(output_ptr + offsets,\
+    \ result, mask=mask)\n\n# 3. 链式布尔运算 → 分步计算mask\n# 错误: mask = (a>0) and (b<10)\
+    \ and (c!=5)\n# 正确: 分步计算\n@triton.jit\ndef no_chain_bool_kernel(ptr, n, BLOCK_SIZE:\
+    \ tl.constexpr):\n    offsets = tl.program_id(0)*BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n\
+    \    mask = offsets < n\n    data = tl.load(ptr + offsets, mask=mask)\n    mask1\
+    \ = data > 0\n    mask2 = data < 10\n    mask3 = data != 5\n    final_mask = mask1\
+    \ & mask2 & mask3  # 分步组合\n    result = tl.where(final_mask, data, 0.0)\n\n# 4.\
+    \ 张量直接索引 → tl.load/tl.store\n# 错误: val = ptr[offset]\n# 正确: val = tl.load(ptr\
+    \ + offset)\n\n# 5. if-else负偏移 → tl.maximum保证非负\n@triton.jit\ndef no_negative_offset_kernel(ptr,\
+    \ n, BLOCK_SIZE: tl.constexpr):\n    pid = tl.program_id(0)\n    offset = pid\
+    \ * BLOCK_SIZE - 10  # 可能为负\n    safe_offset = tl.maximum(offset, 0)  # 保证非负\n\
+    \    mask = safe_offset < n\n    data = tl.load(ptr + safe_offset, mask=mask)"
+performance_boost: 0%
+note: 该规则为Triton通用语法避坑项，违反会导致编译失败/运行错误，无直接性能提升但可保证代码正确性；910b2/910b3平台对语法违规的报错更严格
+version: v1.0

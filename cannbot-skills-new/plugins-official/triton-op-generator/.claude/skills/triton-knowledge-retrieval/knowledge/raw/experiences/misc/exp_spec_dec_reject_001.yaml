@@ -1,0 +1,40 @@
+experience_id: exp_spec_dec_reject_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Speculative Decoding Rejection Sampling
+  data_type:
+  - fp16
+  - bf16
+  - int32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    max_spec_len:
+    - '>=4'
+    vocab_size:
+    - '>=32000'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- intermediate_data_residency: The original implementation incurs significant latency
+    by storing intermediate cumulative probabilities (`cum_probs`) and random values
+    (`cum_rands`) to global memory and immediately reading them back inside a loop.
+    The optimization keeps these values entirely in registers/SRAM, eliminating redundant
+    global memory transactions.
+- vectorized_acceptance_logic: The scalar loop used to determine the acceptance length
+    is replaced with a vectorized comparison (`cum_probs >= cum_rands`) followed by
+    a reduction (`tl.sum`). This transforms a serial, branch-heavy process into a
+    parallel SIMD operation, drastically improving throughput for longer sequence
+    lengths.
+performance_boost: 60%
+note: The original kernel's performance degrades linearly with max_spec_len due to
+  the loop and memory access pattern. The optimized version maintains constant time
+  complexity relative to the loop overhead.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/225-_join_prob_reject_sampler_kernel.py

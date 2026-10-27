@@ -1,0 +1,49 @@
+experience_id: exp_attn_ascend_dual_pipeline_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention Forward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    N_CTX:
+    - '>=128'
+    HEAD_DIM:
+    - '>=64'
+    BLOCK_M:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dual_task_pipelining: The kernel implements a dual-task scheduling strategy where
+    a single program ID (pid) processes two independent sequence blocks (block_idx_0
+    and block_idx_1) in a loop. This effectively doubles the workload per core launch,
+    overlapping memory access latency of one task with the computation of the other.
+- cube_vector_asynchronous_execution: The code explicitly separates the compute graph
+    into `dl.async_task(scope=dl.async_task.cube)` for matrix multiplications (QK^T
+    and Softmax*V) and `dl.async_task(scope=dl.async_task.vector)` for element-wise
+    operations (Softmax, masking). This allows the NPU's Cube and Vector units to
+    operate in parallel rather than sequentially.
+- hardware_synchronization_mechanism: Utilizes `dl.wait_cross_flag` and `dl.set_cross_flag`
+    to implement a fine-grained producer-consumer synchronization model between the
+    Cube and Vector units. This ensures that the Vector unit starts processing a tile
+    immediately after the Cube unit writes it to the workspace, minimizing pipeline
+    stalls.
+- multi_level_workspace_buffering: Leverages multiple workspace buffers (WS1, WS2,
+    WS3, WS4) to store intermediate results (S matrix and partial O) in high-bandwidth
+    memory (L1/L0). This avoids spilling intermediate data to global memory (HBM),
+    significantly reducing memory bandwidth pressure.
+performance_boost: 55%
+note: This optimization relies on the specific DL (Device Link) API extensions for
+  Ascend hardware. It is highly effective for long sequence lengths (N_CTX) where
+  the overhead of kernel launch is amortized over the large compute volume.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/055-_attn_fwd_split_cv.py

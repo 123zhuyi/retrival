@@ -1,0 +1,42 @@
+experience_id: exp_causal_conv1d_prefill_004
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Prefill / any sequence-loop kernel
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    seqlen:
+    - '>=16'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- pointer_base_precompute: "将循环外可计算的地址分量（batch start offset、D-tile offset）预先计算为基址指针，循环内仅做廉价的 `+ i * stride` 偏移加法。循环外的指针计算（`start * stride + d_offs * stride_dim`）只需执行一次，循环内每次迭代省去整数乘法和完整地址重组。"
+- loop_invariant_hoisting: "属于编译器优化的手动实现——将循环不变量（loop-invariant）显式提升到循环外。在 Triton kernel 中，编译器不一定能自动识别指针表达式中的不变量（尤其当涉及多维 stride 时），手动预计算确保优化必定生效。"
+- stride_simplification: "循环内的地址增量简化为单一 stride 乘法：`x_ptrs + i * stride_x_tokens`。当 stride_x_tokens 是编译期常量时，`i * stride` 可被强度削减为累加（`addr += stride`），进一步减少乘法指令。"
+- applicability_general: "适用于所有含 token/row 维度循环的 kernel（attention、normalization、elementwise over seq_len），只要循环体内需要按照固定 stride 访问不同位置的元素。"
+performance_boost: "减少 10-20% 的标量地址计算指令（取决于循环体大小），在大 seq_len 场景收益更显著"
+note: "此优化在遗传搜索 Round 2 中被引入，与 DIM_IS_MULTIPLE 共同贡献了 26% 的 Round 1→Round 2 性能提升。是通用模式，不限于 conv1d。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_prefill_analysis.md §7.2 创新3
+code_snippet:
+  precompute_pattern: |
+    # 循环外：预计算基址（只一次）
+    x_ptrs = x_ptr + start * stride_x_tokens + d_offs * stride_x_dim
+    y_ptrs = y_ptr + start * stride_y_tokens + d_offs * stride_y_dim
+
+    # 循环内：仅廉价偏移
+    for i in range(seq_len):
+        col3 = tl.load(x_ptrs + i * stride_x_tokens, mask=mask_d)
+        # ... compute ...
+        tl.store(y_ptrs + i * stride_y_tokens, acc, mask=mask_d)

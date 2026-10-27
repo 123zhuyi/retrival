@@ -1,0 +1,43 @@
+experience_id: exp_solve_tril_006
+match_cond:
+  operator_type: Linear Algebra Operations
+  compute_pattern: Triangular Matrix Inverse / solve_tril / optimization exclusion analysis
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    block_size:
+    - 16
+    - 32
+    - 64
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 矛盾提示 / Optimization Decision
+framework_tag:
+- Triton
+optimization_points:
+- tl_dot_vs_tl_sum_broadcast_decision: "对 1×16 × 16×16 的微小矩阵乘法，使用 `tl.dot`（CUBE 单元）比 `tl.sum(b_a[:, None] * b_A, axis=0)`（VEC 单元广播乘+归约）慢 14-20x。CUBE 单元的调度和启动开销在微小尺寸下远大于 VEC 直接计算。**决策原则**：微小矩阵乘法（M=1 或 N=1 或 K≤16）优先用 VEC 广播乘 + sum 归约，不要强行用 tl.dot。"
+- constexpr_unroll_vs_runtime_loop_decision: "去掉 if/else 统一用运行时循环（V3）会导致失去 constexpr 展开优化，性能回退到 V1 水平。constexpr 展开使 extract_slice 的 offset 参数为编译期常量，生成静态偏移指令（零 ALU）。**决策原则**：当 99% 的 tile 走同一代码路径时，保留 constexpr 双分支比代码简洁性更重要。"
+- register_vs_hbm_tradeoff: "preload 整个 16×16 块会增加寄存器占用（256 elements fp32 = 1KB）。对小 grid 场景（B=1, T=512），额外的寄存器操作开销可能与省下的 global load 抵消（实测 1.01x）。**决策原则**：大 grid 场景（B≥4, T≥1024）无条件启用 preload；小 grid 场景可考虑保留 HBM load（代码略简），但统一使用 extract_slice 的代码一致性通常优先。"
+- off_diagonal_preload_excluded: "提前加载 off-diagonal block 会增加寄存器压力（64×64 kernel 已有 10 个 16×16 块），可能导致寄存器 spill。**决策原则**：寄存器中仅保留对角块（基础计算单元），off-diagonal block 按需从 HBM 加载——逐层计算模式下每层只用到特定的 off-diagonal 块，全部预加载造成浪费。"
+- algorithmic_bottleneck: "16×16 kernel 的逐行递推存在 O(BT²) 次迭代内的数据依赖——第 i 行严格依赖前 i-1 行的计算结果，无法并行化或流水线化。**这是算法的根本限制**，非代码优化可克服。32×32 和 64×64 merge kernel 的计算瓶颈在 16×16 tl.dot 矩阵乘法（CUBE 单元已饱和）。"
+- exhaustive_audit_result: "对照经验库全部 20+ 条经验审计后确认：当前算子已达到局部最优。已应用：block_ptr 访存、fp32 中间计算、contiguous 输入、empty_like 分配、冗余消除、extract_slice 寄存器读取、constexpr 展开。不适用或无效：块大小优化（BT 是算子语义决定）、TMA 异步拷贝（CANN 8.5.0 不支持）、tl.dot 替代 VEC 广播乘（14-20x 退化）。"
+performance_boost: "N/A（排除无效优化方向，避免负优化）"
+note: "此经验记录优化尝试中被排除的方向及其根因，避免未来重复尝试无效优化。所有尝试均在 solve_tril_analyze.md §9.6 中有详细分析。"
+version: v1.0
+source: solve_tril_analyze.md §9.6 进一步优化空间分析 + 被排除的无效/不适用优化
+code_snippet:
+  dot_vs_sum: |
+    # 反模式（14-20x 退化）：微小矩阵用 tl.dot
+    b_a = tl.reshape(b_a, (1, 16))
+    b_a = tl.dot(b_a, b_A)  # CUBE 调度开销 >> 计算量
+
+    # 正模式（高效）：VEC 广播乘 + 归约
+    b_a = b_a + tl.sum(b_a[:, None] * b_A, 0)  # 1×16 × 16×16 → VEC

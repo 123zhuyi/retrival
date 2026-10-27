@@ -1,0 +1,47 @@
+experience_id: exp_causal_conv1d_update_003
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Update (Decode)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    dim:
+    - any
+    width:
+    - 4
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- make_block_ptr_hardware_acceleration: "`tl.make_block_ptr` 在 Ascend NPU 上映射为硬件 block transfer 指令（类似 DMA），一条指令搬运整个 tile，包含自动边界检查和零填充（padding_option='zero'）。这是 Ascend 专为 tile 加载优化的硬件原语，效率远高于通用标量 load 指令。在 causal_conv1d_update 中用于加载权重 `[D_CHK_SIZE, W]` 和存储输出 `[1, D_CHK_SIZE, T_CHK_SIZE]`。"
+- scalar_load_degradation: "用 4 次独立 `tl.load(weight_ptr + d_offs * width + offset, mask=mask_w)` 替代 1 次 `tl.load(make_block_ptr(...))` 会导致显著性能倒退。每条独立 load 需要独立的标量地址计算，丧失 block transfer 的 DMA 级效率。这在 W_IS_4 展开优化的负收益 case 中是首要根因。"
+- block_ptr_boundary_check: "`make_block_ptr(..., boundary_check=(0, 1))` 由硬件处理边界检查，不产生软件 mask 运算开销。配合 `padding_option='zero'`，越界访问自动填零，消除 kernel 内的显式 mask 分支。"
+- hybrid_loading_strategy: "方案 B（进阶）：保留 make_block_ptr 加载权重 tile `[D_CHK_SIZE, W]`，然后展开 W 循环手动提取各列 `w0=tl.extract_slice(w, (0,0), (D_CHK,1))`，同时消除 x_b/w/out 的 3 次 transpose。这样既保留了 block transfer 的硬件加速，又获得了循环展开的数据编排消除收益。需实测验证大 D 时 w 的 4 次 extract_slice 开销是否可忽略。"
+- weight_prefetch_leverage: "make_block_ptr 提供硬件预取提示，允许 Ascend MTE2 在 Cube 计算期间异步预取下一 tile 的权重。独立 tl.load 无法提供等效的预取语义，导致 MTE2→Vector 流水线停顿增加。"
+performance_boost: "block_ptr vs scalar load: 在 D≥2048 场景差异可达 2-3x（与循环展开组合效应）"
+note: "此经验阐明 Ascend 上 make_block_ptr 与标量 tl.load 的根本差异：前者是硬件 DMA 原语，后者是通用标量指令。在性能敏感的 tile 加载路径上，应优先使用 make_block_ptr。若需手动索引权重（如 W 循环展开），应采用混合方案（block_ptr 加载 + extract_slice 切片）而非退化到独立 tl.load。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_update_analysis.md §10.5.2 (根因1) + §10.6 (方案B)
+code_snippet:
+  hybrid_approach: |
+    # 方案 B: 保留 block_ptr 加载 + 消除 transpose
+    w = tl.load(make_block_ptr(weight_ptr, shape=(dim, width), ...,
+              offsets=(di * D_CHK_SIZE, 0), block_shape=(D_CHK_SIZE, width)))
+    # w 保持 [D_CHK, 4]，无需 transpose
+    w0 = tl.extract_slice(w, (0, 0), (D_CHK, 1), (1, 1))
+    w1 = tl.extract_slice(w, (0, 1), (D_CHK, 1), (1, 1))
+    w2 = tl.extract_slice(w, (0, 2), (D_CHK, 1), (1, 1))
+    w3 = tl.extract_slice(w, (0, 3), (D_CHK, 1), (1, 1))
+    # x_b 保持 [D_CHK, buf] 布局，直接提取 4 个滑动窗口切片
+    x_s0 = tl.extract_slice(x_b, (0, 0), (D_CHK, T_CHK), (1, 1))
+    x_s1 = tl.extract_slice(x_b, (0, 1), (D_CHK, T_CHK), (1, 1))
+    x_s2 = tl.extract_slice(x_b, (0, 2), (D_CHK, T_CHK), (1, 1))
+    x_s3 = tl.extract_slice(x_b, (0, 3), (D_CHK, T_CHK), (1, 1))
+    out_block = (x_s0 * w0 + x_s1 * w1 + x_s2 * w2 + x_s3 * w3)

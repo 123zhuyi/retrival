@@ -1,0 +1,34 @@
+experience_id: exp_slice_002
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法避坑
+framework_tag:
+- Triton
+optimization_points:
+- 核心禁止: 禁止对`tl.arange`生成的编译时索引表达式使用`tl.get_element()`提取元素
+- 本质原因: tl.arange是编译时索引表达式，非实际内存张量，无法通过get_element访问
+- 替代方案: 直接通过数值计算获取指定位置值（如`base + i`），而非调用get_element
+- 边界说明: 仅`tl.arange`生成的张量需遵循，实际数据张量可正常使用`tl.get_element()`
+code_snippet:
+  Triton: "# ========== tl.arange + get_element 避坑示例 ==========\n@triton.jit\ndef\
+    \ arange_get_element_kernel(ptr, output_ptr, i: tl.constexpr, BLOCK_SIZE: tl.constexpr):\n\
+    \    base = tl.program_id(0) * BLOCK_SIZE\n    \n    # 错误: 对tl.arange生成的张量使用get_element\n\
+    \    # offsets = base + tl.arange(0, BLOCK_SIZE)\n    # value = tl.get_element(offsets,\
+    \ [i])\n    \n    # 正确: 直接数值计算获取指定位置值\n    value = base + i\n    \n    # 合法场景:\
+    \ 实际数据张量可正常使用get_element\n    offsets_data = tl.arange(0, BLOCK_SIZE)\n    data\
+    \ = tl.load(ptr + offsets_data, mask=offsets_data < 1024)\n    data_element =\
+    \ tl.get_element(data, (i,))  # 实际张量允许\n    \n    # 存储结果\n    tl.store(output_ptr,\
+    \ value + data_element)"
+performance_boost: 0%
+note: tl.arange生成的是编译时常量索引表达式，而非实际占用内存的张量，调用`get_element()`会触发编译错误；910b2/910b3平台无容错机制，必须严格遵循该规则
+version: v1.0

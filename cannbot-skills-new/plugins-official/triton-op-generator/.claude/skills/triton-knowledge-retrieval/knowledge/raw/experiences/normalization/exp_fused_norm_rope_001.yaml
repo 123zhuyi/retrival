@@ -1,0 +1,50 @@
+experience_id: exp_fused_norm_rope_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Fused RMSNorm and Partial RoPE
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    seq_len:
+    - '>=1'
+    num_heads:
+    - '>=1'
+    head_dim:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the RMSNorm and Rotary Positional Embedding (RoPE) operations
+    into a single kernel. This eliminates the need to write intermediate normalized
+    results to global memory (HBM) and read them back for RoPE, significantly reducing
+    memory bandwidth consumption and latency.
+- partial_rope_optimization: Explicitly handles partial RoPE by separating the head
+    dimension into ROPE (rotated) and NOPE (non-rotated) sub-spaces. The kernel only
+    applies the computationally expensive rotation logic (cos/sin multiplication)
+    to the ROPE dimensions, while the NOPE dimensions are simply normalized and scaled,
+    optimizing arithmetic intensity for modern architectures like Llama-3.
+- precision_management: Utilizes single-precision floating-point (fp32) for the variance
+    calculation (sum of squares and reciprocal square root) to maintain numerical
+    stability during the reduction, while performing the rest of the vector operations
+    in the input precision (e.g., fp16/bf16) to maximize throughput.
+- grid_stride_scheduling: Implements a grid-stride loop over the sequence length dimension.
+    This allows the kernel to efficiently process sequence lengths of arbitrary size
+    without requiring a 1:1 mapping between grid blocks and sequence tokens, ensuring
+    high utilization of the compute units (NUM_CORES).
+performance_boost: 25%
+note: This kernel is specifically designed for models utilizing partial rotary position
+  embeddings (e.g., Llama-3). It assumes the input layout is [seq_len, num_heads,
+  head_dim].
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/065-fused_single_norm_and_partial_rope_kernel.py

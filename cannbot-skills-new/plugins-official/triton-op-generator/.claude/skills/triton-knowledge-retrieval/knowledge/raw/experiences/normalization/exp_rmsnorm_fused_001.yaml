@@ -1,0 +1,49 @@
+experience_id: exp_rmsnorm_fused_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Fused Add + RMS Norm
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_cols:
+    - <2048
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- 2D_vector_loading: Utilizes 2D indexing (row_idx[:, None], col_offsets[None, :])
+    in tl.load to fetch multiple rows (BLOCK_SIZE_M) simultaneously. This maximizes
+    the utilization of the NPU's Unified Buffer (UB) and memory bandwidth, specifically
+    targeting scenarios where n_cols is small (<2048) to avoid tiling overhead.
+- cache_policy_optimization: Applies 'evict_first' eviction policy for input tensors
+    (X, R) to retain data in cache for the subsequent reduction step, and uses '.cg'
+    (cache to global) modifier for the intermediate residual output (S) to stream
+    data directly to global memory, reducing cache pollution.
+- instruction_level_parallelism: Preloads the weight vector (W_row) outside the main
+    grid-stride loop. This overlaps the memory access of weights with the computation
+    of the residual standard deviation (rstd), effectively hiding memory latency.
+- fused_computation_pipeline: Integrates element-wise addition, variance reduction,
+    normalization, and scaling into a single kernel pass. The intermediate sum (S)
+    is computed once and kept in registers to be reused for both the rstd calculation
+    and the final output (Y) generation, significantly reducing global memory access.
+- precision_control: Implements specific casting modes (LLAMA/GEMMA) to optimize the
+    placement of float32 conversions. This ensures numerical stability for the reduction
+    operation while maintaining high throughput for vector operations by minimizing
+    unnecessary type conversions.
+performance_boost: 25%
+note: This kernel is specifically designed for small hidden dimensions (n_cols < 2048).
+  For larger dimensions, a tiling-based approach is usually preferred to fit data
+  into SRAM/UB.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/092-_fused_add_rms_norm_forward_kernel_no_tiling.py

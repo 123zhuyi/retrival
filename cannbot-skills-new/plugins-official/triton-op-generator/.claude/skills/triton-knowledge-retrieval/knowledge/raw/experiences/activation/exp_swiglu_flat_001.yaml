@@ -1,0 +1,47 @@
+experience_id: exp_swiglu_flat_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise SwiGLU
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    total_elements:
+    - '>0'
+    BLOCK_SIZE:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: Implements a grid-stride loop pattern using `tl.range` with a
+    stride equal to `num_progs * BLOCK_SIZE`. This decouples the total data size from
+    the grid size, allowing the kernel to process arbitrarily large tensors while
+    maintaining high GPU occupancy by reusing program instances.
+- software_pipelining: Utilizes the `num_stages` parameter within the `tl.range` loop
+    to enable software pipelining. This allows the kernel to prefetch memory loads
+    for the next iteration while executing computations for the current iteration,
+    effectively hiding memory latency.
+- vectorized_memory_access: Loads and stores data in chunks defined by `BLOCK_SIZE`
+    using `tl.arange`. This ensures memory transactions are coalesced and maximizes
+    bandwidth utilization by accessing contiguous memory segments.
+- precision_safety: Explicitly casts input tensors `a_val` and `b_val` to `tl.float32`
+    before performing the sigmoid and multiplication operations. This prevents potential
+    overflow or underflow issues associated with low-precision (fp16/bf16) exponential
+    calculations, ensuring numerical stability.
+performance_boost: 25%
+note: This kernel is optimized for flat (1D) memory layouts. Ensure input tensors
+  are contiguous or pre-flattened for best performance. The BLOCK_SIZE should be tuned
+  to be a multiple of the cache line size (e.g., 128 bytes) for optimal memory alignment.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/105-_swiglu_forward_kernel_flat.py

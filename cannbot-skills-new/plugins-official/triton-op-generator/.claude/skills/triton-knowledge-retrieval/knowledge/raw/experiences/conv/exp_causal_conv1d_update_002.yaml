@@ -1,0 +1,68 @@
+experience_id: exp_causal_conv1d_update_002
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Update (Decode)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    dim:
+    - '>=1024'
+    seqlen:
+    - '>=1'
+    width:
+    - 4
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- w_loop_unrolling_with_threshold: "当 W=4 且 D>=1024 时，将 `for owi in range(width)` 循环展开为 4 路独立计算表达式 `x_s0*w0 + x_s1*w1 + x_s2*w2 + x_s3*w3`，消除 3 次 tl.trans 和 8 次 extract_slice 的数据编排开销。实测 D=8192 时加速比 3.1x，D=2048 时 2.3x。D<1024 时回退到原始 for 循环路径，避免小 D 场景下独立 tl.load 的启动开销占比过大导致负收益（D=128 时仅 0.41x）。"
+- d_threshold_gating: "在 host 端通过编译期常量 `W_IS_4=(width==4 and dim>=1024)` 控制是否启用展开路径。D=1024 作为阈值有足够安全边际（正收益 case 均在阈值之上，负收益 case 均在阈值之下），改动仅一行，零风险。"
+- extract_slice_elimination: "展开后消除原始路径中每次 W 迭代的 2 次 extract_slice（x_b 切片 + w 切片），W=4 时共消除 8 次 extract_slice。extract_slice 在 Triton IR 层面创建新的 tensor view（修改 offset/stride/shape 描述符），虽不移动数据但编译器必须生成独立的地址计算逻辑，消除后可减少 scalar 单元压力。"
+- transpose_elimination: "展开后消除 3 次 tl.trans 调用（x_b 转置 [D_CHK, buf]→[buf, D_CHK]、w 转置 [D_CHK, W]→[W, D_CHK]、out 回转），直接将 x_b 保持 [D_CHK_SIZE, buffer_len] 布局进行切片乘加，减少数据路径的中间步骤。"
+- fma_friendly_expression: "展开后的单语句 4 路归约 `x_s0*w0 + x_s1*w1 + x_s2*w2 + x_s3*w3` 比 4 次独立的 `out += x * w` 更容易被编译器优化为并行 FMA 指令。4 个乘法相互独立可并行发射，加法树结构可直接映射到硬件 FMA 单元。"
+performance_boost: "D≥2048: 2.3x-3.1x; D≤256: 0.41x-0.75x（需阈值控制）"
+measured_data:
+  - shape: [1, 12291, 8192, 4, None]
+    speedup: 3.1x
+    note: "NUM_D_CHK=512，大幅正收益"
+  - shape: [1, 5000, 2048, 4, None]
+    speedup: 2.3x
+    note: "NUM_D_CHK=128，大幅正收益"
+  - shape: [3, 1446, 256, 4, None]
+    speedup: 0.70x
+    note: "NUM_D_CHK=16，负收益"
+  - shape: [2, 128, 128, 4, None]
+    speedup: 0.41x
+    note: "NUM_D_CHK=8，严重负收益"
+  - shape: [1, 32, 32, 4, None]
+    speedup: 0.75x
+    note: "NUM_D_CHK=2，负收益"
+root_cause_negative_gains:
+  - scalar_load_vs_block_transfer: "W_IS_4 路径用 4 次独立 `tl.load` 替代原始路径的 1 次 `make_block_ptr`。make_block_ptr 映射到 Ascend 硬件 block transfer 指令（类似 DMA），包含自动边界检查和零填充；4 次独立 load 退化为通用标量加载，每条需独立地址计算。这是最核心的性能倒退根因。"
+  - register_pressure_3x: "展开后 4 个 x_s* slice 和 4 个 w* 标量在单表达式中同时存活，寄存器中的中间量从约 8.3K 增至约 24.7K elements（fp16），增大约 3 倍。原始 for 循环每次只持有 1 个 new_x slice（view），不需要同时追踪 4 个切片。"
+  - small_d_amortization_failure: "小 D 场景（D≤256）tile 数少（2-16 个），4 条独立 load 的相对成本占比巨大，转置节约微不足道。大 D 场景 tile 数多（128-512 个），转置节约效果在数百个 tile 上累积，远超启动开销。"
+note: "此经验为 W=4 场景下的实测优化，含完整的正/负收益分析和根因诊断。核心启示：循环展开的收益取决于 D 维度大小，需要阈值控制来保留正收益、消除负收益。方案 A（D≥1024 阈值）已可落为一行改动。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_update_analysis.md §10.5-10.6
+code_snippet:
+  host_guard: |
+    # host 端阈值控制（方案 A，推荐）
+    W_IS_4=(width == 4 and dim >= 1024),
+  kernel_branch: |
+    if W_IS_4:
+        x_s0 = tl.extract_slice(x_b, (0, 0), (D_CHK, T_CHK), (1, 1))
+        x_s1 = tl.extract_slice(x_b, (0, 1), (D_CHK, T_CHK), (1, 1))
+        x_s2 = tl.extract_slice(x_b, (0, 2), (D_CHK, T_CHK), (1, 1))
+        x_s3 = tl.extract_slice(x_b, (0, 3), (D_CHK, T_CHK), (1, 1))
+        out_block = (x_s0 * w0[:, None] + x_s1 * w1[:, None] +
+                     x_s2 * w2[:, None] + x_s3 * w3[:, None])
+    else:
+        for owi in tl.range(0, width):
+            ...

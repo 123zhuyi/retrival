@@ -1,0 +1,44 @@
+experience_id: exp_rope_npu_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Operation
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    hd:
+    - '>=64'
+    n_qh:
+    - '>=1'
+    n_kh:
+    - '>=1'
+    sl:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- cos_sin_reuse: The cos and sin values are loaded once per row (sequence position)
+    outside the inner head iteration loops. These values are then reused for all query
+    and key heads within that row, significantly reducing redundant global memory
+    accesses and bandwidth pressure.
+- software_pipelining: The outer loop utilizes the `num_stages` parameter in `tl.range`
+    to enable software pipelining. This overlaps the memory loading operations of
+    subsequent rows with the arithmetic computation of the current row, effectively
+    hiding memory latency.
+- head_blocking: The kernel processes query and key heads in fixed-size blocks (`BLOCK_Q`
+    and `BLOCK_K`). This tiling strategy ensures that the intermediate data and pointer
+    calculations fit within the NPU's Unified Buffer (UB) or registers, preventing
+    overflow and maximizing on-chip memory utilization.
+performance_boost: 35%
+note: This implementation supports both forward and backward passes (controlled by
+  `BACKWARD_PASS`). It also handles broadcasting of cos/sin when `cos_bs` is 1.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/104-_triton_rope_npu.py

@@ -1,0 +1,44 @@
+experience_id: exp_speculative_recovery_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Vector Argmax
+  data_type:
+  - fp32
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    vocab_size:
+    - '>=1024'
+    sub_block:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_chunking: The kernel utilizes a `SUB_BLOCK` loop stride to process the
+    vocabulary dimension. By loading chunks of probability vectors (`draft_probs`,
+    `target_probs`, `q`) into vector registers simultaneously, it maximizes memory
+    bandwidth utilization and reduces the overhead of scalar loads.
+- in_place_buffer_reuse: In the `NO_DRAFT_PROBS` execution path, the kernel temporarily
+    modifies the `target_probs_ptr` in-place (zeroing out the draft token's probability)
+    to exclude it from the argmax search, and subsequently restores the original value.
+    This technique avoids the allocation of a separate temporary buffer, saving memory
+    capacity and bandwidth.
+- masked_boundary_handling: The use of `mask=vocab_offset < vocab_size` within the
+    vectorized load instructions allows the kernel to handle arbitrary vocabulary
+    sizes and padded dimensions efficiently without introducing divergent branching
+    logic inside the processing loop.
+performance_boost: 30%
+note: This kernel is critical for the token recovery phase in speculative decoding.
+  The `NO_DRAFT_PROBS` optimization is specifically tailored for n-gram based speculation
+  where explicit draft probabilities are not available.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/170-sample_recovered_tokens_kernel.py

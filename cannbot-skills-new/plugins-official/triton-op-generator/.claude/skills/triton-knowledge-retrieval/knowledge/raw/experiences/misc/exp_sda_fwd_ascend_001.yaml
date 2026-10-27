@@ -1,0 +1,46 @@
+experience_id: exp_sda_fwd_ascend_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Flash Attention
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_R:
+    - ==64
+    BLOCK_C:
+    - ==256
+    H:
+    - <=128
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_unit_balancing: Utilizes `enable_hivm_auto_cv_balance`, `tile_mix_vector_loop`,
+    and `tile_mix_cube_loop` to optimally distribute instructions between the Ascend
+    Cube unit (for matrix multiplication in QK^T and Softmax(V)) and the Vector unit
+    (for softmax, masking, and scaling), preventing pipeline bubbles.
+- multibuffer_prefetching: Enables `multibuffer` with `set_workspace_multibuffer 2`
+    to overlap the loading of K and V tiles with the computation of the current Q
+    tile, effectively hiding global memory access latency.
+- hybrid_precision_accumulation: Performs matrix multiplication in `bf16` (LOW_TYPE)
+    to maximize Cube unit throughput, while maintaining the accumulator `block_o`,
+    `block_m`, and `block_l` in `fp32` (HIGH_TYPE) to preserve numerical stability
+    during the online softmax reduction.
+- structured_tiling_strategy: Implements a specialized tiling scheme with `BLOCK_R=64`
+    and `BLOCK_C=256` tailored for Sliding Decoding Attention (SDA). The logic splits
+    the sequence length (`S // 2`) to efficiently handle local, causal, and global
+    attention patterns in distinct phases, minimizing redundant memory loads.
+performance_boost: 35%
+note: This kernel is specifically optimized for Ascend 910B series hardware using
+  HiVM specific flags. The logic assumes a specific attention pattern where sequence
+  processing is split (SEQ_LEN = S // 2).
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/259-kernel_sda_fwd_up.py

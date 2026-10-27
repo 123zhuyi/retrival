@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "description": "Default knowledge-need hints for the triton-ascend knowledge base. Override with KNOWLEDGE_ROOT/search/knowledge-query-hints.json, KNOWLEDGE_ROOT/.cannbot/knowledge-query-hints.json, or CANNBOT_KNOWLEDGE_QUERY_HINTS_PATH.",
+  "triggers": [
+    {
+      "name": "api_semantics",
+      "priority": 72,
+      "if_any": [
+        "tl.load", "tl.store", "tl.dot", "tl.reduce", "tl.arange", "tl.zeros",
+        "api", "interface", "接口", "函数", "参数", "签名", "语义", "约束",
+        "macro", "宏", "调用", "usage"
+      ],
+      "queries": ["API usage", "interface constraints", "reference"]
+    },
+    {
+      "name": "tiling_blocking",
+      "priority": 74,
+      "if_any": [
+        "tiling", "tile", "block_size", "block_m", "block_n", "block_k",
+        "切分", "切块", "分块", "ub", "sram", "溢出", "oom", "budget",
+        "tail tile", "余数块", "尾块"
+      ],
+      "queries": ["tiling strategy", "SRAM budget", "UB overflow", "tail tile"]
+    },
+    {
+      "name": "memory_layout_alignment",
+      "priority": 73,
+      "if_any": [
+        "nd", "nz", "fractal", "layout", "格式", "排布", "对齐", "align",
+        "alignment", "32b", "512b", "padding", "stride", "coalescing", "搬运"
+      ],
+      "queries": ["data layout", "ND NZ format", "memory alignment", "stride optimization"]
+    },
+    {
+      "name": "parallel_partitioning",
+      "priority": 70,
+      "if_any": [
+        "grid", "program_id", "多核", "分核", "核数", "调度", "负载均衡",
+        "tail core", "尾核", "coredim", "parallel", "partition", "split"
+      ],
+      "queries": ["multi-core parallelism", "load balancing", "grid design", "coreDim limit"]
+    },
+    {
+      "name": "pipeline_overlap",
+      "priority": 69,
+      "if_any": [
+        "double buffer", "双缓冲", "num_stages", "pipeline", "流水", "overlap",
+        "async", "异步", "barrier", "event", "同步", "dma"
+      ],
+      "queries": ["double buffering", "compute DMA overlap", "event sync", "pipeline stages"]
+    },
+    {
+      "name": "numerics_precision",
+      "priority": 71,
+      "if_any": [
+        "精度", "precision", "bf16", "fp16", "fp32", "fp8", "cast", "溢出",
+        "overflow", "underflow", "clamp", "log-sum-exp", "softmax", "reduction",
+        "归约", "atomic", "数值"
+      ],
+      "queries": ["mixed precision", "numerical stability", "reduction algorithm", "precision strategy"]
+    },
+    {
+      "name": "autotuning",
+      "priority": 67,
+      "if_any": [
+        "autotune", "autotuning", "调参", "搜索空间", "num_stages", "prune",
+        "剪枝", "config", "candidate", "key"
+      ],
+      "queries": ["autotuning search space", "candidate pruning", "num_stages strategy"]
+    },
+    {
+      "name": "compiler_portability",
+      "priority": 68,
+      "if_any": [
+        "tl.multiple_of", "tl.max_contiguous", "编译", "compiler", "workaround",
+        "910b", "910c", "310p", "平台", "版本", "动态 shape", "dynamic shape",
+        "泛化", "兼容"
+      ],
+      "queries": ["compiler hints", "workaround", "cross hardware adaptation", "dynamic shape"]
+    },
+    {
+      "name": "debugging",
+      "priority": 76,
+      "if_any": [
+        "error", "exception", "fail", "failed", "crash", "debug", "compile",
+        "runtime", "trace", "diagnose", "错误", "报错", "异常", "失败",
+        "崩溃", "调试", "诊断", "日志"
+      ],
+      "queries": ["error handling", "compile error", "debugging guide", "repair strategy"]
+    },
+    {
+      "name": "performance_tuning",
+      "priority": 75,
+      "if_any": [
+        "performance", "性能", "优化", "optimize", "speedup", "加速",
+        "profiling", "msprof", "瓶颈", "bottleneck", "roofline", "latency",
+        "吞吐", "throughput", "memory-bound", "compute-bound"
+      ],
+      "queries": ["performance optimization", "bottleneck diagnosis", "roofline", "optimization practice"]
+    }
+  ]
+}

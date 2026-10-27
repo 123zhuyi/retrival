@@ -1,0 +1,49 @@
+experience_id: exp_fused_gemm_scale_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    batch_size:
+    - '>=1'
+    in_features:
+    - '>=BLOCK_SIZE_K'
+    out_features:
+    - '>=BLOCK_SIZE_N'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the GEMM operation with element-wise bias addition and scaling
+    into a single kernel. This eliminates the need to write intermediate results to
+    High Bandwidth Memory (HBM) and read them back for subsequent operations, significantly
+    reducing memory bandwidth pressure and kernel launch latency.
+- block_tiling: Utilizes configurable 2D thread block tiling (BLOCK_SIZE_M x BLOCK_SIZE_N)
+    to maximize data reuse in the software-managed cache (SRAM). By processing blocks
+    of the input and weight matrices, the kernel minimizes the number of global memory
+    accesses per floating-point operation.
+- precision_management: Performs the matrix multiplication accumulation in fp32 precision
+    (`tl.float32`) regardless of the input data type. This ensures numerical stability
+    during the reduction phase before the final scaling is applied, preventing overflow
+    or underflow in deep networks.
+- boundary_handling: Implements efficient masking logic for both the batch and feature
+    dimensions. This allows the kernel to correctly process tensor dimensions that
+    are not perfectly divisible by the block sizes without the overhead of padding
+    or the risk of out-of-bounds memory access.
+performance_boost: 25%
+note: This kernel is highly effective for Transformer-style layers (e.g., Linear layers
+  followed by LayerNorm scaling or activation scaling). Ensure BLOCK_SIZE_K aligns
+  with the hardware's preferred tensor core dimension for optimal throughput.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/066-fused_gemm_scale_kernel.py

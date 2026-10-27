@@ -1,0 +1,46 @@
+experience_id: exp_launch_diagonal_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    num_pid_m:
+    - '>=BLOCK_TRESHHOLD'
+    num_pid_n:
+    - '>=BLOCK_TRESHHOLD'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- diagonal_traversal_pattern: Replaces standard row-major PID mapping with a diagonal
+    traversal strategy. By calculating `task_m_idx` and `task_n_idx` such that blocks
+    are processed along diagonals, this distributes memory access requests more evenly
+    across memory banks. This significantly reduces contention and alleviates bandwidth
+    bottlenecks common in large-scale matrix multiplications.
+- conditional_activation: The optimization is gated by `BLOCK_TRESHHOLD`. The complex
+    diagonal logic is only engaged when both grid dimensions (`num_pid_m`, `num_pid_n`)
+    are sufficiently large. For smaller grids, the function defaults to simple row-major
+    mapping (`pid // num_pid_n`, `pid % num_pid_n`) to avoid unnecessary computational
+    overhead for index calculation.
+- lcm_based_stride: Utilizes the Least Common Multiple (LCM) of the current threshold
+    dimensions (`curThresholdM`, `curThresholdN`) to compute the stride for `task_n_idx`.
+    The formula `(localRelativeBlock + (localRelativeBlock // lcm))` ensures that
+    the access pattern skips ahead optimally, maximizing cache line efficiency and
+    minimizing repeated access to the same memory resources within the active block
+    window.
+performance_boost: 20%
+note: This function is a grid mapping utility intended to be called inside the kernel's
+  PID calculation logic. It is particularly effective for GEMM operations where the
+  M and N dimensions are large and memory bandwidth is the limiting factor.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/239-grouped_launch_diagonal.py

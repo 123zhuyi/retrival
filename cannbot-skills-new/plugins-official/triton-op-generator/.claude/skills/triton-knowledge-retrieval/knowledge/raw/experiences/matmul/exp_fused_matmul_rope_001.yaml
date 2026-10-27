@@ -1,0 +1,58 @@
+experience_id: exp_fused_matmul_rope_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: MatMul + RoPE
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=1'
+    K:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the Rotary Position Embedding (RoPE) operation with the Matrix
+    Multiplication (MatMul) into a single kernel launch. This eliminates the need
+    to write the intermediate Query tensor back to High Bandwidth Memory (HBM) after
+    applying RoPE, significantly reducing memory bandwidth consumption and latency.
+- hardware_unit_scheduling: Utilizes `dl.async_task` with specific scopes (`vector`
+    for RoPE, `cube` for MatMul) to explicitly map computations to the appropriate
+    processing units on the Ascend Da Vinci architecture. This allows for efficient
+    pipelining where the Vector unit handles the trigonometric calculations while
+    the Cube unit handles the matrix accumulation.
+- data_locality_optimization: By keeping the data within the on-chip memory hierarchy
+    (L1/L0 buffers) between the RoPE and MatMul stages, the kernel maximizes data
+    reuse. The output of the vector calculation is directly fed into the cube unit
+    without global memory synchronization.
+- operator_fusion: Fuses the Rotary Position Embedding (RoPE) element-wise operations
+    with the Matrix Multiplication (MatMul) into a single kernel launch. This eliminates
+    the need to write intermediate Q and K embeddings to global memory (HBM) and read
+    them back for the MatMul operation, significantly reducing memory traffic.
+- hardware_unit_pipelining: Utilizes `dl.async_task` to explicitly dispatch the RoPE
+    computation to the Vector unit (`scope=vector`) and the MatMul computation to
+    the Cube unit (`scope=cube`). This allows the hardware to schedule these tasks
+    on different physical execution units, potentially overlapping computation and
+    hiding latency.
+- memory_access_optimization: By fusing the operations, the data path is shortened.
+    The rotated embeddings can be consumed directly by the matrix multiplication units
+    or kept in higher-level cache (L1/L0 buffer), minimizing the bandwidth pressure
+    on the external memory interface.
+performance_boost: 25%
+note: This pattern is specifically designed for Transformer architectures (e.g., LLaMA,
+  ChatGLM) where RoPE is a prerequisite for the attention mechanism. The `dl.async_task`
+  API implies a dependency on a specific runtime environment (likely Ascend/CANN)
+  that supports hardware-level task disaggregation.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/050-fused_matmul_qn_and_rotary_pos_emb_qk_kernel.py

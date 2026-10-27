@@ -1,0 +1,44 @@
+experience_id: exp_attn_qk_cube_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Batched Matrix Multiplication (QK^T)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D_qk:
+    - '>=64'
+    BLOCK_G:
+    - '>0'
+    BLOCK_SBS:
+    - '>0'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- blocking_strategy: The kernel tiles the reduction dimension (D_qk) using BLOCK_K,
+    allowing data to be loaded in chunks that fit into the GPU's SRAM, significantly
+    reducing global memory bandwidth pressure compared to a naive implementation.
+- tensor_core_acceleration: Utilizes tl.dot to offload the matrix multiplication to
+    the hardware's dedicated matrix units (Cube units), maximizing compute throughput
+    for the [G, K] x [K, SBS] operation.
+- precision_preservation: Accumulates intermediate results in float32 (tl.float32)
+    to maintain numerical stability during the summation over the D_qk dimension,
+    preventing precision loss common in fp16/bf16 accumulation.
+- boundary_handling: Implements masking logic (mask_D) to safely handle cases where
+    the reduction dimension D_qk is not perfectly divisible by BLOCK_K, avoiding out-of-bounds
+    memory access without expensive branching.
+performance_boost: 25%
+note: This kernel is specifically designed for the QK dot product phase of attention
+  mechanisms. It assumes inputs are in a layout compatible with the provided strides.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/198-cube1.py

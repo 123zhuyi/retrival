@@ -1,0 +1,42 @@
+experience_id: exp_gn_wb_backward_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    N:
+    - '>=1'
+    HW:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sub_blocking_strategy: The spatial dimension HW is processed in fixed-size sub-blocks
+    (SUB_BLOCK_HW=64) within the main loop. This effectively reduces register pressure
+    by limiting the live variables at any given time, preventing register spilling
+    and allowing the compiler to schedule instructions more efficiently.
+- mixed_precision_accumulation: Input tensors (X, dY) and statistics (Mean, Rstd)
+    are explicitly cast to float32 before the accumulation operations. This ensures
+    that the summation over potentially large spatial dimensions maintains numerical
+    precision, avoiding overflow or underflow common in fp16/bf16 reductions.
+- vectorized_memory_access: The kernel utilizes 2D masking and pointer arithmetic
+    to load tiles of size [BLOCK_N, SUB_BLOCK_HW] in a single operation. This maximizes
+    memory bandwidth utilization by ensuring memory accesses are coalesced and aligned
+    with the hardware's cache line size.
+performance_boost: 25%
+note: This kernel is optimized for the Group Normalization backward pass (weight/bias
+  gradient). It assumes an NCHW data layout where C is the channel dimension.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/121-weight_bias_backward_kernel.py

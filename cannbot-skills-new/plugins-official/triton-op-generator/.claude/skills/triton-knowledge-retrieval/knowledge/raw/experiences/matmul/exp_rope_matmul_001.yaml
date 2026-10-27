@@ -1,0 +1,47 @@
+experience_id: exp_rope_matmul_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_specific_dot_hint: Utilizes dl.compile_hint with the argument "dot_pad_only_k"
+    for both input matrices. This instructs the compiler backend to specifically pad
+    the K-dimension to align with the hardware's Cube unit requirements (e.g., 16-byte
+    alignment) without padding the M and N dimensions. This significantly reduces
+    unnecessary data loading and computation compared to full-block padding.
+- diagonal_block_scheduling: Implements a diagonal traversal strategy for processing
+    matrix blocks via the grouped_launch_diagonal function. This pattern optimizes
+    L2 cache hit rates by ensuring that adjacent blocks in the computation wavefront
+    share rows of matrix A and columns of matrix B, thereby minimizing global memory
+    bandwidth pressure.
+- fused_batch_head_processing: Integrates loops for BATCH and HEADS directly inside
+    the kernel body rather than launching separate kernels for each batch/head. This
+    reduces kernel launch overhead and allows for better pipelining of instructions
+    across the different data slices.
+performance_boost: 35%
+note: The 'dl' module usage indicates this is optimized for specific NPU hardware
+  (likely Ascend series). The "dot_pad_only_k" hint is critical for achieving peak
+  performance on the Cube units.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/057-_single_rope_matmul_kernel.py

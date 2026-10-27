@@ -1,0 +1,42 @@
+experience_id: exp_topp_filter_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Top-P Filtering
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    TOP_K:
+    - <=4096
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses the Softmax calculation (for thresholding), cumulative sum,
+    mask generation, value filtering, and final Softmax renormalization into a single
+    kernel. This drastically reduces global memory access by avoiding the storage
+    of intermediate probability tensors.
+- numerical_stability: Implements the `logits - max(logits)` subtraction before the
+    `exp` operation. This is critical for preventing floating-point overflow during
+    the Softmax calculation, especially when dealing with large logit values common
+    in LLMs.
+- branchless_logic: Utilizes `tl.where` for applying the Top-P mask and enforcing
+    `min_tokens_to_keep`. This ensures the execution path remains divergence-free,
+    which is essential for maintaining high throughput on SIMD/SIMT architectures
+    like the Ascend cores.
+performance_boost: 35%
+note: This kernel assumes the input `sorted_logits_ptr` contains logits that are already
+  sorted or that the `TOP_K` subset is provided. It is optimized for batch processing
+  where `TOP_K` fits within the SRAM/Register constraints of a single thread block.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/223-_top_p_filter_kernel.py

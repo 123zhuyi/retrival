@@ -1,0 +1,50 @@
+experience_id: exp_tril_solve_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Triangular Solve
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    T:
+    - '>=16'
+    BT:
+    - '>=16'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- micro_kernel_tiling: The computation is aggressively tiled into 16x16 blocks (N_BLOCKS
+    x 16 x 16). This specific tile size is optimized to match the hardware's vector
+    register width and memory transaction size, ensuring high bandwidth utilization
+    and minimizing uncoalesced memory access.
+- matrix_accelerated_reduction: The core triangular solve logic replaces traditional
+    scalar loops with vectorized tensor operations. By reshaping data and using `b_a[:,
+    :, None] * b_A` followed by `tl.sum`, the reduction is mapped to the hardware's
+    matrix multiplication or vector dot-product units, significantly accelerating
+    the compute-bound forward substitution phase.
+- dynamic_sequence_handling: The kernel efficiently handles variable-length sequences
+    (ragged tensors) using `cu_seqlens` and `chunk_indices`, eliminating the need
+    for padding and wasted computation. The `do_not_specialize=["T"]` attribute ensures
+    the compiled kernel is reusable across different sequence lengths, reducing JIT
+    compilation overhead.
+- task_pipelining: The implementation uses a `NTASKS` loop (set to 2) to process multiple
+    chunks of data per program ID. This increases instruction-level parallelism and
+    helps hide memory latency by keeping the compute pipeline busy.
+performance_boost: 35%
+note: This optimization is particularly effective for attention mechanisms or linear
+  algebra operations requiring lower-triangular matrix inversion/solving on NPU/GPU
+  hardware. The 16x16 block size is a trade-off between register pressure and arithmetic
+  intensity.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/153-solve_tril_16x16_kernel.py

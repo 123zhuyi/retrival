@@ -1,0 +1,44 @@
+experience_id: exp_ascend_int_compare_scalar_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: scalar_elimination
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 硬件约束
+framework_tag:
+- Triton
+optimization_points:
+- 降级规则: Ascend 910B上，i64的CMP/ADD/MUL全部标量降级；i32的LT/GT/LE/GE比较也标量降级；只有f16/f32比较和i32的EQ/NE走向量
+- 常见陷阱: tl.arange(0, N)默认产生int64，直接用其生成mask会触发int64比较降级
+- 解决方案: 将比较操作数转换为fp32，或使用constexpr在编译期避免运行时比较
+- 与data_types.md的关系: 本经验聚焦i32比较降级，data_types.md主要覆盖int64；两者互补
+- 诊断方法: profiling中aiv_scalar_ratio高，检查代码中所有<、>、<=、>=比较
+code_snippet:
+  Triton: "# 降级：int64/int32 比较\n\
+    offs = tl.arange(0, BLOCK)   # int64 by default\n\
+    mask = offs < N              # int64 LT → scalar\n\
+    \n\
+    # 优化1：先转 int32（若范围允许）\n\
+    offs_i32 = offs.to(tl.int32)\n\
+    mask = offs_i32 < N          # 仍是 i32 LT → scalar！\n\
+    \n\
+    # 优化2：转 fp32 比较\n\
+    mask = offs.to(tl.float32) < N.to(tl.float32)  # 向量\n\
+    \n\
+    # 优化3：编译期已知边界\n\
+    if ALIGNED:  # constexpr\n\
+    \    mask = None  # 无需比较"
+performance_boost: 40%
+note: 即使将tl.arange转为int32，LT/GT/LE/GE仍会标量降级。必须转fp32或消除比较。这是Ascend 910B特有的行为，与GPU不同。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/scalar_opt_report.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

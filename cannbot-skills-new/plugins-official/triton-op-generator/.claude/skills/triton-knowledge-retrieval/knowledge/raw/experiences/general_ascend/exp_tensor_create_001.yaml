@@ -1,0 +1,33 @@
+experience_id: exp_tensor_create_001
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 内存初始化优化
+framework_tag:
+- Triton
+optimization_points:
+- 优选API: Host侧创建输出张量优先使用`torch.empty`/`torch.empty_like`，无初始化开销且默认连续内存布局
+- 禁用API: 禁止使用`torch.zeros`/`torch.ones`创建输出张量，此类API会产生额外的内存初始化开销（约5%-10%）
+- 逻辑适配: torch.empty 创建的未初始化张量，可通过Triton kernel的store操作覆盖，不影响计算正确性
+code_snippet:
+  Triton: "# ========== 输出张量创建规范示例 ==========\ndef tensor_create_correct(input_tensor):\n\
+    \    # ✅ 正确: 使用torch.empty_like（无初始化开销，默认连续）\n    output = torch.empty_like(input_tensor)\n\
+    \    \n    # 错误: 使用torch.zeros_like（额外初始化开销）\n    # output = torch.zeros_like(input_tensor)\n\
+    \    \n    # 错误: 使用torch.ones_like（额外初始化开销）\n    # output = torch.ones_like(input_tensor)\n\
+    \    \n    n_elements = input_tensor.numel()\n    BLOCK_SIZE = 128\n    grid =\
+    \ (triton.cdiv(n_elements, BLOCK_SIZE),)\n    constexpr_correct_kernel[grid](input_tensor,\
+    \ output, n_elements, BLOCK_SIZE)\n    return output\n\n# 补充: 自定义形状用torch.empty\n\
+    def tensor_empty_custom(shape, dtype=torch.float16):\n    output = torch.empty(shape,\
+    \ dtype=dtype, device='ascend')  # 适配Ascend后端\n    return output"
+performance_boost: 8%
+note: 910b2/910b3平台下，`torch.empty`系列API相比`zeros/ones`可节省约8%的初始化时间，尤其对大张量（元素数≥1e6）效果更显著
+version: v1.0

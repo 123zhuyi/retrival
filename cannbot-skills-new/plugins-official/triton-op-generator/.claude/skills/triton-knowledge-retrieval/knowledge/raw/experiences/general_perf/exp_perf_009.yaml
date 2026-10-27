@@ -1,0 +1,36 @@
+experience_id: exp_perf_009
+match_cond:
+  operator_type: AIV
+  compute_pattern: element-wise
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 冗余操作优化
+framework_tag:
+- Triton
+optimization_points:
+- 核心规则: 输入输出同形状的element-wise算子无需reshape，reshape会产生额外内存重排开销
+- 优化逻辑: 连续化+一维访问天然适配任意形状的同形element-wise运算，无需调整维度
+- 避坑要点: 避免“reshape为一维→计算→reshape还原”的冗余操作，直接基于原形状连续化后计算
+code_snippet:
+  Triton: "class ElementwiseReshapeOptModel(torch.nn.Module):\n    def __init__(self):\n\
+    \        super().__init__()\n\n    def forward(self, input_tensor):\n        #\
+    \ 正确做法: 同形状element-wise无需reshape\n        if not input_tensor.is_contiguous():\n\
+    \            input_tensor = input_tensor.contiguous()  # 仅连续化，不reshape\n     \
+    \   \n        # 反例: 冗余reshape（不推荐）\n        # input_flat = input_tensor.reshape(-1).contiguous()\n\
+    \        # output_flat = torch.empty_like(input_flat)\n        # elementwise_opt_kernel[grid](input_flat,\
+    \ output_flat, input_flat.numel(), BLOCK_SIZE=1024)\n        # output_tensor =\
+    \ output_flat.reshape(input_tensor.shape)\n        \n        # 最优: 直接基于原形状连续化后计算\n\
+    \        output_tensor = torch.empty_like(input_tensor)\n        n_elements =\
+    \ input_tensor.numel()\n        grid = (triton.cdiv(n_elements, 1024),)\n    \
+    \    elementwise_opt_kernel[grid](input_tensor, output_tensor, n_elements, BLOCK_SIZE=1024)\n\
+    \        return output_tensor"
+performance_boost: 10%
+note: 适用于所有输入输出同形状的element-wise算子（如relu、silu、加减乘除等），避免冗余reshape可节省10%左右的开销，尤其对高维张量（4D/5D）效果更明显
+version: v1.0

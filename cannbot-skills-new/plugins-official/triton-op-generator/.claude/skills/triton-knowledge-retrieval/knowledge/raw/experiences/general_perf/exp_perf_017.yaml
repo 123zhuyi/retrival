@@ -1,0 +1,51 @@
+experience_id: exp_perf_017
+match_cond:
+  operator_type: general
+  compute_pattern: autotune
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: medium
+  tensor_shape:
+  - nd
+experience_type: 调优配置
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: 单一autotune配置（如num_warps=2, num_stages=3）无法覆盖不同shape/register pressure下的最优调度
+- 核心方案: 扩展autotune配置空间，包含不同num_warps（2/4/8）和num_stages（2/3/4）组合，以及不同tile大小（BK/BV）
+- 经验值: chunk_kda_bwd_kernel_wy_dqkg_fused在Ascend上最优为BK=128, BV=64, num_warps=8, num_stages=2；更多warp可更好隐藏标量延迟
+- 注意: 对寄存器压力大的kernel（多个BC×BK累加器），高warp数可能导致spill，需实测
+- 典型收益: 在wy_dqkg_fused上从单一配置到tuned配置贡献约10-20%额外加速
+code_snippet:
+  Triton: "# 单一配置（空间窄）\n\
+    @triton.autotune(\n\
+    \    configs=[triton.Config({}, num_warps=2, num_stages=3)],\n\
+    \    key=['BK', 'NC', 'BT'],\n\
+    )\n\
+    \n\
+    # 扩展配置空间\n\
+    @triton.autotune(\n\
+    \    configs=[\n\
+    \        triton.Config({}, num_warps=2, num_stages=2),\n\
+    \        triton.Config({}, num_warps=2, num_stages=3),\n\
+    \        triton.Config({}, num_warps=2, num_stages=4),\n\
+    \        triton.Config({}, num_warps=4, num_stages=2),\n\
+    \        triton.Config({}, num_warps=4, num_stages=3),\n\
+    \        triton.Config({}, num_warps=8, num_stages=2),\n\
+    \        triton.Config({}, num_warps=8, num_stages=3),\n\
+    \    ],\n\
+    \    key=['BK', 'NC', 'BT'],\n\
+    )"
+performance_boost: 20%
+note: autotune会增大编译时间，但对重复运行收益显著。建议在最终版本启用完整搜索，在开发阶段可用小配置集快速迭代。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/zy_design.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

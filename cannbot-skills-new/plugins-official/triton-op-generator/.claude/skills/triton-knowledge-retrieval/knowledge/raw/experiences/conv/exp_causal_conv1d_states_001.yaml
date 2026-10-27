@@ -1,0 +1,47 @@
+experience_id: exp_causal_conv1d_states_001
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Convolution State Update
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    D:
+    - '>=32'
+    W:
+    - '>=4'
+    T:
+    - '>0'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- compile_time_branching: Utilizes @triton.heuristics to resolve IS_VARLEN and USE_INITIAL_STATE
+    at compile time. This eliminates runtime branch divergence within the kernel,
+    ensuring a streamlined instruction pipeline for specific execution paths.
+- vectorized_block_io: Implements 2D vectorized memory access by calculating block
+    pointers for BD (Dimension Block) and BW (Width Block). Using broadcasting (o_d[:,
+    None]), it loads/stores tiles of size [BD, BW] in a single operation, maximizing
+    DRAM bandwidth utilization and reducing the number of load/store instructions.
+- masked_boundary_handling: Employs sophisticated masking logic (m_t, m_d, m_w) to
+    handle sequence boundaries and variable lengths (cu_seqlens) safely. This allows
+    the kernel to process the tail end of sequences without out-of-bounds memory access,
+    avoiding the need for input padding or separate edge-case kernels.
+- state_accumulation_fusion: Fuses the initial state accumulation logic directly into
+    the kernel when T < BW. By adding the initial state cache (b_cache) to the input
+    block (b_x) before storing, it minimizes global memory read/write operations required
+    for state initialization.
+performance_boost: 25%
+note: This kernel is specifically designed for state-space models (e.g., Mamba) or
+  RNNs where maintaining and updating convolution states across batches is critical.
+  Performance depends heavily on tuning BD and BW to match the L2 cache size of the
+  hardware.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/268-causal_conv1d_states_fwd_kernel.py

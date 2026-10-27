@@ -1,0 +1,42 @@
+experience_id: exp_spec_dec_verify_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Speculative Decoding Verification
+  data_type:
+  - int32
+  - int64
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    vec_len:
+    - '>=1'
+    max_spec_len:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_comparison: Replace the scalar loop `for i in range(num_tokens1)` with
+    vectorized operations. Load chunks of draft and target tokens into vectors using
+    `tl.load` with masks, then compare them using vectorized equality checks to identify
+    the rejection point in parallel, significantly reducing loop overhead.
+- pointer_arithmetic_optimization: Pre-calculate the base pointer for the output buffer
+    (`output_token_ids_ptr + position * (max_spec_len + 1)`) outside the inner verification
+    loop. Use vectorized stores to write the accepted tokens back to memory in a single
+    operation rather than iterating and storing one by one.
+- register_reuse: Avoid using `tl.get_element` inside loops which extracts scalar
+    values. Instead, keep the loaded token vectors in registers/scratchpad memory
+    for the duration of the comparison to minimize memory access latency.
+performance_boost: 50%
+note: The current implementation relies on scalar loops and `tl.get_element`, which
+  is inefficient on SIMT architectures. Vectorizing the token comparison and memory
+  operations is crucial for high throughput.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/167-rejection_greedy_sample_triton.py

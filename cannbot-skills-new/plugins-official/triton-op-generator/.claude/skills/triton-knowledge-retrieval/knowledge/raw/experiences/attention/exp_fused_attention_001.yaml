@@ -1,0 +1,55 @@
+experience_id: exp_fused_attention_001
+match_cond:
+  operator_type: MIX
+  compute_pattern: fused-attention
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    seq_len:
+    - '>=128'
+    d_k:
+    - '>=64'
+    num_heads:
+    - '>=8'
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 流程优化
+framework_tag:
+- Triton
+optimization_points:
+- 计算流程: 严格遵循QK^T计算→Softmax归一化→加权求和三步标准流程，保证计算逻辑正确性
+- 数值稳定: QK^T结果除以sqrt(d_k)缩放，避免分数值过大导致Softmax数值溢出
+- 维度对齐: 确保Q/K/V张量维度匹配，Q/K为[B, H, S, D]，V为[B, H, S, D]，输出为[B, H, S, D]
+code_snippet:
+  Triton: "@triton.jit def standard_attention_kernel(Q_ptr, K_ptr, V_ptr, output_ptr,\
+    \ B, H, S, D, BLOCK_SIZE: tl.constexpr=128):\n    # 标准Attention计算流程实现\n    pid\
+    \ = tl.program_id(0)\n    # 解析batch/head/seq维度索引\n    b = pid // (H * (S // BLOCK_SIZE))\n\
+    \    h = (pid % (H * (S // BLOCK_SIZE))) // (S // BLOCK_SIZE)\n    s = (pid %\
+    \ (S // BLOCK_SIZE)) * BLOCK_SIZE\n    \n    # 1. QK^T计算：scores = Q @ K^T / sqrt(D)\n\
+    \    q_ptr = Q_ptr + b * H * S * D + h * S * D + s * D + tl.arange(0, BLOCK_SIZE)[:,\
+    \ None] * D + tl.arange(0, D)[None, :]\n    k_ptr = K_ptr + b * H * S * D + h\
+    \ * S * D + tl.arange(0, S)[:, None] * D + tl.arange(0, D)[None, :]\n    Q = tl.load(q_ptr,\
+    \ mask=tl.arange(0, BLOCK_SIZE)[:, None] < S - s and tl.arange(0, D)[None, :]\
+    \ < D, other=0.0)\n    K = tl.load(k_ptr, mask=tl.arange(0, S)[:, None] < S and\
+    \ tl.arange(0, D)[None, :] < D, other=0.0)\n    scores = tl.matmul(Q, tl.trans(K))\
+    \ / tl.sqrt(tl.cast(D, tl.float32))\n    \n    # 2. Softmax归一化：attn_weights =\
+    \ softmax(scores)\n    max_score = tl.max(scores, axis=1, keepdims=True)\n   \
+    \ stable_scores = scores - max_score\n    exp_scores = tl.exp(stable_scores)\n\
+    \    sum_exp = tl.sum(exp_scores, axis=1, keepdims=True)\n    attn_weights = exp_scores\
+    \ / sum_exp\n    \n    # 3. 加权求和：output = attn_weights @ V\n    v_ptr = V_ptr\
+    \ + b * H * S * D + h * S * D + tl.arange(0, S)[:, None] * D + tl.arange(0, D)[None,\
+    \ :]\n    V = tl.load(v_ptr, mask=tl.arange(0, S)[:, None] < S and tl.arange(0,\
+    \ D)[None, :] < D, other=0.0)\n    output = tl.matmul(attn_weights, V)\n    \n\
+    \    # 存储输出\n    output_ptr = output_ptr + b * H * S * D + h * S * D + s * D +\
+    \ tl.arange(0, BLOCK_SIZE)[:, None] * D + tl.arange(0, D)[None, :]\n    tl.store(output_ptr,\
+    \ output, mask=tl.arange(0, BLOCK_SIZE)[:, None] < S - s and tl.arange(0, D)[None,\
+    \ :] < D)"
+performance_boost: 15%
+note: 适用于中小序列长度（seq_len≤1024）的标准Attention计算，保证逻辑正确性和基础数值稳定性，是Flash Attention优化的基准版本
+version: v1.0

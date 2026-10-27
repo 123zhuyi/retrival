@@ -1,0 +1,46 @@
+experience_id: exp_gelu_bwd_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Operation
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- autotune_block_m: The kernel utilizes triton.autotune to dynamically select the
+    optimal BLOCK_SIZE_M (ranging from 1 to 32). This balances register pressure and
+    instruction-level parallelism (ILP) specifically for the row dimension, ensuring
+    optimal performance across varying tensor shapes.
+- grid_stride_loop: Implements a grid-stride loop over the row dimension (`for row_task_id
+    in range(pid, num_row_tasks, grid_size)`). This ensures that all available compute
+    cores are utilized even if the number of rows is not perfectly divisible by the
+    grid size, significantly improving load balancing and hardware occupancy.
+- vectorized_memory_access: The inner loop iterates over columns using BLOCK_SIZE_N,
+    allowing for contiguous memory loads and stores. This maximizes memory bandwidth
+    utilization and coalescing efficiency.
+- precision_upcast: Intermediate calculations (tanh, cubic terms) are explicitly upcasted
+    to float32 (`x_f32 = x_chunk.to(tl.float32)`). This preserves numerical stability
+    during the derivative computation before casting back to the input data type for
+    the final store.
+performance_boost: 20%
+note: The kernel is optimized for row-major (ND) layouts. The autotuning range for
+  BLOCK_SIZE_M is conservative (up to 32), which is suitable for element-wise operations
+  where compute intensity is lower than matrix multiplications, preventing register
+  spilling.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/244-_gelu_bwd_kernel.py

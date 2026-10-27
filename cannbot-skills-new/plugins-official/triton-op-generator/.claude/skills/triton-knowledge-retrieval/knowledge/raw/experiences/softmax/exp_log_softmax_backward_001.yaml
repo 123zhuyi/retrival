@@ -1,0 +1,47 @@
+experience_id: exp_log_softmax_backward_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Reduction and Element-wise
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_algorithm: The kernel separates the computation into two distinct passes
+    a reduction pass to calculate the sum of gradients (scale) and a computation pass
+    to derive the input gradients. This decouples the global reduction dependency
+    from the element-wise calculation.
+- block_tiling: Utilizes 2D tiling with BLOCK_M and BLOCK_N to process data in chunks.
+    This allows for vectorized memory loads and stores, significantly improving memory
+    bandwidth utilization compared to element-wise processing.
+- high_precision_accumulation: The reduction variable 'scale' is explicitly initialized
+    and computed using tl.float32. This ensures numerical stability during the summation
+    of gradients, preventing overflow or underflow which is critical for softmax derivative
+    calculations.
+- mask_loading: Implements boundary checks using masks during memory loads and stores.
+    This ensures the kernel operates correctly even when the matrix dimensions (M,
+    N) are not perfectly divisible by the block sizes.
+performance_boost: 25%
+note: The current implementation loads 'out_grad' twice (once for reduction, once
+  for calculation). While this improves readability and reduces register pressure,
+  it increases memory traffic. For memory-bound scenarios, consider caching 'out_grad'
+  in software-managed cache (SRAM) if available or fusing the loops if register file
+  permits.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/145-log_softmax_backward_kernel.py

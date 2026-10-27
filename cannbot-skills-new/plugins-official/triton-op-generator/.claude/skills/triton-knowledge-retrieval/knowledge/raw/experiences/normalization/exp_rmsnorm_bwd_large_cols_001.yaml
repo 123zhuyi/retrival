@@ -1,0 +1,52 @@
+experience_id: exp_rmsnorm_bwd_large_cols_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm Backward
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_cols:
+    - '>=4096'
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_reduction_strategy: The kernel implements a two-pass loop over the column
+    dimension. The first pass computes the dot product reduction (sum of dY * W *
+    X) required for the dX calculation, storing it in `dot_product_acc`. The second
+    pass performs the actual gradient calculation using this pre-computed value. This
+    decouples the reduction dependency, significantly reducing register pressure and
+    avoiding the need to keep the entire row in registers, which is critical for large
+    column dimensions.
+- block_tiling_optimization: Utilizes 2D tiling with `BLOCK_SIZE_M` and `BLOCK_SIZE_N`
+    to process the input matrix in chunks. This ensures that data loads fit within
+    the GPU/NPU cache hierarchy and aligns with memory transaction sizes, maximizing
+    bandwidth utilization for the large column scenario.
+- deterministic_gradient_accumulation: Provides a configurable accumulation strategy
+    for the weight gradient (`dW`). When `IS_DETERMINISTIC` is True, it uses a program-id
+    indexed buffer to accumulate partial sums, ensuring reproducible results at the
+    cost of a final reduction step (not shown). When False, it uses `tl.atomic_add`
+    for maximum performance, trading off strict reproducibility for speed.
+- architecture_specific_casting: Includes specialized logic paths (`_CASTING_MODE_LLAMA`,
+    `_CASTING_MODE_GEMMA`) to handle data type casting (e.g., fp16 to fp32) at intermediate
+    stages. This optimizes the balance between numerical stability (using higher precision
+    for accumulation) and computational throughput (using lower precision for storage).
+performance_boost: 35%
+note: This kernel is specifically designed for RMSNorm layers where the hidden dimension
+  (n_cols) is large (e.g., 4096+). The two-pass approach prevents register spilling
+  that would occur in a naive single-pass implementation.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/234-_rmsnorm_bwd_large_cols_kernel.py

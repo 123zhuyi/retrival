@@ -1,0 +1,43 @@
+experience_id: exp_swiglu_oai_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: SwiGLU
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    output_dim:
+    - '>=64'
+    BLOCK_SIZE:
+    - '>=MINIBLOCK_SIZE'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- interleaved_vectorization: The kernel utilizes a stride-based loading mechanism
+    (offset * 2 and offset * 2 + 1) to de-interleave gate and up projections from
+    a single tensor in memory. This maximizes memory bandwidth utilization by ensuring
+    contiguous memory access patterns and vectorized loads.
+- numerical_stability_clamping: Implements pre-activation clamping using `tl.where`
+    to constrain input values before the exponential function. This prevents overflow/underflow
+    in the Sigmoid calculation, which is critical for the numerical stability of BF16/FP16
+    training on Ascend hardware.
+- minibatch_tiling: The outer loop iterates over `BLOCK_SIZE` using `MINIBLOCK_SIZE`
+    steps. This tiling strategy ensures that the working set fits within the GPU's
+    register file or L1 cache, reducing register pressure and improving arithmetic
+    intensity for the element-wise operations.
+- operator_fusion: Fuses the gating mechanism, Sigmoid activation, and final multiplication
+    into a single kernel pass. This eliminates the need to write intermediate results
+    to global memory (HBM), significantly reducing memory access latency.
+performance_boost: 25%
+note: Requires input `hidden_states` to be interleaved (gate, up, gate, up...). The
+  `gemm1_alpha` parameter allows for scaling the sigmoid input.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/178-swiglu_oai_kernel.py

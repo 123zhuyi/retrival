@@ -1,0 +1,30 @@
+experience_id: exp_debug_triton_branch_type_mismatch_001
+category: general_debug
+experience_type: Debugging
+operator_type: General
+data_type:
+  - bf16
+  - fp16
+hardware:
+  - 910b2
+  - 910b3
+status: draft
+composite_score: 70
+
+debugging_record:
+  symptom: "Mismatched type for variable between then block and else block"
+  root_cause: "Triton SSA 要求 if/else 分支中同一变量在两个分支产生相同 dtype。
+    当 then 分支从 tensor load 得到 bf16，else 分支用 tl.zeros 默认产生 fp32 时触发。"
+  fix: "统一使用 masked load（mask=condition）+ other=0.0 替代 if/else 分支，
+    或确保两个分支的初始化 dtype 完全一致。"
+  additional_fix: "Bool tensor 在 Ascend 上 load 后为 i8 类型，不能直接作为 mask。
+    需要在 host 侧转换为 int32，kernel 中用 int32 > 0 比较生成 bool mask。"
+
+  related_errors:
+    - "tt.load op operand #1 must be 1-bit signless integer (mask is i8 instead of i1)"
+    - "Sliding window values overwritten by zeros when loop exceeds valid token range"
+
+note: "三个关联 bug 的修复链：(1) if/else 分支类型→ masked load；
+  (2) bool→i8→ int32 转换；(3) tl.where 条件窗口更新。"
+
+version: v1.0

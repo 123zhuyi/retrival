@@ -1,0 +1,48 @@
+experience_id: exp_softmax_non_inner_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Softmax
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    N:
+    - '>=128'
+    K:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax_algorithm: Implements the numerically stable online softmax algorithm
+    within the reduction loop. It updates the running maximum (m) and sum (z) using
+    the formulas m_new = max(m, inp) and z = z * exp(m - m_new) + exp(inp - m_new),
+    allowing the reduction to be performed in chunks without storing the entire input
+    tensor in registers.
+- two_pass_strategy: For reduction dimensions (N) larger than the tile size (TILE_N),
+    the kernel employs a two-pass approach. The first pass iterates over N to compute
+    the global max and sum, and the second pass iterates again to compute the final
+    exponential and division values. This trades off memory bandwidth for reduced
+    register pressure.
+- heuristic_dispatch: Utilizes the ONE_TILE_PER_CTA heuristic to dynamically select
+    the kernel strategy at runtime. If N fits within TILE_N, it uses a faster single-pass
+    load-compute-store path; otherwise, it falls back to the two-pass strategy for
+    larger dimensions.
+- vectorized_memory_access: Loads data in tiles of (TILE_N, TILE_K), processing multiple
+    elements of the K dimension simultaneously to maximize memory bandwidth utilization
+    and ensure coalesced access patterns.
+performance_boost: 30%
+note: This kernel is optimized for softmax over the N dimension of a 3D tensor (M,
+  N, K). The libentry decorator suggests integration with specific runtime environments.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/126-softmax_kernel_non_inner.py

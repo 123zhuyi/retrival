@@ -1,0 +1,50 @@
+experience_id: exp_multinomial_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Binary Search
+  data_type:
+  - fp32
+  - fp16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    K:
+    - '>=128'
+    N:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_binary_search: The kernel implements a vectorized binary search where
+    the loop variables (`start`, `end`, `mid`) are vectors of size `NBLOCK`. This
+    allows the hardware to execute the search logic for multiple samples in parallel
+    (SIMD), significantly increasing instruction throughput compared to a scalar per-thread
+    search.
+- dynamic_shape_specialization: The use of `do_not_specialize` for arguments `K` and
+    `N` prevents the JIT compiler from generating a new kernel instance for every
+    variation in batch size or vocabulary size. This is critical for LLM inference
+    workloads where sequence lengths vary, reducing compilation overhead and improving
+    launch latency.
+- memory_coalescing: By calculating `mid` as a vector and performing `tl.load(cdf_ptr
+    + mid, mask=n < N)`, the kernel loads scattered CDF values. While the access pattern
+    depends on the current `mid`, the vectorized load ensures that the memory controller
+    is utilized efficiently by servicing multiple requests in a single transaction
+    where possible, or hiding latency better than scalar loads.
+- edge_case_stabilization: The random variable `rv` is perturbed by `0.0001` and clamped
+    to `0.9999` before the search. This avoids out-of-bounds access and incorrect
+    index selection when the random number is exactly 0.0 or 1.0 (or when CDF buckets
+    have zero probability), ensuring robustness without adding complex branching logic
+    inside the hot loop.
+performance_boost: 35%
+note: This implementation is highly efficient for sampling steps in generative models
+  (e.g., LLMs) where K (vocabulary size) is large and N (batch size) varies.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/139-multinomial_with_replacement.py
