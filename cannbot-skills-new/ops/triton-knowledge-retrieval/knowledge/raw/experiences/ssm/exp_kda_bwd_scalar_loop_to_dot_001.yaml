@@ -1,0 +1,48 @@
+experience_id: exp_kda_bwd_scalar_loop_to_dot_001
+match_cond:
+  operator_type: SSM
+  compute_pattern: chunk_kda_bwd_intra
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BC:
+    - '16'
+    K:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 计算优化
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: 当SAFE_GATE=False时，对角块计算使用for j in range(BC)逐行标量循环，每次4个load+标量×向量broadcast乘法，不能利用Cube加速
+- 核心方案: 将逐行循环改为矩阵操作，一次性加载整个BC×BC对角块，用2次tl.dot替代16次标量循环
+- 精度注意: SAFE_GATE使用min(BC//2, ...)作为归一化点保证数值稳定性，非SAFE_GATE原用第0行。改为矩阵操作需保持数值一致性
+- 典型收益: 16次标量循环→2次tl.dot，AIC MAC ratio从2.1%显著提升，AIV scalar大幅下降
+- 适用条件: 对角块计算且存在逐行标量循环的SSM/Attention反向kernel
+code_snippet:
+  Triton: "# 反模式：逐行标量循环\n\
+    for j in range(0, min(BC, T_local - i_t*BT - i_i*BC)):\n\
+    \    b_dAqk = tl.load(dAqk_local + o_dA + j, mask=m_dA, other=0)\n\
+    \    b_kj = tl.load(p_kj, mask=m_k, other=0).to(tl.float32)\n\
+    \    m_i = o_i[:, None] >= j\n\
+    \    b_dq2 += tl.where(m_i, b_dAqk[:, None] * b_kj[None, :] * b_gqk, 0.)\n\
+    \    p_kj += H*K\n\
+    \n\
+    # 正模式：矩阵操作\n\
+    p_dAqk_diag = dAqk_local + i_ti * H * BT + i_i * BC + o_i[:, None] * H * BT + o_i[None, :]\n\
+    dA_diag_mask = m_dA[:, None] & m_dA[None, :] & (o_i[:, None] >= o_i[None, :])\n\
+    b_dAqk_diag = tl.load(p_dAqk_diag, mask=dA_diag_mask, other=0.0)\n\
+    b_k_exp = b_k * b_exp_neg_g\n\
+    b_dq2 += tl.dot(b_dAqk_diag, b_k_exp) * b_exp_g"
+performance_boost: 40%
+note: 此优化将标量×向量broadcast改为矩阵乘，是提升Cube利用率的关键。但需注意gate归一化点的数值稳定性，建议与SAFE_GATE路径对比精度。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

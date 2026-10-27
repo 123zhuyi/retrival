@@ -1,0 +1,54 @@
+experience_id: exp_matmul_ascend_wavefront_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=256'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- wavefront_scheduling: The kernel utilizes `grouped_launch_diagonal` to map program
+    IDs to matrix blocks. This diagonal (or wavefront) traversal order ensures that
+    blocks processed consecutively share data rows from matrix A and columns from
+    matrix B. This significantly increases data locality in the cache (L2/SRAM), reducing
+    redundant global memory accesses compared to a row-major or column-major traversal.
+- hardware_specific_alignment: The application of `dl.compile_hint(..., "dot_pad_only_k")`
+    is a critical hardware adaptation. It instructs the backend compiler to pad the
+    K-dimension of the data blocks specifically for the dot product operation. This
+    ensures that the data layout aligns perfectly with the requirements of the hardware's
+    matrix units (e.g., the Cube unit on Ascend processors) without the overhead of
+    padding the entire global tensor, maximizing compute throughput.
+- autotuning_block_shapes: The `@triton.autotune` configuration sweeps through different
+    tile aspect ratios (128x256 vs 256x128) and varying `BLOCK_TRESHHOLD` values.
+    This allows the kernel to dynamically select the most efficient tile size and
+    wavefront grouping parameter based on the specific N and K dimensions of the input
+    matrices, balancing register pressure and instruction-level parallelism.
+- static_multi_core_distribution: The loop `for block_idx in range(pid, NUM_BLOCKS,
+    NUM_CORES)` implements a static block-cyclic distribution of work across the available
+    cores. This minimizes scheduling overhead and ensures load balancing, especially
+    when the total number of blocks is not perfectly divisible by the number of cores.
+performance_boost: 35%
+note: This implementation relies on the `dl` module (likely a deep learning library
+  extension for Ascend) for compile hints. The diagonal scheduling strategy is most
+  effective for large-scale matrix multiplications where memory bandwidth is the primary
+  bottleneck.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/074-matmul_kernel.py

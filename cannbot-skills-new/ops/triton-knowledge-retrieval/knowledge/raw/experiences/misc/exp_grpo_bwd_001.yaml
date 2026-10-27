@@ -1,0 +1,43 @@
+experience_id: exp_grpo_bwd_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: LogSumExp Reduction and Softmax Gradient
+  data_type:
+  - fp32
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    V:
+    - '>=1024'
+    BL:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- fused_lse_reduction: The current implementation performs three separate reduction
+    loops over the vocabulary dimension V to calculate the LogSumExp for new, ref,
+    and old logits. These loops should be fused into a single loop. This reduces loop
+    control overhead and improves data locality by processing the same vocabulary
+    indices for all three tensors simultaneously, allowing for better utilization
+    of memory bandwidth.
+- vectorization_alignment: The BLOCK_SIZE_V should be tuned to align with the hardware's
+    memory burst length (e.g., 128 bytes). For fp16/bf16 data, this typically means
+    a block size of 64 elements. This ensures that all memory accesses are fully coalesced,
+    minimizing the number of memory transactions.
+- ilp_optimization: Within the fused reduction loop, utilize Instruction Level Parallelism
+    (ILP) by interleaving the load operations of the current vocabulary chunk with
+    the arithmetic operations (exp, max, sum) of the previous chunk. This helps hide
+    the latency of global memory accesses behind compute operations.
+performance_boost: 25%
+note: This optimization is critical for large vocabulary sizes (e.g., V=32k or 128k)
+  where the kernel is memory-bandwidth bound. Fusing the loops reduces the total number
+  of memory loads required for the reduction phase.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/210-grpo_bwd_kernel.py

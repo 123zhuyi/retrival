@@ -1,0 +1,33 @@
+experience_id: exp_ascend_grid_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: Grid配置
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法规范
+framework_tag:
+- Triton
+optimization_points:
+- 维度限制: Grid必须是tuple类型，且最多支持3维（如`(x,)`、`(x, y)`、`(x, y, z)`），超出维度会触发编译错误
+- 大小限制: Grid各维度数值的乘积必须≤65535（即`x * y * z ≤ 65535`），超出会导致kernel启动失败
+- 配置原则: 优先使用1维Grid（`(core_num,)`），简化逻辑且避免乘积超限
+code_snippet:
+  Triton: "# ========== Grid设置规范示例 ==========\ndef grid_config_correct(input_tensor):\n\
+    \    M, N = input_tensor.shape\n    output = torch.empty_like(input_tensor)\n\
+    \    VEC_CORE_NUM = 48  # Ascend 910B2默认VEC核心数\n    \n    # 正确：1维Grid（乘积=48 ≤65535）\n\
+    \    grid = (VEC_CORE_NUM,)\n    \n    # 正确：2维Grid（乘积=24*2=48 ≤65535）\n    # grid\
+    \ = (24, 2)\n    \n    # 错误：Grid不是tuple类型\n    # grid = VEC_CORE_NUM\n    \n \
+    \   # 错误：4维Grid（超出3维限制）\n    # grid = (12, 2, 2, 1)\n    \n    # 错误：乘积超限（256*256=65536\
+    \ >65535）\n    # grid = (256, 256)\n    \n    multi_split_kernel[grid](\n    \
+    \    input_tensor, output, M, N,\n        input_tensor.stride(0), input_tensor.stride(1),\n\
+    \        BLOCK_M=128, BLOCK_N=128, MAX_SPLITS=100\n    )\n    return output"
+performance_boost: 0%
+note: Grid设置违反规范会直接导致kernel编译/启动失败，910b2/910b3平台无容错机制，需严格遵循维度和大小限制
+version: v1.0

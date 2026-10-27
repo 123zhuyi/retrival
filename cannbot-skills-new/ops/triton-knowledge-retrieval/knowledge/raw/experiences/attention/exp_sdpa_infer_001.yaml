@@ -1,0 +1,48 @@
+experience_id: exp_sdpa_infer_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Scaled Dot Product Attention
+  data_type:
+  - fp16
+  - bf16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_M:
+    - '>=64'
+    BLOCK_N:
+    - '>=64'
+    HEAD_DIM:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_abstraction: Utilizes tl.make_block_ptr to handle 2D block loading and
+    storing. This abstracts complex stride calculations and boundary checks, allowing
+    the compiler to generate optimized vectorized memory instructions that maximize
+    memory bandwidth utilization.
+- grid_stride_scheduling: Implements a grid-stride loop (for block_idx in range(pid,
+    NUM_BLOCKS, core_step)) to map program IDs to sequence blocks. This ensures robust
+    load balancing across cores, especially when the total number of sequence blocks
+    is not evenly divisible by the grid size.
+- gqa_optimization: Efficiently handles Grouped Query Attention (GQA) by calculating
+    kv_head_num_offset via integer division. This allows multiple query heads to share
+    the same Key and Value heads without duplicating data in memory, significantly
+    reducing memory footprint for GQA models.
+- kernel_fusion: Fuses the QK^T matrix multiplication, exponential operations, row-wise
+    softmax, and final value aggregation into a single kernel. This eliminates the
+    need to write intermediate attention matrices (S and P) back to global memory
+    (HBM), drastically reducing memory traffic.
+performance_boost: 150%
+note: This kernel is specifically designed for inference, omitting backward pass logic
+  and storage of logsumexp (m_i) to registers. It supports FP8 data types for the
+  Value tensor.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/217-_sdpa_infer_kernel.py

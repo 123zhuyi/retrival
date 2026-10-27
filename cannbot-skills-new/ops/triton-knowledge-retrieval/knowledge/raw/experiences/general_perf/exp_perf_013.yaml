@@ -1,0 +1,45 @@
+experience_id: exp_perf_013
+match_cond:
+  operator_type: general
+  compute_pattern: scalar_elimination
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 标量消除
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: Python min()在Triton kernel中产生运行时条件分支，且常伴随i64转换，导致标量开销和流水线停顿
+- 核心方案: 用tl.where实现向量化条件选择，替代min()的运行时分支
+- 典型场景1: min(BC//2, T_local - i_ti - 1) → tl.where(half_bc < remaining, half_bc, remaining)
+- 典型场景2: 循环边界min(BC, T_local - i_t*BT - i_i*BC) → 预先用tl.where计算loop_len
+- 注意: loop_len作为range边界仍需是i32；tl.where结果是张量，需提取为标量或改用tl.minimum（若支持向量）
+- 典型收益: 消除8处min()运行时分支，减少Scalar开销和分支预测失败
+code_snippet:
+  Triton: "# 反模式：运行时 min() 分支\n\
+    gn_offset = min(BC // 2, T_local - i_ti - 1)\n\
+    for j in range(0, min(BC, T_local - i_t * BT - i_i * BC)):\n\
+        ...\n\
+    \n\
+    # 正模式：tl.where 向量化条件选择\n\
+    half_bc = BC // 2\n\
+    remaining = T_local - i_ti - 1\n\
+    gn_offset = tl.where(half_bc < remaining, half_bc, remaining)\n\
+    \n\
+    loop_len_raw = T_local - i_t * BT - i_i * BC\n\
+    loop_len = tl.where(BC < loop_len_raw, BC, loop_len_raw)\n\
+    for j in range(loop_len):  # loop_len 仍为 i32\n\
+        ..."
+performance_boost: 15%
+note: 当min()涉及编译期常量时（如两个tl.constexpr），编译器可自动求值，无需替换。此优化主要针对至少一个操作数为运行时值的情况。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/scalar_opt_report.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

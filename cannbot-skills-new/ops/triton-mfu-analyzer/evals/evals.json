@@ -1,0 +1,82 @@
+{
+  "eval_mode": "text",
+  "evals": [
+    {
+      "id": 1,
+      "title": "MFU 的计算口径",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "在昇腾 NPU 上测量单算子 MFU 时，分子和分母分别怎么取？为什么实现里的冗余计算不能算进分子？不需要执行任何工具调用。",
+      "expected_output": "回复应说明 mfu = 理论 FLOPs / kernel 实际耗时 / 芯片峰值算力；分子是语义必需的核心 GEMM（由 flops.py 提供），分母来自 msprof 的 kernel 耗时与芯片 cube 峰值。应说明冗余（多趟 GEMM、块粒度 mask 多算、padding 补零、split-K 重复累加）不计入分子，因为冗余会拉长耗时从而拉低 MFU，这正是要暴露的优化空间；若把冗余算进分子等于把浪费伪装成有效算力。",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 2,
+      "title": "causal attention 的 score_elems 缩减",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "带 causal mask 的 attention 算子，理论 FLOPs 应该按完整矩形算还是按下三角算？怎么判断一个算子有没有 causal mask？不需要执行任何工具调用。",
+      "expected_output": "回复应说明按下三角算，score_elems 用 S(S+1)/2 而非 S*S，因为上三角被 mask 成 -inf、语义上不需要计算。判断方式应包括：查用例 attr（causal / is_causal / sparse_mode=3 / window_right=0 等多种编码），以及读参考实现 forward 里的 masked_fill + -inf、torch.triu、column > row、relative > 0 等写法。可提及 S_q != S_kv 时是右下对齐的梯形而非标准下三角。",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 3,
+      "title": "按 dtype 修正峰值算力",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "为什么测 MFU 时 fp32 算子的结果需要按 dtype 修正峰值？不修正会有什么后果？不需要执行任何工具调用。",
+      "expected_output": "回复应说明从 cube 规格推导的峰值公式不含 dtype，推出的实际是 fp16/bf16 峰值；fp32 的 cube 算力约为其 1/4，直接用标称峰值当分母会把 fp32 的 MFU 低估约 4 倍，可能导致结论完全反转。应提及用 peak_calib.py 实测各 dtype 上限并通过 --peak-json 修正，且标称峰值只在同 dtype 内横向对比时可直接用。",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 4,
+      "title": "flops.py 写错了怎么发现",
+      "config": {
+        "max_tokens": 100000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 120000,
+          "glm-5": 110000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "eval_mode": "text"
+      },
+      "prompt": "flops.py 是 MFU 测量里唯一没有硬件校验的环节，有哪些办法可以自检分子是否写对？不需要执行任何工具调用。",
+      "expected_output": "回复应列出多种自检手段：手算最大 case 对拍；量级自检（actual TFLOPS 超过芯片峰值说明分子写大了）；flops_parts 之和与 flops() 的偏差校验；KERNEL_PARTS 未映射 kernel 的 warn；以及用 check_flops.py 做 tracer 独立对拍（monkey-patch torch.matmul / F.linear 跑参考实现），并说明比值约 1.0 正常、约 2.0 多为漏了 causal 缩减、小于 0.5 多为漏算投影。",
+      "files": [],
+      "expectations": []
+    }
+  ],
+  "skill_name": "triton-mfu-analyzer"
+}

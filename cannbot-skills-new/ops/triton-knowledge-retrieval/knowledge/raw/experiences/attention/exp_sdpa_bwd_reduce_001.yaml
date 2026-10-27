@@ -1,0 +1,52 @@
+experience_id: exp_sdpa_bwd_reduce_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Element-wise Multiplication and Sum Reduction
+  data_type:
+  - bf16
+  - fp16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    S:
+    - '>=64'
+    H:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- multibuffer_software_pipelining: The autotune configuration explicitly tests 'multibuffer'
+    True. This optimization enables software pipelining where the kernel prefetches
+    the next tile of data (o and do) into registers or cache while simultaneously
+    computing the current tile. This effectively hides the high memory latency associated
+    with loading the input tensors, which is critical for the memory-bound reduction
+    phase of the SDPA backward pass.
+- dynamic_block_size_tuning: The kernel utilizes an autotuner to select the optimal
+    BLOCK_R size (64, 128, or 256) based on the specific dimensions of the input tensors
+    (N, S, H). Tuning BLOCK_R allows the kernel to balance register pressure and occupancy;
+    smaller blocks increase occupancy for smaller sequence lengths, while larger blocks
+    maximize memory bandwidth utilization for longer sequences.
+- mixed_precision_accumulation: The kernel promotes inputs from LOW_TYPE (e.g., bfloat16)
+    to HIGH_TYPE (float32) prior to the multiplication and summation operation (`block_do.to(HIGH_TYPE)
+    * block_o.to(HIGH_TYPE)`). This is crucial for numerical stability in the backward
+    pass, as the reduction over the head dimension (H) can accumulate significant
+    errors or overflow if performed purely in low precision.
+- vectorized_masked_loading: The kernel uses advanced indexing with masks (`mask_o`,
+    `mask_d`) and broadcasting (`[:, None]`, `[None, :]`) to load contiguous blocks
+    of memory. This ensures that memory transactions are coalesced and that padding
+    or out-of-bounds accesses (common at the end of sequences) are handled efficiently
+    without branching logic.
+performance_boost: 25%
+note: This kernel is specifically designed for the 'd' computation in the Scaled Dot
+  Product Attention (SDPA) backward pass. It assumes the input tensors are in a standard
+  ND layout.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/219-kernel_sdpa_bwd_d.py

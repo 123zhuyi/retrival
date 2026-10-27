@@ -1,0 +1,48 @@
+experience_id: exp_partial_matmul_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: The kernel implements a static scheduling strategy using
+    a loop `for block_idx in range(pid, NUM_BLOCKS, NUM_CORES)`. This allows a fixed
+    number of launched thread blocks (defined by NUM_CORES) to process an arbitrary
+    number of output tiles. It ensures high utilization even when the grid size is
+    large or not perfectly divisible by the core count, reducing kernel launch overhead.
+- selective_hardware_padding: The code utilizes `dl.compile_hint(..., "dot_pad_only_k")`
+    to instruct the backend compiler to pad only the K-dimension for the dot product
+    operation. This is a critical hardware adaptation that aligns data with the specific
+    requirements of the matrix units (e.g., ensuring K is a multiple of 16 or 32)
+    without padding the M and N dimensions. This significantly reduces memory traffic
+    and unnecessary computation compared to full tensor padding.
+- partial_matrix_support: The kernel is architected to handle partial views of matrix
+    B through parameters `B_N_START` and `B_STRIDE_K`. This optimization avoids the
+    need to extract or copy sub-matrices before computation, making it highly efficient
+    for tensor parallelism or pipeline parallelism where only a slice of the weight
+    matrix is resident on a specific device.
+performance_boost: 25%
+note: This kernel relies on the `dl` (Dialect) module for compile hints and an external
+  `grouped_launch_diagonal` function for block mapping. It is best suited for scenarios
+  where K is not naturally aligned to hardware requirements or when computing on sharded
+  matrices.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/082-partial_matmul_kernel.py

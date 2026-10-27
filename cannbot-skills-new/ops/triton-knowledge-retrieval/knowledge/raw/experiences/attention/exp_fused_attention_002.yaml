@@ -1,0 +1,64 @@
+experience_id: exp_fused_attention_002
+match_cond:
+  operator_type: MIX
+  compute_pattern: fused-attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    seq_len:
+    - '>=1024'
+    d_k:
+    - '>=64'
+    num_heads:
+    - '>=8'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: 内存优化+数值稳定优化
+framework_tag:
+- Triton
+optimization_points:
+- 分块计算: 将大序列长度矩阵按BLOCK_SIZE分块处理，避免存储完整的注意力分数矩阵，降低内存占用
+- 在线Softmax: 增量式计算Softmax，维护全局最大值(m_i)和全局exp和(l_i)，无需存储完整scores矩阵
+- 数值稳定: 分块内先减去块内最大值再计算exp，避免指数运算溢出，提升数值稳定性
+- 内存复用: 累加器(acc)分块更新，减少重复加载V张量的开销
+code_snippet:
+  Triton: "@triton.jit def flash_attention_kernel(Q_ptr, K_ptr, V_ptr, output_ptr,\
+    \ B, H, S, D, BLOCK_SIZE: tl.constexpr=128):\n    # Flash Attention优化实现：分块计算+在线Softmax\n\
+    \    pid = tl.program_id(0)\n    b = pid // (H * (S // BLOCK_SIZE))\n    h = (pid\
+    \ % (H * (S // BLOCK_SIZE))) // (S // BLOCK_SIZE)\n    s_q = (pid % (S // BLOCK_SIZE))\
+    \ * BLOCK_SIZE\n    \n    # 加载当前查询块Q\n    q_ptr = Q_ptr + b * H * S * D + h *\
+    \ S * D + s_q * D + tl.arange(0, BLOCK_SIZE)[:, None] * D + tl.arange(0, D)[None,\
+    \ :]\n    Q = tl.load(q_ptr, mask=tl.arange(0, BLOCK_SIZE)[:, None] < S - s_q\
+    \ and tl.arange(0, D)[None, :] < D, other=0.0)\n    \n    # 初始化全局统计量\n    m_i\
+    \ = tl.full((BLOCK_SIZE, 1), -float('inf'), dtype=tl.float32)  # 全局最大值\n    l_i\
+    \ = tl.full((BLOCK_SIZE, 1), 0.0, dtype=tl.float32)           # 全局exp和\n    acc\
+    \ = tl.full((BLOCK_SIZE, D), 0.0, dtype=tl.float32)           # 输出累加器\n    \n\
+    \    # 分块处理K/V（在线Softmax核心逻辑）\n    for start_k in range(0, S, BLOCK_SIZE):\n \
+    \       # 1. 加载当前K/V块\n        k_ptr = K_ptr + b * H * S * D + h * S * D + start_k\
+    \ * D + tl.arange(0, BLOCK_SIZE)[:, None] * D + tl.arange(0, D)[None, :]\n   \
+    \     v_ptr = V_ptr + b * H * S * D + h * S * D + start_k * D + tl.arange(0, BLOCK_SIZE)[:,\
+    \ None] * D + tl.arange(0, D)[None, :]\n        K = tl.load(k_ptr, mask=tl.arange(0,\
+    \ BLOCK_SIZE)[:, None] < S - start_k and tl.arange(0, D)[None, :] < D, other=0.0)\n\
+    \        V = tl.load(v_ptr, mask=tl.arange(0, BLOCK_SIZE)[:, None] < S - start_k\
+    \ and tl.arange(0, D)[None, :] < D, other=0.0)\n        \n        # 2. 计算当前块QK^T分数\n\
+    \        scores = tl.matmul(Q, tl.trans(K)) / tl.sqrt(tl.cast(D, tl.float32))\n\
+    \        load_mask = tl.arange(0, BLOCK_SIZE)[None, :] < S - start_k\n       \
+    \ scores = tl.where(load_mask, scores, -float('inf'))\n        \n        # 3.\
+    \ 更新全局最大值\n        m_ij = tl.maximum(m_i, tl.max(scores, axis=1, keepdims=True))\n\
+    \        \n        # 4. 计算当前块exp值（数值稳定化）\n        scores = scores - m_ij\n   \
+    \     p = tl.exp(scores)\n        \n        # 5. 更新全局exp和\n        l_ij = tl.sum(p,\
+    \ axis=1, keepdims=True)\n        alpha = tl.exp(m_i - m_ij)\n        l_i = l_i\
+    \ * alpha + l_ij\n        \n        # 6. 更新输出累加器\n        acc = acc * alpha +\
+    \ tl.matmul(p, V)\n        \n        # 7. 更新全局最大值\n        m_i = m_ij\n    \n\
+    \    # 最终归一化\n    output = acc / l_i\n    \n    # 存储输出\n    output_ptr = output_ptr\
+    \ + b * H * S * D + h * S * D + s_q * D + tl.arange(0, BLOCK_SIZE)[:, None] *\
+    \ D + tl.arange(0, D)[None, :]\n    tl.store(output_ptr, output.to(Q.dtype), mask=tl.arange(0,\
+    \ BLOCK_SIZE)[:, None] < S - s_q and tl.arange(0, D)[None, :] < D)"
+performance_boost: 50%
+note: 适用于大序列长度（seq_len≥1024）的Attention计算，分块计算减少内存占用（从O(S²)降至O(S)），在线Softmax提升数值稳定性，910b2/910b3硬件上性能提升显著
+version: v1.0

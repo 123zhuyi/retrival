@@ -1,0 +1,35 @@
+experience_id: exp_perf_001
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  - int8
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 块大小优化
+framework_tag:
+- Triton
+optimization_points:
+- 平衡原则: 块大小需平衡硬件并行度与资源占用，避免块过大导致显存/寄存器耗尽、调度开销增加
+- 避坑要点: 块过小会降低并行度，无法充分利用硬件算力；块过大易触发资源限制，导致kernel编译/运行失败
+- 调优参考: 910b2/910b3平台默认优先选择128/256/512等2的幂次块大小，适配硬件访存粒度
+code_snippet:
+  Triton: "# 块大小调优示例 - 不同算子的合理块大小选择\n# 元素级算子（element-wise）: BLOCK_SIZE=1024（平衡并行度）\n\
+    @triton.jit\ndef elementwise_opt_kernel(input_ptr, output_ptr, n_elements, BLOCK_SIZE:\
+    \ tl.constexpr=1024):\n    pid = tl.program_id(0)\n    offsets = pid * BLOCK_SIZE\
+    \ + tl.arange(0, BLOCK_SIZE)\n    mask = offsets < n_elements\n    data = tl.load(input_ptr\
+    \ + offsets, mask=mask)\n    output = data * 2 + 1  # 示例计算\n    tl.store(output_ptr\
+    \ + offsets, output, mask=mask)\n\n# 矩阵运算算子: BLOCK_M/BLOCK_N/BLOCK_K=256（适配Cube核心）\n\
+    @triton.jit\ndef matmul_opt_kernel(x, y, output, M, N, K, BLOCK_M: tl.constexpr=256,\
+    \ BLOCK_N: tl.constexpr=256, BLOCK_K: tl.constexpr=256):\n    pass  # 核心逻辑参考矩阵乘法优化经验"
+performance_boost: 20%
+note: 通用块大小调优原则适用于所有Triton算子开发，910b2/910b3平台需结合算子类型（元素级/矩阵级）选择2的幂次块大小，优先测试128/256/512三个档位
+version: v1.0

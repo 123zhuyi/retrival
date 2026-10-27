@@ -1,0 +1,49 @@
+experience_id: exp_scatter_wgrad_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Scatter Dot Product
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    NUM_COLUMNS:
+    - '>=64'
+    INDICES_LENGTH:
+    - '>=256'
+    SUB_BLOCK_SIZE:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- batched_reduction_replacement: The current implementation utilizes a Python-level
+    loop `for i in range(0, SUB_BLOCK_SIZE)` to process the loaded tile. This serializes
+    the computation and prevents the compiler from generating efficient vector instructions.
+    This should be replaced with a batched tensor operation, such as `tl.sum(loaded_x
+    * loaded_grads, axis=1)`, to compute the dot products for the entire sub-block
+    in parallel, significantly increasing ALU utilization.
+- memory_access_alignment: The kernel loads `x` and `grads` using `BLOCK_X`. It is
+    critical to ensure `BLOCK_X` is a multiple of the hardware's cache line size (e.g.,
+    32 or 64 bytes depending on the specific 910 series configuration) to ensure memory
+    transactions are fully coalesced, reducing global memory latency.
+- data_type_promotion_optimization: The code performs `.to(tl.float32)` inside the
+    accumulation loop. To reduce instruction overhead, inputs should be cast to float32
+    immediately after loading, or the hardware's intrinsic support for mixed-precision
+    computation (if available on the target 910 variant) should be leveraged to avoid
+    explicit casting instructions within the critical path.
+performance_boost: 35%
+note: The primary bottleneck is the scalar loop over `SUB_BLOCK_SIZE`. Converting
+  this to a vectorized batched operation is essential for achieving high performance
+  on the Ascend 910 series. Additionally, ensure that `indices` are unique or handle
+  collisions atomically if the current `tl.store` is intended for a reduction scenario.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/016-_scatter_wgrad_kernel.py

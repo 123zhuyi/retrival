@@ -1,0 +1,43 @@
+{
+  "target_speedup": 5,
+  "max_rounds": 10,
+  "initial_worker_timeout": 7200,
+  "max_worker_timeout": 28800,
+  "npu_device_id": null,
+  "npu_idle": {
+    "aicore": 1.0,
+    "aivector": 1.0,
+    "npu_util": 1.0,
+    "hbm": 10.0
+  },
+  "algorithms": {
+    "naive": {
+      "enabled": true,
+      "params": {}
+    },
+    "mcts": {
+      "enabled": true,
+      "params": {
+        "c_uct": 1.414,
+        "c_pw": 2.0,
+        "alpha": 0.5,
+        "failure_threshold": 3,
+        "reward_output_error": -2,
+        "reward_compile_error": -3
+      }
+    },
+    "fusion-search": {
+      "enabled": true,
+      "params": {
+        "max_routes": 3,
+        "min_expected_benefit": 0.05,
+        "enable_math_transforms": true,
+        "route_timeout": 3600,
+        "crossover_rate": 0.7,
+        "mutation_rate": 0.15,
+        "elite_count": 1,
+        "exploration_count": 1
+      }
+    }
+  }
+}

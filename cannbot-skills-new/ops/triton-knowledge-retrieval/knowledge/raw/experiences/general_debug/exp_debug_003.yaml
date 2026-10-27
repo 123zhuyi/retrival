@@ -1,0 +1,34 @@
+experience_id: exp_debug_003
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 调试排查
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 调试排查
+framework_tag:
+- Triton
+optimization_points:
+- Grid大小限制: Grid各维度乘积必须≤65535，超出会导致kernel启动失败
+- 大shape处理: 大shape算子必须采用交错循环`for i in range(pid, total, core_num)`处理，规避Grid超限
+- Grid维度规范: Grid必须是tuple类型且维度数≤3（如`(x,)`、`(x,y)`、`(x,y,z)`）
+code_snippet:
+  Triton: "# ========== Grid/Block配置正确/错误示例 ==========\ndef grid_block_correct(input_tensor):\n\
+    \    M, N = input_tensor.shape\n    output = torch.empty_like(input_tensor)\n\
+    \    CORE_NUM = 48\n    BLOCK_SIZE = 256\n    \n    # 正确: Grid总大小≤65535\n    grid\
+    \ = (CORE_NUM,)\n    # 正确: 大shape用交错循环处理\n    @triton.jit\ndef large_shape_kernel(input_ptr,\
+    \ output_ptr, M, N, CORE_NUM: tl.constexpr):\n    pid = tl.program_id(0)\n   \
+    \ for row_idx in range(pid, M, CORE_NUM):  # 交错循环\n        # 处理逻辑...\n    \n \
+    \   # 错误: Grid总大小超限（256*256=65536>65535）\n    # grid = (256, 256)\n    # 错误: 大shape未用交错循环\n\
+    \    # grid = (triton.cdiv(M*N, BLOCK_SIZE),)\n    # 错误: Grid非tuple类型或维度超3\n \
+    \   # grid = CORE_NUM\n    # grid = (10, 10, 10, 10)"
+performance_boost: 0%
+note: Grid配置错误是kernel启动失败的高频原因，910b系列平台对Grid维度和大小限制无容错机制；大shape算子未用交错循环会直接触发Grid超限报错
+version: v1.0

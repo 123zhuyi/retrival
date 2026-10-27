@@ -1,0 +1,49 @@
+experience_id: exp_cube1_qk_gemm_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D_qk:
+    - '>=64'
+    BLOCK_G:
+    - '>=1'
+    BLOCK_SBS:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- tiling_strategy: The kernel implements a blocking strategy on the reduction dimension
+    (D_qk) using the BLOCK_K parameter. By iterating over the K dimension in chunks,
+    it loads sub-blocks of Q and K into on-chip memory (SRAM/L1), maximizing data
+    reuse per global memory access and significantly reducing memory bandwidth pressure.
+- hardware_acceleration: Utilizes the tl.dot intrinsic for the core computation (l1_q
+    @ l1_k.trans). This maps directly to the hardware's dedicated matrix multiplication
+    units (e.g., Ascend Cube Unit or NVIDIA Tensor Core), providing substantially
+    higher throughput compared to standard FMA instructions.
+- precision_management: The accumulator qk_acc is explicitly initialized to tl.float32.
+    This mixed-precision approach allows for high-speed computation with lower precision
+    inputs (fp16/bf16) while maintaining numerical stability during the reduction
+    phase, which is critical for attention mechanisms.
+- boundary_handling: Employs dynamic masking (mask=mask_D) during the load operations
+    to safely handle cases where the head dimension (D_qk) is not an exact multiple
+    of the block size (BLOCK_K). This ensures correctness without the overhead of
+    padding the input tensors.
+code_snippet:
+  TritonPath: cube1
+performance_boost: 35%
+note: This kernel is optimized for the QK projection phase of Attention mechanisms.
+  It assumes inputs are in a memory layout conducive to vectorized loading (likely
+  NC1HWC0 or similar NPU-friendly formats).
+version: v1.0

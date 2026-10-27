@@ -1,0 +1,49 @@
+experience_id: exp_matmul_triton_base_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=16'
+    N:
+    - '>=16'
+    K:
+    - '>=8'
+  optimization_level: base
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- small_tile_strategy: The kernel utilizes a conservative tile size of 16x16x8 (BLOCK_SIZE_M/N/K).
+    This small block size reduces register pressure per thread block, making it suitable
+    for smaller matrix dimensions or hardware with limited register files, though
+    it may underutilize memory bandwidth for larger workloads.
+- strict_precision_mode: The `tl.dot` operation is configured with `allow_tf32=False`.
+    This disables TensorFloat-32 optimizations to ensure higher numerical precision
+    (strict FP32 accumulation), prioritizing calculation accuracy over maximum throughput.
+- masked_memory_access: Implements boundary handling via masks in both `tl.load` and
+    `tl.store` operations. This allows the kernel to process matrices where dimensions
+    are not perfectly divisible by the block size without requiring explicit padding
+    of the input tensors.
+- basic_software_pipelining: The autotune configuration sets `num_stages=4`, enabling
+    a basic instruction pipeline to overlap memory loads with matrix computation,
+    thereby hiding some memory latency.
+performance_boost: 15%
+note: This configuration represents a baseline implementation with a single autotune
+  entry. It is best suited for small to medium matrices or scenarios requiring strict
+  precision. For large-scale matrices, expanding the autotune configurations with
+  larger block sizes (e.g., 128x128) is recommended.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/089-_matmul_kernel.py

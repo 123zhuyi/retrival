@@ -1,0 +1,52 @@
+experience_id: exp_fused_gating_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Fused Operations
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    NUM_HEADS:
+    - '>=BLK_HEADS'
+    NUM_BATCHES:
+    - '>=BLK_BATCHES'
+    seq_len:
+    - '>0'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses the computation of the gating parameter 'g' (involving Softplus,
+    Exp, and multiplication) and 'beta_output' (Sigmoid) into a single kernel. This
+    significantly reduces global memory bandwidth pressure by reading inputs 'a',
+    'b', 'A_log', and 'dt_bias' only once and writing outputs 'g' and 'beta_output'
+    in a single pass.
+- numerical_stability: Implements a numerically stable Softplus approximation using
+    `tl.where`. It switches to a linear approximation (x) when `beta * x` exceeds
+    a defined threshold, preventing overflow in the `tl.exp` operation which is a
+    common issue with standard Softplus implementations on lower precision hardware.
+- block_tiling_strategy: Utilizes nested loops (`ROW_ITER`, `COL_ITER`) over fixed
+    block sizes (`BLK_BATCHES`, `BLK_HEADS`). This strategy allows the kernel to handle
+    tensor dimensions larger than the hardware's maximum block size constraints or
+    optimal tiling limits, ensuring high occupancy and reducing kernel launch overhead
+    for large batch/head dimensions.
+- precision_upcasting: Explicitly casts intermediate computations (addition, exponential,
+    logarithm, and sigmoid) to `tl.float32`. This preserves numerical accuracy during
+    the accumulation of non-linear operations which are sensitive to the reduced dynamic
+    range and precision of fp16/bf16, before casting the final result back to the
+    original dtype.
+performance_boost: 25%
+note: This kernel is optimized for Gated Linear Unit (GLU) or GDN variants. Ensure
+  that the threshold parameter is tuned appropriately for the specific data distribution
+  to maximize the effectiveness of the Softplus approximation.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/163-fused_gdn_gating_kernel.py

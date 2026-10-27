@@ -1,0 +1,41 @@
+experience_id: exp_api_004
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 循环适配
+framework_tag:
+- Triton
+optimization_points:
+- 替代规则: 循环上限为运行时动态值时，设置足够大的编译时常量`MAX_ITERS`作为for循环上界，通过`if i < n_iters`控制实际执行
+- 实现要点: MAX_ITERS需声明为tl.constexpr，if判断放在for循环内部
+- 覆盖性: MAX_ITERS 需足够大，建议设置为业务场景中n_iters最大值的1.2倍，避免逻辑截断
+- 开销权衡: 实际迭代次数远小于`MAX_ITERS`时，空循环迭代开销会增加（差距越大开销越高）
+- 编译平衡: MAX_ITERS设置过大会增加kernel编译时间，建议不超过实际最大值的2倍
+code_snippet:
+  Triton: "# Ascend后端while（动态上限）→ for + if 替代\n# 错误: while循环（动态上限）\n# @triton.jit\n\
+    # def while_dynamic_kernel(ptr, n_iters, TILE: tl.constexpr):\n#     i = 0\n#\
+    \     while i < n_iters:  # n_iters是运行时参数\n#         offset = i * TILE + tl.arange(0,\
+    \ TILE)\n#         data = tl.load(ptr + offset)\n#         tl.store(ptr + offset,\
+    \ data * 2)\n#         i += 1\n\n# 正确: for + if 替代\n@triton.jit\ndef for_if_dynamic_kernel(\n\
+    \    ptr,\n    n_iters,              # 运行时动态值\n    TILE: tl.constexpr,\n    MAX_ITERS:\
+    \ tl.constexpr = 100,  # 编译时常量上界\n):\n    for i in range(MAX_ITERS):\n       \
+    \ if i < n_iters:  # 控制实际执行次数\n            offset = i * TILE + tl.arange(0, TILE)\n\
+    \            data = tl.load(ptr + offset)\n            tl.store(ptr + offset,\
+    \ data * 2) # MAX_ITERS 合理设置示例\n# 场景: 业务中n_iters最大为80，合理设置MAX_ITERS=100（1.25倍）\n\
+    @triton.jit\ndef max_iters_opt_kernel(\n    ptr,\n    n_iters,\n    TILE: tl.constexpr=64,\n\
+    \    MAX_ITERS: tl.constexpr=100,  # 覆盖最大n_iters=80，且不超2倍\n):\n    for i in range(MAX_ITERS):\n\
+    \        if i < n_iters:\n            offset = i * TILE + tl.arange(0, TILE)\n\
+    \            data = tl.load(ptr + offset)\n            tl.store(ptr + offset,\
+    \ data * 2)\n\n"
+performance_boost: -5%
+note: 动态上限场景存在约5%的空循环开销（因遍历至MAX_ITERS）；910b2/910b3平台需保证`MAX_ITERS`覆盖所有可能的`n_iters`值，避免逻辑截断
+version: v1.0

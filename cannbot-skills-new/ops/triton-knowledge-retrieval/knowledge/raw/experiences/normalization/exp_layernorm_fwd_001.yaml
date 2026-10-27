@@ -1,0 +1,65 @@
+experience_id: exp_layernorm_fwd_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Layer Normalization
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=128'
+  optimization_level: base
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- persistent_kernel_strategy: The kernel implements a persistent loop structure (`for
+    i in tl.range(n_iters)`) where a single program instance processes multiple rows
+    (`BLOCK_ROWS`) based on the number of available cores (`N_CORES`). This reduces
+    kernel launch overhead and improves hardware utilization by keeping the compute
+    units busy, particularly beneficial for large batch sizes or sequence lengths.
+- multi_operator_fusion: The kernel fuses multiple stages of the Layer Norm operationвЂ”including
+    mean/variance calculation, normalization, affine transformation (weight/bias),
+    residual connection (Z), and activation (Swish)вЂ”into a single kernel. This drastically
+    reduces global memory read/write traffic by avoiding the storage of intermediate
+    tensors.
+- compile_time_specialization: By utilizing `tl.constexpr` for feature flags such
+    as `HAS_BIAS`, `HAS_Z`, `IS_RMS_NORM`, and `NORM_BEFORE_GATE`, the compiler generates
+    specialized code paths for different configurations. This eliminates runtime branch
+    divergence and ensures optimal instruction pipelining.
+- precision_management: Intermediate calculations for mean and variance are explicitly
+    cast to `tl.float32` to maintain numerical stability and prevent overflow/underflow,
+    which is critical for training convergence in mixed-precision scenarios.
+- block_tiling_strategy: The kernel utilizes a 2D tiling strategy defined by BLOCK_SIZE_M
+    and BLOCK_SIZE_N to load input data X into SRAM. This reduces global memory access
+    frequency compared to scalar operations and improves data reuse within the block.
+- multi_pass_algorithm: The calculation is split into three distinct passes over the
+    data one for calculating the Mean, one for calculating the Variance (RSTD), and
+    a final pass for computing the Output. This approach significantly reduces register
+    pressure per pass compared to a single-pass fused implementation, at the cost
+    of increased global memory bandwidth usage (reading X three times).
+- fp32_accumulation: Intermediate accumulations for sum (mean) and sum of squares
+    (variance) are explicitly cast to and computed in float32. This ensures numerical
+    stability and prevents overflow/underflow, which is critical when inputs are fp16
+    or bf16.
+- heuristic_scheduling: The BLOCK_SIZE_M is determined via @triton.heuristics, allowing
+    the kernel to dynamically adapt the tile size based on the input matrix dimensions
+    (n_rows) to optimize hardware occupancy and resource utilization.
+code_snippet:
+  TritonPath: _layernorm_fwd_kernel
+performance_boost: 20%
+note: The current implementation reads the input tensor X three times from global
+  memory, which is suboptimal for bandwidth-bound scenarios. Additionally, there is
+  a redundant load of W and B in the variance loop (lines 45-46) that is not utilized
+  in the calculation.
+version: v1.0

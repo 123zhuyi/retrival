@@ -1,0 +1,45 @@
+experience_id: exp_matmul_001
+match_cond:
+  operator_type: AIC
+  compute_pattern: 矩阵乘法
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=256'
+    n:
+    - '>=256'
+    k:
+    - '>=1024'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: 访存优化
+framework_tag:
+- Triton
+optimization_points:
+- 分块策略: L0级Tile采用128x128x128块划分，适配910b2/910b3 Cube L0层访存粒度
+- 数据排布: 输入张量nd保持不变，减少重排开销
+- 寄存器复用: 中间结果存入L0C，提升数据复用
+code_snippet:
+  Triton: "@triton.jit def matmul_kernel(x, y, output, M, N, K, BLOCK_M=256, BLOCK_N=256,\
+    \ BLOCK_K=256, **kwargs):\n    # 256分块基础代码\n    pid = triton.program_id(0)\n \
+    \   rm = pid // (N // BLOCK_N)\n    rn = pid % (N // BLOCK_N)\n    x_ptr = x +\
+    \ rm * BLOCK_M * K + triton.arange(0, BLOCK_M)[:, None] * K + triton.arange(0,\
+    \ BLOCK_K)[None, :]\n    y_ptr = y + rn * BLOCK_N + triton.arange(0, BLOCK_K)[:,\
+    \ None] * N + triton.arange(0, BLOCK_N)[None, :]\n    acc = triton.zeros((BLOCK_M,\
+    \ BLOCK_N), dtype=triton.float32)\n    for k in range(0, K, BLOCK_K):\n      \
+    \  a = triton.load(x_ptr, mask=triton.arange(0, BLOCK_K)[None, :] < K - k, other=0.0)\n\
+    \        b = triton.load(y_ptr, mask=triton.arange(0, BLOCK_K)[:, None] < K -\
+    \ k, other=0.0)\n        acc += a @ b\n        x_ptr += BLOCK_K\n        y_ptr\
+    \ += BLOCK_K * N\n    acc = acc.to(x.dtype)\n    output_ptr = output + rm * BLOCK_M\
+    \ * N + triton.arange(0, BLOCK_M)[:, None] * N + triton.arange(0, BLOCK_N)[None,\
+    \ :]\n    triton.store(output_ptr, acc, mask=triton.arange(0, BLOCK_M)[:, None]\
+    \ < M - rm * BLOCK_M and triton.arange(0, BLOCK_N)[None, :] < N - rn * BLOCK_N)"
+performance_boost: 40%
+note: 适用于m/n/k≥256的大尺寸矩阵，小尺寸矩阵建议使用128分块
+version: v1.0

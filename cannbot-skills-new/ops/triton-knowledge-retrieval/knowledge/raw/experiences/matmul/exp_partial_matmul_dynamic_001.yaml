@@ -1,0 +1,49 @@
+experience_id: exp_partial_matmul_dynamic_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_persistent_scheduling: The kernel implements a persistent kernel pattern
+    using `for block_idx in range(pid, NUM_BLOCKS, NUM_CORES)`. This allows the hardware
+    to dynamically fetch work blocks, ensuring high utilization and load balancing
+    even when the total number of blocks is not perfectly divisible by the number
+    of available cores.
+- hardware_specific_compile_hints: The code utilizes `dl.compile_hint(..., "dot_pad_only_k")`
+    for the loaded matrix blocks. This explicitly instructs the compiler backend to
+    optimize padding specifically for the K-dimension of the dot product, which aligns
+    with the instruction set capabilities of the target hardware (e.g., Ascend NPUs),
+    reducing unnecessary data movement and instruction overhead.
+- diagonal_traversal_strategy: By calling `grouped_launch_diagonal`, the kernel employs
+    a diagonal or wavefront traversal order for processing the output matrix tiles.
+    This strategy often improves cache hit rates and reduces memory bank conflicts
+    compared to standard row-major or column-major traversal patterns.
+- flexible_memory_access: The kernel supports partial matrix multiplication through
+    `B_N_START` and `B_STRIDE_K` parameters. This allows efficient computation on
+    sub-slices of matrix B without requiring explicit memory reorganization or copying
+    of the parent tensor.
+performance_boost: 30%
+note: This optimization is particularly effective for large-scale matrix multiplications
+  where static grid mapping leads to tail effects or load imbalance. The "dot_pad_only_k"
+  hint is crucial for achieving peak performance on the specified hardware.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/078-partial_matmul_kernel.py

@@ -1,0 +1,49 @@
+experience_id: exp_matmul_vec_parallel_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=32'
+    n:
+    - '>=32'
+    k:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vector_parallelism_strategy: The kernel implements a specialized vector parallel
+    path using `dl.parallel`. When `VEC_PARALLEL` is not 1, the accumulator block
+    is split along the M-dimension into sub-blocks (`SUB_BLK_M`). This allows the
+    hardware to process these sub-blocks in parallel, significantly improving the
+    utilization of vector units and instruction-level parallelism on the NPU.
+- grouped_ordering_for_l2_reuse: The program ID mapping uses a grouped ordering strategy
+    (`GROUP_SIZE_M`). By calculating `pid_m` and `pid_n` based on `group_id`, the
+    kernel ensures that blocks processed sequentially are likely to reside in the
+    same cache lines or proximity in L2 cache. This promotes data reuse for matrix
+    A across multiple blocks of matrix B, reducing global memory access latency.
+- activation_fusion: The `leaky_relu_custom` activation function is fused directly
+    into the matmul computation loop. This is performed on the accumulator in FP32
+    precision before casting to the output type, eliminating the need for a separate
+    kernel launch and reducing memory bandwidth usage for intermediate results.
+- autotuning_integration: The kernel is decorated with `@triton.autotune`, enabling
+    it to dynamically select the best configuration of block sizes (`BLOCK_SIZE_M`,
+    `BLOCK_SIZE_N`, `BLOCK_SIZE_K`) at runtime. This ensures optimal performance across
+    a wide range of matrix dimensions (M, N, K).
+performance_boost: 35%
+note: The kernel utilizes hardware-specific dialect features (e.g., `dl.parallel`)
+  indicative of Ascend NPU optimization. It supports generic memory layouts via stride
+  arguments, making it versatile for different tensor formats without pre-transposition.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/072-matmul_kernel.py

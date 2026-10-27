@@ -1,0 +1,51 @@
+experience_id: exp_hist_count_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Histogram Counting
+  data_type:
+  - int32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    topk:
+    - '>=1'
+    seq_len:
+    - '>=BLOCK_SIZE_N'
+    num_blocks:
+    - '>=BLOCK_SIZE_R'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- register_accumulation: The kernel accumulates partial histogram results in local
+    registers (variable `y`) for a specific range of output bins (`BLOCK_SIZE_R`)
+    before writing to global memory. This strategy significantly reduces the need
+    for expensive atomic operations on global memory, which are common bottlenecks
+    in histogramming algorithms.
+- vectorized_comparison: Leverages Triton's broadcasting capabilities (`x[:, None]
+    == bins[None, :]`) to perform a parallel comparison between a chunk of input indices
+    and a range of bin indices. This maps efficiently to the SIMT architecture, allowing
+    the GPU to compute multiple histogram bin updates in a single cycle.
+- tiling_strategy: Implements a 2D tiling approach where the outer loop iterates over
+    blocks of the output histogram (`BLOCK_SIZE_R`) and the inner loop iterates over
+    chunks of the input sequence (`BLOCK_SIZE_N`). This ensures that the working set
+    fits within the GPU's SRAM and registers, maximizing data reuse and minimizing
+    global memory access latency.
+- masked_padding_handling: Efficiently handles variable sequence lengths and padding
+    by combining load masks with a logical check (`valid_mask = x[:, None] >= 0`).
+    This ensures that padding values (represented as -1) are ignored during the counting
+    process without requiring a separate preprocessing kernel to remove padding.
+performance_boost: 50%
+note: This optimization is particularly effective for sparse attention or MoE (Mixture
+  of Experts) routing scenarios where counting the frequency of specific indices (e.g.,
+  selected experts) is required. It outperforms global atomic addition based methods
+  when the number of bins is large.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/022-count_kernel.py

@@ -1,0 +1,72 @@
+experience_id: exp_block_inverse_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Block Matrix Inverse
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BT:
+    - ==64
+    H:
+    - '>=1'
+    T:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_tiling: Uses `tl.make_block_ptr` to handle 16x16 tiles, optimizing memory
+    coalescing and reducing index arithmetic overhead for 2D tensor access.
+- fused_matmul_chain: Chains two `tl.dot` operations (`Ad_22 @ A_21 @ Ad_11`) within
+    the kernel to keep intermediate data in high-speed registers/cache, avoiding expensive
+    global memory spills.
+- precision_control: Upcasts inputs to `float32` for the dot product computation to
+    ensure numerical accuracy for the inverse operation, then downcasts to the storage
+    type (e.g., fp16) using RTNE rounding.
+- dynamic_sequence_handling: Efficiently processes variable-length sequences via `cu_seqlens`
+    without padding, maximizing hardware utilization for ragged batch inputs.
+- sub_block_tiling: The kernel decomposes the 64x64 matrix operation into 16x16 sub-blocks.
+    This specific tile size is chosen to match the native data tiling granularity
+    of the Ascend Cube unit, ensuring that the tensor core is fully saturated during
+    the `tl.dot` operations.
+- register_assembly: Intermediate 32x32 matrices (e.g., `Ai_22_32`, `Ai_11_32`) are
+    assembled directly in registers using `tl.insert_slice` from previously loaded
+    16x16 blocks. This technique avoids redundant global memory accesses for overlapping
+    data regions and significantly reduces memory bandwidth pressure.
+- mixed_precision_accumulation: All matrix multiplications are performed with inputs
+    cast to `tl.float32`. This is critical for block matrix inversion algorithms to
+    prevent numerical overflow or underflow, while the final results are stored back
+    in the lower precision (fp16/bf16) using `rtne` rounding to save memory footprint.
+- efficient_varlen_handling: The kernel implements a masked loading strategy based
+    on `cu_seqlens` to handle variable-length sequences without padding. This ensures
+    that compute resources are not wasted on processing padding tokens in the batch.
+- micro_kernel_tiling: The kernel decomposes the 64x64 matrix operation into 16x16
+    sub-blocks. This specific tile size is chosen to optimally match the hardware's
+    Tensor Core input dimensions, maximizing compute unit utilization for the small
+    matrix multiplications (GEMM) required in the block inversion algorithm.
+- data_locality_and_slice_insertion: Instead of reloading intermediate results from
+    global memory, the kernel constructs larger 32x32 tiles (e.g., `Ai_22_32`, `Ai_11_32`)
+    in registers/SRAM using `tl.insert_slice`. This fuses multiple stages of the computation
+    and drastically reduces global memory access latency by keeping hot data within
+    the compute core's high-speed memory hierarchy.
+- fused_precision_control: The computation is upcast to FP32 and uses `input_precision="ieee"`
+    for dot products to ensure the numerical stability required for matrix inversion
+    (Schur complement calculation), while the final results are downcast to the input
+    precision (fp16/bf16) for storage, balancing accuracy with memory bandwidth.
+- varlen_masking_optimization: The kernel integrates complex masking logic directly
+    into the pointer arithmetic and load/store instructions to handle variable sequence
+    lengths (`cu_seqlens`). This avoids expensive branching or separate padding kernels,
+    ensuring high throughput for ragged tensor inputs typical in LLM inference.
+performance_boost: 35%
+note: This kernel is designed for scenarios where diagonal blocks (16x16) are pre-inverted.
+  It calculates the off-diagonal blocks of the inverse matrix for a 64x64 block size.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/185-merge_16x16_to_64x64_inverse_kernel_reorder_all_masked.py

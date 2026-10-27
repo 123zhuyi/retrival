@@ -1,0 +1,44 @@
+experience_id: exp_block_matmul_inv_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    T:
+    - '>=32'
+    H:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_utilization: Utilizes tl.make_block_ptr for efficient 2D block loading
+    (16x16 tiles). This minimizes pointer arithmetic instructions and maximizes memory
+    coalescing compared to standard 1D loads, which is critical for high-bandwidth
+    memory access on NPUs.
+- tensor_core_acceleration: Leverages hardware matrix multiplication units (Tensor
+    Cores or Cube units) via tl.dot with 16x16 block sizes. The specific calculation
+    Ai_21 = -Ad_22 @ A_21 @ Ad_11 is mapped directly to these high-throughput units.
+- precision_control_strategy: Performs intermediate accumulation in FP32 (float32)
+    to preserve numerical stability during the chained matrix multiplications, then
+    downcasts the result to the storage type (e.g., fp16/bf16) using RTNE (Round to
+    Nearest Even) rounding to minimize quantization error.
+- varlen_dynamic_scheduling: Implements a heuristic for variable-length sequences
+    (IS_VARLEN). This allows the kernel to dynamically calculate valid data ranges
+    (bos, eos) and skip processing on padding tokens, significantly improving efficiency
+    for ragged tensor workloads common in NLP.
+performance_boost: 35%
+note: This kernel is specifically designed for computing the off-diagonal block (Ai_21)
+  of a block matrix inverse or Schur complement, assuming a 32x32 block structure
+  divided into 16x16 sub-blocks.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/184-merge_16x16_to_32x32_inverse_kernel.py

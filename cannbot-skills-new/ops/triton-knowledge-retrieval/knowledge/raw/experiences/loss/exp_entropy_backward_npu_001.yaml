@@ -1,0 +1,42 @@
+experience_id: exp_entropy_backward_npu_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication with Softmax Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    num_tokens:
+    - '>=128'
+    vocab_per_split:
+    - '>=64'
+    hidden_size:
+    - '>=512'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- npu_int32_casting: Converts label indices to int32 before equality comparison to
+    prevent the NPU from degrading to scalar operations, a critical optimization for
+    Ascend hardware where int64 logic is inefficient.
+- grouped_scheduling: Implements GROUP_SIZE_M=4 to improve L2 cache locality for the
+    hidden tensor, ensuring that consecutive program IDs process the same rows of
+    the input matrix to reduce memory access overhead.
+- large_k_tiling: Sets BLOCK_SIZE_K=512 to maximize the utilization of the AI Core's
+    Cube unit, ensuring sufficient data volume for pipelining during the matrix multiplication
+    phase.
+performance_boost: 25%
+note: This kernel is specifically optimized for the Ascend NPU architecture. The int32
+  casting logic is essential to avoid severe performance penalties associated with
+  int64 comparisons on these devices.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/205-efficient_entropy_backward_kernel_general_d_logits_split_N.py

@@ -1,0 +1,52 @@
+experience_id: exp_paged_prefill_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Paged Attention Prefill
+  data_type:
+  - fp16
+  - bf16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    BLOCK_SIZE_M:
+    - '>=64'
+    BLOCK_SIZE_N:
+    - '>=64'
+    PAGE_SIZE:
+    - ==BLOCK_SIZE_N
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- paged_kv_indirection: Implements efficient paged KV cache access by utilizing block
+    tables (`block_tables_ptr`) to map logical sequence blocks to non-contiguous physical
+    memory blocks. This allows for dynamic memory management and variable-length sequence
+    handling without memory fragmentation.
+- block_ptr_vectorization: Leverages `tl.make_block_ptr` for loading Q, K, and V tensors.
+    This API abstracts complex pointer arithmetic and enables hardware vectorization
+    units to load data blocks efficiently, handling boundary checks and padding automatically
+    via `boundary_check` and `padding_option`.
+- online_softmax_reduction: Utilizes the FlashAttention algorithm strategy by iteratively
+    updating the accumulator (`acc`), normalization factor (`l_i`), and maximum value
+    (`m_i`) within the loop over KV blocks. This avoids materializing the full $N
+    \times N$ attention matrix in high-bandwidth memory (HBM), significantly reducing
+    memory traffic.
+- gqa_support: Includes logic for Grouped Query Attention (GQA) by calculating `kv_head_id`
+    based on `GQA_INTERLEAVE` flag, allowing efficient mapping of multiple query heads
+    to a single KV head.
+code_snippet:
+  TritonPath: paged_prefill_kernel.py
+performance_boost: 35%
+note: This kernel is optimized for the prefill stage where the context is processed
+  in chunks. It requires `PAGE_SIZE` to be equal to `BLOCK_SIZE_N`. The internal `_sdpa_infer_single_block`
+  function handles the core attention arithmetic.
+version: v1.0

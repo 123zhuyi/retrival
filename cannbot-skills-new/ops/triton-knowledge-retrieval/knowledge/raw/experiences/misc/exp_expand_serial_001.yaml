@@ -1,0 +1,47 @@
+experience_id: exp_expand_serial_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Expand
+  data_type:
+  - int32
+  - int64
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    vec_len:
+    - '>=BLOCK_SIZE'
+    MAX_NUM_TOKENS:
+    - <=128
+  optimization_level: base
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- compilation_specialization_control: The kernel uses `do_not_specialize` for `replace_from`
+    and `replace_to` arguments. This prevents the compiler from generating a new kernel
+    version for every unique scalar value, reducing compilation overhead and binary
+    size.
+- serial_expansion_loop: The core logic relies on a serial loop `for i in tl.range(0,
+    BLOCK_SIZE)` to iterate over the batch elements within a block. This simplifies
+    the handling of variable-length expansions but limits the instruction-level parallelism
+    (ILP) and throughput compared to a fully vectorized approach.
+- scalar_register_extraction: Inside the loop, `tl.get_element` is used to extract
+    scalar values (`num_tokens`, `start_idx`, `src_val`) from the vector registers
+    loaded earlier. This allows for per-element calculation of output pointers and
+    masks but introduces overhead associated with scalar extraction from vector lanes.
+- masked_vector_store: The output is written using a masked store operation where
+    the mask is dynamically generated based on the `num_tokens` for each specific
+    batch element, ensuring memory safety for jagged arrays.
+performance_boost: Baseline
+note: This implementation represents a naive approach to the expand operation. While
+  functionally correct, the serial loop and scalar extraction (`tl.get_element`) inside
+  the loop are significant performance bottlenecks. For high-performance scenarios,
+  refactoring to remove the loop or utilizing a scatter/gather pattern is recommended.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/169-expand_kernel.py

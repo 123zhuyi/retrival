@@ -1,0 +1,49 @@
+experience_id: exp_rmsnorm_npu_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Fused Add RMSNorm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_cols:
+    - '>=256'
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: Implements a grid-stride loop using `tl.range(pid, n_rows,
+    num_progs, num_stages=NUM_STAGES)`. This allows the kernel to process an arbitrary
+    number of rows (`n_rows`) efficiently regardless of the physical NPU core count,
+    ensuring high utilization by mapping multiple rows to a single program instance.
+- column_blocking_ub_management: Processes wide rows in chunks defined by `BLOCK_SIZE`
+    rather than loading the entire row at once. This tiling strategy is critical for
+    preventing Unified Buffer (UB) overflow on NPUs when `n_cols` is large, a common
+    failure point in naive implementations.
+- two_pass_reduction_algorithm: Decouples the computation into two distinct phases.
+    The first pass computes the residual `S = X + R` and accumulates the `sum_square`
+    for the RMS statistic. The second pass reloads `S` and applies the normalization
+    and weights. This separation is necessary to calculate the global mean square
+    statistic before applying the normalization.
+- explicit_cache_policy: Utilizes specific cache modifiers to optimize data movement.
+    `eviction_policy="evict_first"` is used for inputs `X` and `R` to stream data
+    without polluting the cache, while `cache_modifier=".cg"` is used when storing
+    the intermediate `S` to ensure it remains in the cache for the subsequent load
+    in the second pass, significantly reducing memory latency.
+performance_boost: 35%
+note: This kernel is specifically optimized for scenarios where the hidden dimension
+  (n_cols) is large, exceeding the capacity of the NPU's Unified Buffer if loaded
+  in a single block. It also supports specific casting modes for Llama and Gemma architectures.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/093-_fused_add_rms_norm_forward_kernel_npu.py

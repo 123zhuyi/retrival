@@ -1,0 +1,57 @@
+experience_id: exp_kda_bwd_wy_scalar_opt_001
+match_cond:
+  operator_type: SSM
+  compute_pattern: chunk_kda_bwd_wy_dqkg_fused
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+    T:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 标量消除
+framework_tag:
+- Triton
+optimization_points:
+- 背景: chunk_kda_bwd_kernel_wy_dqkg_fused_opt_v2在Ascend上Task Duration从~169k μs经7轮优化降至~50.7k μs（3.33x）
+- 核心优化1: 消除i64地址计算。将所有涉及i_tg/bos/eos的偏移保持i32，避免int64算术标量降级
+- 核心优化2: i32整数比较转fp32。所有mask生成（m_t, m_k, BT_mask, BK_mask, m_A等）使用fp32比较
+- 核心优化3: tl.cdiv(K,BK)和tl.cdiv(V,BV)改为编译期常量NK/NV，避免运行时除法取余
+- 核心优化4: min(T, expr)改为tl.where向量化条件选择
+- 核心优化5: 移除b_h/b_dh/b_dv等冗余compile_hint，释放编译器优化空间
+- 核心优化6: 使用other=0.0替代load后的冗余tl.where清零
+- 推荐顺序: 先消除i64（收益最大）→ i32转fp32 → tl.cdiv/min优化 → 移除hint → autotune
+code_snippet:
+  Triton: "# i64 → i32\n\
+    i_tg = i_b * NT + i_t  # 保持 i32\n\
+    \n\
+    # i32 比较 → fp32 比较\n\
+    m_t = o_t.to(tl.float32) < T.to(tl.float32)\n\
+    \n\
+    # tl.cdiv → 编译期常量\n\
+    NK = K // BK\n\
+    NV = V // BV\n\
+    for i_k in range(NK):\n\
+    \    for i_v in range(NV):\n\
+    \        ...\n\
+    \n\
+    # min → tl.where\n\
+    t_end = i_t * BT + BT\n\
+    t_last = tl.where(t_end < T, t_end, T) - 1"
+performance_boost: 233%
+note: 此bundle针对wy_dqkg_fused反向kernel。关键原则是保留tl.dot架构（不逐元素展开），定向消除导致标量降级的i64/i32操作。逐元素展开虽能降低scalar ratio，但会丧失Cube加速，性能严重回退。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/scalar_opt_report.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/optimization_plan.md
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/zy_design.md
+version: v1.0

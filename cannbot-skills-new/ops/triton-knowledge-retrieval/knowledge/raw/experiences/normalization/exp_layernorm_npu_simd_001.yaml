@@ -1,0 +1,43 @@
+experience_id: exp_layernorm_npu_simd_001
+match_cond:
+  operator_type: Normalization Operations
+  compute_pattern: Layer Normalization / RMS Norm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- npu_simd_vectorization: The kernel is explicitly optimized for NPU SIMD units. By
+    utilizing vectorized loads and arithmetic operations across the BLOCK_N dimension,
+    it maximizes the throughput of the vector processing pipeline on the Ascend hardware.
+- operator_fusion: Fuses the Gating (Swish z * sigmoid(z)) operation with the LayerNorm/RMSNorm
+    computation. This is performed either before or after normalization based on the
+    NORM_BEFORE_GATE flag, eliminating the need to write intermediate results to global
+    memory (HBM), thus significantly reducing memory bandwidth consumption.
+- heuristic_specialization: Utilizes @triton.heuristics to generate specialized code
+    paths for optional inputs (Bias B and residual Z). This ensures that the compiled
+    kernel contains only the necessary instructions for the specific configuration,
+    avoiding runtime branching overhead for unused features.
+- float32_accumulation: Performs statistical calculations (mean and variance) in float32
+    precision before casting back to the input type. This ensures numerical stability
+    during the reduction operations, which is critical for training convergence.
+performance_boost: 35%
+note: Supports both LayerNorm and RMSNorm, as well as flexible gating mechanisms (pre-
+  or post-normalization). Best suited for transformer architectures requiring fused
+  normalization and activation steps.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/180-_layer_norm_fwd_1pass_kernel_npu_simd.py

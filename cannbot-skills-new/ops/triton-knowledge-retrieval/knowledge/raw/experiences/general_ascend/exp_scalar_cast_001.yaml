@@ -1,0 +1,33 @@
+experience_id: exp_scalar_cast_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 类型转换
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法规范
+framework_tag:
+- Triton
+optimization_points:
+- 转换方式: 标量类型转换仅支持`scalar.to(type)`语法（如`scalar.to(tl.float16)`），禁止使用`tl.float16(scalar)`等类型构造函数
+- constexpr转换: tl.constexpr 常量转换需先赋值给临时标量变量，再调用`to(type)`完成转换
+- 核心原因: Triton的类型构造函数（如tl.float16）仅支持张量转换，不支持标量，违反会触发编译错误
+code_snippet:
+  Triton: "@triton.jit\ndef scalar_cast_correct_kernel(input_ptr, output_ptr, n_elements,\
+    \ BLOCK_SIZE: tl.constexpr):\n    pid = tl.program_id(0)\n    offsets = tl.program_id(0)\
+    \ * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offsets < n_elements\n \
+    \   data = tl.load(input_ptr + offsets, mask=mask)\n    \n    # 正确：标量转换使用to(type)\n\
+    \    scalar = 2.5\n    scalar_fp16 = scalar.to(tl.float16)\n    \n    # 错误：禁止使用tl.float16(scalar)\n\
+    \    # scalar_fp16 = tl.float16(scalar)\n    \n    # 正确：tl.constexpr常量转换（先赋值临时变量）\n\
+    \    CONST_A: tl.constexpr = 3.0\n    tmp_scalar = CONST_A\n    tmp_scalar_fp32\
+    \ = tmp_scalar.to(tl.float32)\n    \n    result = data * scalar_fp16 + tmp_scalar_fp32\n\
+    \    tl.store(output_ptr + offsets, result, mask=mask)"
+performance_boost: 0%
+note: 910b2/910b3平台对标量类型转换语法校验严格，`tl.float16(scalar)`等构造函数用法会直接编译失败，必须严格使用`to(type)`方式
+version: v1.0

@@ -1,0 +1,60 @@
+experience_id: exp_causal_conv1d_prefill_002
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Prefill (sliding window)
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    dim:
+    - '>=512'
+    seqlen:
+    - '>=32'
+    width:
+    - 4
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sliding_window_register_reuse: "将卷积窗口 `[col0, col1, col2, col3]` 维护在 4 个命名寄存器中，每次迭代只 load 一个新 token（col3），其余 3 个值从前次迭代的寄存器移位获得（col0←col1←col2←col3）。相比 reference 实现每 token 需要 4 次 load，load 次数降低 75%。对于 seq_len=2048 的典型 Prefill 场景，每个 program 节省 3×2048=6144 次全局内存 load。这是整个 kernel 中最大的单项性能提升来源。"
+- register_shift_zero_cost: "寄存器移位 `col0 = col1; col1 = col2; col2 = col3` 在编译器层面通过寄存器重命名实现，零周期开销。不同于内存拷贝或显式 shuffle，移位不产生任何实际指令。"
+- initialization_from_state: "首次迭代从 conv_states 加载 3 个历史值到 col0/col1/col2，后续 seq_len-1 次迭代每步仅 1 次 load。窗口末尾的 3 个值恰好就是需要写回 conv_states 的最后 3 个 token，无需额外 load 即可完成状态更新——状态更新与卷积计算的 load 完全复用。"
+- explicit_register_naming: "使用 4 个显式命名的寄存器（col0/col1/col2/col3）而非数组或 loop，使编译器能够：(1) 精确追踪每个寄存器的生命周期；(2) 生成最优的寄存器分配方案；(3) 将 `col0*w0 + col1*w1 + col2*w2 + col3*w3` 识别为可并行的 4 路 FMA 归约。"
+- fma_friendly_expression: "单语句 4 路归约 `col0*w0 + col1*w1 + col2*w2 + col3*w3` 中 4 个乘法相互独立，编译器可发射 4 条并行向量乘法指令；加法树结构直接映射到硬件 FMA 单元（融合乘加），一条指令完成 mul+add。相比 `for w in range(4): acc += col[w]*weight[w]` 的循环累积方式，避免了跨迭代的 out_block 数据依赖。"
+- width_hardcoded_tradeoff: "寄存器复用方案硬编码 W=4（4 个命名寄存器 + 4 个权重标量），无法支持可变 width。这是性能（零数据编排开销）与灵活性（通用 W 支持）的取舍。实践中 Mamba/SSM 架构的 width=4 是最常见配置，此取舍合理。"
+performance_boost: "消除 75% 的 token load，实测贡献 Prefill kernel 整体加速比中的最大份额（与 2D Grid + DIM_IS_MULTIPLE 组合达 1.60x 平均加速比，最高 1.84x）"
+note: "滑动窗口寄存器复用是 Prefill kernel 最核心的创新，利用了 W=4 的小卷积核特性。此模式可推广到任何固定小窗口的序列处理 kernel（如移动平均、指数平滑、small-kernel 1D conv），前提是窗口大小在编译期已知且足够小（≤8）。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_prefill_analysis.md §7.2 创新1
+code_snippet:
+  register_reuse_pattern: |
+    # 初始化：从 conv_states 加载历史 + 第一个新 token
+    col0 = tl.load(conv_states_ptr + 0*stride, mask=mask_d)
+    col1 = tl.load(conv_states_ptr + 1*stride, mask=mask_d)
+    col2 = tl.load(conv_states_ptr + 2*stride, mask=mask_d)
+    col3 = tl.load(x_ptrs)                    # 第 1 个新 token
+
+    for i in range(seq_len):
+        # 4 路 FMA：单语句归约
+        acc = col0*w0 + col1*w1 + col2*w2 + col3*w3
+        if HAS_BIAS:
+            acc = acc + bias
+        if ACTIVATION:
+            acc = acc / (1 + tl.exp(-acc))     # fp32 SiLU
+        tl.store(y_ptrs + i * stride_y, acc, mask=mask_d)
+
+        # 窗口滑动：寄存器移位（零开销）
+        col0 = col1
+        col1 = col2
+        col2 = col3
+        # 加载下一个新 token
+        col3 = tl.load(x_ptrs + (i+1) * stride_x, mask=mask_d)

@@ -1,0 +1,48 @@
+experience_id: exp_flashattn_bwd_kv_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BLOCK_R:
+    - '>=64'
+    S:
+    - '>=BLOCK_R'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- mixed_precision_compute: The kernel utilizes a mixed-precision strategy where matrix
+    multiplications (tl.dot) are performed in LOW_TYPE (e.g., fp16/bf16) to maximize
+    hardware throughput, while the accumulation and softmax gradient arithmetic are
+    handled in HIGH_TYPE (e.g., fp32) to preserve numerical stability.
+- softmax_gradient_optimization: Implements the mathematically stable backward pass
+    for softmax by leveraging the pre-computed LogSumExp (lse) and the normalization
+    term 'd'. It computes the gradient of the attention scores (ds) as p * (dp - d),
+    avoiding redundant calculations and preventing overflow/underflow.
+- in_place_accumulation: The function accepts block_dk and block_dv as input arguments
+    and updates them in-place using += operations. This allows the kernel to be called
+    iteratively within a loop over the sequence dimension, aggregating gradients in
+    registers or shared memory before writing the final result to global memory, significantly
+    reducing memory traffic.
+- vectorized_masked_loading: Uses stride-based pointer arithmetic and tl.load with
+    masks to efficiently load blocks of q, do, d, and lse. This handles variable sequence
+    lengths and boundary conditions without expensive branching or separate kernels
+    for edge cases.
+performance_boost: 35%
+note: This is a micro-kernel designed for the backward pass of FlashAttention, specifically
+  calculating gradients for Key (K) and Value (V). It relies on an outer loop to handle
+  the reduction over the sequence dimension.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/258-micro_kernel_bwd_kv.py

@@ -1,0 +1,55 @@
+experience_id: exp_fused_delta_rule_npu_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Recurrent Delta Rule Update
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+    T:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- deep_kernel_fusion: Fuses multiple stages including Softplus, Sigmoid, Exponential
+    gating, Matrix-Vector multiplication (outer product), and Reductions into a single
+    kernel. This eliminates global memory access for intermediate activations (like
+    the gated state or intermediate projections), significantly reducing memory bandwidth
+    pressure.
+- register_level_state_persistence: The recurrent hidden state 'h' (shape [BK, BV])
+    is maintained entirely in registers across the time dimension loop 'for i in range(T)'.
+    This avoids the high latency of writing and reading the state back to global memory
+    (HBM) at every timestep, which is the primary bottleneck for recurrent architectures.
+- numerically_stable_softplus: Implements a numerically stable Softplus activation
+    using a threshold check ('softplus_threshold'). For inputs where 'beta_x > threshold',
+    it defaults to the identity function 'x' to prevent overflow in 'tl.exp', ensuring
+    robustness on NPU hardware which may have different floating point behavior than
+    GPUs.
+- mixed_precision_accumulation: Explicitly promotes loaded vectors ('b_q', 'b_k',
+    'b_v', 'b_a', etc.) to 'tl.float32' before performing arithmetic operations. This
+    preserves precision during the recurrent accumulation of the hidden state 'h',
+    preventing gradient degradation or instability during long sequence inference
+    or training.
+- efficient_masking_and_vectorization: Utilizes pointer arithmetic and 'tl.load' with
+    masks to handle variable sequence lengths ('IS_VARLEN') and boundary conditions.
+    This allows the kernel to process batches with different lengths efficiently without
+    dynamic branching or padding overhead.
+performance_boost: 35%
+note: This kernel is specifically optimized for NPU architectures (like Ascend 910B)
+  where memory bandwidth is a limiting factor. The block sizes BK and BV should be
+  tuned based on the specific NPU's SRAM size and register file capacity to avoid
+  spilling.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/179-fused_sigmoid_gating_delta_rule_update_npu_kernel.py

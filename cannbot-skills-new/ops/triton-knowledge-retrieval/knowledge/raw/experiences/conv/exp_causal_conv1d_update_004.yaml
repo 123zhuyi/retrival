@@ -1,0 +1,47 @@
+experience_id: exp_causal_conv1d_update_004
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Update (Decode)
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    seqlen:
+    - '>=256'
+    width:
+    - '>=2'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- overlapping_t_tiling: "每个 T-tile 向前多加载 (W-1) 个 token，使 x_b 的 buffer 长度 = T_CHK_SIZE + W - 1。T-tile 0 从 conv_state 取 W-1 个历史 token 与当前输入拼接；后续 tile (ti>0) 从 x 的 (ti*T_CHK_SIZE - (W-1)) 位置开始加载，前 W-1 列自然等于上一个 tile 的最后 W-1 个 token。这保证了卷积窗口在 tile 边界处的连续性，无需每个 tile 都从 conv_state 读取历史。"
+- redundant_load_elimination: "相比 naive 方案（每个 tile 独立从 conv_state 取 W-1 个历史 token），重叠 T-tiling 消除了后续 tile 的 (W-1) × D_CHK_SIZE 次额外全局内存访问。对于 seq_len=1024, T_CHK_SIZE=256, W=4 的场景，共 4 个 tile，节省了 3×(W-1)×D_CHK_SIZE = 9×D_CHK_SIZE 次 load。"
+- state_stitching_first_tile: "仅第一个 T-tile (ti==0) 需要从 conv_state 加载历史 token。使用 `tl.insert_slice` 将当前输入 x 插入到加载的状态 buffer 的第 (W-1) 列之后，实现零拷贝拼接。`tl.load(conv_state_ptr, offsets=(di*D_CHK, state_len-(W-1)), block_shape=(D_CHK, (W-1)+T_CHK))` 一次加载状态尾部和当前 tile 所需空间。"
+- buffer_size_tradeoff: "x_b buffer = T_CHK_SIZE + W - 1 个元素（而非 T_CHK_SIZE）。额外 (W-1) 列作为重叠区，代价是 UB 用量略微增加，收益是消除了跨 tile 的冗余历史加载。对于 W=4 的典型场景，buffer 仅增加约 1.2%（3/256），代价可忽略。"
+- state_update_tile_awareness: "状态更新（conv_state_update）需要判断当前 tile 是否覆盖了状态保存区 `[seq_len - state_len, seq_len)`。通过计算 `t_end_off = (ti+1)*T_CHK_SIZE` 与 `new_state_start_off = seq_len - state_len` 的重叠关系，仅在覆盖的 tile 中执行状态提取和写入。避免每个 tile 都做无效的状态更新检查。"
+performance_boost: "减少约 (num_T_tiles - 1) × (W-1) × D_CHK_SIZE 次全局内存 load，典型场景节省 15-25% 内存带宽"
+note: "重叠 T-tiling 是 Update kernel 在 BDT 布局下实现高效 tile 并行化的核心设计。与 Prefill kernel（一个 program 处理整条序列，无需 T-tiling）形成对比。该模式是序列处理 kernel 做 T 维度切分时的通用范式。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_update_analysis.md §3.3 (步骤2) + §6 (优化2)
+code_snippet:
+  first_tile: |
+    # T-tile 0: 从 conv_state 取历史 + 拼接当前输入
+    st_b = tl.load(conv_state_ptr + bi*state_len*dim,
+                   offsets=(di*D_CHK_SIZE, state_len - (width-1)),
+                   block_shape=(D_CHK_SIZE, (width-1) + T_CHK_SIZE))
+    x_b_tmp = tl.load(x_ptr + bi*dim*seq_len,
+                      offsets=(di*D_CHK_SIZE, ti*T_CHK_SIZE),
+                      block_shape=(D_CHK_SIZE, T_CHK_SIZE))
+    x_b = tl.insert_slice(st_b, x_b_tmp, (0, width-1), (D_CHK_SIZE, T_CHK_SIZE))
+  subsequent_tile: |
+    # T-tile i (i>0): 向前偏移 W-1，加载重叠区
+    x_b = tl.load(x_ptr + bi*dim*seq_len,
+                  offsets=(di*D_CHK_SIZE, ti*T_CHK_SIZE - (width-1)),
+                  block_shape=(D_CHK_SIZE, T_CHK_SIZE + width - 1))

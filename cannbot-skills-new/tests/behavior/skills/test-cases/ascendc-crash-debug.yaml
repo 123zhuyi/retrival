@@ -1,0 +1,82 @@
+# ----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------------------------------------
+
+# =============================================================================
+# Skill Test Configuration
+# =============================================================================
+# This file defines custom test cases for ascendc-crash-debug skill.
+# If this file exists, custom tests will be used instead of auto-generated ones.
+#
+# Configuration Structure:
+#   - trigger: Test prompts for B-TRIG-01/02
+#   - interaction: Test prompts for B-INTA-01/02
+#   - expected: Expected response patterns
+# =============================================================================
+
+skill: ascendc-crash-debug
+
+# -----------------------------------------------------------------------------
+# B-TRIG-01: Precise Trigger Test
+# Prompts using core keywords from skill description
+# -----------------------------------------------------------------------------
+trigger:
+  precise:
+    - prompt: "算子执行时卡死了怎么排查"
+      expected_keywords: ["卡死", "plog", "调试", "定位", "超时"]
+    - prompt: "程序崩溃Segmentation Fault怎么定位"
+      expected_keywords: ["崩溃", "coredump", "gdb", "Segmentation", "Fault"]
+    - prompt: "Kernel hang了怎么办"
+      expected_keywords: ["hang", "Kernel", "挂起", "调试"]
+
+# -----------------------------------------------------------------------------
+# B-TRIG-02: Fuzzy Trigger Test
+# Prompts using colloquial or non-standard terms
+# -----------------------------------------------------------------------------
+  fuzzy:
+    - prompt: "程序跑着跑着没反应了"
+      expected_keywords: ["卡死", "超时", "挂起", "排查"]
+    - prompt: "算子崩了，怎么查"
+      expected_keywords: ["崩溃", "coredump", "gdb", "定位"]
+
+# -----------------------------------------------------------------------------
+# B-INTA-01: Missing Parameter Clarification
+# Prompts with missing critical information
+# -----------------------------------------------------------------------------
+interaction:
+  missing_params:
+    - prompt: "算子跑不动了"
+      should_ask_about: ["错误信息", "场景", "是否卡死还是崩溃"]
+    - prompt: "程序挂掉了"
+      should_ask_about: ["是否有core文件", "错误信息", "plog日志"]
+
+# -----------------------------------------------------------------------------
+# B-INTA-02: Context Retention
+# Multi-turn conversation context
+# -----------------------------------------------------------------------------
+  context:
+    - prompt: "程序卡死了，我怀疑是Buffer冲突导致的死锁"
+      should_reference: ["Buffer", "死锁", "AllocTensor", "FreeTensor"]
+    - prompt: "刚才那个卡死问题，我检查了plog发现是Alloc和Free不配对"
+      should_reference: ["plog", "Alloc", "Free", "配对"]
+
+# -----------------------------------------------------------------------------
+# Custom Test Cases (Optional)
+# Additional skill-specific tests
+# -----------------------------------------------------------------------------
+custom:
+  - name: "crash_detection"
+    prompt: "算子segfault了怎么调试？"
+    expected_keywords: ["coredump", "gdb", "bt", "崩溃", "ulimit"]
+  - name: "hang_detection"
+    prompt: "算子卡死超时了应该怎么排查？"
+    expected_keywords: ["plog", "timeout", "挂起", "定位", "Buffer"]
+  - name: "deadlock"
+    prompt: "算子可能有死锁怎么分析？"
+    expected_keywords: ["死锁", "EnQue", "DeQue", "Alloc", "Free", "配对"]

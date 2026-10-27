@@ -1,0 +1,34 @@
+experience_id: exp_constexpr_001
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法规范
+framework_tag:
+- Triton
+optimization_points:
+- 使用范围: tl.constexpr 仅允许在内核函数的参数声明中使用（如 `BLOCK_SIZE tl.constexpr`），用于标记编译时常量
+- 禁用场景: Host侧（kernel启动函数/模型forward函数）禁止使用`tl.constexpr`，该语法仅对Triton内核可见
+- 核心原因: tl.constexpr 是编译期常量标记，Host侧无编译期上下文，使用会直接导致语法错误
+code_snippet:
+  Triton: "# ========== tl.constexpr 正确/错误用法示例 ==========\n# 正确: 内核参数中使用tl.constexpr\n\
+    @triton.jit\ndef constexpr_correct_kernel(\n    input_ptr, output_ptr, n_elements,\n\
+    \    BLOCK_SIZE: tl.constexpr  # 仅内核参数允许\n):\n    pid = tl.program_id(0)\n   \
+    \ offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offsets <\
+    \ n_elements\n    data = tl.load(input_ptr + offsets, mask=mask)\n    tl.store(output_ptr\
+    \ + offsets, data * 2, mask=mask)\n\n# 错误: Host侧使用tl.constexpr\ndef forward_error(input_tensor):\n\
+    \    # 禁止在Host侧参数声明中使用\n    # BLOCK_SIZE: tl.constexpr = 128\n    BLOCK_SIZE =\
+    \ 128  # Host侧直接用普通变量\n    output = torch.empty_like(input_tensor)\n    n_elements\
+    \ = input_tensor.numel()\n    grid = (triton.cdiv(n_elements, BLOCK_SIZE),)\n\
+    \    constexpr_correct_kernel[grid](input_tensor, output, n_elements, BLOCK_SIZE)"
+performance_boost: 0%
+note: tl.constexpr是Triton编译期常量标记，仅内核参数支持；910b2/910b3平台对该语法的校验无容错，违反会直接编译失败
+version: v1.0

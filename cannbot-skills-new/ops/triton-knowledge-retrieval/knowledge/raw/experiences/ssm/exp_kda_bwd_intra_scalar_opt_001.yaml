@@ -1,0 +1,48 @@
+experience_id: exp_kda_bwd_intra_scalar_opt_001
+match_cond:
+  operator_type: SSM
+  compute_pattern: chunk_kda_bwd_intra
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    K:
+    - '>=64'
+    T:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 标量消除
+framework_tag:
+- Triton
+optimization_points:
+- 瓶颈: chunk_kda_bwd_kernel_intra实测AIV scalar_ratio=41.4%，AIC scalar_ratio=31.4%，AIC MAC=2.1%，AIV MTE2=37.9%
+- 标量根因: 28+处block_ptr load/store都带boundary_check；10+处i32 LT/GT/LE/GE mask比较；8处min()运行时分支；非SAFE_GATE路径的逐行标量循环
+- 核心优化1: 4处store和24+处load从block_ptr改为手动指针+向量化mask，消除boundary_check标量开销
+- 核心优化2: 所有mask比较（m_k, m_dA, m_i_diag_qk, m_j_diag_qk等）改为fp32比较
+- 核心优化3: min()全部改为tl.where
+- 核心优化4: tl.cdiv(T_local - i_t*BT, BC)改为基于rows_in_chunk的条件计算
+- 推荐顺序: Phase1 block_ptr store→fp32比较→min→tl.cdiv；Phase2处理MTE2
+- 预期效果: AIV scalar从41.4%降至<20%，AIC scalar从31.4%降至<15%
+code_snippet:
+  Triton: "# block_ptr store → 手动指针 + mask\n\
+    o_i = tl.arange(0, BC)\n\
+    o_k = tl.arange(0, BK)\n\
+    m_ti = (i_ti + o_i).to(tl.float32) < T_local.to(tl.float32)\n\
+    m_k  = o_k.to(tl.float32) < K.to(tl.float32)\n\
+    BC_BK_mask = m_ti[:, None] & m_k[None, :]\n\
+    p_dq2 = dq2_local + (i_ti + o_i[:, None]) * H * K + o_k[None, :]\n\
+    tl.store(p_dq2, b_dq2.to(dq2.dtype.element_ty), mask=BC_BK_mask)\n\
+    \n\
+    # i32 比较 → fp32\n\
+    m_i_diag_qk = (o_i_f[:, None] >= o_i_f[None, :]) & ((i_ti + o_i_f[:, None]) < T_local_f)"
+performance_boost: 50%
+note: intra kernel与wy_dqkg_fused的差异：intra已经正确使用i32（无i64问题），但标量占比仍极高，说明block_ptr boundary_check和i32比较是主要根因。优化时需特别注意转置dAqk/dAkk加载的mask布局。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

@@ -1,0 +1,47 @@
+experience_id: exp_fused_norm_rope_matmul_001
+match_cond:
+  operator_type: Fused Operations
+  compute_pattern: Matmul + RMSNorm + RoPE
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=1'
+    K:
+    - '>=1'
+    seq_len:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_unit_isolation: The kernel explicitly utilizes `dl.async_task` to dispatch
+    the matrix multiplication (`partial_matmul_kernel`) to the Cube unit and the normalization/RoPE
+    operations (`fused_single_norm_and_partial_rope_kernel`) to the Vector unit. This
+    maximizes utilization by allowing the specialized hardware units to operate in
+    parallel or pipelined fashion.
+- operator_fusion: RMSNorm and Rotary Positional Embedding (RoPE) are fused into a
+    single kernel execution stream. This significantly reduces global memory read/write
+    overhead by keeping intermediate data in high-speed memory or registers, avoiding
+    the need to write back normalized activations before applying RoPE.
+- asynchronous_pipeline: By using `scope=dl.async_task.cube` and `scope=dl.async_task.vector`,
+    the implementation enables asynchronous execution. This allows the compute-intensive
+    matrix multiplication on the Cube to potentially overlap with the vector operations
+    or data movement, effectively hiding latency and improving throughput.
+performance_boost: 35%
+note: This optimization is highly effective for Transformer decoder layers (e.g.,
+  LLaMA, GPT) where Matmul is followed by Norm and RoPE. It requires the underlying
+  hardware and compiler stack (e.g., CANN with Triton) to support the `dl` dialect
+  and heterogeneous task scheduling.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/081-fused_single_norm_rope_matmul_kernel.py

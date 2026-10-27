@@ -1,0 +1,46 @@
+experience_id: exp_moe_wgrad_npu_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Vector Dot Product
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    NUM_COLUMNS:
+    - '>=128'
+    BLOCK_SIZE:
+    - '>=1'
+    BLOCK_X:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- memory_alignment: The use of `tl.multiple_of` for pointer arithmetic ensures that
+    memory addresses adhere to the strict alignment requirements of the NPU (e.g.,
+    32-byte boundaries), which is critical for enabling high-efficiency memory load/store
+    instructions and avoiding hardware exceptions or penalties.
+- precision_promotion: Intermediate accumulation is performed in `tl.float32` (`acc`),
+    while inputs are cast from lower precision (`fp16`/`bf16`). This prevents numerical
+    precision loss and overflow during the reduction of large vectors, which is a
+    common issue in mixed-precision training.
+- ilp_batching: The kernel processes multiple tokens (`BLOCK_SIZE`) per program ID
+    within the `for idx_in_block` loop. This increases Instruction Level Parallelism
+    (ILP), effectively hiding memory latency by overlapping the computation of one
+    token with the memory loads of another.
+- vectorized_loads: The inner loop iterates with a step of `BLOCK_X`, loading chunks
+    of the vector. Tuning `BLOCK_X` to match the NPU's vector register width (e.g.,
+    128 bytes) ensures that each load instruction maximizes the data bus utilization.
+performance_boost: 25%
+note: This kernel is specifically designed for the sparse weight gradient calculation
+  in Mixture of Experts (MoE) layers. The performance relies heavily on `BLOCK_X`
+  being a multiple of the hardware's native vector width to ensure full vectorization.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/004-_binned_copy_wgrad_npu.py

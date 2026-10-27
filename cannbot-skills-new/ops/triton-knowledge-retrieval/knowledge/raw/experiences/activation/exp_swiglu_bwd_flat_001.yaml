@@ -1,0 +1,42 @@
+experience_id: exp_swiglu_bwd_flat_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Operations
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    total_elements:
+    - '>=4096'
+    BLOCK_SIZE:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- software_pipelining: Utilizes `tl.range` with the `num_stages` parameter to implement
+    software pipelining. This overlaps memory load operations (fetching dc, a, b)
+    with arithmetic computations (sigmoid, multiplication), effectively hiding global
+    memory latency.
+- kernel_fusion: Fuses the entire backward pass logic for the SwiGLU activation into
+    a single kernel. It computes gradients `da` and `db` directly without writing
+    intermediate results (like `sig_a` or `silu_a`) back to global memory, significantly
+    reducing memory bandwidth pressure.
+- precision_management: Casts input tensors to `tl.float32` before performing the
+    derivative calculations. This ensures numerical stability during the computation
+    of the SiLU derivative term (`silu_a * (1.0 - sig_a) + sig_a`), which can be sensitive
+    to precision loss in lower precision formats.
+performance_boost: 35%
+note: This kernel assumes a flat 1D memory layout for the input tensors. It is optimized
+  for scenarios where the activation layer is memory-bound.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/106-_swiglu_backward_kernel_flat.py

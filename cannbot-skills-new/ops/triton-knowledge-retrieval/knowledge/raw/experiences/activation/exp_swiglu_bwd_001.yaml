@@ -1,0 +1,58 @@
+experience_id: exp_swiglu_bwd_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise Operations
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- activation_recomputation: The kernel employs a recomputation strategy for the sigmoid
+    and SiLU functions during the backward pass. By recalculating these values locally
+    instead of storing them in global memory during the forward pass, it significantly
+    reduces memory bandwidth consumption and memory footprint, which is critical for
+    large batch sizes.
+- mixed_precision_computation: To ensure numerical stability, the input tensor 'a'
+    is explicitly cast to float32 before the sigmoid operation. This prevents potential
+    underflow or overflow issues inherent to half-precision formats (fp16/bf16) when
+    calculating exponential functions, while the rest of the arithmetic can leverage
+    hardware acceleration for lower precision.
+- vectorized_block_processing: The kernel loads and stores data in chunks defined
+    by BLOCK_SIZE. This maximizes global memory throughput by ensuring memory accesses
+    are coalesced and aligned with the hardware's cache line size, reducing the number
+    of memory transactions.
+- Optimization Point 1: Dynamic Block Size Tuning. The kernel utilizes `@triton.autotune`
+    to search for the optimal `BLOCK_SIZE_M` (ranging from 1 to 32) at runtime. This
+    is critical for element-wise operations on matrices with varying row counts, ensuring
+    that the thread block size aligns well with the hardware's memory access granularity
+    and minimizing tail effects.
+- Optimization Point 2: FP32 Intermediate Precision. To guarantee numerical stability
+    during the backward pass, the kernel casts input tensors to `float32` (`a_f32`)
+    before computing the sigmoid and SiLU derivatives. This prevents precision loss
+    and potential underflow/overflow that can occur when computing non-linear activation
+    gradients directly in `fp16` or `bf16`.
+- Optimization Point 3: Efficient Loop Tiling. The implementation uses a nested loop
+    structure where the outer loop handles rows (tuned by `BLOCK_SIZE_M`) and the
+    inner loop handles columns (`BLOCK_SIZE_N`). This approach maximizes data locality
+    and allows the kernel to process matrices of arbitrary dimensions that exceed
+    the register file capacity by iterating over tiles.
+performance_boost: 25%
+note: This kernel is specifically optimized for the SwiGLU backward pass. The separation
+  of gradient calculations for 'a' and 'b' allows for efficient memory reuse of the
+  loaded input chunks within the same block iteration.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/212-_swiglu_bwd_kernel.py

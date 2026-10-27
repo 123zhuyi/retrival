@@ -1,0 +1,9 @@
+{
+  "description": "源 benchmark 与用户数据目录只读保护配置。匹配路径禁止 Write/Edit 和 Bash 删除/修改/覆盖，但允许 Read/Grep/Glob 等只读访问。",
+  "protected_patterns": [
+    "(?:^|(?<=[\\s/]))npu_benchmark(?:/[^/\\s]*)*(?=$|[/\\s])",
+    "(?:^|(?<=[\\s/]))ascendc-kernelgen-data[^/\\s]*(?:/[^/\\s]*)*(?=$|[/\\s])",
+    "(?:^|(?<=[\\s/]))ascendc-kernelgen-dataset(?:/[^/\\s]*)*(?=$|[/\\s])"
+  ],
+  "protected_exact_paths": []
+}

@@ -1,0 +1,72 @@
+experience_id: exp_sdpa_flash_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - bf16
+  - fp16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    HEAD_DIM:
+    - <=128
+    BLOCK_M:
+    - '>=64'
+    BLOCK_N:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- tiling_strategy: Implements a block-wise tiling approach (BLOCK_R for Q rows, BLOCK_C
+    for K/V columns) to load Key and Value tiles into SRAM once and reuse them across
+    multiple Query row blocks. This significantly reduces HBM (High Bandwidth Memory)
+    access frequency compared to a naive implementation.
+- online_softmax: Utilizes the online softmax algorithm (iteratively updating max
+    value `m` and sum of exp `l`) to compute attention probabilities and output incrementally.
+    This avoids materializing the large N x N attention matrix in global memory, drastically
+    lowering memory footprint and bandwidth consumption.
+- autotuning_config: Employs `@triton.autotune` with a comprehensive search space
+    over block sizes (e.g., 128x128, 64x128) and multibuffer settings. This allows
+    the kernel to dynamically select the optimal configuration that maximizes Tensor
+    Core utilization and minimizes latency for specific sequence lengths (S) and head
+    dimensions (H).
+- software_pipelining: Leverages the `multibuffer` configuration option to overlap
+    memory load operations (for K and V tiles) with compute operations (matrix multiplications).
+    This effectively hides memory latency, keeping the compute units busy.
+- mixed_precision_computation: Performs matrix multiplications (`tl.dot`) in `bf16`
+    (LOW_TYPE) to maximize hardware throughput, while maintaining softmax statistics
+    and accumulation in `fp32` (HIGH_TYPE) to preserve numerical stability during
+    the exponential and reduction operations.
+- online_softmax: Implements the online softmax algorithm (FlashAttention style) by
+    tracking running maximums (m_i) and normalization factors (l_i) incrementally.
+    This avoids materializing the large N x N attention matrix in high-bandwidth memory
+    (HBM), drastically reducing memory traffic.
+- kernel_fusion: Fuses the QK^T matrix multiplication, Softmax activation, and PV^T
+    matrix multiplication into a single kernel loop. This eliminates the need to write
+    intermediate attention scores (S) and softmax output (P) back to global memory.
+- block_tiling: Processes data in tiles defined by BLOCK_M, BLOCK_N, and BLOCK_D.
+    This maximizes data reuse in the on-chip memory (SRAM/Cache) by keeping blocks
+    of Q, K, and V resident while performing multiple compute operations.
+- efficient_boundary_handling: Utilizes tl.load with boundary_check and padding_option="zero".
+    This efficiently handles sequence lengths that are not perfectly divisible by
+    the block size without introducing expensive branching logic or complex index
+    calculations inside the kernel loop.
+- mixed_precision_accumulation: Casts the softmax probabilities (p) to the data type
+    of the Value tensor (k_T.dtype) before the final dot product. This allows the
+    use of lower precision formats (like FP8) for the accumulation phase when fp8_v
+    is enabled, reducing memory bandwidth while maintaining FP32 stability for the
+    softmax statistics.
+performance_boost: 200%
+note: This function represents the inner loop of a FlashAttention-style kernel. It
+  assumes that the input pointers (K_T_block_ptr, V_block_ptr) are advanced correctly
+  by an outer loop. The fp8_v flag enables low-precision computation for the Value
+  projection.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/253-_sdpa_infer_single_block.py

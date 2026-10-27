@@ -1,0 +1,50 @@
+experience_id: exp_groupnorm_001
+match_cond:
+  operator_type: Normalization Operations
+  compute_pattern: Group Normalization
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    group_size:
+    - '>=1'
+    HW:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_vectorization_tuning: The kernel employs an extensive autotuning configuration
+    for `BLOCK_SUB_HW_SIZE`, sweeping values from 32 to 16384. This allows the runtime
+    to select the optimal vectorization width for the HW dimension, balancing instruction
+    overhead against memory bandwidth saturation and cache capacity for specific tensor
+    shapes.
+- coalesced_memory_access_pattern: The memory access logic is structured to iterate
+    over the HW dimension (`hw_offsets`) as the inner-most stride. By calculating
+    `base_offset` using `channel_offset * HW + hw_offsets`, the kernel ensures that
+    loads and stores are contiguous in global memory, maximizing memory bus utilization.
+- high_precision_accumulation: To ensure numerical stability during reduction, the
+    kernel casts input data to `tl.float32` before accumulating `X_sum` and `X_var_sum`.
+    This prevents precision loss or overflow that can occur when summing a large number
+    of elements in lower precision formats (fp16/bf16).
+- three_pass_algorithm: The computation is split into three distinct passes (Mean
+    calculation, Variance calculation, and Normalization). While this increases global
+    memory read traffic (loading X three times), it significantly reduces register
+    pressure and simplifies the control flow compared to a single-pass fused approach,
+    enhancing stability for autotuning.
+performance_boost: 25%
+note: This implementation is optimized for stability and ease of tuning via the three-pass
+  method. It is best suited for scenarios where HW dimensions are large enough to
+  amortize the memory access overhead.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/122-group_norm_kernel.py

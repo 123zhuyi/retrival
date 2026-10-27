@@ -1,0 +1,51 @@
+experience_id: exp_mm_grouped_reorder_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- pid_grouping_strategy: The kernel implements a program ID reordering logic based
+    on GROUP_M. It groups consecutive M-blocks together before switching to the next
+    N-block. This significantly enhances L2 cache data locality for matrix A, as the
+    same tiles of A are loaded once and reused for multiple columns of B within the
+    group.
+- register_rematerialization: To alleviate register pressure during the compute-intensive
+    accumulation loop, the output indices (rm, rn) are not kept in registers. Instead,
+    they are rematerialized (recalculated) just before the store phase. This frees
+    up valuable register space for the accumulator and intermediate data blocks.
+- conditional_masking: The kernel utilizes a compile-time heuristic (EVEN_K) to optimize
+    memory loads. When K is perfectly divisible by BLOCK_K, it bypasses mask generation
+    and uses unmasked loads, reducing instruction overhead and improving memory bandwidth
+    utilization.
+- strict_precision_enforcement: The dot product operation explicitly sets allow_tf32=False.
+    This ensures that the hardware does not trade numerical accuracy for speed by
+    using lower-precision formats (like TF32), guaranteeing FP32-level precision for
+    the accumulation.
+performance_boost: 25%
+note: This kernel is designed for high-performance GEMM scenarios where L2 cache bandwidth
+  is a bottleneck. The use of libtuner and heuristics suggests it adapts block sizes
+  dynamically.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/141-mm_kernel.py

@@ -1,0 +1,49 @@
+experience_id: exp_matmul_003
+match_cond:
+  operator_type: AIC
+  compute_pattern: 矩阵乘法
+  data_type:
+  - float
+  - float16
+  - bfloat16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=256'
+    k:
+    - '>=256'
+  optimization_level: high
+  tensor_shape:
+  - nd
+  left_matrix_transpose: false
+  right_matrix_transpose: false
+experience_type: 切分优化
+framework_tag:
+- Triton
+optimization_points:
+- 分块策略: 适配Ascend后端512B行宽整数倍要求，M0=128、K0=256、N0=256划分分块行宽，单次行数最大化以充分发挥带宽
+- 带宽优化: 分块行宽严格对齐512B整数倍，减少访存碎片，提升Ascend后端带宽利用率
+- 数据复用: 大行数分块设计提升单次加载数据的计算复用率
+code_snippet:
+  Triton: "@triton.jit def matmul_no_trans_kernel(x, y, output, M, N, K, BLOCK_M=128,\
+    \ BLOCK_K=256, BLOCK_N=256, **kwargs):\n    # A、B都不转置 - 适配Ascend 512B行宽的分块代码\n\
+    \    pid = triton.program_id(0)\n    rm = pid // (N // BLOCK_N)\n    rn = pid\
+    \ % (N // BLOCK_N)\n    # 按M0=128、K0=256、N0=256分块计算指针\n    x_ptr = x + rm * BLOCK_M\
+    \ * K + triton.arange(0, BLOCK_M)[:, None] * K + triton.arange(0, BLOCK_K)[None,\
+    \ :]\n    y_ptr = y + rn * BLOCK_N + triton.arange(0, BLOCK_K)[:, None] * N +\
+    \ triton.arange(0, BLOCK_N)[None, :]\n    acc = triton.zeros((BLOCK_M, BLOCK_N),\
+    \ dtype=triton.float32)\n    for k in range(0, K, BLOCK_K):\n        a = triton.load(x_ptr,\
+    \ mask=triton.arange(0, BLOCK_K)[None, :] < K - k, other=0.0)\n        b = triton.load(y_ptr,\
+    \ mask=triton.arange(0, BLOCK_K)[:, None] < K - k, other=0.0)\n        acc +=\
+    \ a @ b\n        x_ptr += BLOCK_K\n        y_ptr += BLOCK_K * N\n    acc = acc.to(x.dtype)\n\
+    \    output_ptr = output + rm * BLOCK_M * N + triton.arange(0, BLOCK_M)[:, None]\
+    \ * N + triton.arange(0, BLOCK_N)[None, :]\n    triton.store(output_ptr, acc,\
+    \ mask=triton.arange(0, BLOCK_M)[:, None] < M - rm * BLOCK_M and triton.arange(0,\
+    \ BLOCK_N)[None, :] < N - rn * BLOCK_N)"
+performance_boost: 10%
+note: 适用于A、B矩阵均不转置的matmul场景，分块行宽严格对齐Ascend后端512B整数倍要求，最大化带宽利用
+version: v1.0

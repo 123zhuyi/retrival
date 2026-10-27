@@ -1,0 +1,48 @@
+experience_id: exp_attn_ptr_setup_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_M:
+    - '>=128'
+    HEAD_DIM:
+    - '>=64'
+    SUB_BLOCK_M:
+    - '>=32'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_pointer_abstraction: Utilizes tl.make_block_ptr to handle 2D tensor blocks
+    efficiently. This replaces manual pointer arithmetic, enabling the compiler to
+    generate optimized vectorized load/store instructions and handle boundary conditions
+    (padding) automatically.
+- sub_blocking_strategy: Implements a 4-way sub-blocking strategy by dividing BLOCK_M
+    into four SUB_BLOCK_M segments (a, b, c, d). This micro-tiling is designed to
+    match the hardware's pipeline depth or cache line size, facilitating software
+    pipelining and instruction-level parallelism (ILP) to hide memory latency.
+- workspace_pointer_preparation: Pre-calculates and organizes pointers for four distinct
+    workspace buffers (WS1, WS2, WS3, WS4) alongside their sub-block pointers. This
+    offloads address calculation overhead from the main kernel loop, ensuring that
+    intermediate storage for attention scores (QK^T) and softmax results is readily
+    accessible.
+- layout_agnostic_strides: Explicitly handles multiple stride parameters (stride_qz,
+    stride_qh, stride_kn, etc.), allowing the kernel to support various tensor memory
+    layouts (e.g., non-contiguous or transposed) without requiring expensive data
+    reordering prior to the kernel launch.
+performance_boost: 25%
+note: This function serves as a pointer setup utility for a FlashAttention-style kernel.
+  The specific 4-way split of the M-dimension suggests a tuning for the Ascend 910B
+  series' vector or cube unit capabilities.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/053-get_params.py

@@ -1,0 +1,47 @@
+experience_id: exp_chunk_fwd_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Chunkwise Linear Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    T:
+    - '>=128'
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+    BT:
+    - '>=16'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_tiling: Utilizes `tl.make_block_ptr` to efficiently load 2D blocks of
+    Q, K, V, and H tensors. This optimizes memory coalescing and leverages hardware
+    load/store units to maximize bandwidth utilization.
+- fused_gating_masking: Integrates the exponential gating logic (`exp(g)`) and causal
+    masking (`m_A`) directly within the main computation loop. This fusion reduces
+    memory traffic by avoiding the storage and reloading of intermediate attention
+    matrices.
+- mixed_precision_accumulation: Performs matrix multiplications (`tl.dot`) and accumulates
+    results in `float32` (`b_o`, `b_A`) before casting to the output dtype. This ensures
+    numerical stability during the recurrent state updates and attention score accumulation.
+- layout_optimization: Handles the implicit data layout requirements for Tensor Core
+    (MMA) operations. The code structure ensures that data loaded into registers is
+    aligned for `tl.dot` operations, minimizing the overhead associated with layout
+    conversions (e.g., row-major to column-major).
+code_snippet:
+  TritonPath: chunk_fwd_kernel_o
+performance_boost: 35%
+note: This kernel is designed for chunkwise linear attention or state-space models
+  (like RWKV/Mamba). It supports variable-length sequences via `cu_seqlens` and includes
+  logic for recurrent state updates (`h`).
+version: v1.0

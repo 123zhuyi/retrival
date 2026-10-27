@@ -1,0 +1,64 @@
+experience_id: exp_matmul_ascend_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    M:
+    - '>=128'
+    N:
+    - '>=128'
+    K:
+    - '>=128'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- scheduling_strategy: The kernel implements a static scheduling strategy using a
+    stride loop `range(pid, NUM_BLOCKS, NUM_CORES)` combined with a `grouped_launch_diagonal`
+    function. This diagonal traversal pattern optimizes cache locality by ensuring
+    that blocks processed by different cores are adjacent in memory, thereby reducing
+    memory access contention and improving L2 cache hit rates.
+- compile_hint_optimization: The code utilizes `dl.compile_hint` with the argument
+    `"dot_pad_only_k"`. This is a critical hardware-specific optimization that instructs
+    the compiler to pad the input tensors exclusively along the K-dimension to satisfy
+    the alignment requirements of the hardware's matrix multiplication unit (e.g.,
+    the Ascend Cube Unit). This avoids the memory overhead and computational waste
+    associated with padding the entire M and N dimensions.
+- boundary_handling: Efficient handling of matrix dimensions that are not multiples
+    of the block size using `tl.load` with explicit masks. This ensures correctness
+    for arbitrary matrix sizes without requiring pre-processing or padding of the
+    input tensors by the user, maintaining high throughput for edge cases.
+- static_scheduling_with_grouped_launch: The kernel implements a static scheduling
+    strategy by iterating `block_idx` with a stride of `NUM_CORES`. It utilizes a
+    `grouped_launch_diagonal` helper function to map linear block IDs to 2D matrix
+    coordinates. This approach likely employs a diagonal or wavefront traversal order,
+    which optimizes data locality and load balancing across the NPU cores compared
+    to a simple row-major traversal.
+- hardware_specific_dot_instruction_hint: The code explicitly applies `dl.compile_hint(...,
+    "dot_pad_only_k")` to the loaded data blocks. This is a critical optimization
+    for Ascend hardware (910B series), instructing the compiler to pad the K-dimension
+    specifically for the DOT/Cube instruction. This ensures that the data layout fed
+    to the vector unit meets the hardware's alignment requirements without the overhead
+    of padding the entire tile, significantly improving compute unit utilization.
+- in_place_accumulation_strategy: The accumulation loop uses `tl.dot` by passing the
+    existing accumulator `mat_c_block` as the third argument. This enables in-place
+    accumulation within the register file, reducing register pressure and minimizing
+    the instruction count associated with moving intermediate results between different
+    register banks or memory hierarchies.
+performance_boost: 35%
+note: This kernel is specifically designed for the Ascend software stack, utilizing
+  the `dl` dialect for hardware-specific compile hints. The `grouped_launch_diagonal`
+  function is an external dependency that must be defined to handle the block-to-coordinate
+  mapping.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/047-matmul_kernel.py

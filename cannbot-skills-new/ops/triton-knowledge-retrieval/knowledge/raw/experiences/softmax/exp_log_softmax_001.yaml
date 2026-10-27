@@ -1,0 +1,53 @@
+experience_id: exp_log_softmax_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: LogSoftmax
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    M:
+    - '>=1'
+    N:
+    - '>=1'
+    K:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_algorithm: The kernel implements a two-pass strategy to handle the reduction
+    over dimension N. The first pass iterates over N in tiles to compute the running
+    maximum (m) and the sum of exponentials (z). The second pass iterates again to
+    apply the log_softmax formula using the reduced values. This decouples the reduction
+    phase from the element-wise computation phase, allowing the kernel to handle sequences
+    (N) much larger than the SRAM/Cache capacity.
+- numerical_stability: It employs the "max trick" (Online Softmax algorithm) to prevent
+    numerical overflow/underflow. By tracking the running maximum `m` and adjusting
+    the exponential calculation as `tl.exp(inp - m_new)`, it ensures that values passed
+    to the exponential function remain within a stable range, even before the final
+    global maximum is known.
+- tiled_memory_access: The loop over the reduction dimension N is blocked by `BLOCK_N`.
+    This ensures that memory loads from global memory are coalesced and occur in large,
+    contiguous chunks, significantly improving memory bandwidth utilization compared
+    to a scalar or strided access pattern.
+- autotuning_configuration: The kernel utilizes `@triton.autotune` with `runtime.get_tuned_config`.
+    This allows the system to select the optimal `BLOCK_M` and `BLOCK_N` tile sizes
+    at runtime based on the specific shapes of M and N, ensuring the kernel is performant
+    across a wide range of input dimensions without manual tuning.
+code_snippet:
+  TritonPath: log_softmax_kernel.py
+performance_boost: 30%
+note: This implementation is optimized for scenarios where the reduction dimension
+  N is large. The use of `pid_k` allows the kernel to batch process across the K dimension,
+  effectively treating the input as a batch of matrices.
+version: v1.0

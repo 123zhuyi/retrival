@@ -1,0 +1,48 @@
+experience_id: exp_paged_attn_flash_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Paged Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_M:
+    - '>=64'
+    BLOCK_N:
+    - '>=64'
+    head_size:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- Paged Memory Access Strategy: Utilizes `Block_offsets` to calculate physical addresses
+    for K and V tensors dynamically. This allows the kernel to handle non-contiguous
+    KV cache blocks (pages) efficiently, which is critical for managing variable-length
+    sequences and memory fragmentation in LLM inference.
+- FlashAttention-style Online Softmax: Implements the online softmax algorithm by
+    maintaining running statistics `m_i` (maximum logit) and `l_i` (sum of exponentials)
+    in registers/SRAM. The output accumulator `acc` is updated incrementally within
+    the KV loop, avoiding the materialization of the large $N \times N$ attention
+    matrix in HBM and significantly reducing memory bandwidth pressure.
+- Head Dimension Tiling: Supports arbitrary head dimensions by splitting the load
+    and compute into `BLOCK_DMODEL` and `BLOCK_DMODEL1` (remainder). This ensures
+    the kernel can handle model configurations where the head size is not a multiple
+    of the standard tile size (e.g., 128) without performance degradation or code
+    duplication.
+- Vectorized Masking and Softcapping: Integrates causal masking, sliding window attention
+    (`window_size`), and logit softcapping (`tanh`) directly into the compute loop
+    using vectorized operations like `tl.where`. This approach minimizes control flow
+    divergence and ensures that masking logic does not introduce significant overhead.
+performance_boost: 35%
+note: Supports Grouped Query Attention (GQA) through the `kv_group_num` parameter
+  and handles variable sequence lengths via `Q_seqlens` and `KV_seqlens`.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/019-_fwd_kernel.py

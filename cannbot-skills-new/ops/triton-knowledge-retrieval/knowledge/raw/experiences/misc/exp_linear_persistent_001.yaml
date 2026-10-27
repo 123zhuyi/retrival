@@ -1,0 +1,49 @@
+experience_id: exp_linear_persistent_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- persistent_kernel_grid_stride_loop: The kernel utilizes a fixed-size 1D grid (`GRID_SIZE`)
+    where each program iterates over multiple output blocks via `for block_index in
+    range(pid, total_blocks, GRID_SIZE)`. This strategy significantly reduces kernel
+    launch overhead and maintains high hardware occupancy by keeping compute units
+    active throughout the processing of multiple tiles, rather than launching a new
+    program instance for every single tile.
+- explicit_software_transpose: Matrix B is loaded with shape [BLOCK_N, BLOCK_K] and
+    explicitly transposed to [BLOCK_K, BLOCK_N] using `tl.trans` before the `tl.dot`
+    operation. This allows the kernel to handle B's memory layout flexibly (potentially
+    optimizing for cache locality during the load phase) while satisfying the input
+    requirements of the matrix multiplication unit.
+- boundary_safe_tiling: Implements robust boundary handling using dynamic masks (`m_mask`,
+    `n_mask`, `k_mask`) derived from `tl.arange`. This ensures correct computation
+    and memory access for matrices where dimensions (M, N, K) are not integer multiples
+    of the block sizes (BLOCK_M, BLOCK_N, BLOCK_K), preventing out-of-bounds errors
+    without requiring input padding.
+code_snippet:
+  TritonPath: linear_persistent_kernel
+performance_boost: 25%
+note: This persistent kernel pattern is highly effective for large-scale matrix multiplications
+  where the number of output tiles exceeds the number of available physical cores,
+  minimizing the latency associated with kernel scheduling and launch.
+version: v1.0

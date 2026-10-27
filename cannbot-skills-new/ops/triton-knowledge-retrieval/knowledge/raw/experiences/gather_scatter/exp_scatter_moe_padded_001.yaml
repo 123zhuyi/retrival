@@ -1,0 +1,48 @@
+experience_id: exp_scatter_moe_padded_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Scatter with Scaling
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    NUM_COLUMNS:
+    - '>=64'
+    INDICES_LENGTH:
+    - '>=1024'
+    BLOCK_SIZE:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- expert_grouping_strategy: The kernel leverages sorted bin_ids to group tokens by
+    expert within a SUB_BLOCK_SIZE. By calculating bin_count from the first and last
+    element, it processes contiguous segments of the same expert, reducing pointer
+    recalculation overhead and ensuring contiguous memory access patterns for the
+    source tensor x.
+- vectorized_memory_access: Utilizes BLOCK_X tiling to process the feature dimension
+    (NUM_COLUMNS) in vectorized chunks. The load operation cur_x = tl.load(...) fetches
+    a block of (SUB_BLOCK_SIZE, BLOCK_X), maximizing global memory bandwidth utilization
+    compared to scalar or small-vector accesses.
+- padding_alignment_support: Explicitly handles padded_bins to calculate source offsets.
+    This ensures that memory accesses to the input tensor x are aligned to hardware-friendly
+    boundaries (e.g., 32 or 64 bytes), which is critical for avoiding bank conflicts
+    and achieving peak memory throughput on Ascend hardware.
+- sub_block_tiling: Uses a two-level tiling strategy (BLOCK_SIZE for the grid, SUB_BLOCK_SIZE
+    for the loop). This allows the kernel to load a batch of indices and metadata
+    (bin_ids) once, reusing this information while iterating over the feature columns,
+    thus reducing global memory read pressure for metadata.
+performance_boost: 30%
+note: This kernel requires that the input bin_ids are sorted by expert ID. The performance
+  gain is most significant when the number of experts is large and the padding alignment
+  matches the hardware's memory transaction size.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/033-_padded_scatter_kernel.py

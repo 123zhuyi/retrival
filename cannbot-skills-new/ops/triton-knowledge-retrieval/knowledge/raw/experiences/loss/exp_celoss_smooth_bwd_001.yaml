@@ -1,0 +1,47 @@
+experience_id: exp_celoss_smooth_bwd_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: CrossEntropyLoss Backward
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    C:
+    - '>=128'
+    D:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_pass_algorithm: The kernel implements a two-pass reduction strategy. The first
+    loop iterates over the class dimension (C) to compute the global maximum (log-sum-exp
+    trick) and the normalization denominator (sum of weights). The second loop computes
+    the actual gradients. This avoids materializing the large intermediate Softmax
+    probability tensor, significantly reducing memory bandwidth pressure.
+- numerical_stability: Utilizes the "online softmax" algorithm within the reduction
+    loop. By incrementally updating the running maximum and sum (`cur_max`, `tmp_sum
+    * tl.exp(tmp_max - cur_max)`), it ensures numerical stability for floating-point
+    accumulation, which is critical when using fp16 or bf16 data types.
+- vectorized_tiling: Employs 2D block tiling (`BLOCK_C` x `BLOCK_D`) to process the
+    logits and targets. This maximizes global memory throughput by ensuring loads
+    and stores are coalesced, and allows efficient utilization of the SRAM/Cache.
+- logic_fusion: Fuses the label smoothing calculation and the `ignore_index` masking
+    directly into the gradient computation loop. This eliminates the need for separate
+    preprocessing kernels or extra memory reads for the smoothing factors.
+performance_boost: 30%
+note: This configuration is optimized for large vocabulary sizes (C) where storing
+  the full Softmax matrix is prohibitive. The `do_not_specialize` attribute on scalar
+  arguments helps reduce compilation time for dynamic shapes.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/113-celoss_indices_smooth_bwd.py

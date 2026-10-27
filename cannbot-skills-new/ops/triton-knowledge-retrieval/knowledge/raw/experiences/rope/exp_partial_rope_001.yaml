@@ -1,0 +1,61 @@
+experience_id: exp_partial_rope_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Partial Rotary Positional Embedding
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    total_seq_len:
+    - '>=128'
+    ROPE_DIM:
+    - '>=32'
+    BLOCK:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_memory_access: The kernel utilizes `tl.arange(0, half_dim)` to load and
+    store contiguous chunks of the head dimension (`x_l`, `x_h`, `o_l`, `o_h`) as
+    vectors. This approach maximizes memory bandwidth utilization and enables the
+    hardware to leverage SIMD (Single Instruction, Multiple Data) capabilities for
+    data movement.
+- partial_rope_efficiency: The implementation explicitly calculates offsets starting
+    from `NOPE_DIM` (Non-rotated dimensions). By skipping the non-rotated portion
+    of the head dimension during the load/compute/store phases, the kernel optimizes
+    for modern architectures (like Llama-3) that utilize partial RoPE, saving significant
+    compute cycles compared to a full-dimension rotation.
+- fused_arithmetic_pipeline: The rotation calculations ($x \cos - y \sin$ and $y \cos
+    + x \sin$) are performed immediately on the loaded vector registers before storing.
+    This fusion keeps the data in the high-speed register file (or L1 cache) throughout
+    the transformation, eliminating the latency overhead of writing intermediate results
+    back to global memory.
+- vectorized_load_splitting: The COS and SIN embeddings are loaded in two separate
+    vectorized operations for the lower (`_l`) and upper (`_h`) halves of the rotary
+    dimension. This aligns memory access patterns with the complex number rotation
+    logic (treating pairs as real/imaginary components), maximizing vector unit utilization
+    and reducing instruction count.
+- explicit_core_scheduling: The kernel utilizes a grid-stride loop pattern `range(pid,
+    NUM_BLOCKS, NUM_CORES)` to statically distribute work across the available AI
+    cores. This explicit scheduling minimizes synchronization overhead and ensures
+    optimal load balancing on NPU architectures like the 910 series.
+- block_masking_efficiency: Boundary conditions for sequence length are handled via
+    `pos_mask` and `seq_mask` applied during the load of COS/SIN and implicitly passed
+    to the compute function. This avoids branching within the inner loop and maintains
+    high throughput for sequences not perfectly divisible by the block size.
+code_snippet:
+  TritonPath: partial_rope_qk_kernel
+performance_boost: 25%
+note: The `NUM_CORES` parameter is critical for performance and should be tuned to
+  match the physical core count of the specific NPU chip (e.g., 32 for 910B) to maximize
+  parallelism.
+version: v1.0

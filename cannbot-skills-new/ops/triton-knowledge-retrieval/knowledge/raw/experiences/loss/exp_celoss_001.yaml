@@ -1,0 +1,60 @@
+experience_id: exp_celoss_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Cross Entropy Loss
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    C:
+    - '>=128'
+    D:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- numerical_stability: Implements the Online LogSumExp algorithm within the reduction
+    loop. By iteratively tracking the maximum value (`tmp_max`) and scaling the exponential
+    sum (`tmp_sum`), the kernel prevents floating-point overflow/underflow that typically
+    occurs when computing `log(sum(exp(x)))` on large logits.
+- vectorized_memory_access: Utilizes 2D tiling strategy with `BLOCK_C` and `BLOCK_D`
+    to load input logits. This maximizes global memory bandwidth utilization by reading
+    contiguous chunks of data and aligning with the hardware's cache line size, reducing
+    the number of memory transactions.
+- compilation_optimization: Applies `do_not_specialize=["ignore_index"]` in the JIT
+    decorator. This prevents the compiler from generating a unique kernel version
+    for every distinct `ignore_index` value, significantly reducing compilation time
+    and binary size while maintaining runtime flexibility.
+- conditional_masking: Handles the `ignore_index` logic using vectorized boolean masks
+    (`ignore_mask`) applied to the weights and outputs. This approach avoids expensive
+    conditional branching (divergence) within the GPU/NPU threads during the calculation
+    phase.
+- online_logsumexp: Implements a numerically stable LogSumExp algorithm by iteratively
+    updating the maximum value (`tmp_max`) and the sum of exponentials (`tmp_sum`)
+    in chunks. This prevents floating-point overflow or underflow during the reduction
+    over the class dimension `C`, which is critical for training stability.
+- operator_fusion: Fuses the label smoothing operation (`tgt * (1.0 - label_smoothing)
+    + label_smoothing / C`) and the weighting application directly into the loss calculation
+    loop. This eliminates the need for separate kernel launches and intermediate global
+    memory storage for the smoothed labels.
+- memory_tiling: Utilizes block-based processing with `BLOCK_C` and `BLOCK_D` to load
+    sub-matrices of the input and target tensors. This optimizes data reuse in cache/SRAM
+    and reduces the pressure on global memory bandwidth, especially beneficial when
+    the class dimension `C` is large.
+code_snippet:
+  TritonPath: celoss_probability_kernel
+performance_boost: 35%
+note: The kernel employs a two-pass strategy (one for LogSumExp, one for Loss calculation)
+  to balance register pressure and memory bandwidth. This is highly efficient for
+  scenarios where C is large, as it avoids keeping the entire C dimension in registers.
+version: v1.0

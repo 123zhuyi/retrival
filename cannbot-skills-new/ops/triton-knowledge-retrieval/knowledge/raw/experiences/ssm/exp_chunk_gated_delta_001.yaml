@@ -1,0 +1,51 @@
+experience_id: exp_chunk_gated_delta_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Chunked Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    k:
+    - '>=128'
+    v:
+    - '>=128'
+    bt:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- chunked_recurrence_strategy: The kernel implements a chunked processing strategy
+    for the gated delta rule recurrence. By processing the sequence in blocks of size
+    BT, it reduces the memory pressure and allows for efficient checkpointing of the
+    hidden state h to global memory, which is crucial for long sequences.
+- state_matrix_tiling: The hidden state matrix h (K x V) is explicitly split into
+    two tiles of size 128x64 (b_h1_bv1 and b_h1_bv2). This tiling strategy is designed
+    to fit the working set into the limited high-speed memory (SRAM/Registers) of
+    the AI Core, maximizing data reuse during the iterative update process.
+- block_ptr_memory_access: Utilizes tl.make_block_ptr for loading keys (k) and storing
+    outputs (h, v_new). This abstracts complex stride calculations and enables the
+    compiler to generate efficient vectorized memory instructions, optimizing global
+    memory bandwidth usage.
+- mixed_precision_accumulation: The accumulation of the hidden state (b_h1_bv1, b_h1_bv2)
+    is performed in FP32 to ensure numerical stability during the recurrence, while
+    the heavy computation (tl.dot) is cast to the input data type (fp16/bf16) to leverage
+    the high-throughput matrix units (Cube units).
+- heuristic_compilation: The use of @triton.heuristics allows the kernel to dynamically
+    handle optional features like gating (g), initial states (h0), and variable length
+    sequences (cu_seqlens) without requiring multiple kernel compilations, improving
+    deployment flexibility.
+performance_boost: 35%
+note: This kernel is highly optimized for scenarios where K and V dimensions align
+  with the 128x64 tiling strategy. It supports variable-length sequences natively
+  via cu_seqlens.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/160-chunk_gated_delta_rule_fwd_kernel_h_blockdim64.py

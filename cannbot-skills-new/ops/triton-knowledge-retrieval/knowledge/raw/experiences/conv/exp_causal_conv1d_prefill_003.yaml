@@ -1,0 +1,44 @@
+experience_id: exp_causal_conv1d_prefill_003
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Prefill (parallel strategy)
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    dim:
+    - '>=512'
+    batch:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- two_dimensional_grid_strategy: "采用 2D Grid = `(batch, cdiv(dim, BLOCK_D))` 并行方案。比 1D grid（每条序列一个 program）的优势：(1) 沿 D 维度展开并行，D=4096 时切成 4 个 BLOCK_D=1024 tile，SM 占用率 4 倍提升；(2) 每个 program 的计算密度更合理（1024 维而非 4096 维），避免寄存器溢出；(3) 遗传搜索验证：2D grid 比 1D→2D 方案低 25%，比 1D strided 方案低 39%。"
+- btd_layout_rationale: "Prefill 采用 BTD `[B, T, D]` 布局而非 Update 的 BDT。原因是 Prefill 阶段 seq_len 大（512-4096），BTD 布局下同一 token 的所有 D 维度元素连续存储（stride=1），一次 load 可获取 1024 个连续元素（32 cache lines），硬件预取高效。BDT 布局对长序列的逐 token 处理反而需要跨步访问（行间距 = seq_len），load 效率低。"
+- d_tile_only_no_t_tiling: "仅对 D 维度做 tile 化（BLOCK_D=1024），不对 T 维度做 tile 化——一个 program 处理整条序列的所有 T 个 token。原因是滑动窗口寄存器复用依赖跨 token 的寄存器移位，若 T 维度被切分，tile 边界需要跨 tile 状态传递，寄存器复用的优势会被 tile 边界处理逻辑抵消。"
+- grid_search_validated: "遗传搜索在 2 轮内收敛到 2D Grid 为全局最优：Round 1→Round 2 性能提升 26%（加入 DIM_IS_MULTIPLE + 指针预计算），Round 2→Round 3 提升 <1%（已接近硬件极限）。最终配置为 Route 1（2D Grid）+ Round 2（scalar-reduction），1.60x 平均加速比（最高 1.84x）。"
+performance_boost: "2D Grid vs 1D Grid: 25-39% 性能优势（搜索验证）; 整体 Prefill kernel: 1.60x 平均加速比"
+note: "2D Grid + BTD 布局是 Prefill 阶段的架构基础决策，与 Update kernel 的 1D Grid + BDT 布局 + T-tiling 形成互补——两者针对不同的 seq_len 范围（长 vs 短）做了相反的架构选择。选择依据见 tiling.md Layout-Driven Tile Size Selection 节。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_prefill_analysis.md §7.1 + §7.4
+code_snippet:
+  grid_launch: |
+    # 2D Grid: batch × D-tiles
+    grid = (batch, triton.cdiv(dim, BLOCK_D))
+    kernel[grid](x, weight, conv_states, ...)
+
+    @triton.jit
+    def kernel(..., BLOCK_D: tl.constexpr):
+        pid_batch = tl.program_id(0)
+        pid_d = tl.program_id(1)
+        d_offs = pid_d * BLOCK_D + tl.arange(0, BLOCK_D)

@@ -1,0 +1,63 @@
+experience_id: exp_rmsnorm_backward_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_cols:
+    - <2048
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- register_reuse: Reuses the computed X_normalized (X * rstd) for both the dX and
+    dW gradient calculations, minimizing redundant multiplication operations and reducing
+    register pressure.
+- casting_optimization: Implements specific casting modes (LLAMA/GEMMA) to handle
+    mixed-precision arithmetic efficiently, converting to fp32 only when necessary
+    for accumulation to maintain numerical stability.
+- vectorized_loading: Utilizes 2D vector loading strategies tailored for small column
+    sizes (e.g., 1x2048) to maximize Unified Buffer (UB) utilization and memory bandwidth
+    efficiency.
+- grid_stride_loop: Uses a grid-stride loop over the row dimension to handle variable
+    batch sizes efficiently while keeping the block size fixed to manage register
+    pressure.
+- local_accumulation: Accumulates dW gradients in a per-program buffer (dW_ptr + pid)
+    to avoid atomic operations and reduce global memory contention during the backward
+    pass.
+- row_wise_vectorization: The kernel abandons column tiling in favor of loading the
+    entire row (up to BLOCK_SIZE) in a single vectorized load. This significantly
+    reduces loop control overhead and maximizes memory bandwidth utilization for tensors
+    with small hidden dimensions (n_cols < 2048).
+- grid_stride_scheduling: Utilizes a grid-stride loop (`tl.range` with `num_stages`)
+    to allow each program to process multiple rows. This increases instruction-level
+    parallelism and better hides memory access latency by overlapping the loads of
+    subsequent rows with the computation of the current row.
+- cache_eviction_policy: Explicitly sets `eviction_policy="evict_first"` for loading
+    input tensors (dY, X). Since these rows are read-only once per iteration, this
+    policy prevents them from polluting the cache, ensuring that cache capacity is
+    preserved for frequently accessed data like weights (W) or reducing thrashing.
+- conflict_free_dw_accumulation: Implements a partial reduction strategy for the weight
+    gradient (dW) by writing results to a buffer indexed by the program ID (`pid`)
+    rather than using atomic adds to a global address. This eliminates serialization
+    and contention caused by atomic operations, significantly improving throughput
+    in the backward pass.
+performance_boost: 25%
+note: This optimization is specifically tailored for small n_cols (< 2048). The dW
+  output produced by this kernel contains partial sums and requires a secondary reduction
+  kernel to aggregate results across the program dimension.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/102-_rms_norm_backward_kernel_no_tiling.py

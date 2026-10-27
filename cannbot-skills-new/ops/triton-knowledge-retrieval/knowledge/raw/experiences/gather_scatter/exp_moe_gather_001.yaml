@@ -1,0 +1,45 @@
+experience_id: exp_moe_gather_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: MoE Gather / Weighted Sum
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    topk_num:
+    - <=8
+    BLOCK_D:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_metadata_loading: The current implementation performs scalar loads for
+    `expert_id`, `source_token_index`, and `recv_topk_weight` inside the inner loop.
+    Since `topk_num` is a compile-time constant, these loads should be vectorized
+    to fetch the entire array of indices/weights for the current token in a single
+    instruction. This reduces the number of memory transactions and instruction overhead
+    significantly.
+- loop_unrolling: The inner loop iterating over `topk_num` is typically small (e.g.,
+    2 to 8). Unrolling this loop eliminates branch overhead and allows the compiler
+    to schedule independent memory loads and floating-point operations more effectively,
+    hiding latency.
+- memory_alignment: The vector loads of `input_tensor` and stores to `output_tensor`
+    should be aligned to the hardware's memory transaction size (e.g., 128 bytes).
+    Ensuring `BLOCK_D` is a multiple of the alignment size (e.g., 64 or 128 for fp16)
+    prevents partial memory transactions and improves bandwidth utilization.
+performance_boost: 20%
+note: This optimization is critical for MoE layers during the inference phase where
+  the routing overhead is non-trivial. It assumes `topk_num` is small and known at
+  compile time.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/062-_fwd_kernel_ep_gather.py

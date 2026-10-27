@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Triton Optimizer Multi-Agent Task Manifest",
+  "description": "Input specification passed from the Orchestrator to a Per-Round Worker sub CLI.",
+  "type": "object",
+  "required": [
+    "op_name",
+    "round_index",
+    "work_dir",
+    "algorithm",
+    "algorithm_reference",
+    "round_strategy",
+    "analysis_policy",
+    "hypothesis",
+    "direction",
+    "evidence_sources",
+    "mode",
+    "input_files",
+    "config"
+  ],
+  "properties": {
+    "op_name": {
+      "type": "string",
+      "description": "Operator name, kebab-case or snake_case"
+    },
+    "round_index": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Current round number"
+    },
+    "work_dir": {
+      "type": "string",
+      "description": "Absolute or relative path to the current round directory"
+    },
+    "baseline_dir": {
+      "type": ["string", "null"],
+      "description": "Directory containing the baseline code to start from"
+    },
+    "algorithm": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Optimization algorithm used for this round"
+    },
+    "algorithm_reference": {
+      "type": "string",
+      "description": "Path to the algorithm-specific sub-agent reference document"
+    },
+    "algorithm_params": {
+      "type": "object",
+      "description": "Algorithm-specific parameters copied from config.json; sub-agent may read but not modify"
+    },
+    "round_strategy": {
+      "type": "string",
+      "enum": ["exploration", "structural_change", "focused_tuning", "stabilization", "plateau_review"],
+      "description": "High-level strategy for this round"
+    },
+    "analysis_policy": {
+      "type": "string",
+      "enum": ["pattern_entry", "bottleneck_analysis", "ir_supported"],
+      "description": "Evidence depth policy"
+    },
+    "hypothesis": {
+      "type": "string",
+      "description": "Optimization hypothesis for this round"
+    },
+    "direction": {
+      "type": "string",
+      "description": "Concrete optimization direction"
+    },
+    "evidence_sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sources supporting the chosen direction"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["A", "B"],
+      "description": "Input mode: A=standard op task, B=GPU kernel"
+    },
+    "input_files": {
+      "type": "object",
+      "required": ["task_desc"],
+      "properties": {
+        "task_desc": {
+          "type": "string",
+          "description": "Path to task description .py file"
+        },
+        "task_json": {
+          "type": ["string", "null"],
+          "description": "Path to multi-case JSON file"
+        },
+        "gpu_kernel_ref": {
+          "type": ["string", "null"],
+          "description": "Path to GPU kernel reference file"
+        },
+        "gpu_perf_csv": {
+          "type": ["string", "null"],
+          "description": "Path to GPU performance CSV"
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "required": ["target_speedup", "max_rounds"],
+      "properties": {
+        "target_speedup": { "type": "number" },
+        "max_rounds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "is_recovery": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this round is being recovered from a previous session"
+    },
+    "worker_reference": {
+      "type": "string",
+      "description": "Backward-compatible alias for algorithm_reference. New manifests should use algorithm_reference; consumers may read this field if present."
+    },
+    "mcts_parent_id": {
+      "type": "string",
+      "description": "MCTS parent node ID (only for algorithm=mcts)"
+    },
+    "mcts_selection_path": {
+      "type": "array",
+      "description": "Root-to-parent path in the MCTS tree (only for algorithm=mcts)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "node_id": { "type": "string" },
+          "depth": { "type": "integer" },
+          "mean_reward": { "type": "number" },
+          "visit_count": { "type": "integer" },
+          "description": { "type": "string" },
+          "round_dir": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "mcts_pending_expansion": {
+      "type": "boolean",
+      "description": "Whether this round fulfills a pending MCTS expansion (only for algorithm=mcts)"
+    },
+    "lineage_summary": {
+      "type": "array",
+      "description": "Root-to-parent optimization history summary enriched with per-round design and iteration metadata",
+      "items": {
+        "type": "object",
+        "properties": {
+          "round_index": { "type": "integer" },
+          "round_dir": { "type": "string" },
+          "direction": { "type": "string" },
+          "best_speedup": { "type": "number" },
+          "direction_yield": { "type": ["string", "null"] },
+          "hypothesis": { "type": "string" },
+          "design_summary": {
+            "type": ["string", "null"],
+            "description": "One-sentence design rationale summary"
+          },
+          "iter_count": {
+            "type": ["integer", "null"],
+            "description": "Coding/verification iteration count"
+          },
+          "opt_iter_count": {
+            "type": ["integer", "null"],
+            "description": "Phase 4 optimization iteration count"
+          },
+          "key_fixes": {
+            "type": ["array", "null"],
+            "items": { "type": "string" }
+          },
+          "bottlenecks_observed": {
+            "type": ["array", "null"],
+            "items": { "type": "string" }
+          },
+          "parent_round_dir": {
+            "type": ["string", "null"],
+            "description": "round_dir of this round's baseline"
+          },
+          "outcome": {
+            "type": ["string", "null"],
+            "description": "Short outcome label for this round"
+          }
+        }
+      }
+    },
+    "experience_file": {
+      "type": ["string", "null"],
+      "description": "Path to the operator-level shared experience markdown file"
+    },
+    "global_baseline_dir": {
+      "type": ["string", "null"],
+      "description": "Path to the immutable global baseline directory"
+    },
+    "global_baseline_speedup": {
+      "type": "number",
+      "description": "Global baseline speedup, usually 1.0"
+    },
+    "parent_round_journal": {
+      "type": ["string", "null"],
+      "description": "Path to the parent round's detailed round_journal.md; sub-agent may read but not modify"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+experience_id: exp_fused_qkvzba_split_001
+match_cond:
+  operator_type: Concatenation Operations
+  compute_pattern: Tensor Split and Reshape
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    NUM_HEADS_QK:
+    - '>0'
+    HEAD_QK:
+    - '>0'
+    NUM_HEADS_V:
+    - '>0'
+    HEAD_V:
+    - '>0'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses the splitting and reshaping of Q, K, V, Z, B, and A tensors
+    from two large fused input buffers (`mixed_qkvz`, `mixed_ba`) into five distinct
+    output buffers. This eliminates multiple kernel launch overheads and reduces global
+    memory read/write traffic compared to executing separate split kernels.
+- static_loop_unrolling: Utilizes `tl.static_range` for the loops handling the B and
+    A tensor splits. Since the loop bounds are defined as `constexpr` (compile-time
+    constants), the compiler fully unrolls these loops. This removes dynamic loop
+    control overhead (branching) and allows the compiler to optimize memory instructions
+    more effectively.
+- vectorized_memory_access: Leverages `tl.load` and `tl.store` with `tl.arange` to
+    process contiguous memory segments. This ensures that memory accesses are coalesced
+    and vectorized, maximizing the utilization of the memory bus bandwidth on the
+    Ascend hardware.
+- compile_time_constants: Defines dimensions like `QKVZ_DIM_T`, `BA_DIM_T`, and slice
+    boundaries (`q_end`, `k_end`, etc.) as `tl.constexpr`. This enables the compiler
+    to perform aggressive constant folding and address calculation optimization during
+    the compilation phase rather than at runtime.
+performance_boost: 25%
+note: This kernel is primarily memory-bound. The performance gains are derived from
+  reducing kernel launch latency and optimizing memory access patterns through fusion
+  and compile-time unrolling. Ensure input tensors are contiguous in memory for maximum
+  efficiency.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/157-fused_qkvzba_split_reshape_cat_kernel.py

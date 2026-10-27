@@ -1,0 +1,70 @@
+experience_id: exp_matmul_qn_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Batch Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=64'
+    n:
+    - '>=64'
+    k:
+    - '>=64'
+    num_heads:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_specific_instruction: Utilizes `dl.compile_hint` with the argument "dot_pad_only_k".
+    This is a critical optimization for Ascend NPUs (910 series), instructing the
+    compiler to pad only the K dimension of the matrix tiles. This minimizes the amount
+    of zero-padding required for the dot product engine, thereby reducing memory traffic
+    and increasing the effective throughput of the Cube unit.
+- batched_head_iteration: The kernel iterates over `NUM_HEADS` inside the program
+    body rather than flattening the head dimension into the global grid or launching
+    separate kernels. This reduces kernel launch overhead and allows for efficient
+    handling of the 3D tensor structure (Batch, Heads, Hidden) required by attention
+    mechanisms (specifically the Q_nope projection).
+- static_scheduling_strategy: Implements a static work distribution using the loop
+    `for block_idx in range(pid, NUM_BLOCKS, NUM_CORES)`. This pattern statically
+    assigns blocks to processing cores based on the program ID, avoiding the overhead
+    of dynamic scheduling mechanisms and ensuring predictable memory access patterns
+    across the NPU cores.
+- grouped_launch_diagonal: Employs a `grouped_launch_diagonal` helper to map block
+    indices to task coordinates. This suggests a diagonal or specific tiling traversal
+    order which can improve cache locality for the matrix operands compared to a standard
+    row-major or column-major traversal.
+- persistent_kernel_pattern: Implements a grid-stride loop using `range(pid, NUM_BLOCKS,
+    NUM_CORES)`, allowing a single program instance to process multiple output blocks
+    sequentially. This reduces kernel launch overhead and improves hardware utilization
+    by keeping cores active longer.
+- intra_kernel_batch_iteration: Manually iterates over the `NUM_HEADS` dimension inside
+    the kernel body (`for head_idx in range(NUM_HEADS)`). This fuses the batch processing
+    logic, avoiding the overhead of launching separate kernels for each attention
+    head.
+- hardware_specific_padding_hint: Utilizes `dl.compile_hint(..., "dot_pad_only_k")`
+    to provide explicit instructions to the compiler backend regarding padding strategy
+    for the dot product operation. This ensures the data layout aligns with the requirements
+    of the hardware's matrix compute unit (e.g., Cube unit), preventing performance
+    penalties from implicit padding.
+- diagonal_block_mapping: Uses `grouped_launch_diagonal` to map block indices to the
+    M and N grid dimensions. This scheduling strategy often improves cache locality
+    or load balancing compared to a simple row-major traversal.
+performance_boost: 25%
+note: This kernel is specifically designed for the Q_nope * W_uk computation step
+  in Attention mechanisms (like MHA or MLA) on Ascend hardware, leveraging the DeepLink
+  (dl) interface for hardware-specific optimizations.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/049-matmul_qn_kernel.py

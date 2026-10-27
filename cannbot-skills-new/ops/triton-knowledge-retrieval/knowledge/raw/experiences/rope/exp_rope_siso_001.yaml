@@ -1,0 +1,43 @@
+experience_id: exp_rope_siso_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Rotary Positional Embedding
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    num_tokens:
+    - '>=BLOCK_N'
+    num_heads:
+    - '>=BLOCK_H'
+    head_dim:
+    - '>=BLOCK_D'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_non_interleaved_path: For non-interleaved data layouts, the kernel constructs
+    dimension ranges using tl.arange to process the entire head dimension block in
+    a single pass. This eliminates loop overhead and maximizes vector unit utilization
+    compared to the scalar iteration used in the interleaved path.
+- 3d_tiling_strategy: The kernel employs a 3D tiling strategy (BLOCK_N for tokens,
+    BLOCK_H for heads, BLOCK_D for dimensions). This maps the computation efficiently
+    to the hardware grid, ensuring data loaded into registers/SRAM is reused before
+    eviction, optimizing memory bandwidth usage.
+- layout_specific_optimization: By using a compile-time constant (rotary_interleaved),
+    the kernel generates specialized code paths. The interleaved path handles element-wise
+    pairs via a loop, while the non-interleaved path leverages bulk vector operations,
+    ensuring optimal performance for both common tensor formats without runtime divergence.
+performance_boost: 25%
+note: The performance relies heavily on the BLOCK_D size matching the hardware's vector
+  width. The helper function rotary_embedding_rw_kernel is assumed to handle the actual
+  load/store and arithmetic operations.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/117-rotary_embedding_siso_kernel.py

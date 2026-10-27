@@ -1,0 +1,45 @@
+experience_id: exp_sdpa_infer_ascend_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Scaled Dot-Product Attention
+  data_type:
+  - fp16
+  - bf16
+  - fp8
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_dim:
+    - '>=64'
+    block_m:
+    - '>=64'
+    block_n:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- online_softmax: Implements the online softmax algorithm (iterative max and sum updates)
+    to avoid materializing the full attention matrix, drastically reducing memory
+    bandwidth usage and HBM access.
+- cube_unit_hint: Utilizes tl.compile_hint(acc_ptr, "tile_cube_loop", 2) to explicitly
+    instruct the compiler to map the accumulation loop to the Ascend Cube unit, maximizing
+    compute throughput for matrix multiplication.
+- ub_safe_masking: Employs tl.where for masking logic to prevent Unified Buffer (UB)
+    overflow, a critical constraint for on-chip memory on Ascend hardware, as noted
+    in the code comments.
+- dtype_optimization: Casts softmax probabilities to the input data type (k.dtype)
+    before the final dot product with V, ensuring the operation utilizes the high-performance
+    FP16/BF16/FP8 data path rather than FP32.
+performance_boost: 50%
+note: Optimized for Ascend NPU architecture. The 'tile_cube_loop' hint is specific
+  to Ascend compilers and essential for achieving peak performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/216-_sdpa_infer_inner.py

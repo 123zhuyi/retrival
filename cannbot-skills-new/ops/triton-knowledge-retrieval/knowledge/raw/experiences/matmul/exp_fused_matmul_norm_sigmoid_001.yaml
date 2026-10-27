@@ -1,0 +1,39 @@
+experience_id: exp_fused_matmul_norm_sigmoid_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matmul + RMSNorm + Sigmoid
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    m:
+    - '>=1'
+    n:
+    - '>=1'
+    k:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- async_pipeline_scheduling: Uses dl.async_task to decouple the matrix multiplication
+    (cube scope) from the element-wise operations (vector scope), enabling efficient
+    hardware unit utilization and potential execution overlap.
+- operator_fusion: Fuses Matrix Multiplication, RMS Normalization, and Sigmoid activation
+    into a single kernel launch, significantly reducing HBM access for intermediate
+    tensors.
+- hardware_unit_specialization: Explicitly maps the Matmul operation to the Cube unit
+    and the Norm/Sigmoid operations to the Vector unit, aligning with the Da Vinci
+    architecture's strengths.
+performance_boost: 30%
+note: This kernel relies on the dl (Da Vinci Language) extensions for Triton, targeting
+  Ascend 910 series hardware. Ensure input buffers are contiguous.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/084-fused_matmul_norm_sigmoid_kernel.py

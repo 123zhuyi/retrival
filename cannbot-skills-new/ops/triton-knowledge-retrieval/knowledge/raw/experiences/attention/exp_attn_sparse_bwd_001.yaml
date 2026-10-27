@@ -1,0 +1,49 @@
+experience_id: exp_attn_sparse_bwd_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Sparse Attention Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    BLOCK_SIZE:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sparse_gather_optimization: The kernel utilizes `topk_q_idx` (tq_ptr) to dynamically
+    gather only the relevant Q tokens, DO, LSE, and D values for the current K block.
+    This selective loading significantly reduces memory bandwidth consumption and
+    computational workload compared to dense attention, specifically targeting sparse
+    or Top-K attention patterns.
+- block_ptr_tiling: Employs `tl.make_block_ptr` for the K, V, DK, and DV tensors.
+    This allows for efficient 2D block loading from global memory to SRAM, automatically
+    handling boundary checks and padding for variable sequence lengths, which simplifies
+    the code and improves hardware utilization.
+- kv_data_reuse: Optimizes data locality by loading the K and V blocks into SRAM once
+    per outer loop iteration (per K-block). These blocks are then reused across all
+    active Q blocks in the inner loop, minimizing redundant global memory accesses
+    and maximizing arithmetic intensity.
+- fp32_accumulation_strategy: Performs all intermediate computationsвЂ”including attention
+    scores (QK), softmax probabilities (p), delta (ds), and gradient accumulation
+    (dk, dv)вЂ”in FP32. This ensures numerical stability during the backward pass,
+    with final results cast to the input data type (e.g., fp16/bf16) only before storing
+    to global memory.
+performance_boost: 40%
+note: This kernel is designed for Top-K or Local Attention mechanisms where the attention
+  matrix is sparse. It requires pre-computed indices (`topk_q_idx`) and block counts
+  (`cu_topk_q_count`).
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/025-backward_dkdv.py

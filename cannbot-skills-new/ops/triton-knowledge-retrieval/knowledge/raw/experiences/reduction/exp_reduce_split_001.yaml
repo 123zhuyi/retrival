@@ -1,0 +1,45 @@
+experience_id: exp_reduce_split_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Split-K Reduction
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_size_v:
+    - '>=64'
+    SPLIT_K:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_memory_access: The kernel loads the partial accumulation matrix `acc_k`
+    of shape [SPLIT_K, BLOCK_DV] and the statistics vectors `m_k`, `l_k` using vectorized
+    loads. This coalesces memory accesses and significantly improves bandwidth utilization
+    compared to scalar or loop-based loading.
+- numerically_stable_aggregation: Implements the online softmax reduction logic by
+    first computing the global maximum `m_max` across all splits and then scaling
+    the partial accumulations by `fast_expf(m_k - m_max)`. This prevents overflow/underflow
+    that can occur when summing exponentials directly.
+- efficient_tensor_reduction: Utilizes `tl.sum` with axis=0 to aggregate the scaled
+    partial results along the split-K dimension. This maps efficiently to the hardware's
+    reduction units, minimizing instruction overhead for the summation step.
+- stride_aware_addressing: Calculates memory offsets using explicit stride parameters
+    (`stride_ak`, `stride_abs`, etc.), allowing the kernel to support various data
+    layouts (e.g., contiguous or strided heads) without requiring pre-transposition,
+    thus saving memory bandwidth.
+performance_boost: 20%
+note: This kernel is the second stage of a Split-K FlashAttention implementation.
+  It assumes the first stage has produced partial accumulations and statistics.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/018-_reduce_split_kernel.py

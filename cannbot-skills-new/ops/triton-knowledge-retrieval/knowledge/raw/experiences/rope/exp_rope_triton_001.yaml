@@ -1,0 +1,131 @@
+experience_id: exp_rope_triton_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: RoPE
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_num:
+    - '>=1'
+    half_rope_dim:
+    - '>=1'
+    TOKEN_BLOCK_SIZE:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- vectorized_memory_access: The kernel utilizes `tl.load` with vectorized offsets
+    (`feat_offset`) to load contiguous chunks of the input tensor `X` into SRAM/Registers.
+    This maximizes memory bandwidth utilization by coalescing memory requests, which
+    is critical for high-throughput hardware like the 910 series.
+- fused_computation_pipeline: The rotation arithmetic (multiplication by sin/cos and
+    subsequent addition/subtraction) is fused directly into the kernel execution flow.
+    This eliminates the need to write intermediate results back to global memory (HBM),
+    significantly reducing memory latency and increasing arithmetic intensity.
+- masked_execution: The implementation employs `seq_mask` during both load and store
+    operations. This allows for efficient handling of variable sequence lengths and
+    padding without expensive dynamic branching or separate kernel launches for different
+    sequence lengths.
+- embedding_reuse: The COS and SIN embeddings are loaded once per sequence block (outside
+    the head loop) and reused for all NUM_Q_HEADS and NUM_K_HEADS. This drastically
+    reduces global memory bandwidth consumption, which is the primary bottleneck for
+    RoPE operations in models with many attention heads.
+- grid_stride_scheduling: The kernel utilizes a grid stride loop (range(pid, NUM_BLOCKS,
+    NUM_CORES)) to distribute work across available cores. This ensures efficient
+    load balancing and avoids idle cores when the number of sequence blocks is not
+    a multiple of the core count.
+- vectorized_block_processing: The kernel processes the sequence dimension in chunks
+    of BLOCK size, enabling efficient memory coalescing for the Q and K tensor loads/stores
+    and maximizing the utilization of the memory bus.
+- grid_stride_scheduling: Implements a grid-stride loop (range(pid, NUM_BLOCKS, NUM_CORES))
+    to distribute sequence blocks across available cores. This ensures balanced workload
+    distribution and high hardware utilization even when the number of sequence blocks
+    is not a multiple of the core count.
+- cos_sin_reuse: Loads the COS and SIN tensors once per sequence block, outside the
+    inner loop iterating over NUM_HEADS. Since the rotary embedding values are identical
+    for all heads at a given position, this strategy significantly reduces global
+    memory read bandwidth by a factor of NUM_HEADS.
+- vectorized_memory_access: Utilizes a block size (BLOCK) to load and store data along
+    the sequence dimension. By calculating offsets with pos_offset[:, None], the kernel
+    ensures contiguous memory access patterns, maximizing DRAM bandwidth utilization
+    and cache efficiency.
+- grid_stride_loop: Implements a grid-stride loop (`for seq_block_id in range(pid,
+    NUM_BLOCKS, NUM_CORES)`) to map work to hardware cores. This allows the kernel
+    to process sequence lengths significantly larger than the grid size, ensuring
+    all cores are utilized efficiently and reducing the overhead of kernel launches
+    for long sequences.
+- dimensional_chunking: Strategically partitions the feature dimension `DIM` into
+    four segments (`ll`, `lh`, `hl`, `hh`) based on the `CS_DIM` parameter. This enables
+    efficient vectorized memory loads and stores for both the rotated sub-dimensions
+    and the pass-through sub-dimensions, optimizing memory bandwidth usage.
+- embedding_table_reuse: Optimizes global memory access by loading the Cosine (`COS`)
+    and Sine (`SIN`) tables only once per block and reusing the loaded values for
+    both the lower and upper halves of the feature dimension (`cos_h = cos_l`, `sin_h
+    = sin_l`), effectively halving the bandwidth required for embedding lookups.
+- masked_memory_access: Utilizes dynamic masking (`pos_mask`, `seq_mask`) to handle
+    sequence lengths that are not multiples of the block size `BLOCK`. This ensures
+    safe memory access and correctness for variable-length sequences without the overhead
+    of explicit padding.
+- vectorized_instruction_mapping: The rotation calculation (x1*cos - x2*sin, x2*cos
+    + x1*sin) is mapped to the hardware's vector units. By processing multiple data
+    points simultaneously using wide vector registers (e.g., 128-bit or 256-bit),
+    the instruction throughput is significantly increased compared to scalar operations.
+- broadcast_efficiency: The `cos` and `sin` tensors are expanded to match the batch
+    and sequence dimensions. The optimization strategy involves loading these small
+    tensors into registers or high-speed cache (SRAM) once per compute block and reusing
+    them across the sequence length, drastically reducing global memory bandwidth
+    consumption.
+- data_type_alignment: The kernel is optimized for low-precision arithmetic (fp16/bf16)
+    which is standard for LLM inference/training. This ensures full utilization of
+    the NPU's compute capabilities, as the complex multiplication pattern fits well
+    within the supported data type pipelines.
+- mixed_precision_computation: The kernel explicitly casts the cos and sin lookup
+    tables to float32 (.to(tl.float32)) before performing the rotation arithmetic.
+    This ensures high numerical stability during the complex multiplication (x*cos
+    - y*sin), which is critical for maintaining model accuracy in LLMs, even when
+    the input state tensors are stored in lower precision formats like fp16 or bf16.
+- vectorized_pair_loading: By calculating offsets for dim_range_x and dim_range_y
+    simultaneously, the kernel loads the paired state values (real and imaginary components)
+    required for rotation in parallel. This vectorized approach maximizes memory bandwidth
+    utilization and reduces the number of load instructions compared to processing
+    dimensions sequentially.
+- adaptive_layout_handling: The kernel efficiently supports both interleaved (x, y,
+    x, y) and non-interleaved (x...x, y...yaved) memory layouts via the rotary_interleaved
+    flag. It adjusts the sin_sim_offset calculation logic without requiring expensive
+    data transposition kernels prior to the embedding operation.
+- boundary_safe_masking: The use of dynamic masks for token_range and head_range ensures
+    that the kernel correctly processes variable sequence lengths and batch sizes
+    without out-of-bounds memory access, eliminating the need for input padding to
+    fixed dimensions.
+- slice_based_memory_access: Utilizes tl.extract_slice and tl.insert_slice to efficiently
+    handle the tensor splitting and merging required for RoPE. This abstracts complex
+    pointer arithmetic, allowing the compiler to optimize for memory coalescing and
+    reducing the risk of bank conflicts when accessing the x1 and x2 segments.
+- compile_time_specialization: Leverages tl.constexpr for head_num, half_rope_dim,
+    and TOKEN_BLOCK_SIZE. This enables the compiler to generate specialized code for
+    specific tensor shapes, facilitating aggressive loop unrolling and optimal register
+    allocation to minimize instruction overhead.
+- compile_time_branching: The inverse parameter is defined as a constexpr, ensuring
+    that the conditional logic for forward versus inverse rotation is resolved at
+    compile time. This completely eliminates runtime branch divergence within the
+    processing blocks, maintaining high pipeline utilization.
+- vectorized_rotation_math: Implements the rotation logic (x1*cos +/- x2*sin) using
+    direct tensor operations. This maps efficiently to the hardware's SIMD/vector
+    units, maximizing throughput for the element-wise floating-point arithmetic.
+performance_boost: 25%
+note: This implementation is highly efficient for LLM inference. Ensure TOKEN_BLOCK_SIZE
+  is tuned to match the L1 cache size of the specific hardware (e.g., 128 or 256)
+  to minimize global memory accesses.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/227-_compute_rope.py

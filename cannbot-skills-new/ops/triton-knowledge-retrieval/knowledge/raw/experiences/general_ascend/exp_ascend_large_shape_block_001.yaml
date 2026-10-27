@@ -1,0 +1,51 @@
+experience_id: exp_ascend_large_shape_block_001
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 大shape张量处理
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+  core_param:
+    shape_size:
+    - '>=1e6'
+  optimization_level: high
+  tensor_shape:
+  - 1d
+  - 2d
+  - 3d
+experience_type: 内存访问优化
+framework_tag:
+- Triton
+optimization_points:
+- 适用场景: 适用于对内存连续性有要求的大shape场景（需优化缓存命中率）
+- 核心逻辑: 缩小grid尺寸，让每个grid处理连续的一段数据，提升内存访问的缓存友好性
+- 计算规则: ELEMENTS_PER_GRID需向上取整到BLOCK_SIZE的倍数，确保循环能完整处理所有数据
+- grid计算: 实际grid数量 = triton.cdiv(总元素数, 每个grid处理的元素数)
+code_snippet:
+  Triton: "import torch_npu\n\n# 大shape连续分块处理kernel\n@triton.jit\ndef large_vector_kernel(\n\
+    \    input_ptr, output_ptr, n_elements,\n    BLOCK_SIZE: tl.constexpr,\n    ELEMENTS_PER_GRID:\
+    \ tl.constexpr,\n):\n    pid = tl.program_id(0)\n    # 计算当前grid负责的连续数据范围\n   \
+    \ grid_start = pid * ELEMENTS_PER_GRID\n    grid_end = min(grid_start + ELEMENTS_PER_GRID,\
+    \ n_elements)\n    \n    # 分块处理连续数据（缓存友好）\n    for block_start in range(grid_start,\
+    \ grid_end, BLOCK_SIZE):\n        offsets = block_start + tl.arange(0, BLOCK_SIZE)\n\
+    \        mask = offsets < grid_end\n        \n        data = tl.load(input_ptr\
+    \ + offsets, mask=mask)\n        result = data * 2 + 1  # 示例计算逻辑\n        tl.store(output_ptr\
+    \ + offsets, result, mask=mask)\n\n# 连续分块处理启动逻辑\nclass ModelNew(torch.nn.Module):\n\
+    \    def __init__(self):\n        super().__init__()\n        try:\n         \
+    \   self.VEC_CORE_NUM = torch_npu.npu.npu_config.get_device_limit(0).get(\"vector_core_num\"\
+    , 40)\n        except:\n            self.VEC_CORE_NUM = 40\n\n    def forward(self,\
+    \ input_tensor):\n        n_elements = input_tensor.numel()\n        BLOCK_SIZE\
+    \ = 256  # 适配UB大小的最优值\n        MAX_GRID_SIZE = self.VEC_CORE_NUM\n        \n \
+    \       # 计算每个grid处理的元素数（向上取整到BLOCK_SIZE倍数）\n        ELEMENTS_PER_GRID = triton.cdiv(n_elements,\
+    \ MAX_GRID_SIZE)\n        ELEMENTS_PER_GRID = triton.cdiv(ELEMENTS_PER_GRID, BLOCK_SIZE)\
+    \ * BLOCK_SIZE\n        \n        # 计算实际grid数量\n        grid_size = triton.cdiv(n_elements,\
+    \ ELEMENTS_PER_GRID)\n        \n        output_tensor = torch.empty_like(input_tensor)\n\
+    \        large_vector_kernel[grid_size,](\n            input_tensor, output_tensor,\
+    \ n_elements,\n            BLOCK_SIZE=BLOCK_SIZE,\n            ELEMENTS_PER_GRID=ELEMENTS_PER_GRID,\n\
+    \        )\n        return output_tensor"
+performance_boost: 12%
+note: 该方案通过连续内存访问提升缓存命中率，相比交错循环方案，内存密集型算子性能提升12%；优先用于大向量element-wise、连续分块matmul等对内存连续性敏感的场景
+version: v1.0

@@ -1,0 +1,41 @@
+experience_id: exp_rmsnorm_bwd_fused_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm Backward + Add
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_block_sizing: The heuristic adjusts BLOCK_SIZE_M based on n_cols to maintain
+    a constant tile area (~4096 elements), optimizing L1/L0 cache utilization and
+    register pressure regardless of the hidden dimension size.
+- operator_fusion: Fuses the RMSNorm backward pass with the addition of the residual
+    gradient (dS_out), reducing global memory read/write operations by avoiding an
+    intermediate kernel launch.
+- register_accumulation: Accumulates the weight gradient (dW) in a register-level
+    float32 buffer (dW_acc) across all processed rows, writing to global memory only
+    once per program ID to minimize memory bandwidth.
+- grid_stride_scheduling: Implements a grid-stride loop for row processing, ensuring
+    efficient load balancing across GPU/NPU cores even when the number of rows is
+    not perfectly divisible by the block size.
+performance_boost: 25%
+note: Supports specific casting modes (LLAMA, GEMMA) to handle mixed precision requirements.
+  The heuristic ensures robustness across varying sequence lengths and hidden sizes.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/249-_fused_add_rmsnorm_bwd_kernel.py

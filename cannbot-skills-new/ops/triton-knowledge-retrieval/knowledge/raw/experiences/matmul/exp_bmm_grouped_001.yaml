@@ -1,0 +1,46 @@
+experience_id: exp_bmm_grouped_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Batch Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    m:
+    - '>=128'
+    n:
+    - '>=128'
+    k:
+    - '>=128'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grouped_scheduling: Implements a wave scheduling strategy (Grouped GEMM) by reordering
+    program IDs. The logic flattens the 2D grid and groups CTAs based on GROUP_M,
+    ensuring that consecutive blocks in the M dimension are processed in the same
+    wave. This significantly improves L2 cache locality for the A matrix, reducing
+    global memory access bandwidth.
+- autotune_integration: Utilizes runtime autotuning and heuristics to dynamically
+    select optimal TILE_M, TILE_N, and TILE_K sizes based on the specific M, N, K
+    dimensions. This ensures the kernel adapts to different shape characteristics
+    without manual intervention.
+- precision_control: Explicitly sets allow_tf32=False in the dot product operation
+    to maintain higher numerical precision (FP32 accumulation), which is critical
+    for training stability and accuracy in sensitive workloads.
+performance_boost: 25%
+note: The grouping logic includes a fallback mechanism (tl.where) to handle cases
+  where the grid size is not perfectly divisible by GROUP_M, ensuring correctness
+  for all matrix dimensions.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/125-bmm_kernel.py

@@ -1,0 +1,43 @@
+experience_id: exp_solve_tril_001
+match_cond:
+  operator_type: Linear Algebra Operations
+  compute_pattern: Triangular Matrix Inverse / solve_tril / structured matrix element access
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- redundant_mask_elimination_by_matrix_property: "当矩阵具有已知结构零元（严格下三角、对角、上三角等）时，对已为零的元素再次施加的 `tl.where(mask, val, 0.)` 是冗余 ALU 指令。Triton 编译器可能无法在运行时变量 `i` 驱动的循环中优化掉这类掩码。直接删除冗余掩码，依赖矩阵结构本身保证零值位置正确。"
+- strictly_lower_triangular_case: "对于严格下三角矩阵 A（A[i,j]=0 for j≥i），循环体内 `b_a = tl.where(o_i < i, b_a, 0.)` 是恒等变换——`b_a` 从 A 加载后取反，j≥i 位置已经是 0。删除后精度不变、性能提升 1.33x-1.87x（BT=16, 14 次迭代节省 14 条 where 指令）。"
+- applicability_general: "适用于所有处理具备已知结构零元的矩阵 kernel：三角矩阵（tril/triu）、对角矩阵、带状矩阵、mask 矩阵。只要矩阵元素在特定位置的零值由数学保证而非运行时条件决定，对应的保护性 mask 即可删除。"
+- tl_where_cost: "`tl.where(condition, a, b)` 在 Ascend NPU 上需要：(1) condition 比较指令；(2) 逐元素 select 指令。对 16 元素向量每次迭代省 16 次 cmp + 16 次 select，14 次迭代累计 448 条 scalar 指令。"
+performance_boost: "1.33x-1.87x（BT=16 kernel）；~1.40x（BT=64 kernel）；BT=32 无此冗余故无变化"
+note: "此为 V1 优化。从 fla 仓库原始代码中识别出的冗余模式——原始代码直接复用了 merge kernel 的代码模式，未针对 16×16 做差异化处理。BT=32 kernel 原本就没有此掩码。"
+version: v1.0
+source: solve_tril_analyze.md §8.7 冗余全局内存读取分析 + §9.1-9.4
+code_snippet:
+  before: |
+    # 循环体内：从 A 加载行、取反、再加 where mask
+    for i in range(2, min(16, T - i_t * 16)):
+        b_a = -tl.load(A + (i_t * 16 + i) * H*BT + o_i + offset)
+        b_a = tl.where(o_i < i, b_a, 0.)     # ← 冗余：A[i,j≥i] 本身就是 0
+        b_a = b_a + tl.sum(b_a[:, None] * b_A, 0)
+        b_A = tl.where((o_i == i)[:, None], b_a, b_A)
+  after: |
+    # 删除冗余 tl.where，依赖矩阵结构保证零值
+    for i in range(2, min(16, T - i_t * 16)):
+        b_a = -tl.load(A + (i_t * 16 + i) * H*BT + o_i + offset)
+        # b_a[j≥i] 本身就是 0（严格下三角），无需额外 mask
+        b_a = b_a + tl.sum(b_a[:, None] * b_A, 0)
+        b_A = tl.where((o_i == i)[:, None], b_a, b_A)

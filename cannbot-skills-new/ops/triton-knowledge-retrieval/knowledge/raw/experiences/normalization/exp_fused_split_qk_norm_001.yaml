@@ -1,0 +1,50 @@
+experience_id: exp_fused_split_qk_norm_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm + Split + Copy
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    q_lora_rank:
+    - '>=1'
+    kv_lora_rank:
+    - '>=1'
+    qk_rope_dim:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- kernel_fusion: Fuses tensor splitting, two RMSNorm operations (for Q and K-nope),
+    and a direct copy operation (for K-pe) into a single kernel. This reduces global
+    memory reads of the input `fused_ptr` from multiple passes to a single pass, significantly
+    lowering memory bandwidth pressure.
+- memory_access_pattern: Implements a strictly sequential access pattern for the input
+    tensor `fused_ptr`. By loading the Q segment, followed immediately by the K-nope
+    segment, and then the K-pe segment, the kernel maximizes DRAM burst utilization
+    and cache hit rates.
+- numerical_precision: Explicitly casts input data to `tl.float32` before computing
+    the variance (`q_var`, `k_var`). This prevents precision loss and potential overflow
+    during the accumulation of squared values, which is critical when inputs are `fp16`
+    or `bf16`.
+- compile_time_branching: Utilizes `tl.constexpr` for `Q_HAS_BIAS` and `K_HAS_BIAS`.
+    This allows the Triton compiler to generate specialized code paths where bias
+    addition logic is either inlined or completely omitted, avoiding runtime thread
+    divergence.
+performance_boost: 35%
+note: This kernel is highly effective for LoRA ranks (e.g., 8-128) commonly found
+  in LLM inference. Ensure that the sum of `q_lora_rank`, `kv_lora_rank`, and `qk_rope_dim`
+  does not exceed the maximum vector load width supported by the hardware's Tensor
+  Core or Cube unit for optimal performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/191-fused_split_qk_norm_kernel.py

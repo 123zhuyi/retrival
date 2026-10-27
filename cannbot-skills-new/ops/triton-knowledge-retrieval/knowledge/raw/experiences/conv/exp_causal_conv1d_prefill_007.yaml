@@ -1,0 +1,45 @@
+experience_id: exp_causal_conv1d_prefill_007
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Prefill / any dim-tiled kernel
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    dim:
+    - multiple_of_BLOCK_D
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dim_is_multiple_mask_elision: "当 `dim % BLOCK_D == 0`（如 dim=4096, BLOCK_D=1024）时，通过编译期常量 `DIM_IS_MULTIPLE: tl.constexpr` 跳过所有 load/store 的 D 维度 mask 检查。Triton 编译器在编译期消除 `if DIM_IS_MULTIPLE` 分支，mask 比较和 predicated load/store 指令完全消失。对 dim=4096（最常见 LLM hidden size），此优化始终生效。"
+- prefill_vs_update_unified: "此模式在 Prefill kernel（BLOCK_D=1024）和 Update kernel（D_CHK_SIZE=16）中通用。共性：只要 D 维度 tile size 能整除 dim，即可通过 constexpr 消除 mask。分别在 Round 2 遗传搜索中贡献了 26% 的性能提升（与指针预计算组合）。"
+- scalar_instruction_reduction: "免去 mask 后每条 load/store 省去：(1) d_offs < dim 的向量比较指令；(2) predication 的 mask 寄存器操作；(3) 越界元素的 other=0.0 填充逻辑。对于 25-60 行循环体的 kernel，每 token 有 ~10 次带 mask 的 load/store，累计省去大量 scalar 指令。"
+- generality_note: "适用于所有做 D/BD 维度 tile 化的 kernel（matmul、attention、normalization、elementwise、rope），只要 tile size 能整除维度大小。是 Triton-Ascend kernel 的标准优化模式。"
+performance_boost: "减少 5-15% 标量指令（取决于 tile 数量），大 D 维度场景收益更显著"
+note: "此经验是 DIM_IS_MULTIPLE 模式的原始出处（Prefill kernel Round 2）。Update kernel 版本见 exp_causal_conv1d_update_005。两者共用一个技术原理，仅 tile size 不同（1024 vs 16）。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_prefill_analysis.md §7.2 创新2
+code_snippet:
+  prefill_version: |
+    # host 端
+    DIM_IS_MULTIPLE = (dim % BLOCK_D == 0)  # BLOCK_D=1024, dim=4096 → True
+
+    # kernel 端
+    @triton.jit
+    def kernel(..., DIM_IS_MULTIPLE: tl.constexpr, BLOCK_D: tl.constexpr):
+        d_offs = pid_d * BLOCK_D + tl.arange(0, BLOCK_D)
+        if DIM_IS_MULTIPLE:
+            mask_d = None       # 所有 load/store 无需边界检查
+        else:
+            mask_d = d_offs < dim
+        x = tl.load(ptr + d_offs, mask=mask_d)

@@ -1,0 +1,45 @@
+experience_id: exp_sparse_attn_topk_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: Sparse Attention (TopK)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    TOPK:
+    - '>=1'
+    BLOCK_SIZE_D:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- sparse_iteration_strategy: The kernel iterates only over the `real_topk` blocks
+    identified by the `t_ptr` index tensor, rather than the full sequence length.
+    This drastically reduces the number of expensive GEMM operations (QK and PV) from
+    $O(N^2)$ to $O(N \cdot \text{TopK})$.
+- block_pointer_utilization: Utilizes `tl.make_block_ptr` for Q, K, V, and O tensors.
+    This abstracts complex stride calculations, enables efficient 2D block memory
+    access, and handles boundary conditions (padding) automatically via hardware-friendly
+    instructions.
+- online_softmax: Implements the online softmax algorithm within the sparse loop by
+    maintaining running maximums (`m_i`) and log-sum-exp (`lse_i`). This ensures numerical
+    stability without materializing the large attention score matrix, saving significant
+    memory bandwidth.
+- efficient_causal_masking: Applies the causal mask directly on the QK scores using
+    `tl.where((pid_q_j >= c + off_k)...)` inside the compute loop. This vectorized
+    approach avoids loading a separate large mask tensor.
+performance_boost: 40%
+note: Supports variable sequence lengths and Grouped Query Attention (GQA) via NUM_SHARE_Q_HEADS.
+  Best suited for long-context scenarios where sparsity is high.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/020-forward_kernel.py

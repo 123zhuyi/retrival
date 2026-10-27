@@ -1,0 +1,55 @@
+experience_id: exp_rope_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: RoPE (Rotary Positional Embedding)
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_dim:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- cos_sin_reuse: The COS and SIN tensors are loaded once per sequence block outside
+    the NUM_HEADS loop. Since positional embeddings are identical across all attention
+    heads for a given position, this strategy significantly reduces global memory
+    bandwidth consumption by avoiding redundant loads for each head iteration.
+- persistent_scheduling: The kernel utilizes a grid-stride loop pattern (range(pid,
+    NUM_BLOCKS, NUM_CORES)). This acts as a persistent kernel, allowing a single program
+    instance to process multiple sequence blocks. This improves load balancing across
+    cores and reduces kernel launch overhead for variable sequence lengths.
+- vectorized_access: The COS and SIN values are loaded in contiguous chunks (split
+    into low/high dimensions) corresponding to the BLOCK size. This maximizes memory
+    coalescing and utilizes the memory bus width efficiently on the NPU.
+- vectorized_complex_decomposition: The complex number multiplication required for
+    RoPE is decomposed into separate real (x1) and imaginary (x2) floating-point operations.
+    This mapping allows the underlying hardware to utilize standard SIMD vector units
+    efficiently, avoiding potential overhead or latency associated with native complex
+    data type handling.
+- compile_time_branch_pruning: The 'inverse' flag is defined as a tl.constexpr. This
+    forces the Triton compiler to generate specialized kernels for the forward and
+    inverse (backward) passes during compilation. It completely eliminates runtime
+    branch divergence within the thread blocks, ensuring all threads in a warp execute
+    the same instruction stream.
+- fused_arithmetic_expression: The computation combines multiplication and addition/subtraction
+    into single expressions (e.g., x1 * cos_tile - x2 * sin_tile). This fusion minimizes
+    register pressure by avoiding the storage of intermediate products, allowing for
+    higher instruction throughput and better utilization of the NPU's compute pipelines.
+code_snippet:
+  TritonPath: _compute_rope_separated
+performance_boost: 15%
+note: This kernel is a compute helper that assumes data (x1, x2, sin, cos) is already
+  loaded into SRAM/Registers. Performance gains are realized when combined with an
+  optimized memory loading strategy in the parent kernel.
+version: v1.0

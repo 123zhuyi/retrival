@@ -1,0 +1,42 @@
+experience_id: exp_paged_attn_decode_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Paged Attention
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    HEAD_DIM:
+    - '>=64'
+    NUM_Q_HEADS:
+    - '>=1'
+    NUM_KV_HEADS:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_utilization: Utilizes tl.make_block_ptr to load K and V tensors from the
+    paged KV cache. This abstracts complex strided memory accesses and enables the
+    compiler to optimize global memory loads, handling non-contiguous physical memory
+    layouts efficiently.
+- flash_attention_algorithm: Implements the online softmax (FlashAttention) strategy
+    by iteratively updating the max (m_i) and sum (l_i) statistics. This avoids materializing
+    the full attention matrix in HBM, significantly reducing memory bandwidth consumption.
+- paged_attention_mechanism: Employs a block table (block_tables_ptr) to map logical
+    sequence blocks to physical memory blocks. This allows for efficient memory management
+    of variable-length sequences and dynamic batching in LLM inference.
+- gqa_support: Supports Grouped Query Attention (GQA) by calculating pid_kh based
+    on NUM_SHARE_Q_HEADS, reducing KV cache memory size and read bandwidth requirements.
+performance_boost: 30%
+note: Optimized for the LLM decoding phase where the context length is fixed per request
+  but varies across the batch. Requires paged KV cache layout.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/255-paged_decode_kernel.py

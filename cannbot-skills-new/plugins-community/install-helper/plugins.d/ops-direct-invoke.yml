@@ -1,0 +1,16 @@
+id: ops-direct-invoke
+dir: plugins-official/ops-direct-invoke
+displayName: AscendC Kernel 直调
+aliases: [ops-direct, ascendc-direct, direct, kernel]
+skills: 0
+description: skill 驱动多角色直调算子开发工作流：PM 调度 architect/developer/qa 团队，8 阶段 7 CP 全流程，支持静默模式与算子仓继承定制
+# version derived from plugin.json (single source of truth)
+configFile: AGENTS.md
+configRootConfigLink: false
+# 本插件由自带 init.sh 完成装配（.cannbot/permissions、权限 hook、
+# .cannbot/settings.json、依赖仓 clone 到 .cannbot/），不走 installViaManifest
+# 声明式路径。故此处不声明 installSkills / externalRepos——installer.ts:108
+# 的分支会因 installSkills 为空而回落到执行 init.sh [level] [tool] [install_path]。
+# skills 计数由 init.sh 生成的 cannbot-manifest.json 提供（installer.ts:205-212）。
+# installAgents 保留：V5 漂移检测要求它与 plugin.json agents 一致（Layer 3 fallback）。
+installAgents: [architect, developer, developer-code, developer-doc, developer-test, qa]

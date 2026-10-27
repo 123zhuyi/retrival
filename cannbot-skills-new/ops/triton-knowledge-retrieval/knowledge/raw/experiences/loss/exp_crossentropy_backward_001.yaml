@@ -1,0 +1,46 @@
+experience_id: exp_crossentropy_backward_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Cross Entropy Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_cols:
+    - '>=4096'
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_scheduling: Implements a persistent kernel pattern using `for row_idx
+    in range(pid, n_rows, num_programs)`. This allows a fixed number of thread blocks
+    to process an arbitrary number of rows, ensuring high GPU utilization regardless
+    of batch size and minimizing kernel launch overhead.
+- vectorized_block_load: Utilizes large block sizes (4096 or 8192) via `triton.autotune`
+    to load segments of the row. This maximizes global memory bandwidth utilization
+    and ensures efficient memory coalescing.
+- two_pass_algorithm: Separates the computation into a reduction pass (calculating
+    Log-Sum-Exp and max values) and a gradient pass. This ensures numerical stability
+    for the softmax operation by subtracting the maximum value before exponentiation.
+- operation_fusion: Fuses the LSE calculation, label smoothing application, z-loss
+    calculation, and gradient scaling into a single kernel. This drastically reduces
+    memory traffic by avoiding the storage of intermediate activation tensors.
+- in_place_memory_update: Supports overwriting the input logits (`X_ptr`) with the
+    computed gradients when `OVERWRITE_GRAD_LOGITS` is enabled. This optimization
+    saves memory bandwidth and reduces VRAM footprint by avoiding a separate gradient
+    allocation.
+performance_boost: 60%
+note: This kernel is highly optimized for scenarios involving large vocabulary sizes
+  (n_cols) and includes specific handling for `ignore_index`, `label_smoothing`, and
+  `z_loss`. The `libentry` decorator indicates potential hardware-specific entry handling.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/246-_cross_entropy_prime_kernel.py

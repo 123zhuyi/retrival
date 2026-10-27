@@ -1,0 +1,36 @@
+experience_id: exp_api_002
+match_cond:
+  operator_type: general
+  compute_pattern: general
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 语法适配
+framework_tag:
+- Triton
+optimization_points:
+- 适配规则: Ascend后端复杂场景下（多分支/嵌套条件），`tl.where`替换为if-else分支实现，避免`tl.where`兼容性问题
+- 优先级: 简单条件（单分支）仍可用`tl.where`，复杂条件必须用if-else保证执行正确性
+code_snippet:
+  Triton: "# Ascend后端tl.where ↔ if-else 适配示例\n# 场景1: 简单条件 → 仍用tl.where（兼容）\n@triton.jit\n\
+    def simple_cond_kernel(ptr, output_ptr, n, BLOCK_SIZE: tl.constexpr):\n    offsets\
+    \ = tl.program_id(0)*BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offsets\
+    \ < n\n    data = tl.load(ptr + offsets, mask=mask)\n    result = tl.where(data\
+    \ > 0, data*2, data/2)  # 简单条件可用\n    tl.store(output_ptr + offsets, result, mask=mask)\n\
+    \n# 场景2: 复杂条件 → 改用if-else（Ascend后端要求）\n@triton.jit\ndef complex_cond_kernel(ptr,\
+    \ output_ptr, n, BLOCK_SIZE: tl.constexpr):\n    offsets = tl.program_id(0)*BLOCK_SIZE\
+    \ + tl.arange(0, BLOCK_SIZE)\n    mask = offsets < n\n    data = tl.load(ptr +\
+    \ offsets, mask=mask)\n    # 复杂场景tl.where（Ascend易报错）\n    # result = tl.where(data>10,\
+    \ data*2, tl.where(data<0, data+10, data))\n    # 改用if-else\n    result = tl.zeros_like(data)\n\
+    \    if tl.any(mask):\n        result = tl.where(data > 10, data*2, result)\n\
+    \        result = tl.where(data < 0, data+10, result)\n        result = tl.where((data>=0)\
+    \ & (data<=10), data, result)\n    tl.store(output_ptr + offsets, result, mask=mask)"
+performance_boost: 0%
+note: Ascend后端特有适配规则，`tl.where`在复杂嵌套条件下可能触发执行错误，需切换为if-else；简单条件保留`tl.where`可减少代码复杂度
+version: v1.0

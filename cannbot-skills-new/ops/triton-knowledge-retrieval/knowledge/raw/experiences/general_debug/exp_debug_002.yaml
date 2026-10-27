@@ -1,0 +1,35 @@
+experience_id: exp_debug_002
+match_cond:
+  operator_type: 通用优化
+  compute_pattern: 调试排查
+  data_type:
+  - all
+  hardware:
+  - 910b2
+  - 910b3
+  - 910b4
+  core_param: {}
+  optimization_level: basic
+  tensor_shape:
+  - nd
+experience_type: 调试排查
+framework_tag:
+- Triton
+optimization_points:
+- 控制流关键字: 禁止误用`return/break/continue`，需用mask替代实现条件执行逻辑
+- 复杂条件处理: 复杂布尔条件需通过分步计算mask后组合实现，而非嵌套if-else
+- constexpr使用: tl.constexpr 仅允许在内核参数中使用，禁止在Host侧或内核内部变量中使用
+code_snippet:
+  Triton: "# ========== 控制流正确/错误示例 ==========\n@triton.jit\ndef control_flow_correct_kernel(input_ptr,\
+    \ output_ptr, n_elements, BLOCK_SIZE: tl.constexpr):\n    pid = tl.program_id(0)\n\
+    \    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offsets\
+    \ < n_elements\n    data = tl.load(input_ptr + offsets, mask=mask)\n    \n   \
+    \ # 正确: 用mask替代break/continue/return\n    mask_cond = (data > 0) & (data < 10)\n\
+    \    result = tl.where(mask_cond, data * 2, data)\n    \n    # 错误: 误用break/continue/return\n\
+    \    # for i in range(10):\n    #     if data[i] > 10: break\n    # 错误: 复杂条件未用mask组合\n\
+    \    # if (data > 0) and (data < 10) and (data != 5):\n    #     result = data\
+    \ * 2\n    # 错误: 内核内部使用tl.constexpr\n    # CONST_B: tl.constexpr = 5.0\n    \n\
+    \    tl.store(output_ptr + offsets, result, mask=mask)"
+performance_boost: 0%
+note: 控制流关键字（return/break/continue）误用会导致编译失败，复杂条件用mask组合可避免控制流分支带来的性能损耗，同时保证逻辑正确性
+version: v1.0

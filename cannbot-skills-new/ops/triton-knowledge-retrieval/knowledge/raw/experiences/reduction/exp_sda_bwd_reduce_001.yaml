@@ -1,0 +1,48 @@
+experience_id: exp_sda_bwd_reduce_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Element-wise Multiplication + Sum Reduction
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- grid_stride_loop: The kernel utilizes a 1D launch grid with a stride loop (`for
+    task_id in range(pid, total_tasks, tl.num_programs(axis=0))`). This scheduling
+    strategy decouples the number of hardware threads from the total number of logical
+    tasks (B * N * S_blocks), ensuring high utilization of all compute cores (SMs)
+    even when the total workload is not perfectly divisible by the grid size.
+- mixed_precision_accumulation: To ensure numerical stability during the backward
+    pass, the kernel promotes input tensors (`LOW_TYPE`, typically bf16) to `HIGH_TYPE`
+    (fp32) before performing the multiplication and summation (`tl.sum`). This prevents
+    potential overflow or underflow errors that can occur when accumulating many small
+    gradient values in lower precision.
+- vectorized_block_loading: Memory pointers are constructed using broadcasting (`[:,
+    None]` and `[None, :]`) to load 2D blocks of shape `(BLOCK_R, H)` in a single
+    operation. This maximizes global memory bandwidth utilization by ensuring contiguous
+    memory access patterns and efficient cache line usage.
+- sequence_tiling: The sequence dimension `S` is processed in fixed-size tiles defined
+    by `BLOCK_R` (default 64). This tiling strategy balances register pressure and
+    instruction-level parallelism, allowing the kernel to handle long sequences that
+    would otherwise exceed the register file capacity if processed entirely at once.
+performance_boost: 25%
+note: This kernel is specifically designed for the backward pass of State Space Models
+  (SSM) or similar attention mechanisms (SDA), computing the gradient `d` with respect
+  to the sequence dimension. The `BLOCK_R` should be tuned based on the specific H
+  dimension to maximize vector load width.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/261-kernel_sda_bwd_d.py

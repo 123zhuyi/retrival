@@ -1,0 +1,46 @@
+experience_id: exp_attn_bwd_q_down_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention Backward
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_unit_pipelining: Utilizes `tile_mix_vector_loop` and `tile_mix_cube_loop`
+    configuration parameters to explicitly orchestrate the instruction pipeline. This
+    ensures the AI Cube unit handles matrix multiplications (GEMM) while the Vector
+    unit handles element-wise operations (masking, arithmetic) concurrently, maximizing
+    the throughput of the Ascend AI Core.
+- compiler_auto_balancing: Enables `enable_hivm_auto_cv_balance` to delegate instruction
+    scheduling to the HiAI compiler. This allows the runtime to dynamically balance
+    the workload between the Cube and Vector pipelines based on actual data dependencies,
+    effectively reducing pipeline stalls.
+- multibuffering_strategy: Activates `multibuffer` with a workspace size of 2 (`set_workspace_multibuffer`).
+    This implements double-buffering for data loading (specifically for K and V tensors
+    in the micro-kernel), overlapping global memory access latency with the compute
+    cycles of the previous block.
+- sequence_partitioning: The kernel logic processes `SEQ_LEN = S // 2`, indicating
+    a "down" partitioning strategy. This splits the sequence length reduction across
+    multiple kernel launches to better fit within the limited on-chip memory (L0C/L1)
+    and register file constraints of the NPU when dealing with long contexts.
+performance_boost: 35%
+note: This kernel is specifically tailored for the Ascend 910B series architecture
+  using HiAI VM extensions. It is designed to work in conjunction with an "up" kernel
+  to cover the full sequence length.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/263-kernel_sda_bwd_q_down.py

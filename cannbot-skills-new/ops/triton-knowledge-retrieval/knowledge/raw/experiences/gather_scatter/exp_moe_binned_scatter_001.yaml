@@ -1,0 +1,49 @@
+experience_id: exp_moe_binned_scatter_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: Binned Scatter
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    NUM_COLUMNS:
+    - '>=128'
+    expert_capacity:
+    - '>=1'
+    BLOCK_SIZE:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- register_buffering: The kernel utilizes a register-level buffer (`tmp_buf`) sized
+    `(SUB_BLOCK_SIZE, BLOCK_X)` to accumulate data. By gathering multiple elements
+    from the source tensor `a` into this buffer before performing a global store to
+    `b`, the number of high-latency global memory write operations is significantly
+    reduced.
+- vectorized_memory_access: The inner loop iterates over the feature dimension (`NUM_COLUMNS`)
+    with a step size of `BLOCK_X`. This allows the kernel to load and store data using
+    wide vector instructions (e.g., 128-bit or 256-bit), maximizing memory bandwidth
+    utilization on the NPU.
+- dynamic_bin_handling: The logic efficiently handles transitions between different
+    expert bins within a single `SUB_BLOCK_SIZE` iteration. By checking `if bin_idx
+    != base_bin_idx`, it flushes the current buffer and updates the target address
+    dynamically, ensuring correct data placement without breaking the vectorized processing
+    loop.
+- address_calculation_optimization: The source address calculation `idx_a = (indices
+    // TOP_K) * NUM_COLUMNS` is hoisted outside the column loop, and the destination
+    address `idx_b` is updated incrementally. This minimizes redundant arithmetic
+    instructions within the critical inner loops.
+performance_boost: 30%
+note: This optimization is specifically designed for Mixture of Experts (MoE) routing
+  layers where tokens must be scattered to specific expert bins. It assumes that `expert_capacity`
+  is large enough to hold the tokens per bin.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/002-_binned_copy_gather_npu.py

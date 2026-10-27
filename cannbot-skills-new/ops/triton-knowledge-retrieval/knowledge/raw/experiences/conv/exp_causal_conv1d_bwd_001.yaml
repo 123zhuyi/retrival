@@ -1,0 +1,50 @@
+experience_id: exp_causal_conv1d_bwd_001
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: 1D Causal Convolution Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    D:
+    - '>=64'
+    W:
+    - <=8
+    BT:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- block_ptr_utilization: The kernel extensively uses tl.make_block_ptr for loading
+    inputs (x, y, dy) and storing outputs (dx, dw). This allows the compiler to generate
+    efficient vectorized memory instructions for 2D blocks (BT x BD), significantly
+    improving memory bandwidth utilization compared to scalar loads.
+- compile_time_specialization: By using @triton.heuristics, the kernel generates specialized
+    code paths at compile time for features like HAS_WEIGHT, HAS_BIAS, and IS_VARLEN.
+    This eliminates runtime branching overhead within the kernel's main computation
+    loop, ensuring the instruction pipeline remains full.
+- loop_unrolling: The inner loop over the convolution width W is implemented using
+    tl.static_range. Since W is a compile-time constant (constexpr), this loop is
+    fully unrolled. This removes loop control overhead and allows the compiler to
+    optimize the sequence of multiply-accumulate operations and memory loads specific
+    to the kernel size.
+- tiling_strategy: The computation is tiled along the Time (T) and Channel (D) dimensions
+    using block sizes BT and BD. This tiling ensures that the working set (input blocks
+    and partial gradients) fits into the GPU/NPU's SRAM, minimizing expensive global
+    memory accesses.
+performance_boost: 35%
+note: This kernel is specifically designed for causal convolutions used in State Space
+  Models (e.g., Mamba). It handles variable-length sequences, initial states, and
+  final states efficiently.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/267-causal_conv1d_bwd_kernel.py

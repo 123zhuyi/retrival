@@ -1,0 +1,92 @@
+# Catlass Kernel 测试 Shape 运行期约束
+
+> 这是 **catlass kernel 代码本身**对运行期 shape 的硬约束（避免 AIV UB 越界）。具体怎么把约束写进 TEST.md / 测试用例 / golden 生成由测试 agent 决定，本 skill 仅提示约束本身。
+
+---
+
+## Δ1：固定 COMPUTE_LENGTH 的 Tile Epilogue 与小 M / N 不兼容
+
+Catlass Matmul + 固定 `COMPUTE_LENGTH` 的 Tile Epilogue 时：
+
+- **不宜**用过小的 M、N（如个位数）——容易与尾块 / 向量长组合触发 AIV UB 越界
+- **宜选** L1 分块 M/N 的整数倍（常见 M 取 128 倍数、N 取 256 倍数，以 catlass `GemmShape` 为准）
+
+向调用方提的需求：测试用例至少有一组 shape 满足 L1 分块整数倍。
+
+---
+
+## Δ2：dtype 覆盖
+
+catlass 模板按 dtype 实例化（fp16 / bf16 / fp32 / int8）。**每个**设计阶段列出的合法分支至少一组测试用例，确保 catlass kernel 的每个实例化路径都过编译与精度。
+
+向调用方提的需求：测试矩阵覆盖到设计阶段产出的"合法组合"全集。
+
+---
+
+## Δ3：精度阈值
+
+与通用 fp16/bf16 GEMM 标准一致，无 catlass 专属放宽规则。详见 `ops-precision-standard` skill。
+
+---
+
+## Δ4：性能对标 / 功能测试 shape 必须覆盖边界类别（★ 单一 shape 会漏 shape 驱动缺陷）
+
+> **教训来源**：某融合算子初期只用一个"代表性"实网 shape（均匀分组、大 M）对标即判达标；后来补测多 shape 才发现**小 M** 是唯一未达标项（核空转），且是必须换调度的 design_issue——**越晚暴露越贵**。性能和正确性的缺陷常只在**边界 shape** 显现，中位 shape 会碰巧通过、掩盖问题。
+
+**规则**：对标基准与功能测试**都不能只选一个规模**。锁定"代表 shape"后，必须显式过一遍下列边界类别，逐类判断本算子是否有对应缺陷（每类至少一组用例）：
+
+| 边界类别 | 构造方式 | 最易暴露的缺陷 |
+|---------|---------|--------------|
+| 基准均匀 | 实网规模、负载均分 | 主路径正确性/性能基线 |
+| **小 M / 小规模** | 规模小到 `CeilDiv(问题维, 调度粒度) < 核数` | **核空转 / 调度欠利用**（竞品常有小规模专用 kernel 变体）|
+| **大 N / 大规模** | 某维远超基准 | 内存/分块路径、workspace 量级、L2 溢出 |
+| 分布倾斜（分组类）| 负载在组/专家间极不均 | 调度对分布是否敏感、尾块处理 |
+| 空/零负载（分组类）| 含 0-size 组 | offset 推进、空组尾块 bug |
+| 跨切分维（如 `N > L1TileShape::N`）| 归约/配对维被 tile 切分 | 跨 tile 依赖 bug（行归约/门控，只在多 tile 才现，见 patterns/grouped-matmul.md）|
+| 极值/边界 | 某维=1、=L1 分块−1、尾行不更新 | UB 越界、sentinel 预填、边界 off-by-one |
+
+**判定要点**：
+- **性能对标**：每个边界 shape 都跑竞品/基线同 shape 对比，别用一个 shape 的比值代表全部——比值随 shape 显著变化（小规模常放大到核空转主导，大规模常收敛）。
+- **功能测试**：跨切分维（`N > L1TileShape::N`）与极值是**正确性**必测项——中位 shape 的"局部==全局"是巧合，掩盖跨 tile bug。
+- **发现边界未达标先归因再定性**：区分「shape 驱动的调度局限（design_issue，需换调度/分块）」vs「计算效率劣势（可调优）」——看逐核 `cube_time` 是否均衡、平均 cube 是否输竞品。前者要回设计，后者才是 Step 6 调优范畴。
+
+向调用方提的需求：对标/测试矩阵覆盖上述边界类别（按算子形态取适用项），不接受单 shape 结论。
+
+---
+
+## Δ5：Linear Attention / GDN 类 shape 覆盖按算法维度生成
+
+Linear Attention、GDN、KDA、retention、RWKV 等状态递推类算子的 shape 不应只按 `(M,N,K)` 或历史调试 tuple 设计。测试矩阵必须说明每个 shape 对应的覆盖类别。
+
+| 覆盖类别 | 构造方式 | 目的 |
+|---------|---------|------|
+| TilingKey 分支 | dtype、V_DIM、CHUNK_SIZE、schedule mode、GQA mode 每个合法分支至少一例 | 覆盖模板实例化和 host tiling 分流 |
+| `BT` / chunk 边界 | 1 chunk、2 chunk、多 chunk、尾 chunk、不整除边界；常见 `BT=64/128` 都应覆盖 | 暴露状态递推、workspace slot、flag 复用和尾块问题 |
+| `K` / `V` | 常见覆盖 `K=128`、`V=128/256`；`V=256` 覆盖 split accumulation。`V=64` 为可选覆盖，仅当用户需求、TilingKey 或 primary reference 支持时必测 | 暴露 L0/UB 容量、fixpipe/writeback 和 workspace 压力边界 |
+| `HK/HV/GQA` | `HK==HV`、`HV>HK`、`HV/HK` 整除共享；GVA/GQA 场景需覆盖 `HV>HK` | 验证 K-side 中间量按 HK 复用而非按 HV 重算 |
+| batch/head | 单 batch/head、多 batch/head、`B*chunk` 小于/接近/大于核数；覆盖小规模和大规模两端 | 暴露小规模核空转、多核调度、workspace 量级和长跑问题 |
+| sequence mode | fixed 与 varlen 都要覆盖；varlen 覆盖短序列、长序列、尾 chunk、`cu_seqlens` / `chunk_indices` 非均匀分布 | 暴露真实 chunk 索引、partial chunk、有效行写回和 mask 问题 |
+| layout / shape range | 以用户 contract 和 primary reference 为准；GDN/KDA 常见经验覆盖 `BSND`、`B=1..711`、`T=24..65536`、`HV/HK` 多组组合 | 避免只按单一实网规模或历史调试 tuple 设计测试 |
+| 数值边界 | zero gate、high beta、exp(g) 饱和风险、近零输出、状态初值边界 | 暴露 mixed tolerance 与状态更新稳定性问题 |
+| evaluation baseline 状态 | Triton/开源 baseline unsupported、MISSING 或 FAIL 时仍记录 `baseline_status` | 防止把 baseline 不支持误判为 custom 精度失败 |
+
+向调用方提的需求：若脚本保留固定 shape tuple，必须在报告或注释里标明每个 tuple 来自哪个覆盖类别；否则视为硬编码经验，不视为完整测试设计。
+
+Linear Attention 同族算子统一使用本节作为 shape 覆盖来源，不为 GDN/KDA/retention/RWKV 分别维护独立 case 数据文件。smoke case 只用于环境和基本功能门禁；正式精度或性能结论必须覆盖上表中与本算子 contract 相关的维度，并说明未覆盖维度的原因。
+
+代表性子集不得少于 8 例，并至少覆盖：noGVA/GVA、`V=128/256`、fixed/varlen、`BT=64/128`、小/大 `B*chunk` 各一组。少于 8 例或缺少任一必需维度时，只能标记为 smoke，不能声称 representative。
+
+## Δ6：FlashAttention / MHA / GQA 类 shape 覆盖按算法维度生成
+
+FlashAttention 的 shape 不应只按 GEMM 的 `(M,N,K)` 或历史调试 tuple 设计。测试矩阵必须说明每个 shape 对应的覆盖类别。
+
+| 覆盖类别 | 构造方式 | 目的 |
+|---------|---------|------|
+| B/Sq/Sk 组合 | 单 batch/多 batch；`Sq == Sk`、`Sq < Sk` | 覆盖核调度与 KV 分块路径 |
+| `Skv` 对齐边界 | `Skv` 恰为 128 倍数 / 非倍数（如 177） | 覆盖尾块 0 填充路径（bin 读入与 device 块格式尺寸分离）|
+| H / head 形态 | MHA（Hq==Hkv）、GQA（Hq>Hkv）；单头/多头 | 覆盖 head 合并到 Mmad m 维的路径 |
+| `D` / headSize | 64 / 128，`D % 16 == 0` | 覆盖 cube 友好分块 |
+| 数值边界 | 全零 Q/K/V、近零 softmax 输出、极值 scale | 暴露 softmax 状态递推与 mixed tolerance 问题 |
+| 对标 shape | 与 `aclnnFlashAttentionScore` 完全同 shape、同 layout、同 dtype | 标杆对比可比性 |
+
+向调用方提的需求：脚本保留固定 shape tuple 时，必须在报告/注释标明每个 tuple 来自哪个覆盖类别；否则视为硬编码经验，不视为完整测试设计。

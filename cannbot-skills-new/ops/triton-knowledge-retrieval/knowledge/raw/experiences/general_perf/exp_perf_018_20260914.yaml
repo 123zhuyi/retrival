@@ -1,0 +1,53 @@
+experience_id: exp_perf_018_20260914
+match_cond:
+  operator_type: ssm/linear-recurrent
+  compute_pattern: 逐 token 状态递推 kernel（per-token serial loop + UB 驻留状态 tile）
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b1
+  core_param:
+    BV: 64
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: 瓶颈预测偏差与证伪方向
+framework_tag:
+- Triton
+- Triton-Ascend
+optimization_points:
+- IR标量链≠实测关键路径: IR 上 `1.0/tl.sqrt(sum)` 展开为 reduce_sum→V→S sync→标量 sqrt→S→V
+  sync→vdiv_1d_float→S→V sync→vmuls_vs（每 token ×2）看似很重，实测改 tl.rsqrt 后 impl 延迟比值
+  1.003（噪声内）——主链 [64,64] tile 的 vmul_2d/reduce_sum_ra（4096 元素级）才是耗时主体，
+  标量链优化收益被淹没。IR 分析给出的候选必须实测验证，不能仅凭 IR 指令数推断关键路径
+- 短T递推算子persistent grid无效: T 普遍 4~285 时，多波次发射开销占比极小，persistent 任务循环
+  反增标量分解开销（实测 19.80 vs 19.91 无提升）；KKB grid-sizing 类收益针对 grid≫核数且单核
+  计算量过少场景，grid/核数 ≤10 波次不在收益区间
+- 手动软件流水化无效: 循环内预取 t+1 的 load 使 load 数翻倍、寄存器压力上升，Triton-Ascend 后端
+  已有 load 调度（实测 19.25 vs 19.91 无提升）
+- 状态递推kernel的BV平衡点: 状态 [BK,BV] fp32 驻留 UB 时，BV cap=64 是 910b1（UB 192KB）平衡点：
+  cap=128 编译期 UB overflow（2123776 bits > 1572864 bits，多 buffer+中间量放大），cap=32 向量宽度
+  低于高效粒度且 program 数翻倍（geomean 15.11 vs 19.91 劣化 24%）
+- 递推kernel净指令数不变的代数改写一律无效: msprof simulator 指令级采集（910b1 AIV）实测
+  BAR 38.9%+SET_FLAG 11.9%+WAIT_FLAG 5.3%≈56% 为 per-token pipe 同步开销，真实计算（VMUL+VADD）
+  仅 ~7%；每条向量指令附 ~712cyc pipe_barrier（普通向量指令 ~150cyc，12 倍杠杆）。点 7 Pass 合并
+  （decay 吸入 erase 权重 + decay/update 合并 `S=S*e^g+k⊗v_new` 单 FMA 遍历）verify 50/50 但
+  19.679<19.914（公共 48 case impl 延迟比 0.9838）——编译器未融合为更少指令，+1 条 1D 乘及其 BAR
+  反超省下的 2D 指令。与 rsqrt 失败同根因：**只有真实减少循环内向量指令条数的改写才可能有收益**；
+  per-token 递推的 pipe 同步（~16 条向量指令/token × 712cyc ≈ 总量 53%）是该架构的性能地板
+performance_boost: 0%
+note: 94_Gdn2Fwd Phase 4 全扫描实测（50 case，基线 geomean 19.9138 vs PyTorch eager）：点 11/12/
+  31(rsqrt)/33(BS cap 128/32)/7(Pass 合并, simulator 驱动) 均无提升或劣化，最终采纳 Phase 3 基线。
+  bottleneck_predicted（IR 推断 l2norm 标量链）与 bottleneck_actual（先证 [BK,BV] tile 主链向量运算，
+  后经 simulator 指令级采集精化为 per-token pipe 同步开销 BAR+SET/WAIT≈56%）偏落实测确认，
+  记录为负例防重复尝试
+source_type: source_d
+source_session: op_94_94_Gdn2Fwd_20260911_1314_5897
+metadata:
+  status: draft
+  usage_count: 0
+  last_used: null
+  created: 2026-09-14
+  updated: 2026-09-14
+version: v1.0

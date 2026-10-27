@@ -1,0 +1,43 @@
+experience_id: exp_flashattn_bwd_kv_ascend_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Flash Attention Backward KV
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    S:
+    - '>=1024'
+    H:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_pipeline_balancing: Enabled `enable_hivm_auto_cv_balance` to allow the
+    compiler to automatically balance the workload between the Cube (matrix compute)
+    and Vector units, preventing pipeline stalls on Ascend NPUs.
+- multi_buffering: Configured `multibuffer True` with `set_workspace_multibuffer 2`
+    to overlap data transfer of K/V tiles with the computation of the micro-kernel,
+    effectively hiding memory latency.
+- hybrid_loop_unrolling: Set `tile_mix_vector_loop` and `tile_mix_cube_loop` to 2,
+    optimizing the instruction issue rate by interleaving vector and cube operations
+    to maximize hardware throughput.
+- asymmetric_tiling: Utilized `BLOCK_R=128` and `BLOCK_C=64` to match the NPU's memory
+    access granularity, ensuring efficient loading of the KV cache blocks which are
+    often accessed in non-square patterns during the backward pass.
+- sequence_partitioning: Implemented a sequence splitting strategy (`SEQ_LEN = S //
+    2`) to optimize the iteration space for the backward pass, reducing the overhead
+    of causal mask checks within the innermost loops.
+code_snippet:
+  TritonPath: kernel_sda_bwd_kv_right
+performance_boost: 30%
+note: This configuration relies on specific Ascend NPU features (HiAI VM). Ensure
+  the Triton backend supports these flags.
+version: v1.0

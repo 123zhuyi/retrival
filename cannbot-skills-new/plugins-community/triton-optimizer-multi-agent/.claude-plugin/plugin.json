@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "triton-optimizer-multi-agent",
+  "version": "0.5.0",
+  "description": "Triton-Ascend 算子多智能体优化插件。主 Claude Code 负责多轮调度，每轮启动独立的子 Claude Code CLI 在隔离上下文中执行 Phase 0-8，最终由主 agent 执行停止判定并输出全局最优结果。",
+  "author": {
+    "name": "CANNBot"
+  },
+  "homepage": "https://gitcode.com/cann/cannbot-skills",
+  "repository": "https://gitcode.com/cann/cannbot-skills",
+  "license": "CANN-2.0",
+  "dependencies": [
+    "triton-op-generator-skills"
+  ]
+}

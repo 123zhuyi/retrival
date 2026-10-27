@@ -1,0 +1,41 @@
+experience_id: exp_rmsnorm_add_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    n_cols:
+    - '>=128'
+    n_rows:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- register_reuse_intermediate: The kernel currently writes the intermediate result
+    S to global memory and reads it back in the second loop for normalization. To
+    optimize, the S_chunk should be retained in registers (or shared memory if the
+    tile is large) after the first loop and reused directly in the second loop. This
+    eliminates the redundant global memory load of S, significantly reducing memory
+    bandwidth consumption.
+- vectorized_memory_access: Ensure BLOCK_SIZE_N is aligned with the hardware's memory
+    transaction size (e.g., 128 bytes) to maximize memory bus utilization. This is
+    critical for the loads of X, R, and W, as well as the stores of S and Y.
+- loop_unrolling_ilp: Unroll the inner loop over col_offset to increase Instruction
+    Level Parallelism (ILP). This helps hide the latency of the floating-point operations
+    in the variance calculation (sum of squares) and the subsequent normalization
+    scaling.
+performance_boost: 30%
+note: The kernel implements a fused Add + RMSNorm. The primary bottleneck is the redundant
+  load of the intermediate tensor S. Optimizing this data path is key to performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/248-_fused_add_rmsnorm_fwd_kernel.py

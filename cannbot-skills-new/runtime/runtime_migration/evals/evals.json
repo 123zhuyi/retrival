@@ -1,0 +1,67 @@
+{
+  "skill_name": "runtime_migration",
+  "eval_mode": "text",
+  "evals": [
+    {
+      "id": 1,
+      "title": "迁移包含 CUDA kernel 启动的 vector add",
+      "config": {
+        "max_tokens": 500000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 520000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "disabled": true
+      },
+      "prompt": "请使用 runtime_migration skill 将附件 vector_add_cuda.cu 迁移到 CANN Runtime。要求产出可编译运行的迁移后源码和构建命令，并在当前 CANN 环境运行验证。源程序的 CUDA 预期结果是输出 `vector_add PASS n=256`。",
+      "expected_output": "应执行真正的代码迁移而不是只回答映射知识。迁移后源码应使用兼容层 include \"cann_runtime_compat.h\" 并链接 libcudacompat；由于输入包含 `VecAddKernel<<<...>>>` CUDA kernel 启动语法，不能声称已经迁移成 NPU kernel，也不能调用其他算子迁移 skill，应把 VecAddKernel 的等价 CPU 实现隔离成 host fallback，并通过 cudaCompatLaunchHostKernel 或等价兼容层 host fallback 调用维持 launch 流程。迁移后必须编译兼容层、编译迁移后程序并运行，结果应与 CUDA 预期一致，输出 `vector_add PASS n=256`，报告中需明确这是 Host/CPU fallback，不用于 NPU kernel 性能或设备侧正确性结论。",
+      "files": [
+        "evals/inputs/vector_add_cuda.cu"
+      ],
+      "expectations": []
+    },
+    {
+      "id": 2,
+      "title": "迁移纯 Runtime stream/event/memcpy 样例",
+      "config": {
+        "max_tokens": 500000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 520000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "disabled": true
+      },
+      "prompt": "请使用 runtime_migration skill 将附件 stream_event_memcpy_cuda.cpp 迁移到 CANN Runtime。要求迁移后代码能在当前环境编译运行，运行结果必须与 CUDA 语义预期一致：异步 memset 后拷回 Host 的每个字节都是 0x5a，程序输出 `stream_event_memcpy PASS bytes=4096`。",
+      "expected_output": "应产出迁移后的 C++ 源码、构建命令和运行结果。该输入不含 CUDA kernel，因此推荐兼容层方式，替换 CUDA 头为 `cann_runtime_compat.h`，保留原有 cudaMalloc/cudaMemcpyAsync/cudaMemsetAsync/cudaEventRecord/cudaEventSynchronize/cudaStreamDestroy 等调用语义，并链接 libcudacompat、acl_rt 和必要 CANN 库。必须实际编译运行迁移后程序，输出 `stream_event_memcpy PASS bytes=4096`；如果编译或运行失败，应报告失败原因，不能只给出 API 映射说明。",
+      "files": [
+        "evals/inputs/stream_event_memcpy_cuda.cpp"
+      ],
+      "expectations": []
+    },
+    {
+      "id": 3,
+      "title": "迁移增量 Runtime/Driver API 并运行 CUDA apiRuntimeCoverage 覆盖样例",
+      "config": {
+        "max_tokens": 500000,
+        "max_tokens_by_model": {
+          "deepseek-v4-flash": 520000
+        },
+        "ascend_platforms": [
+          "A2"
+        ],
+        "disabled": true
+      },
+      "prompt": "请使用 runtime_migration skill 将附件 incremental_runtime_driver_cuda.cpp 和 apiRuntimeCoverage_cuda.cu 从 CUDA 迁移到 CANN Runtime。要求产出可编译运行的迁移后源码和构建命令，并在当前 CANN 环境运行验证。转换前 CUDA 语义预期分别是输出 `incremental_runtime_driver PASS`，以及 apiRuntimeCoverage 运行结束时 `Failures = 0`、`Result = PASS`。",
+      "expected_output": "应产出迁移后的 incremental_runtime_driver 源码、apiRuntimeCoverage 源码、构建命令和运行结果。两份输入都是 CUDA 原始代码：应将 CUDA 头替换为 `cann_runtime_compat.h` 并链接 libcudacompat、acl_rt 和必要 CANN 库；apiRuntimeCoverage_cuda.cu 中的 `__global__ ApiRuntimeCoverageKernel` 和 `cudaLaunchKernel(...)` 不能声称已经迁移成 NPU kernel，也不能调用其他算子迁移 skill，应把等价写入逻辑隔离成 Host/CPU fallback，并通过 cudaCompatLaunchHostKernel 或等价兼容层 host fallback 调用维持 launch 流程。迁移后 incremental_runtime_driver 应通过 cudaEventRecordWithFlags default flag、cuCtxGetCurrent、cuCtxSetCurrent、cuDevicePrimaryCtxGetState、cuMemsetD32Async、cuStreamWriteValue32、cudaGetSymbolAddress/cudaMemcpyToSymbol invalid-input 检查，输出 `incremental_runtime_driver PASS`。cuDevicePrimaryCtxGetState 的底层 aclrtGetPrimaryCtxState flags 参数必须按 CANN 文档固定传 NULL，CUDA 侧 flags 输出置 0；cudaEventRecordWithFlags 应以 default flag 稳定验证普通 record 能力，不能用普通 stream 上的 external flag 失败来判断 910B 不支持。apiRuntimeCoverage 的 conditional graph 覆盖必须走真实路径：`cudaGraphConditionalHandleCreate` 创建 handle、`cudaGraphAddNode(cudaGraphNodeTypeConditional)` 添加条件节点、`cudaStreamBeginCaptureToGraph` 捕获 body graph、CUDA 侧 body kernel 调用 device-side `cudaGraphSetConditional` 退出 WHILE，CANN 侧通过兼容层转换为 `aclmdlRICondHandleCreate`、`aclmdlRIAddCondTask`、`aclmdlRICaptureToModelRIBegin` 和条件指针写入；不能用空 capture 或 null 参数错误返回作为验收。迁移后的 apiRuntimeCoverage 运行必须达到 `Failures = 0` 和 `Result = PASS`，报告中需明确 kernel 部分使用 Host/CPU fallback，不用于 NPU kernel 性能或设备侧正确性结论。",
+      "files": [
+        "evals/inputs/incremental_runtime_driver_cuda.cpp",
+        "evals/inputs/apiRuntimeCoverage_cuda.cu"
+      ],
+      "expectations": []
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+experience_id: exp_stability_002
+match_cond:
+  operator_type: AIV
+  compute_pattern: Sqrt/SqrtGrad
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 数值稳定性优化
+framework_tag:
+- Triton
+optimization_points:
+- 核心策略: 平方根操作前用max函数限制被开方数最小值（0或极小eps），避免负数开方
+- eps选择: 低精度（fp16/bf16）建议用1e-6，高精度（fp32）建议用1e-8，平衡精度与稳定性
+- 场景适配: 专门解决数值误差导致的微小负数（如-1e-10）开方返回NaN的问题
+code_snippet:
+  Triton: "@triton.jit def sqrt_negative_opt_kernel(input_ptr, output_ptr, n_elements,\
+    \ eps: tl.constexpr=1e-6, BLOCK_SIZE: tl.constexpr=128):\n    pid = triton.program_id(0)\n\
+    \    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offsets\
+    \ < n_elements\n    \n    # 加载数据\n    data = tl.load(input_ptr + offsets, mask=mask)\n\
+    \    \n    # 核心优化: 确保被开方数非负\n    safe_data = tl.maximum(data, eps)  # 替代方案: tl.maximum(data,\
+    \ 0.0)\n    \n    # 平方根计算（无NaN风险）\n    sqrt_data = tl.sqrt(safe_data)\n    \n\
+    \    # 存储结果\n    tl.store(output_ptr + offsets, sqrt_data, mask=mask)\n\n# Attention的sqrt(d_k)场景示例\n\
+    def attention_sqrt_opt(d_k):\n    # 避免d_k为0或负数（极端场景）\n    safe_d_k = max(d_k,\
+    \ 1e-6)\n    sqrt_d_k = tl.sqrt(tl.cast(safe_d_k, tl.float32))\n    return sqrt_d_k\n\
+    \n# 通用平方根调用\ndef sqrt_opt(input_tensor):\n    input_contig = input_tensor.contiguous()\
+    \ if not input_tensor.is_contiguous() else input_tensor\n    output = torch.empty_like(input_contig)\n\
+    \    n_elements = input_contig.numel()\n    grid = (triton.cdiv(n_elements, 128),)\n\
+    \    sqrt_negative_opt_kernel[grid](input_contig, output, n_elements, eps=1e-6,\
+    \ BLOCK_SIZE=128)\n    return output"
+performance_boost: 数值稳定性提升95%
+note: 适用于Attention的sqrt(d_k)、均方差计算、梯度平方根等场景；910b2/910b3平台的硬件sqrt指令对负数输入直接返回NaN，必须前置该防护逻辑
+version: v1.0

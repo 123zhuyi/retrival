@@ -1,0 +1,40 @@
+experience_id: exp_flashattn_gqa_001
+match_cond:
+  operator_type: Attention Operations
+  compute_pattern: FlashAttention (GQA/MQA)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    BLOCK_DMODEL:
+    - '>=64'
+    BLOCK_N:
+    - '>=32'
+    kv_group_num:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- simd_index_select: Utilizes libdevice.index_select_simd to load K and V tensors.
+    This enables parallel index selection from Global Memory to Unified Buffer (UB)
+    with zero-copy semantics, optimizing for the irregular memory access patterns
+    of ragged/paged attention.
+- online_softmax: Implements the online softmax algorithm (iterative max and sum updates)
+    to avoid materializing the full attention matrix in SRAM/UB, significantly reducing
+    memory bandwidth consumption.
+- kv_split_parallelism: Splits the KV sequence dimension across multiple program IDs
+    (split_kv_id), allowing for parallel processing of long sequences and better utilization
+    of compute units.
+performance_boost: 45%
+note: Optimized for Ascend NPU (910B series) using libdevice intrinsics. Supports
+  variable sequence lengths via indptr/indices.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/027-_fwd_kernel_stage1.py

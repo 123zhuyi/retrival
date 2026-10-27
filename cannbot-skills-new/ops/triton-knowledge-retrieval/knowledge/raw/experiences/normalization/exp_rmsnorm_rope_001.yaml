@@ -1,0 +1,46 @@
+experience_id: exp_rmsnorm_rope_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm + RoPE
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    head_dim:
+    - '>=64'
+    BLOCK_SIZE:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- operator_fusion: Fuses Root Mean Square Layer Normalization (RMS Norm) and Rotary
+    Positional Embedding (RoPE) into a single kernel. This eliminates the need to
+    write intermediate normalized tensors to global memory (HBM), significantly reducing
+    memory bandwidth consumption and latency.
+- sub_blocking_strategy: Utilizes `dl.parallel` with a `SUB_BLK` parameter to partition
+    the `BLOCK_SIZE` into smaller chunks. This fine-grained tiling improves instruction-level
+    parallelism and register reuse, ensuring the compute pipeline remains saturated
+    during the reduction and element-wise operations.
+- data_layout_optimization: The input tensors (Q, K) are split into two halves (q1/q2,
+    k1/k2) along the head dimension. This layout is designed to align with the hardware's
+    vector unit width (e.g., 128-bit or 256-bit loads), maximizing memory coalescing
+    and compute throughput for the specific NPU architecture.
+- v_tensor_passthrough: Includes the loading and storing of the V tensor within the
+    same kernel execution. This overlaps the memory transfer latency of the V tensor
+    with the compute-intensive RMS and RoPE operations on Q and K, effectively hiding
+    memory access costs.
+performance_boost: 25%
+note: The kernel relies on a specific dialect (dl) for sub-blocking and assumes inputs
+  are split into two halves (q1/q2). Ensure input tensors adhere to this layout.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/064-rms_norm_rope_kernel.py

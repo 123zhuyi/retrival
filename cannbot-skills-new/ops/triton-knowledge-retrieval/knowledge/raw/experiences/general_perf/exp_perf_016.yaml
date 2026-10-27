@@ -1,0 +1,39 @@
+experience_id: exp_perf_016
+match_cond:
+  operator_type: general
+  compute_pattern: memory_access
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: medium
+  tensor_shape:
+  - nd
+experience_type: 内存访问优化
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: 同一数据在不同计算阶段被重复加载，浪费HBM带宽和MTE2时间
+- 核心方案: 通过寄存器复用跨阶段保持数据。在tl.debug_barrier()之前加载的数据若barrier后仍需使用，且编译器未强制spill，可直接复用
+- 典型场景: KDA intra kernel中b_q在Phase 1.5加载，Phase 2.5再次需要同一块；b_b在Phase 1加载，Phase 2.5复用
+- 注意事项: tl.debug_barrier()是否导致寄存器spill取决于编译器实现，需实测验证复用是否有效
+- 典型收益: 减少2-4次block_ptr load/chunk，降低MTE2开销
+code_snippet:
+  Triton: "# Phase 1.5：加载一次 b_q\n\
+    b_q = tl.load(p_q, mask=BC_BK_mask, other=0.0)\n\
+    # ... 使用 b_q 计算 ...\n\
+    tl.debug_barrier()\n\
+    \n\
+    # Phase 2.5：直接使用已加载的 b_q，无需重新加载\n\
+    # b_q 仍在寄存器中（若未 spill）\n\
+    # ... 继续使用 b_q ..."
+performance_boost: 15%
+note: 寄存器复用与寄存器压力之间存在权衡。若kernel寄存器压力已很高，barrier可能导致spill，此时复用无效甚至劣化。建议通过profiling验证MTE2变化。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

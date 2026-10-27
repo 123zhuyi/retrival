@@ -1,0 +1,26 @@
+请遵循工作区已安装的 CANNBot 工作流继续完成 {op_short_name} 算子的开发，不需要询问我，自动执行直至交付完成。任务此前被中断，operators/{op_short_name}/ 下已有部分产物，在此基础上直接继续。工作流各阶段默认全部执行；当工作流的要求与下方“交付件与验收标准”不一致时，以“交付件与验收标准”为准。
+
+## 工作区边界
+
+cann-bench 评测仓库位于 {cann_bench_root}，仅允许通过运行其评测脚本只读使用，禁止修改其中任何文件。所有开发活动在当前工作目录内进行。
+
+## 算子信息
+
+算子类别：{category}
+
+算子定义位于 operators/{op_short_name}/ 目录，开发前先阅读其中全部文件。
+
+## 参考工程
+
+{example_path} 是 cann-bench 参考工程的隔离副本，算子在其中开发、编译。开始前先阅读其 README 与目录结构。
+
+## 交付件与验收标准
+
+最终交付件为 cann_bench-xxx.whl，在参考工程内完成算子代码 + 接口注册并编译生成，whl 保留在 {example_path}/dist/ 目录。
+
+**硬性门禁（必须全部完成）**：
+
+1. kernel 必须包含完整正向计算逻辑，禁止 stub 或空实现。
+2. 必须运行评测并全部通过：
+   bash {cann_bench_root}/scripts/run_evaluation.sh --source-dir {example_path} --task-dir {op_name}
+3. 评测失败必须修复后重新评测，通过后方可交付。

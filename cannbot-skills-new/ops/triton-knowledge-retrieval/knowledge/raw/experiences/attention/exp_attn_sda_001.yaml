@@ -1,0 +1,48 @@
+experience_id: exp_attn_sda_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- hardware_specific_tiling: Utilizes `tile_mix_cube_loop` and `tile_mix_vector_loop`
+    configuration parameters to explicitly map the computation loops to the Ascend
+    NPU's Cube (Matrix) and Vector units, ensuring the instruction mix matches the
+    hardware's pipeline capabilities.
+- multibuffer_pipeline: Enables `multibuffer` with `set_workspace_multibuffer 2` to
+    implement a software pipelining strategy. This overlaps global memory loads (K,
+    V) with the compute operations of the current block, effectively hiding memory
+    latency.
+- hivm_auto_balance: Activates `enable_hivm_auto_cv_balance True` to leverage the
+    compiler's internal heuristics for the Ascend architecture. This automatically
+    balances the resource allocation and instruction dispatch between the Cube unit
+    (for matrix multiplies in QK^T) and the Vector unit (for softmax and masking),
+    preventing unit starvation.
+- mixed_precision_accumulation: Performs the online softmax accumulation in FP32 (`HIGH_TYPE`)
+    while keeping inputs and outputs in BF16 (`LOW_TYPE`). This maintains numerical
+    stability for the Log-Sum-Exp calculations without increasing the bandwidth pressure
+    for global memory access.
+performance_boost: 35%
+note: This kernel is specifically optimized for Ascend NPUs using CANN-specific Triton
+  extensions (HIVM, Cube loops). It implements a split-decode attention pattern (SEQ_LEN
+  = S // 2) suitable for autoregressive tasks.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/260-kernel_sda_fwd_down.py

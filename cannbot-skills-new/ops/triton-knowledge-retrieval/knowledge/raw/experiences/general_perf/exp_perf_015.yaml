@@ -1,0 +1,43 @@
+experience_id: exp_perf_015
+match_cond:
+  operator_type: general
+  compute_pattern: memory_access
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param: {}
+  optimization_level: high
+  tensor_shape:
+  - nd
+experience_type: 内存访问优化
+framework_tag:
+- Triton
+optimization_points:
+- 问题根因: 转置视角加载矩阵子块时（stride=(1, H*BT)），列方向每次跳跃H*BT个元素，当H*BT很大时（如H=32, BT=64 → stride=2048）访存极不连续，MTE2带宽利用率低
+- 核心方案: 改为按原始行优先布局连续加载BC×BC子块，再用tl.trans在寄存器内转置。tl.trans是寄存器操作，开销远低于非合并访存
+- 适用场景: 需要加载转置子块但原始数据以行优先存储的情况，如dAqk/dAkk转置加载、attention中某些K/V转置场景
+- 边界处理: 仍需用mask保证子块不越界，other=0.0填充
+- 典型收益: 将stride=H*BT非合并访存变为stride=1合并访存+寄存器转置，可显著降低aiv_mte2_time
+code_snippet:
+  Triton: "# 反模式：转置 block_ptr，非合并访存\n\
+    p_dAqk = tl.make_block_ptr(dAqk_local, (BT, T_local), (1, H*BT),\n\
+    \                         (i_i * BC, i_t * BT + i_j * BC), (BC, BC), (0, 1))\n\
+    b_dAqk = tl.load(p_dAqk, boundary_check=(0, 1))\n\
+    \n\
+    # 正模式：行优先加载 + 寄存器转置\n\
+    row_idx = i_t * BT + i_j * BC + o_i[:, None]\n\
+    col_idx = i_i * BC + o_i[None, :]\n\
+    dAqk_mask = (row_idx < T_local)[:, None] & (col_idx < BT)[None, :]\n\
+    p_dAqk_row = dAqk_local + row_idx * H * BT + col_idx\n\
+    b_dAqk_row = tl.load(p_dAqk_row, mask=dAqk_mask, other=0.0)\n\
+    b_dAqk = tl.trans(b_dAqk_row)"
+performance_boost: 30%
+note: 此方法要求原始张量布局允许按期望方向连续读取。如果原始数据布局本身就是列优先，可能需要预先在host端转置或在kernel内使用其他数据编排策略。
+source_type: manual_ingest
+source_refs:
+- /home/l00792704/wby/kbb/theta-flash-linear-attention/fla/ops/kda/intra_design.md
+version: v1.0

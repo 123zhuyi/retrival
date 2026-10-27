@@ -1,0 +1,49 @@
+experience_id: exp_silu_bwd_001
+match_cond:
+  operator_type: Activation Operations
+  compute_pattern: Element-wise
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Scheduling Optimization
+framework_tag:
+- Triton
+optimization_points:
+- autotuning_strategy: The kernel utilizes @triton.autotune to dynamically select
+    the optimal BLOCK_SIZE_M (ranging from 1 to 32) based on runtime input shapes
+    (n_rows, n_cols). This is critical for adapting to varying batch sizes or sequence
+    lengths, ensuring the best trade-off between instruction-level parallelism and
+    register pressure.
+- grid_stride_loop: Implements a grid-stride loop for the row dimension (for row_task_id
+    in range(pid, num_row_tasks, grid_size)). This decouples the total workload from
+    the number of launched thread blocks, allowing the hardware to maintain high occupancy
+    even when the grid size is smaller than the total number of rows.
+- fp32_precision_safeguard: Explicitly casts the input tensor x to float32 (x_f32)
+    before computing the sigmoid and the SiLU derivative. This prevents potential
+    underflow or overflow issues inherent to half-precision (fp16/bf16) non-linear
+    arithmetic, ensuring gradient accuracy during backpropagation.
+- vectorized_memory_access: The inner loop processes columns in chunks defined by
+    BLOCK_SIZE_N, enabling contiguous memory loads and stores. This maximizes memory
+    bandwidth utilization by ensuring memory transactions are coalesced.
+performance_boost: 15%
+note: The kernel includes a @libentry() decorator, suggesting it is part of a larger
+  library or compilation flow. The autotuning config is conservative (max block 32),
+  which is suitable for the typically smaller tile sizes found in element-wise activation
+  backward passes compared to GEMMs.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/215-_silu_bwd_kernel.py

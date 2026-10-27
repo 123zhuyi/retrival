@@ -1,0 +1,45 @@
+experience_id: exp_spec_decode_verify_scalar
+match_cond:
+  operator_type: Sampling Operations
+  compute_pattern: Rejection Sampling Verification
+  data_type:
+  - int32
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    max_spec_len:
+    - '>=1'
+    vocab_size:
+    - '>=32000'
+  optimization_level: base
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- scalar_loop_vectorization: The current implementation uses a Python-style scalar
+    loop `for pos in range(num_draft_tokens)` inside the kernel. This serializes the
+    verification of draft tokens, preventing the GPU from utilizing SIMD parallelism
+    for the sequence dimension. The optimization is to vectorize this loop by processing
+    multiple draft positions simultaneously using Triton's vectorized load and arithmetic
+    operations.
+- memory_access_coalescing: Inside the scalar loop, `tl.load` is called for individual
+    tokens and probabilities (`draft_token_ids_ptr`, `target_probs_ptr`, etc.). This
+    results in poor memory access patterns and high latency. The optimization involves
+    loading contiguous blocks of data into SRAM before computation, ensuring memory
+    transactions are coalesced.
+- log_space_accumulation: The calculation of `pi` involves multiplying probabilities
+    (`pi = min(pi * target_prob / draft_prob, 1.0)`), which can lead to numerical
+    underflow. An optimization is to perform the accumulation in log-space (summing
+    log-probabilities) and converting back to linear space only for the final comparison
+    with the uniform random number.
+performance_boost: 300%
+note: The provided code represents a baseline implementation. The scalar loop over
+  `num_draft_tokens` is the primary bottleneck. Optimizing this requires vectorizing
+  the sequence dimension and handling variable lengths with masks.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/171-rejection_random_sample_block_verify_kernel.py

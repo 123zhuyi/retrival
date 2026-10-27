@@ -1,0 +1,51 @@
+experience_id: exp_mhc_post_fusion_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication + Element-wise Fusion
+  data_type:
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    HC:
+    - '>=16'
+    - multiple of 16
+    H:
+    - '>=128'
+    H_BLK:
+    - '>=32'
+    - <=128
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- Operator Fusion: The kernel fuses a Matrix Multiplication (comb_res_mix @ residual),
+    a broadcast multiplication (post_layer_mix * x), and an addition into a single
+    kernel launch. This drastically reduces global memory access (GMA) by avoiding
+    the storage of intermediate results.
+- Parameter Caching: The mixing matrix `comb_res_mix` (shape HCxHC) is loaded once
+    per `N` iteration outside the `H` loop and reused for all blocks in the sequence
+    dimension. This maximizes data reuse and minimizes memory bandwidth consumption
+    for the weight matrix.
+- Loop Tiling: The sequence dimension `H` is processed in blocks of size `H_BLK`.
+    This tiling strategy ensures that the working set fits within the GPU/NPU SRAM,
+    improving data locality and allowing efficient handling of long sequences.
+- Mixed Precision Accumulation: The matrix multiplication `tl.dot` uses FP32 accumulation
+    (`residual_data.to(tl.float32)`) to preserve numerical stability during the reduction,
+    while the final output is stored in BF16 to optimize memory bandwidth and storage.
+- Static Core Scheduling: The kernel manually distributes the `N` dimension across
+    cores using `range(core_idx, N, NUM_CORES)`. This static scheduling strategy reduces
+    launch overhead and ensures load balancing when `N` is sufficiently large.
+performance_boost: 35%
+note: Ensure that the `HC` dimension is a multiple of the hardware's native matrix
+  tile size (e.g., 16 or 32) to fully utilize the tensor cores. The `H_BLK` should
+  be tuned based on the specific hardware's SRAM size.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/075-_mhc_post_kernel.py

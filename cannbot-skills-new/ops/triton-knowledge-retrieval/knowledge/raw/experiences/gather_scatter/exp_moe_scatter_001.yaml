@@ -1,0 +1,55 @@
+experience_id: exp_moe_scatter_001
+match_cond:
+  operator_type: Indexing Operations
+  compute_pattern: MoE Scatter
+  data_type:
+  - fp8
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    HIDDEN_SIZE:
+    - '>=128'
+    topk_num:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- software_pipelining: The loop `tl.range(..., num_stages=4)` employs software pipelining
+    to prefetch memory loads and overlap them with store operations, effectively hiding
+    memory latency during the scatter phase.
+- vectorized_scatter: Instead of processing tokens one by one, the kernel writes the
+    expert ID to the `m_indices` buffer in chunks of `BLOCK_E`, significantly improving
+    memory bandwidth utilization.
+- local_prefix_sum: The kernel calculates the starting offsets (`expert_start_loc`)
+    for experts using `tl.cumsum` on loaded blocks of token counts, allowing for parallel
+    offset computation without expensive global synchronization.
+- vectorized_memory_access: The kernel utilizes `tl.arange` to load and store the
+    entire `HIDDEN_SIZE` vector in a single operation. This maximizes memory bus utilization
+    and reduces the number of memory instructions issued compared to element-wise
+    access.
+- memory_alignment_padding: By using `HIDDEN_SIZE_PAD` and `SCALE_HIDDEN_SIZE_PAD`,
+    the kernel ensures that all memory accesses are aligned to the hardware's burst
+    size (e.g., 32 or 128 bytes). This avoids unaligned access penalties and is crucial
+    for achieving peak bandwidth on Ascend hardware.
+- input_data_reuse: The input token data (`recv_x`) and its scale (`recv_x_scale`)
+    are loaded once per token before the inner loop. This data is then reused for
+    all `topk_num` experts, minimizing redundant global memory reads when tokens are
+    routed to multiple experts.
+- software_pipelining: The inner loop uses `num_stages=4` to prefetch expert indices
+    and destination pointers. This hides the latency of indirect memory loads (pointer
+    chasing) required to determine the write location for each expert.
+performance_boost: 35%
+note: This kernel is optimized for MoE workloads where tokens are distributed to experts.
+  It supports FP8 scaling. Ensure that `expert_start_loc` updates are handled correctly
+  to avoid race conditions if multiple blocks target the same expert concurrently,
+  though the grid-stride loop helps distribute load.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/061-_fwd_kernel_ep_scatter_2.py

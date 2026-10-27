@@ -1,0 +1,46 @@
+experience_id: exp_rope_llama4_npu_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: RoPE (Rotary Position Embedding)
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    hd:
+    - '>=32'
+    - multiple of 2
+    n_qh:
+    - '>=1'
+    n_kh:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- ub_tiling_strategy: The kernel iterates over query and key heads in chunks defined
+    by BLOCK_Q and BLOCK_K. This tiling strategy is designed to keep the active working
+    set within the NPU's Unified Buffer (UB), minimizing high-latency data transfers
+    between Global Memory (GM) and UB.
+- fma_instruction_utilization: The complex multiplication arithmetic is implemented
+    using tl.math.fma (Fused Multiply-Add). This leverages the NPU's pipeline capabilities
+    to compute the real and imaginary components (ac - bd, ad + bc) efficiently, reducing
+    the total number of instructions compared to discrete multiplication and addition.
+- interleaved_layout_optimization: By using can_reorder=True in reshape operations
+    and tl.interleave for the output, the kernel allows the compiler to handle the
+    interleaved complex data layout (real, imag) optimally. This avoids costly explicit
+    transposition or gather/scatter operations and aligns memory access patterns with
+    the NPU's vectorization units.
+performance_boost: 25%
+note: This kernel is specifically tuned for the Ascend NPU memory hierarchy. It assumes
+  an interleaved complex layout for the frequency inputs and outputs.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/098-_triton_llama4_rope_npu.py

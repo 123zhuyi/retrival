@@ -1,0 +1,48 @@
+experience_id: exp_recompute_w_u_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Matrix Multiplication
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    BT:
+    - '>=16'
+    K:
+    - '>=64'
+    V:
+    - '>=64'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- high_precision_accumulation: The kernel enforces float32 accumulation and disables
+    TF32 (allow_tf32=False) during the dot product operations. This is crucial for
+    state recomputation in attention mechanisms to prevent numerical drift, ensuring
+    stability at the cost of raw compute speed.
+- fused_gating_gemm: Element-wise scaling operations (multiplying by beta and g) are
+    fused directly into the GEMM pipeline. By computing b_vb and b_kb in registers/SRAM
+    immediately before the tl.dot call, the kernel avoids storing intermediate scaled
+    tensors to global memory, significantly reducing memory bandwidth usage.
+- intra_block_head_iteration: The kernel loops over the head dimension (H) inside
+    the kernel body rather than launching a separate grid for each head. This reduces
+    kernel launch overhead and can improve cache locality for the attention matrix
+    A if it is shared or accessed sequentially across heads.
+- varlen_efficiency: Implements a specialized path for variable-length sequences using
+    cu_seqlens. This allows the kernel to skip processing padding tokens entirely,
+    maximizing hardware utilization for packed batches common in LLM training/inference.
+performance_boost: 25%
+note: The use of float32 accumulation ensures numerical stability for re-computation
+  but may limit peak throughput compared to pure fp16/bf16 pipelines. Best suited
+  for scenarios where accuracy of the recurrent state is paramount.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/156-recompute_w_u_fwd_kernel.py

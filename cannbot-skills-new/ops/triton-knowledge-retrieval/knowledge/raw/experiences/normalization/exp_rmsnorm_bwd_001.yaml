@@ -1,0 +1,49 @@
+experience_id: exp_rmsnorm_bwd_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: RMSNorm Backward
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    n_rows:
+    - '>=1'
+    n_cols:
+    - '>=1'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dynamic_tiling_strategy: The kernel utilizes @triton.heuristics to dynamically calculate
+    BLOCK_SIZE_M as ceil_div(4096, n_cols). This ensures that the product of block
+    dimensions remains roughly constant, optimizing hardware occupancy and instruction-level
+    parallelism regardless of the input feature dimension (n_cols).
+- grid_stride_accumulation: A grid-stride loop is employed to iterate over rows (row_task_id
+    ranges from pid to num_row_tasks with step grid_size). This allows the kernel
+    to process matrices of arbitrary height with a fixed number of thread blocks,
+    while accumulating the weight gradient (dW) in registers (dW_acc) to minimize
+    global memory access.
+- fused_precision_modes: The kernel integrates specific casting logic for LLAMA and
+    GEMMA architectures directly into the computation graph. By handling upcasting
+    to float32 (e.g., dY_block.to(tl.float32)) conditionally within the kernel, it
+    maintains numerical stability for sensitive models without the overhead of launching
+    multiple specialized kernels.
+- masked_vectorized_io: Memory operations for X, dY, and dX use 2D block masks (block_mask).
+    This allows the kernel to handle batch sizes or sequence lengths that are not
+    perfectly divisible by BLOCK_SIZE_M efficiently, avoiding padding and ensuring
+    safe memory access.
+performance_boost: 30%
+note: The kernel writes partial sums for dW to dW_ptr + pid * dW_row_stride. A final
+  reduction step (summing over the program axis) is required outside this kernel to
+  obtain the complete dW gradient.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/233-_rmsnorm_bwd_kernel.py

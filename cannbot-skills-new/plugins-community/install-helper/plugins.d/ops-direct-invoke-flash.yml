@@ -1,0 +1,17 @@
+id: ops-direct-invoke-flash
+dir: plugins-official/ops-direct-invoke-flash
+displayName: AscendC Kernel 直调（快速版）
+aliases: [flash, kernel-flash]
+skills: 7
+description: 从数学公式或代码片段快速构建并验证 Ascend NPU 核函数
+# version derived from plugin.json (single source of truth)
+configFile: AGENTS.md
+configRootConfigLink: true
+installSkills:
+  - dir: plugins-official/ops-direct-invoke-flash/skills
+    skills: [ops-direct-invoke-flash]
+  - dir: ops
+    skills: [ascendc-st-design, ascendc-whitebox-design]
+  - dir: infra
+    skills: [gitcode-toolkit, gitcode-pr-handler, gitcode-issue-gen, gitcode-issue-handler]
+installAgents: [ops-direct-invoke-flash-reviewer]

@@ -1,0 +1,106 @@
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
+# =============================================================================
+# Validation rule tables for CANN Skills tests
+# =============================================================================
+# Loaded by tests/lib/skill_validator.py and sourced (informally) by
+# tests/lib/test-helpers.sh. Edit this file to tune rule sensitivity rather
+# than hacking the shell or Python code.
+# =============================================================================
+
+# Trigger-keyword vocabularies used by S-CON-02 / A-CON-02 / T-CON-02.
+skill_keywords:
+  - Ascend
+  - 算子
+  - Kernel
+  - Tiling
+  - 调试
+  - debug
+  - 测试
+  - UT
+  - 性能
+  - perf
+  - 精度
+  - precision
+  - NPU
+  - 开发
+  - API
+  - ACLNN
+  - 运行时
+  - runtime
+
+team_keywords:
+  - 团队
+  - Team
+  - 协同
+  - 编排
+  - 流程
+  - 开发
+  - Agent
+  - 多Agent
+
+# Trigger-condition phrases for S-CON-03 (description must say WHEN to use).
+# NOTE: These checks are SKIPPED when frontmatter has `disable-model-invocation: true`.
+# Such skills are proactively loaded by the agent/team and do not need user-input
+# trigger phrases.
+trigger_condition_phrases:
+  - "use when"
+  - "when .*user"
+  - "when .*ask"
+  - "asks to"
+  - "if you"
+  - "当.*(需要|遇到|出现|用户|提及|问题)"
+  - "触发条件"
+  - "使用场景"
+  - "适用于"
+  - "use for"
+  - "触发.*说"
+  - "触发(?:场景|关键词|[：:])"
+  - "用于.*当"
+  - "当用户"
+  - "用户.*提到"
+  - "提及.*时"
+
+# Reserved name prefixes (S-STR-14 / A-STR-14). Case-insensitive.
+# Per Anthropic "Building Skills for Claude" guide: these prefixes are reserved
+# by Anthropic and must not be used by third-party skills/agents/teams.
+reserved_name_prefixes:
+  - claude
+  - anthropic
+
+# Lazy-description anti-patterns (S-CON-09 warning).
+# Exact phrases frowned upon by the PDF checklist as being too vague.
+anti_pattern_phrases:
+  - "Helps with projects"
+  - "Processes documents"
+  - "Implements the.*entity"
+  - "Does.*stuff"
+  - "General-purpose.*tool"
+  - "Assists with.*tasks"
+  - "帮助.*项目"
+  - "处理.*文档"
+  - "通用.*工具"
+  - "辅助.*任务"
+  - "做.*事情"
+
+# Progressive-disclosure thresholds.
+skill_max_words: 5000          # S-STR-13
+skill_long_line_threshold: 500 # S-CON-07 — files beyond this must link to references/
+skill_description_max: 1024    # S-STR-07
+skill_description_combined_max: 1536  # S-STR-17 (description + when_to_use, Claude Code truncation limit)
+skill_name_max: 64             # S-STR-05
+skill_compatibility_max: 500   # S-STR-07 extension
+
+# Frontmatter fields.
+# disable-model-invocation: true
+#   When set, the skill is proactively loaded by the agent/team rather than
+#   auto-triggered by user-input matching. The validator skips S-CON-02
+#   (trigger keywords) and S-CON-03 (trigger conditions) for such skills,
+#   and relaxes S-CON-08 (三段式) from 2 segments to 1.

@@ -1,0 +1,44 @@
+experience_id: exp_skip_layernorm_001
+match_cond:
+  operator_type: Reduction Operations
+  compute_pattern: Skip Layer Normalization
+  data_type:
+  - fp16
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param:
+    N:
+    - '>=1024'
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Memory Access Optimization
+framework_tag:
+- Triton
+optimization_points:
+- precision_control: Accumulators for the sum (sum_x) and sum of squares (sum_sq)
+    are explicitly computed in float32. This prevents overflow and ensures numerical
+    stability during the variance calculation, which is critical when inputs are fp16
+    or bf16.
+- kernel_fusion: The residual connection (X + R) and the affine transformation (W
+    * x_hat + B) are fused directly into the LayerNorm kernel. This eliminates the
+    need for separate kernel launches and intermediate global memory storage, significantly
+    reducing memory bandwidth pressure.
+- two_pass_algorithm: The kernel utilizes a two-pass strategy the first pass iterates
+    over the data in blocks to compute mean and variance (reduction), and the second
+    pass applies the normalization and affine transform. This approach decouples the
+    reduction phase from the element-wise phase, allowing the kernel to handle hidden
+    dimensions (N) larger than the register file capacity by processing data in BLOCK_SIZE
+    chunks.
+performance_boost: 30%
+note: The two-pass approach trades off some memory bandwidth (reloading X and R in
+  the second pass) for flexibility in handling large N dimensions. Ensure BLOCK_SIZE
+  is tuned to the L1 cache size for optimal performance.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/118-skip_layer_norm_kernel.py

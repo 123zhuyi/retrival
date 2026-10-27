@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Triton Optimizer Multi-Agent Round Result",
+  "description": "Output produced by a Per-Round Worker sub CLI after completing Phase 0-8.",
+  "type": "object",
+  "required": [
+    "round_index",
+    "status",
+    "best_speedup",
+    "target_reached",
+    "improvement_made",
+    "phase4_entered",
+    "optimized",
+    "effective_metric_source",
+    "direction",
+    "hypothesis",
+    "round_strategy",
+    "work_dir",
+    "artifacts"
+  ],
+  "properties": {
+    "round_index": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "algorithm": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Optimization algorithm used for this round"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failed"],
+      "description": "Whether the round completed successfully"
+    },
+    "best_speedup": {
+      "type": "number",
+      "description": "Best geometric-mean speedup achieved in this round"
+    },
+    "target_reached": {
+      "type": "boolean",
+      "description": "Whether best_speedup >= target_speedup"
+    },
+    "improvement_made": {
+      "type": "boolean",
+      "description": "Whether Phase 4 produced a speedup improvement"
+    },
+    "phase4_entered": {
+      "type": "boolean",
+      "description": "Whether Phase 4 optimization was executed"
+    },
+    "optimized": {
+      "type": "boolean",
+      "description": "Whether the final code came from Phase 4 optimization"
+    },
+    "effective_metric_source": {
+      "type": "string",
+      "enum": ["kernel", "total-op", "mixed"],
+      "description": "Performance metric source for this round"
+    },
+    "direction": {
+      "type": "string",
+      "description": "Optimization direction executed this round"
+    },
+    "hypothesis": {
+      "type": "string",
+      "description": "Optimization hypothesis executed this round"
+    },
+    "round_strategy": {
+      "type": "string",
+      "enum": ["exploration", "structural_change", "focused_tuning", "stabilization", "plateau_review"]
+    },
+    "work_dir": {
+      "type": "string",
+      "description": "Path to the round work directory"
+    },
+    "direction_yield": {
+      "type": ["string", "null"],
+      "enum": ["high", "medium", "low", "failed", null],
+      "description": "Causal quality label for the direction executed in this round"
+    },
+    "yield_reason": {
+      "type": ["string", "null"],
+      "enum": [
+        "target_reached",
+        "improvement_made",
+        "plateau_after_2_rounds",
+        "no_improvement_vs_baseline",
+        "verify_failed",
+        "idle_round",
+        "timeout",
+        null
+      ],
+      "description": "Reason for the direction_yield classification"
+    },
+    "absolute_gain_vs_baseline": {
+      "type": ["number", "null"],
+      "description": "best_speedup minus the baseline speedup this round started from"
+    },
+    "baseline_dir": {
+      "type": ["string", "null"],
+      "description": "round_dir of the baseline code used for this round"
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Error message if status is failed"
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["summary_json", "report_md", "final_code"],
+      "properties": {
+        "summary_json": { "type": "string" },
+        "report_md": { "type": "string" },
+        "final_code": { "type": "string" }
+      }
+    },
+    "design_summary": {
+      "type": ["string", "null"],
+      "description": "One-sentence summary of the design rationale and algorithm sketch for this round"
+    },
+    "iter_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of coding/verification iterations performed in this round"
+    },
+    "opt_iter_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of optimization iterations performed in Phase 4 of this round"
+    },
+    "key_fixes": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "List of key fixes or workarounds applied during this round"
+    },
+    "bottlenecks_observed": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "List of observed performance or compile bottlenecks during this round"
+    },
+    "parent_round_journal": {
+      "type": ["string", "null"],
+      "description": "Path to the parent round's detailed journal (round_journal.md)"
+    }
+  }
+}

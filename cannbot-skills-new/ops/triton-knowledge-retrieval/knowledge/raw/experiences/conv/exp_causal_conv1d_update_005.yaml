@@ -1,0 +1,37 @@
+experience_id: exp_causal_conv1d_update_005
+match_cond:
+  operator_type: Convolution Operations
+  compute_pattern: Causal Conv1D Update (Decode) / Prefill
+  data_type:
+  - fp16
+  - bf16
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    dim:
+    - multiple_of_D_CHK_SIZE
+  optimization_level: intermediate
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- dim_is_multiple_mask_elimination: "当 `dim % D_CHK_SIZE == 0`（或 `dim % BLOCK_D == 0` for Prefill）时，通过编译期常量 `DIM_IS_MULTIPLE: tl.constexpr` 跳过 D 维度的 mask 检查。在 Update kernel 中 D_CHK_SIZE=16，dim=4096 时能整除，可消除所有 load/store 的 `(offset0 < dim)` mask 运算。这直接减少每条 load/store 指令的标量地址计算和条件判断开销。"
+- cross_kernel_applicability: "此优化来源于 Prefill kernel（`_causal_conv1d_prefill_kernel` 中 BLOCK_D=1024，当 dim%1024==0 时 DIM_IS_MULTIPLE 为 True），可无损迁移到 Update kernel。Update kernel 在加载权重（x_b 的 `offsets=(di*D_CHK_SIZE, ...)` 带 mask）、存储输出（`boundary_check=(0,1)` 带 mask）时都有 D 维度边界检查。"
+- compile_time_specialization: "使用 `tl.constexpr` 声明 DIM_IS_MULTIPLE，编译器在生成 NPU 指令时直接消除 mask 分支，而非在运行时判断。与 `@triton.heuristics` 将 runtime 值转为 constexpr 的模式一致。"
+- applicable_locations: "Update kernel 中适用位置：(1) 权重加载 `tl.load(make_block_ptr(weight_ptr, ...))` 的 boundary_check；(2) x_b 加载的 D 维度 offsets 计算中的 mask；(3) 输出存储 `tl.store(make_block_ptr(out_ptr, ...))` 的 boundary_check。"
+performance_boost: "减少 5-15% 的标量指令数（取决于 tile 数量），在 D 维度较大且整除 D_CHK_SIZE 时收益更显著"
+note: "此优化是通用模式，适用于所有 D/BD 维度 tile 化且维度大小是 tile size 整数倍的 kernel。实现极简：host 端计算 `DIM_IS_MULTIPLE = (dim % D_CHK_SIZE == 0)`，kernel 端用 `if not DIM_IS_MULTIPLE: mask = (offsets < dim)` 条件编译。"
+version: v1.0
+source: causal_conv1d_prefill_GA/conv1d_update_analysis.md §5.1 (可复用优化点1) + §9 (改进建议-高优先级)
+code_snippet:
+  host_side: |
+    DIM_IS_MULTIPLE = (dim % D_CHK_SIZE == 0)
+  kernel_side: |
+    if not DIM_IS_MULTIPLE:
+        mask_d = d_offs < dim
+    else:
+        mask_d = None
+    w = tl.load(make_block_ptr(..., boundary_check=(0, 1) if not DIM_IS_MULTIPLE else ()))

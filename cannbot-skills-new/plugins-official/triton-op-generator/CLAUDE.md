@@ -1,0 +1,1 @@
+/home/w00836812/shixi_test02/cannbot-skills-new/plugins-official/triton-op-generator/AGENTS.md

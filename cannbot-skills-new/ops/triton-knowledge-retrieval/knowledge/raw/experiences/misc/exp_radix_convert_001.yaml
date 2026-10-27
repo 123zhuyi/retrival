@@ -1,0 +1,41 @@
+experience_id: exp_radix_convert_001
+match_cond:
+  operator_type: Element-wise Operations
+  compute_pattern: Bitwise Manipulation
+  data_type:
+  - int8
+  - int16
+  - int32
+  - int64
+  hardware:
+  - 910b2
+  - 910b3
+  - 91093
+  - 91095
+  core_param: {}
+  optimization_level: advanced
+  tensor_shape:
+  - nd
+experience_type: Compute Optimization
+framework_tag:
+- Triton
+optimization_points:
+- compile_time_dispatch: The kernel utilizes `tl.constexpr` to evaluate data type
+    conditions (int8, int16, etc.) during compilation rather than at runtime. This
+    eliminates branch divergence within the GPU/NPU warps, ensuring that the generated
+    machine code is specialized and efficient for the specific input tensor type.
+- sign_bit_flipping_algorithm: Implements a highly optimized method to flip the Most
+    Significant Bit (MSB) using bitwise shifts (`>>`) and masks (`&`). This converts
+    Two's Complement signed integers into Offset Binary (unsigned) format, which is
+    a critical step for maintaining lexicographical order when performing Radix Sort
+    on signed data using unsigned comparators.
+- hardware_instruction_mapping: The operations used (bitwise AND, OR, SHIFT) map directly
+    to single-cycle integer arithmetic instructions on the hardware, avoiding the
+    overhead of complex arithmetic or floating-point conversion logic.
+performance_boost: 20%
+note: This function is essential for preprocessing signed integer data before passing
+  it into a Radix Sort kernel that operates on unsigned integers. It preserves the
+  relative ordering of negative and positive numbers.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/135-radix_type_convert.py

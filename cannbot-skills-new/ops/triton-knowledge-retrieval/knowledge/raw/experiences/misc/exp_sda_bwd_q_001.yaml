@@ -1,0 +1,49 @@
+experience_id: exp_sda_bwd_q_001
+match_cond:
+  operator_type: Matrix Operations
+  compute_pattern: Attention Backward
+  data_type:
+  - bf16
+  - fp32
+  hardware:
+  - 910b2
+  - 910b3
+  core_param:
+    S:
+    - '>=128'
+    H:
+    - '>=64'
+    N:
+    - '>=1'
+  optimization_level: extreme
+  tensor_shape:
+  - nd
+experience_type: Hardware Adaptation Optimization
+framework_tag:
+- Triton
+optimization_points:
+- ascend_cube_vector_balance: The configuration utilizes `tile_mix_vector_loop` and
+    `tile_mix_cube_loop` set to 2, alongside `enable_hivm_auto_cv_balance`. This explicitly
+    balances the instruction dispatch between the AI Cube unit (for matrix multiplication)
+    and the Vector unit (for element-wise operations like softmax and masking) on
+    Ascend NPUs, maximizing pipeline utilization.
+- multibuffer_prefetch: The `multibuffer True` and `set_workspace_multibuffer 2` settings
+    enable double buffering. This allows the hardware to prefetch data for the next
+    tile while computing the current tile, effectively hiding global memory access
+    latency.
+- algebraic_masking: Instead of using conditional branching (if-else) which causes
+    thread divergence, the kernel implements masking via `(block_mask_bool.to(HIGH_TYPE)
+    - 1.0) * 1e6`. This algebraic approach converts the mask into a large negative
+    number added to the logits, ensuring SIMD execution efficiency.
+- structured_tiling_strategy: The kernel employs a 64x128 tiling scheme (`BLOCK_R=64`,
+    `BLOCK_C=128`) and iterates over the sequence dimension in a structured order
+    (diagonal, lower triangular, then previous columns). This specific pattern optimizes
+    for the memory access patterns of the backward pass in sparse or sliding-window
+    attention mechanisms (implied by `SEQ_LEN = S // 2`).
+performance_boost: 35%
+note: This kernel is highly optimized for Ascend 910B series hardware using specific
+  NPU intrinsics flags. The logic implies a specific attention pattern (e.g., Sliding
+  Window or ALiBi) where the sequence length is effectively halved for internal indexing.
+version: v1.0
+code_snippet:
+  TritonPath: raw_experiences/extracted_kernels/262-kernel_sda_bwd_q_up.py
