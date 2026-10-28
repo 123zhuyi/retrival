@@ -82,3 +82,54 @@ FIXP 高
 - 一次性 SCALAR 高峰（DC_PRELOAD/LD_XD 等，calls 几十、单次几百 cycles）是单跑冷启动 artifact，
   剔除后重算占比再下结论
 - 禁止只看 cube 核——vector 核的两张表解释"cube 在等什么"
+
+## Memory.csv 数据通路字段表（2026-10-26 定版：通路级验证已完成）
+
+> 完整审计流程（理想量→实测→逐变量归账→冗余判定→效率比）见 [channel-traffic-audit.md](channel-traffic-audit.md)。
+
+### 通路 → 字段映射（取数方法：逐子核行求和，单次发射确认后为该发射真实流量）
+
+| 通路 | 字段（cube/AIC 行） | 字段（vec/AIV 行） | 通路级验证 |
+|---|---|---|---|
+| GM→L1 读 | `GM_to_L1_datas(KB)` | —（vec 无此列） | **1.007×** vs last_pass 读点清单模型（c1: 580 vs 576KB/核） |
+| L1→GM 写 | `L1_to_GM_datas(KB)(estimate)` | — | estimate 口径，无代码对应项（52KB，悬置） |
+| L0C→GM 直写 | `L0C_to_GM_datas(KB)` | — | **1.000×** vs IR fixpipe f32@gm 模型（480 vs 480KB/核） |
+| L0C→L1 | `L0C_to_L1_datas(KB)` | — | 计数器存在；本 kernel = 0（片上直达通路未用） |
+| GM→UB 读 | — | `GM_to_UB_datas(KB)` | **1.035×** vs IR 读回模型（289.8 vs 280KB/核） |
+| UB→GM 写 | — | `UB_to_GM_datas(KB)` | 逻辑量 ×2.0 吻合（行计费假设，见下） |
+| 主存读（接口侧视角） | `read_main_memory_datas(KB)` | 同名列 | 与 GM→L1 / GM→UB 互证一致（<2%） |
+| 主存写（接口侧视角） | `write_main_memory_datas(KB)` | 同名列 | 与 L0C→GM / UB→GM 互证一致（<2%） |
+
+### 跨通路守恒检验（判断采集可信的快速门）
+
+- **发送 ≈ 接收**：cube `L0C_to_GM` 合计 ≈ vec `GM_to_UB` 中间结果份额（c1: 7.68 vs 7.96MB，差 2.4%）
+- **侧和 ≈ 总账**：两侧 read_main 之和 ≈ 总读、write_main 之和 ≈ 总写
+- 任一不成立 → 采集口径有问题，先查发射次数（OpBasicInfo 行数 ×1 确认）再谈数据
+
+### 已定案的语义细节
+
+- 主存读写 = **NPU 板载 HBM ↔ AI 核**经 L2 的流量，不是主机内存↔显存（PCIe 交换不在这些计数器里）
+- 同一 OPPROF 内不同 CSV 时长互不相同（OpBasic 58µs / Memory 52.6 / PipeUtil 85.2）——分指标组多 pass 采集，跨 CSV 字段禁止混合计算
+- 半行写计费：fp32 整行写 1.02× 零放大 vs bf16 `[32,64]`=64B 半行写精确 2.0×——写侧放大 = 行粒度计费；"写缺失先读整行(RMW) 落主存"已被 read_main 账本排除（无伴生读余量）
+- 缓存行大小 128B 仍为假设（chip_spec 无此字段），行计费结论随行大小证伪需重算
+- L2Cache.csv 的 hit/miss/allocate 列是**事务计数（行数）**，非字节
+
+### 草图 vs 实测（c1 实证，2026-10-26）——草图口径的系统性盲区
+
+| 通路 | 草图推理 | CSV 实测 | 差异 | 根因 |
+|---|---|---|---|---|
+| GM→L1 读 | 338.5 KB/核 | 580.0 KB/核 | 1.71× | 草图缺编译器读点（v_dec 回读 cube 8KB/迭代，IR L145） |
+| GM→UB 读 | 40 KB/核 | 289.8 KB/核 | **7.2×** | 草图只给了 u；实测 83% 是中间结果读回 |
+| L0C→GM 直写 | **0**（假设片上交接） | 480.0 KB/核 | **从 0 到 7.68MB** | 草图最大盲区：mix 拆核后 dot 结果必须经 GM |
+| UB→GM 写 | 128 KB/核（逻辑） | 249.4 KB/核 | 2.0× | 半行写行计费 |
+| L1→GM 写 | 0 | 52.1 KB/核（estimate） | 0→52KB | 未归因 |
+
+总流量：草图 11.05 MB vs 实测 33.36 MB = **3.02×**。
+结论模板：**草图 tile 层取数逻辑量正确（IR 证实无隐藏 tile），草图错在通信模型——假设单核执行、无子核间交换；mix 拆核架构下，凡"跨计算步的中间量"都要过 GM，草图逐项漏计。评估 mix 类 kernel 时，草图流量下限须加"中间结果往返"项：Σ(各 dot/中间张量 f32 字节 × 迭代数 × 2 方向)。**
+
+### 使用纪律（本轮教训）
+
+1. 流量判定唯一权威 = read/write_main_memory_datas 求和（单次发射确认后）
+2. 禁止用"指令数相同"推断"重复执行"——判别器是数据地址（instr detail 的 XN 寄存器值）
+3. 未知数显式列出，禁止调容差区间去盖实测值（2026-10-26 RMW 拟合事故）
+4. IR 读点清单（nd2nz/load_gm_to_ubuf/set_l1_2d 按 mix_aic/mix_aiv 分节）是通道期望值的正确来源；源码层会漏编译器插入的协作读写

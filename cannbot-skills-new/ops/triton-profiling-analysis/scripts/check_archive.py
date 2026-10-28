@@ -9,6 +9,9 @@
 """
 import argparse, glob, hashlib, json, os, re, sys
 
+# §5 模板固定章节号——报告节结构照模板，禁止发明（4.5b/2.5b 之类的自造号在此被拦）
+ALLOWED_SECS = {"1", "2", "3", "4", "4.5", "5", "6", "7"}
+
 def md5(p):
     return hashlib.md5(open(p, "rb").read()).hexdigest()[:10]
 
@@ -58,6 +61,12 @@ def main():
                         "## 5. 优化建议", "## 7. 证据附录"):
                 if sec not in txt:
                     errs.append(f"{name}/profiling/{os.path.basename(r)}: 缺章节「{sec}」")
+            for line in txt.splitlines():
+                mh = re.match(r'^#{2,3}\s+(\d+(?:\.\d+)*[a-z]*(?:\.\d+)*[a-z]*)[\s\.、．]', line)
+                if mh and mh.group(1) not in ALLOWED_SECS:
+                    errs.append(f"{name}/profiling/{os.path.basename(r)}: "
+                                f"自造章节号「{mh.group(1)}」——节结构照 §5 模板固定七节，"
+                                f"内容放不进模板时找归属的规定产物，不得发明小节")
         if m:
             for r in m.get("profiling_reports", []):
                 if not os.path.exists(os.path.join(d, r.get("file", "?"))):

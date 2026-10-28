@@ -1,0 +1,41 @@
+# @provenance ir_reconstructed 2026-10-27
+# 本稿为 IR 重建稿（原 sketch.txt 缺失场景演示）：按 references/design-ceiling-derivation.md
+# S1' 流程，从 last_pass.mlir + resource_audit.py 证据 + 任务 json 重建，结构同 designer 原稿。
+# 设计意图不可考——每条 @architecture_decision 记「实现事实」并附 ir_refs；与原设计稿
+# 的差异是：reason 只描述 IR 所见，不含模板/KKB 出处。冗余度口径 = 重建量/任务下限。
+
+# @architecture_decision("single-fused-persistent-recurrence", ir_refs="mix_aic 主循环 NT=10（fp_instr 20/核 ÷ 2 MMA 调用点）；单次发射（OpBasicInfo 1 行）", fact="状态 tile 驻留：状态逐迭代递推（RAW 链不可拆 grid），单 kernel 一次发射完成全部 chunk")
+# @architecture_decision("v-dim-program-split", ir_refs="mix_aiv L43 remsi %c2 → pid 含 iv 分量；u 读 [64,64] 整片 IR 但每子核作业 4KB（[32,64] 半片）", fact="V 维按 64 切两半：programs = 8vh × 2iv = 16；u/v_new/v_dec 双子核各搬半片")
+# @architecture_decision("chunk-level-dot", ir_refs="mix_aic L124 mma [64,128]@[128,64]→[64,64]f32；L154 mma.ta [128,64]@[64,64]→[128,64]f32；fixpipe L163（16KB）/L133（32KB）", fact="chunk 内两处 MMA（w@h 与 k^T@v_dec），chunk 间状态经 GM 传播")
+# @architecture_decision("state-roundtrip-gm", ir_refs="h 槽写 mix_aiv L133；读回 mix_aic L73 nd2nz workspace@pid×73760", fact="实现为：状态每 chunk 落 GM 槽（vec 写/cube 下迭代读回）——生产者消费者分居两核，A3 下经 GM 中转")
+# @architecture_decision("dot-workspace-f32-roundtrip", ir_refs="dot2 写 aic L133 fixpipe 32KB/读回 aiv L342；dot1 写 aic L163 16KB/读回 aiv L267", fact="两个 dot 结果均以 f32 落 GM workspace 后由对侧核读回（跨核交接经 GM）")
+
+sketch gdn_fwd_h_reconstructed {
+  symbols: T, Hv, Hk, K, V, BT, NT, GQA;
+  # 实测锚：T=612, Hv=8, Hk=4, K=V=128, BT=64, NT=10（=612/64 上取整）, GQA=2（mix_aic L46 divsi %7,2）
+  tensors:
+    k[T? 或任务形状]: bf16;    # 任务 json 权威；IR 侧 %arg3，实测读 ×4（GQA 折叠 + vh 拆分）
+    w: bf16;                   # %arg5，实测读 ×2
+    u: bf16;                   # %arg6，实测读 ×1（干净：地址含全部 pid 分量）
+    g: f32;                    # %arg7，量小
+    h[C_total, K, V]: bf16;    # %arg2 workspace 槽化：每 chunk 边界写一版（语义输出）
+    v_new: bf16;               # %arg11
+    hi(initial_state): bf16;   # %arg4——死输入（mix_aic 零读取，悬置：use_init 分支）
+
+  constexpr: BK=128, BV=64, BT=64, GQA=Hv//Hk=2;
+  # 来源：MMA 静态形状 [64,128]/[128,64] → BK=128；BV=64（v 半片 [32,64]×2）；BT=64（NT=612/64）
+
+  # Kernel 列表: gdn_fwd_h_kernel（mix 16 cube + 32 vec 子核）
+  #   grid = Hv × (V // BV) = 8 × 2 = 16 programs（Memory.csv cube0 行数=16，机械）
+  #   每 program: (vh, iv) → v_lo = iv*64；NT = cdiv(T, BT) = 10
+  #
+  # 每迭代数据流（从 IR 调用点顺序还原，ir_refs 见上）：
+  #   cube: nd2nz w,k → GM→L1 ×2；dot1 w@h（b_h 驻留参与）；fixpipe dot1 f32 → GM
+  #         nd2nz h 槽读回、v_dec 读回；dot2 kᵀ@v_dec；fixpipe dot2 f32 → GM
+  #   vec : load u 半片、g；load dot1/dot2 workspace；向量链 exp(g)·衰减/vsub/vmul；
+  #         store h 槽（每迭代）、v_new 半片×2、旗标 4B
+  #
+  # 冗余注记（ir_reconstructed 口径，对照任务下限 7.54MB）：
+  #   k ×4 / w ×2（拆分×iv消除×GQA 折叠）；h 往返 +2.62；dot1 +5.24；dot2 +10.48；
+  #   v_dec +2.62；hi 死输入 -0.26。实测 34.21MB，A3 理想 13.60MB。
+}

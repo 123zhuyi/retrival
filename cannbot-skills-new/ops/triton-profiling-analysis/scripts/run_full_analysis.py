@@ -639,6 +639,37 @@ def main():
            + (["--sketch", sketch_use, "--expect-md5", md5[:10]] if sketch_use else [])
            + (["--ir", ir_ttir] if ir_ttir else []),
            log=os.path.join(rd, "log", "pipe_time_model.log"), check=False)
+
+    # 片上层实现量清单（last_pass intrinsic，用户指正固化的第二层口径）
+    lp_mlir = (os.path.join(rd, "ir_dump", f"{kept_kernels[0]}_last_pass.mlir")
+               if kept_kernels else None)
+    lp_inv = os.path.join(rd, "last_pass_inventory.json")
+    if lp_mlir and os.path.exists(lp_mlir):
+        sh([sys.executable,
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_pass_inventory.py"),
+            lp_mlir, "--json", lp_inv],
+           log=os.path.join(rd, "log", "last_pass_inventory.log"), check=False)
+        if os.path.exists(lp_inv):
+            try:
+                inv = json.load(open(lp_inv))
+                ln = [f"## 片上层实现量（last_pass intrinsic，{inv['kernel_body']}，"
+                      f"{inv['total_call_sites']} 站点）", ""]
+                for pv, iv in inv["pipes"].items():
+                    ln.append(f"- **{pv}** {iv['sem']}：{iv['sites']} 站点"
+                              + (f"，实测 {iv['instr_per_site']} 条/站点（编译器子 tile 化）"
+                                 if iv.get("instr_per_site") else ""))
+                ln += [f"- 同步：set_flag {inv['sync']['set_flag']} + wait_flag "
+                       f"{inv['sync']['wait_flag']}",
+                       "- MTE1/FIXP 站点为 ttir 不可见的编译器新增片上层；GM 层口径见 §2.5", ""]
+                r = sh(["python3", "-c",
+                        "import sys; p=sys.argv[1]; s=open(p).read(); "
+                        "anchor='## 6. 循环状态'; "
+                        "s=s.replace(anchor, chr(10).join(sys.argv[2:])+chr(10)+anchor, 1) "
+                        "if anchor in s else s; open(p,'w').write(s)",
+                        os.path.join(rd, "report.md")] + ln,
+                       log=os.path.join(rd, "log", "report_patch.log"), check=False)
+            except Exception as e:
+                print(f"[last_pass_inventory] 报告补写失败（不影响产物）：{e}", flush=True)
     try:
         pipe_time = json.load(open(ptm_json))
         if not pipe_time:
