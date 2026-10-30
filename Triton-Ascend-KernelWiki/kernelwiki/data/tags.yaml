@@ -1,0 +1,118 @@
+# Architecture tags use the chip-model column from cannBot npu-hardware-params.
+# NpuArch, SocVersion, A2/A3/A5, archXX, and family names are query selectors
+# in architecture-aliases.yaml and are never written as page tags.
+architectures:
+  - Ascend910
+  - Ascend310P1
+  - Ascend310P3
+  - Ascend310P5
+  - Ascend310P7
+  - Ascend910B1
+  - Ascend910B2
+  - Ascend910B2C
+  - Ascend910B3
+  - Ascend910B4
+  - Ascend910_93
+  - Ascend310B1
+  - Ascend310B2
+  - Ascend310B3
+  - Ascend310B4
+  - Ascend950DT
+  - Ascend950PR
+  - Kirin9030
+  - KirinX90
+
+# Stable hardware capabilities from cann/cannbot-skills ops/npu-arch. Numeric
+# capacities and core counts are intentionally excluded because SKU/vNPU values
+# must be queried at runtime.
+hardware_features:
+  - global_memory
+  - l2_cache
+  - l1_buffer
+  - l0a_buffer
+  - l0b_buffer
+  - l0c_buffer
+  - unified_buffer
+  - bias_table_buffer
+  - ss_buffer
+  - nd_dma_cache
+  - simt_dcache
+  - register_file
+  - ai_core
+  - cube_core
+  - vector_core
+  - scalar_unit
+  - fixpipe
+  - mte1
+  - mte2
+  - mte3
+  - simt
+  - simd
+  - simd_regbase
+  - simd_membase
+  - warp_scheduler
+  - nddma
+  - ccu
+  - l0c_to_ub
+  - ub_l1_bidirectional
+  - ssbuffer_messaging
+  - buffer_id_sync
+  - direct_gm_access
+  - cube_vector_1_to_2
+  - fp8
+  - mxfp8
+  - mxfp4
+  - hif8
+  - sparsity_4_to_2
+  - alignment
+techniques: [load_order, contiguous_access, fp32_accumulation, tail_mask, pointer_rewrite, sparse_attention_tiling, sparse_attention_pipeline, sparse_kv_gather]
+
+# Canonical operator categories follow the CANN repository directory taxonomy.
+kernel_types:
+  # cann/ops-nn
+  - activation
+  - control
+  - conv
+  - foreach
+  - hash
+  - index
+  - loss
+  - matmul
+  - norm
+  - optim
+  - pooling
+  - quant
+  - rnn
+  - vfusion
+  # cann/ops-math
+  - conversion
+  - math
+  - random
+  # cann/ops-transformer
+  - attention
+  - ffn
+  - gmm
+  - mamba
+  - mc2
+  - mhc
+  - moe
+  - posembedding
+
+confidence: [verified, source-reported, inferred, experimental]
+reproducibility: [concept, pseudocode, snippet, runnable, benchmarked]
+source_categories: [official-doc, upstream-code, paper, community-note, reproduction]
+evidence_types: [official-doc, upstream-code, paper, reproduction, inference]
+
+# Error/problem categories used by --symptom and natural-language scoring.
+symptoms:
+  - vecutil_low
+  - compile_error
+  - runtime_error
+  - precision_mismatch
+  - ub_overflow
+  - out_of_memory
+  - illegal_memory_access
+  - shape_mismatch
+  - alignment_error
+  - unsupported_operation
+  - performance_bottleneck

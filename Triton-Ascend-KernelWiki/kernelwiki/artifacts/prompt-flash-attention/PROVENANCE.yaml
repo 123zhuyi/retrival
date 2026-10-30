@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/prompt_flash_attention/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-prompt-flash-attention
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 4d3cb4103f4586663bf0232d7dcd02f0eb31d97af8f7b4f6dbefc0dc45077ec2
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: ed407e34738390bc1f72e303c5b7db1796312234e7e640705b274685c26e21d0
+- local_path: prompt-flash-attention-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 34a795edb68ca5f96336f0b5a63e2a59ae4bfd3cd87596d25a0237292b3332d5
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 7ce93f581dd6faecf92a0fe619ffff9793d981969657d7b730c27e9bfef2d0da
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 8cd24f8bf540b76ba66e5fd340e217ab0cd0e1722f957111befd3fea959a27c5

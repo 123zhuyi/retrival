@@ -1,0 +1,179 @@
+{
+  "op_type": "GroupedMatMulAllReduce",
+  "op_list": [
+    {
+      "bin_filename": "GroupedMatMulAllReduce_ND_ND_BF16_BF16_BF16",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        [
+          {
+            "name": "weight",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        [
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        {
+          "name": "group_list",
+          "index": 3,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "attrs": [
+        {
+          "name": "splitItem",
+          "dtype": "int64",
+          "value": 0
+        },
+        {
+          "name": "group",
+          "dtype": "string",
+          "value": ""
+        },
+        {
+          "name": "reduceOp",
+          "dtype": "string",
+          "value": "sum"
+        },
+        {
+          "name": "commTurn",
+          "dtype": "int64",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "bin_filename": "GroupedMatMulAllReduce_ND_ND_FP16_FP16_FP16",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        [
+          {
+            "name": "weight",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        [
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        {
+          "name": "group_list",
+          "index": 3,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "attrs": [
+        {
+          "name": "splitItem",
+          "dtype": "int64",
+          "value": 0
+        },
+        {
+          "name": "group",
+          "dtype": "string",
+          "value": ""
+        },
+        {
+          "name": "reduceOp",
+          "dtype": "string",
+          "value": "sum"
+        },
+        {
+          "name": "commTurn",
+          "dtype": "int64",
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

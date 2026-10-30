@@ -1,0 +1,2 @@
+- mask = offsets < allocated_n
++ mask = (offsets < allocated_n) & (offsets < logical_n)

@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer/attention/fused_floyd_attention
+upstream_repo: cann/ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/fused_floyd_attention/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-31'
+asset_mode: derived
+derived_from: ops-transformer-fused-floyd-attention
+fixture: true
+files:
+- local_path: fused-floyd-attention-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: ce5539a6194c66a88180c0401d261c93ecbf2143d47bc3b375ac259739b888fc
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 53854e8fe8045d62bcb5107b704279aa574b106e6acb4d2afffe0854aae8d35d
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: fa384daae7b31e65dbb9427c666957d4c98924dec695c5401baf4d70250006e1
+- local_path: source-file-inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 63b64022fabe53c7373654c138576dadec2bd8ade6ffd7b589a7d8ecca329f6c
+- local_path: tiling-dispatch-tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 82f2213c03c3479b61766d71aa5b88fb2fadf5415315f75880c53aa1ffa00062

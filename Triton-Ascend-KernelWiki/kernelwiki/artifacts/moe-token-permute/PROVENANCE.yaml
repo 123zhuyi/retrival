@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: moe/moe_token_permute/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-08-03'
+asset_mode: derived
+derived_from: ops-transformer-moe-token-permute
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: f25da7b6c5422ec95087f1d6e5df67c033ed192b58aec857754f972ecc02e4c5
+- local_path: moe-token-permute-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 16c32a3f69648d32a4de2b7c9edc2fc10527de1047473438f30f0222d485a7f3
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: f09c9764fd05f67e4188d34f269c1d926322251062dbd29ef83c6adc94821f60
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 467d2948c934de16d6f1ad6de2759ef3fffece04c359695495dab358aa5980a2
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 9bc31e532eb4e923160fb122eec96e51e229d2e4d0a4efc65e758b8fe6a5b8b8

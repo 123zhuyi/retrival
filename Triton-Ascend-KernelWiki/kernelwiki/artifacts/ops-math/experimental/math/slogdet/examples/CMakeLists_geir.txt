@@ -1,0 +1,89 @@
+# ----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------------------------------------
+# slogdet 算子 图模式 (GE IR) 调用示例构建脚本。由 run.sh --graph 临时切换为 CMakeLists.txt 使用。
+
+cmake_minimum_required(VERSION 3.14)
+project(GEIR_SLOGDET_EXAMPLE)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT "$ENV{ASCEND_OPP_PATH}" STREQUAL "")
+    get_filename_component(ASCEND_PATH $ENV{ASCEND_OPP_PATH} DIRECTORY)
+elseif(NOT "$ENV{ASCEND_HOME_PATH}" STREQUAL "")
+    set(ASCEND_PATH $ENV{ASCEND_HOME_PATH})
+else()
+    set(ASCEND_PATH "/usr/local/Ascend/cann")
+endif()
+message(STATUS "ASCEND_PATH: ${ASCEND_PATH}")
+
+add_executable(test_geir_slogdet test_geir_slogdet.cpp)
+
+# GE IR 动态库（兼容多种安装布局）
+find_library(GRAPH_LIBRARY graph
+    PATHS ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/lib64 ${ASCEND_PATH}/aarch64-linux/lib64
+          ${ASCEND_PATH}/compiler/lib64/stub ${ASCEND_PATH}/lib64)
+find_library(GE_RUNNER_LIBRARY ge_runner
+    PATHS ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/lib64 ${ASCEND_PATH}/aarch64-linux/lib64
+          ${ASCEND_PATH}/compiler/lib64/stub ${ASCEND_PATH}/lib64)
+find_library(GRAPH_BASE_LIBRARY graph_base
+    PATHS ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/lib64 ${ASCEND_PATH}/aarch64-linux/lib64
+          ${ASCEND_PATH}/compiler/lib64 ${ASCEND_PATH}/lib64)
+find_library(GE_COMPILER_LIBRARY ge_compiler
+    PATHS ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/lib64 ${ASCEND_PATH}/aarch64-linux/lib64
+          ${ASCEND_PATH}/compiler/lib64 ${ASCEND_PATH}/lib64)
+
+if(NOT GRAPH_LIBRARY OR NOT GE_RUNNER_LIBRARY)
+    message(FATAL_ERROR "未找到 GE IR 依赖库 (libgraph/libge_runner)，请检查 CANN 安装")
+endif()
+
+target_link_libraries(test_geir_slogdet PRIVATE ${GRAPH_LIBRARY} ${GE_RUNNER_LIBRARY})
+if(GRAPH_BASE_LIBRARY)
+    target_link_libraries(test_geir_slogdet PRIVATE ${GRAPH_BASE_LIBRARY})
+endif()
+if(GE_COMPILER_LIBRARY)
+    target_link_libraries(test_geir_slogdet PRIVATE ${GE_COMPILER_LIBRARY})
+endif()
+
+# GE 头文件路径
+find_path(GE_GRAPH_INCLUDE_DIR NAMES graph.h
+    PATHS ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include/graph
+          ${ASCEND_PATH}/aarch64-linux/include/graph
+          ${ASCEND_PATH}/compiler/include/graph ${ASCEND_PATH}/include/graph)
+find_path(GE_API_INCLUDE_DIR NAMES ge_api.h
+    PATHS ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include/ge
+          ${ASCEND_PATH}/aarch64-linux/include/ge
+          ${ASCEND_PATH}/compiler/include/ge ${ASCEND_PATH}/include/ge)
+
+# 自定义算子 op_proto 头（slogdet_proto.h，REG_OP(Slogdet)）
+find_path(CUSTOM_OP_PROTO_INC
+    NAMES slogdet_proto.h
+    PATHS
+        $ENV{SLOGDET_CUSTOM_OPP}/op_proto/inc
+        ${ASCEND_PATH}/opp/vendors/custom_math/op_proto/inc
+        ${ASCEND_PATH}/opp/vendors/slogdet_custom/op_proto/inc
+        ${ASCEND_PATH}/opp/vendors/customize/op_proto/inc
+)
+if(NOT CUSTOM_OP_PROTO_INC)
+    message(FATAL_ERROR "未找到 slogdet_proto.h，请先安装 slogdet 自定义算子包并设置 SLOGDET_CUSTOM_OPP")
+endif()
+message(STATUS "自定义算子 proto 头目录: ${CUSTOM_OP_PROTO_INC}")
+
+target_include_directories(test_geir_slogdet PRIVATE
+    ${GE_GRAPH_INCLUDE_DIR}
+    ${GE_API_INCLUDE_DIR}
+    ${ASCEND_PATH}/opp/built-in/op_proto/inc/
+    ${ASCEND_PATH}/opp/built-in/op_graph/inc/
+    ${CUSTOM_OP_PROTO_INC}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ASCEND_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
+    ${ASCEND_PATH}/aarch64-linux/include
+    ${ASCEND_PATH}/compiler/include
+)

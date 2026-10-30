@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer/attention/flash_attention_score_grad
+upstream_repo: cann/ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/flash_attention_score_grad/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-flash-attention-score-grad
+fixture: true
+files:
+- local_path: flash-attention-score-grad-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 3c1a5fa21e31251db046cf9cf51750bbb11b937f893ee5a6a2273a3d649c3da1
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: dde7d0757acac9c334fc255adabfea65ea976d0605886b95505159ea53344d3e
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 09f9f6758d36308ab41e5db1bd29cf6e7a36402c2a9389a2afdfb4610f125b02
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: d30549a39de583a3b1702e9c3927804d9b9fed8dc834f519c9498084e1003999
+- local_path: tiling-dispatch-tables.md
+  role: approach-notes
+  mode: derived
+  sha256: fec4dc1456d7aeb7c8657dbbeb9062dd3be0928be5f6e6745298ec8d17147019

@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/fused_infer_attention_score/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-fused-infer-attention-score
+fixture: true
+files:
+- local_path: fused-infer-attention-score-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 325fccb4b1354fb27142088b28eeb99276d9588e512286f08e2be8f2088799ea
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: c05ed7163859bb5b545129ce546e8f9d86b19a91215ac63cd2d06b6d7f58920e
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 0c379ec7637dd753d914f9b644b3d4f3c199ebfa2ec5afdf8b6e2cee30b582f5
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 04fcb8c523aa328c35b8ffed1fff8d6c4a3dd3abf1bef8de6fee77692229b406
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 30193e616b415f6df8a66532beb5263d63ab061b14514e14dfb856be4f0c65f0

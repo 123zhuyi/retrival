@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "triton-ascend-kernelwiki-demo"
+version = "0.8.0"
+description = "KernelWiki-aligned source-grounded knowledge retrieval demo for Triton-Ascend agents"
+requires-python = ">=3.10"
+dependencies = ["PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+test = [
+  "coverage>=7.6,<8",
+  "pytest>=8,<9",
+]
+
+[project.scripts]
+triton-ascend-kernelwiki = "triton_ascend_kb.cli:main"
+triton-kernelwiki-retriever = "triton_ascend_kb.cannbot_retriever:main"
+triton-kb-source-builder = "triton_ascend_kb.source_builder:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

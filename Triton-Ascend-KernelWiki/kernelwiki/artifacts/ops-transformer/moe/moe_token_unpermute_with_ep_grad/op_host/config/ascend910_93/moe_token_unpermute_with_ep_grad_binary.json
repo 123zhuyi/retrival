@@ -1,0 +1,698 @@
+{
+  "op_type": "MoeTokenUnpermuteWithEpGrad",
+  "op_list": [
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_bf16_indices_int32_probs_bf16",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_bf16_indices_int32_probs_fp16",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_bf16_indices_int32_probs_fp32",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_float16_indices_int32_probs_bf16",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_float16_indices_int32_probs_fp16",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_float16_indices_int32_probs_fp32",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_float32_indices_int32_probs_bf16",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_float32_indices_int32_probs_fp16",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "bin_filename": "MoeTokenUnpermuteWithEpGrad_input_float32_indices_int32_probs_fp32",
+      "inputs": [
+        {
+          "name": "unpermuted_tokens_grad",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "sorted_indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "permuted_tokens",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        },
+        {
+          "name": "probs",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [-2]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "permuted_tokens_grad",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        },
+        {
+          "name": "probs_grad",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [-2]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "padded_mode",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "restore_shape",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "range",
+          "dtype": "list_int",
+          "value": []
+        },
+        {
+          "name": "topk_num",
+          "dtype": "int",
+          "value": 1
+        }
+      ]
+    }
+  ]
+}

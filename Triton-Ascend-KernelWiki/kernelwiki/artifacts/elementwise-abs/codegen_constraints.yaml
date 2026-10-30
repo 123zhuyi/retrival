@@ -1,0 +1,117 @@
+# Abs Operator Code Generation Constraints
+
+## Overview
+
+This file documents constraints for generating a Triton-Ascend kernel from the CANN ops-math Abs operator.  It is intended as input to code generation pipelines.
+
+## Identity Constraints
+
+| Constraint | Value | Rationale | Source |
+|-----------|-------|-----------|--------|
+| output shape == input shape | Always | Elementwise identity | `abs_infershape.cpp:35` |
+| max rank | 8 | ACLNN limit | `aclnn_abs.h:21` |
+| data format | ND only | No special formats | `aclnn_abs.cpp:120-124` |
+| non-contiguous support | Yes | Contiguous → ViewCopy pipeline | `aclnn_abs.cpp:191,211` |
+| empty tensor support | Yes | Early return | `aclnn_abs.cpp:184-188` |
+
+## Type Constraints
+
+### Real types — output dtype matches input dtype
+
+| Input | Output | Notes |
+|-------|--------|-------|
+| float32 | float32 | Direct abs |
+| float16 | float16 | Direct abs |
+| bfloat16 | bfloat16 | **Must use FP32 intermediate** |
+| int8 | int8 | Direct abs |
+| int16 | int16 | Direct abs |
+| int32 | int32 | Direct abs |
+| int64 | int64 | Direct abs |
+| uint8 | uint8 | Passthrough (identity) |
+| bool | bool | Passthrough (identity) |
+
+### Complex types — output dtype is promoted
+
+| Input | Output | Formula |
+|-------|--------|---------|
+| complex64 (2×float32) | float32 | `sqrt(real^2 + imag^2)` |
+| complex32 (2×float16) | float16 | `sqrt(real^2 + imag^2)` |
+
+### Platform availability
+
+| Platform | float32 | float16 | bfloat16 | int32 | int64 | int8 | int16 | complex64 | complex32 |
+|----------|---------|---------|----------|-------|-------|------|-------|-----------|-----------|
+| Ascend910 | ✓ | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Ascend910B | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✗ |
+| Ascend950/RegBase | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Atlas A3 (RegBase) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ascend610Lite | ✓ | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+
+## Pipeline Constraints
+
+### Real dtype (non-BF16)
+
+```
+load(dtype) → abs(dtype) → store(dtype)
+```
+
+No intermediate dtype conversion needed.
+
+### BF16
+
+```
+load(bf16) → cast(f32) → abs(f32) → cast(bf16) → store(bf16)
+```
+
+The FP32 intermediate is REQUIRED to prevent precision loss.  The CANN DAG explicitly inserts Cast nodes for this.
+
+### Complex
+
+```
+load_pairs(f32/f16) → deinterleave → compute_sqrt_sum_sq → store(f32/f16)
+```
+
+**Numerical stability requirements for COMPLEX64 → FLOAT** (the CANN kernel implements this; a Triton implementation should match):
+1. Sort `|real|` and `|imag|` so `a ≥ b`
+2. If `b == 0`, result = `a` (avoid 0/0)
+3. Normalize `a` to [1, 2) range by extracting exponent factor
+4. Compute `sqrt(a_norm² + b_norm²)`
+5. Multiply exponent factor back
+6. Handle subnormals (scale up/down by 2²⁴)
+
+For COMPLEX32 → FLOAT16, the simpler path (square → sum → sqrt → cast) is sufficient because the inputs are already low-precision.
+
+## Execution Constraints
+
+| Constraint | Value | Rationale | Source |
+|-----------|-------|-----------|--------|
+| Kernel type | AIV-only | Vector math, no cube ops | `abs_apt.cpp:27` |
+| Grid | 1D | Elementwise 1D dispatch | ElewiseBaseTiling |
+| blockDim | `tiling.blockNum` | Determined by tiling | `abs_tiling_arch35.cpp:47` |
+| Workspace | 16 MiB | Hardcoded reserve | `abs_tiling_arch35.cpp:33` |
+| Tiling keys | 101/102/103 | dtype-based dispatch | `abs_tiling_arch35.cpp:30-33` |
+
+## Triton Mapping
+
+| CANN | Triton | Notes |
+|------|--------|-------|
+| `ElementwiseSch` | `@triton.jit` kernel | CANN's DAG pipeline → sequential Triton ops |
+| `Vec::CopyIn` | `tl.load(..., mask=mask)` | Tail mask required |
+| `Vec::Cast<A,B>` | `x.to(dtype)` | Explicit dtype conversion |
+| `Vec::Abs` | `tl.abs(x)` | Direct |
+| `Vec::CopyOut` | `tl.store(..., mask=mask)` | Tail mask required |
+| `KERNEL_TYPE_AIV_ONLY` | Default Triton Ascend | Vector core mapping |
+| `TILING_KEY` | `if dtype == ...` dispatch | Triton uses compile-time dtype |
+| Workspace | N/A | Triton manages temporary memory internally |
+| Non-contiguous tensor | Pointer + stride + mask | Triton `tl.load` supports arbitrary strides |
+
+## Codegen Guidelines
+
+1. **Always generate tail mask**: `mask = offsets < n_elements`
+2. **BF16 always needs FP32 intermediate**: cast before and after abs
+3. **Complex abs requires interleaved layout**: each complex element = 2 storage slots
+4. **Complex64 abs needs numerical stability** for large/small values
+5. **Complex32 abs can use simpler `sqrt(sum_sq)`** path
+6. **UINT8/BOOL are identity operations**: passthrough (no abs needed)
+7. **Output shape always equals input shape**: no broadcasting in this op
+8. **Platform check is required**: not all dtypes available on all platforms

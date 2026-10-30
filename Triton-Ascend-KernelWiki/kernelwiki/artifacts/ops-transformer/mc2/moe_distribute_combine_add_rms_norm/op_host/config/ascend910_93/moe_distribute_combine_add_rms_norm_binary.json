@@ -1,0 +1,351 @@
+{
+    "op_type": "MoeDistributeCombineAddRmsNorm",
+    "op_list": [
+        {
+            "bin_filename": "MoeDistributeCombineAddRmsNorm_ND_BF16_BF16",
+            "inputs": [
+            {
+                "name": "expand_x",
+                "index": 0,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "expert_ids",
+                "index": 1,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "assist_info_for_combine",
+                "index": 2,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "ep_send_counts",
+                "index": 3,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "expert_scales",
+                "index": 4,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "residual_x",
+                "index": 5,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "gamma",
+                "index": 6,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "tp_send_counts",
+                "index": 7,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "x_active_mask",
+                "index": 8,
+                "dtype": "bool",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "activation_scale",
+                "index": 9,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "weight_scale",
+                "index": 10,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "group_list",
+                "index": 11,
+                "dtype": "int64",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "expand_scales",
+                "index": 12,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "shared_expert_x",
+                "index": 13,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "elastic_info",
+                "index": 14,
+                "dtype": "int32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "ori_x",
+                "index": 15,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "const_expert_alpha_1",
+                "index": 16,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "const_expert_alpha_2",
+                "index": 17,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "const_expert_v",
+                "index": 18,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            }
+            ],
+            "outputs": [
+            {
+                "name": "y",
+                "index": 0,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "rstdOut",
+                "index": 1,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            },
+            {
+                "name": "x",
+                "index": 2,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+            }
+            ],
+            "attrs": [
+            {
+                "name": "group_ep",
+                "dtype": "string",
+                "value": ""
+            },
+            {
+                "name": "ep_world_size",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "ep_rank_id",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "moe_expert_num",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "group_tp",
+                "dtype": "string",
+                "value": ""
+            },
+            {
+                "name": "tp_world_size",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "tp_rank_id",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "expert_shard_type",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "shared_expert_num",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "shared_expert_rank_num",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "global_bs",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "out_dtype",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "comm_quant_mode",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "group_list_type",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "comm_alg",
+                "dtype": "string",
+                "value": ""
+            },
+            {
+                "name": "norm_eps",
+                "dtype": "float",
+                "value": 1e-6
+            },
+            {
+                "name": "zero_expert_num",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "copy_expert_num",
+                "dtype": "int",
+                "value": 0
+            },
+            {
+                "name": "const_expert_num",
+                "dtype": "int",
+                "value": 0
+            }
+            ]
+        }
+    ]
+}

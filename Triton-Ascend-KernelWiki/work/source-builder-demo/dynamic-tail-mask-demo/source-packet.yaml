@@ -1,0 +1,146 @@
+schema_version: 1
+build_id: dynamic-tail-mask-demo
+source_type: pull_request
+source:
+  target_path: sources/prs/source-builder-demo/PR-1200.md
+  frontmatter:
+    id: pr-source-builder-fixture-1200
+    title: 'Source Builder fixture: dynamic-extent tail mask'
+    repo: local/source-builder-demo
+    pr: 1200
+    author: demo-fixture
+    date: 2026-07-17
+    url: local://source-builder-demo/pr-1200
+    source_category: upstream-code
+    architectures:
+    - Ascend910B1
+    tags:
+    - tail_mask
+    - dynamic_extent
+    techniques:
+    - tail_mask
+    hardware_features:
+    - vector_core
+    - unified_buffer
+    kernel_types:
+    - math
+    captured_at: 2026-07-17
+    status: closed
+    fixture: true
+  body: '# Dynamic-extent tail-mask source fixture
+
+
+    This synthetic PR fixture represents a change that intersects the logical
+
+    extent with the allocated tensor extent before loading and storing the
+
+    final tile. It exists only to demonstrate the Source Builder workflow.
+
+
+    The fixture reports compile and reference-correctness checks. It contains
+
+    no performance claim.
+
+    '
+candidate:
+  target_path: wiki/techniques/dynamic-extent-tail-mask.md
+  frontmatter:
+    id: technique-dynamic-extent-tail-mask
+    title: Dynamic-extent tail-mask intersection
+    type: technique
+    architectures:
+    - Ascend910B1
+    tags:
+    - tail_mask
+    - dynamic_extent
+    confidence: experimental
+    reproducibility: snippet
+    prerequisites:
+    - logical extent is available at kernel launch
+    related:
+    - technique-tail-mask
+    sources:
+    - pr-source-builder-fixture-1200
+    symptoms:
+    - illegal_memory_access
+    - shape_mismatch
+    evidence_basis:
+    - fixture diff and fixture correctness result
+    techniques:
+    - tail_mask
+    hardware_features:
+    - vector_core
+    - unified_buffer
+    kernel_types:
+    - math
+  body: '# Dynamic-extent tail-mask intersection
+
+
+    ## Problem
+
+
+    A final tile can be inside the allocated tensor but outside the logical
+
+    runtime extent. A mask based on only one of these boundaries is incomplete.
+
+
+    ## Method
+
+
+    Construct the effective mask as the intersection of the allocated extent
+
+    and the logical runtime extent:
+
+
+    ```python
+
+    offsets = block_start + tl.arange(0, BLOCK)
+
+    mask = (offsets < allocated_n) & (offsets < logical_n)
+
+    values = tl.load(input_ptr + offsets, mask=mask, other=0.0)
+
+    ```
+
+
+    ## Applicability
+
+
+    Apply this pattern when the generated kernel receives a logical extent that
+
+    may be smaller than the physical allocation. Preserve the operator''s
+
+    required semantics for padded elements.
+
+
+    ## Verification
+
+
+    Cover zero, one-element, exact-block, and partial-tail cases. Rerun the full
+
+    correctness suite after applying the pattern. This fixture makes no
+
+    performance claim.
+
+    '
+evidence:
+- id: fixture-diff
+  kind: diff
+  locator: local://source-builder-demo/pr-1200.diff
+  excerpt: '- mask = offsets < allocated_n
+
+    + mask = (offsets < allocated_n) & (offsets < logical_n)
+
+    '
+  summary: Shows the boundary-condition change represented by the fixture.
+- id: fixture-correctness
+  kind: test
+  locator: local://source-builder-demo/ci/reference-correctness
+  excerpt: 'Fixture result: compile passed; reference comparison passed for n=0, 1,
+    127, 128, and 129.
+
+    '
+  summary: Demonstrates the verification-record shape without asserting a real CI
+    result.
+packet_sha256: 704f5de795a669183dc6ee3afe268f4845a8865667db8e574fc6d60e2eeefa14
+packet_origin: /home/w00836812/shixi_test02/Triton-Ascend-KernelWiki/examples/source-builder/dynamic-tail-mask.yaml

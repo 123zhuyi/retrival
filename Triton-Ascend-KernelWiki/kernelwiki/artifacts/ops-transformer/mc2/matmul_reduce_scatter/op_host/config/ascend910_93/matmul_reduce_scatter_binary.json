@@ -1,0 +1,171 @@
+{
+    "op_type": "MatmulReduceScatter",
+    "op_list": [
+      {
+        "bin_filename": "MatmulReduceScatter_ND_ND_FP16_FP16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "bin_filename": "MatmulReduceScatter_ND_ND_BF16_BF16",
+        "inputs": [
+          {
+            "name": "x1",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "x2",
+            "index": 1,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          },
+          {
+            "name": "bias",
+            "index": 2,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "optional",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ],
+            "format_match_mode": "FormatAgnostic"
+          }
+        ],
+        "attrs": [
+          {
+            "name": "group",
+            "dtype": "string",
+            "value": ""
+          },
+          {
+            "name": "reduce_op",
+            "dtype": "string",
+            "value": "sum"
+          },
+          {
+            "name": "is_trans_a",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "is_trans_b",
+            "dtype": "bool",
+            "value": null
+          },
+          {
+            "name": "comm_turn",
+            "dtype": "int",
+            "value": 0
+          },
+          {
+            "name": "rank_size",
+            "dtype": "int",
+            "value": 0
+          }
+        ]
+      }
+    ]
+  }

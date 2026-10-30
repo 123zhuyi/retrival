@@ -1,0 +1,515 @@
+{
+    "op_type": "GroupedMatmulFinalizeRouting",
+    "op_list": [
+        {
+            "bin_filename": "GroupedMatmulFinalizeRouting_ND_NZ_int8_int8_float32",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "w",
+                    "index": 1,
+                    "dtype": "int8",
+                    "format": "FRACTAL_NZ",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "scale",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "bias",
+                    "index": 3,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },                
+                {
+                    "name": "pertoken_scale",
+                    "index": 4,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },                
+                {
+                    "name": "group_list",
+                    "index": 5,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "shared_input",
+                    "index": 6,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },      
+                {
+                    "name": "logit",
+                    "index": 7,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },        
+                {
+                    "name": "row_index",
+                    "index": 8,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "offset",
+                    "index": 9,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                }                    
+            ],
+            "outputs": [
+                {
+                    "name": "y",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "dtype",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "shared_input_weight",
+                    "dtype": "float32",
+                    "value": 1.0
+                },
+                {
+                    "name": "shared_input_offset",
+                    "dtype": "int32",
+                    "value": 0
+                },                
+                {
+                    "name": "transpose_x",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "transpose_w",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "output_bs",
+                    "dtype": "int32",
+                    "value": 0
+                },
+                {
+                    "name": "group_list_type",
+                    "dtype": "int32",
+                    "value": 1
+                },
+                {
+                    "name": "tuning_config",
+                    "dtype": "list_int",
+                    "value": []
+                }
+              ]
+        },
+        {
+            "bin_filename": "GroupedMatmulFinalizeRouting_ND_ND_int8_int4_float32",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "w",
+                    "index": 1,
+                    "dtype": "int4",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "scale",
+                    "index": 2,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "bias",
+                    "index": 3,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },                
+                {
+                    "name": "pertoken_scale",
+                    "index": 4,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },                
+                {
+                    "name": "group_list",
+                    "index": 5,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "shared_input",
+                    "index": 6,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },      
+                {
+                    "name": "logit",
+                    "index": 7,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },        
+                {
+                    "name": "row_index",
+                    "index": 8,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "offset",
+                    "index": 9,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                }                    
+            ],
+            "outputs": [
+                {
+                    "name": "y",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "dtype",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "shared_input_weight",
+                    "dtype": "float32",
+                    "value": 1.0
+                },
+                {
+                    "name": "shared_input_offset",
+                    "dtype": "int32",
+                    "value": 0
+                },                
+                {
+                    "name": "transpose_x",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "transpose_w",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "output_bs",
+                    "dtype": "int32",
+                    "value": 0
+                },
+                {
+                    "name": "group_list_type",
+                    "dtype": "int32",
+                    "value": 1
+                },
+                {
+                    "name": "tuning_config",
+                    "dtype": "list_int",
+                    "value": []
+                }
+              ]
+        },
+        {
+            "bin_filename": "GroupedMatmulFinalizeRouting_ND_NZ_int8_int4_float32",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "w",
+                    "index": 1,
+                    "dtype": "int4",
+                    "format": "FRACTAL_NZ",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "scale",
+                    "index": 2,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "bias",
+                    "index": 3,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "pertoken_scale",
+                    "index": 4,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "group_list",
+                    "index": 5,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "shared_input",
+                    "index": 6,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "logit",
+                    "index": 7,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "row_index",
+                    "index": 8,
+                    "dtype": "int64",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                },
+                {
+                    "name": "offset",
+                    "index": 9,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "y",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatDefault"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "dtype",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "shared_input_weight",
+                    "dtype": "float32",
+                    "value": 1.0
+                },
+                {
+                    "name": "shared_input_offset",
+                    "dtype": "int32",
+                    "value": 0
+                },
+                {
+                    "name": "transpose_x",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "transpose_w",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "output_bs",
+                    "dtype": "int32",
+                    "value": 0
+                },
+                {
+                    "name": "group_list_type",
+                    "dtype": "int32",
+                    "value": 1
+                },
+                {
+                    "name": "tuning_config",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        }
+    ]
+}

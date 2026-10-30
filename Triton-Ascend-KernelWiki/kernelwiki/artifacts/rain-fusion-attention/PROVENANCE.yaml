@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/rain_fusion_attention/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-31'
+asset_mode: derived
+derived_from: ops-transformer-rain-fusion-attention
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: a80dc46659180aaa50baf0a36fe9d9c5bb564b424fbcbd4a44f38a661c5cd52a
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 455e75c5ffe86bd98f15769cd6994fb1a5593b41f50372c3a3004a3722c2a01d
+- local_path: rain-fusion-attention-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 07f089e93036a6aa9e51caea170a722b798bd4239333646d5183ec703b23949d
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: b2f43e5f521600dc1e564c06d6085f4d683005149ede0f79b0224112d5092b46
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 04fca4d6d6de75b7aedfcb3c994701214a54725b9c199be690af1b6e91f2d857

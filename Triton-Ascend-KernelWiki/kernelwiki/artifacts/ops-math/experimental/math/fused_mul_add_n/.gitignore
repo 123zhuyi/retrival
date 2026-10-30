@@ -1,0 +1,13 @@
+# Build artifacts (do not commit binaries / intermediates)
+**/build/
+**/build-mock/
+**/build-real/
+tests/st/build*/
+*.o
+*.so
+
+# ATK run artifacts (reports/data/profiling regenerated per run)
+tests/st/aclnnFusedMulAddN/atk_output/
+tests/st/aclnnFusedMulAddN/profiler_info.json
+tests/st/**/*_prof_dir/
+tests/st/**/export_only_prof_dir/

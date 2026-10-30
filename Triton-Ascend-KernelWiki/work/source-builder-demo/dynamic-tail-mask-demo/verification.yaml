@@ -1,0 +1,17 @@
+stage: verify
+build_id: dynamic-tail-mask-demo
+decision: ready-for-review
+gates:
+  evidence_integrity: true
+  target_paths_safe: true
+  source_linked: true
+  schema_fields_present: true
+  controlled_tags_valid: true
+  no_legacy_language_tags: true
+  human_approval: false
+errors: []
+tag_proposals: []
+publication_targets:
+- sources/prs/source-builder-demo/PR-1200.md
+- wiki/techniques/dynamic-extent-tail-mask.md
+next: publish

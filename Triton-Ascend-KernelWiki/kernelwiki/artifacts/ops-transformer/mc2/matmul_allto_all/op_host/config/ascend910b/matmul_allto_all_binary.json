@@ -1,0 +1,593 @@
+{
+    "op_type": "MatmulAlltoAll",
+    "op_list": [
+        {
+            "bin_filename": "MatmulAlltoAll_ND_ND_FP16_FP16_FP16",
+            "inputs": [
+                {
+                    "name": "x1",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x2",
+                    "index": 1,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "bias",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x1_scale",
+                    "index": 3,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x2_scale",
+                    "index": 4,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "comm_scale",
+                    "index": 5,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x1_offset",
+                    "index": 6,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x2_offset",
+                    "index": 7,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "y",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "all2all_axes",
+                    "dtype": "listInt",
+                    "value": [
+                        -1,
+                        -2
+                    ]
+                },
+                {
+                    "name": "y_dtype",
+                    "dtype": "int",
+                    "value": 28
+                },
+                {
+                    "name": "x1_quant_mode",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "x2_quant_mode",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "comm_quant_mode",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "comm_quant_dtype",
+                    "dtype": "int",
+                    "value": 28
+                },
+                {
+                    "name": "transpose_x1",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "transpose_x2",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "group_size",
+                    "dtype": "int",
+                    "value": 0
+                }
+            ]
+        },
+        {
+            "bin_filename": "MatmulAlltoAll_ND_ND_BF16_BF16_BF16",
+            "inputs": [
+                {
+                    "name": "x1",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x2",
+                    "index": 1,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "bias",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x1_scale",
+                    "index": 3,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x2_scale",
+                    "index": 4,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "comm_scale",
+                    "index": 5,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x1_offset",
+                    "index": 6,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "x2_offset",
+                    "index": 7,
+                    "dtype": "float",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "y",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "all2all_axes",
+                    "dtype": "listInt",
+                    "value": [
+                        -1,
+                        -2
+                    ]
+                },
+                {
+                    "name": "y_dtype",
+                    "dtype": "int",
+                    "value": 28
+                },
+                {
+                    "name": "x1_quant_mode",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "x2_quant_mode",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "comm_quant_mode",
+                    "dtype": "int",
+                    "value": 0
+                },
+                {
+                    "name": "comm_quant_dtype",
+                    "dtype": "int",
+                    "value": 28
+                },
+                {
+                    "name": "transpose_x1",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "transpose_x2",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "group_size",
+                    "dtype": "int",
+                    "value": 0
+                }
+            ]
+        },
+        {
+            "bin_filename": "MatmulAlltoAll_ND_ND_INT8_INT8_FP16",
+            "inputs": [
+              {
+                "name": "x",
+                "index": 0,
+                "dtype": "int8",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              },
+              {
+                "name": "weight",
+                "index": 1,
+                "dtype": "int8",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              },
+              {
+              "name": "scale",
+              "index": 2,
+              "dtype": "float32",
+              "format": "ND",
+              "paramType": "optional",
+              "shape": [
+                -2
+              ],
+              "format_match_mode": "FormatAgnostic"
+              },
+              {
+              "name": "offset",
+              "index": 3,
+              "dtype": "float32",
+              "format": "ND",
+              "paramType": "optional",
+              "shape": [
+                -2
+              ],
+              "format_match_mode": "FormatAgnostic"
+              },
+              {
+              "name": "pertoken_scale",
+              "index": 4,
+              "dtype": "float32",
+              "format": "ND",
+              "paramType": "optional",
+              "shape": [
+                -2
+              ],
+              "format_match_mode": "FormatAgnostic"
+              },
+              {
+              "name": "antiquant_scale",
+              "index": 5,
+              "dtype": "float32",
+              "format": "ND",
+              "paramType": "optional",
+              "shape": [
+                -2
+              ],
+              "format_match_mode": "FormatAgnostic"
+              },
+              {
+              "name": "antiquant_offset",
+              "index": 6,
+              "dtype": "float16",
+              "format": "ND",
+              "paramType": "optional",
+              "shape": [
+                -2
+              ],
+              "format_match_mode": "FormatAgnostic"
+              },
+              {
+                "name": "bias",
+                "index": 7,
+                "dtype": "float16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "y",
+                "index": 0,
+                "dtype": "float16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                  -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+              }
+            ],
+            "attrs": [
+              {
+                "name": "group",
+                "dtype": "string",
+                "value": ""
+              },
+              {
+                "name": "world_size",
+                "dtype": "int",
+                "value": 0
+              },
+              {
+                "name": "transpose_x",
+                "dtype": "bool",
+                "value": false
+              },
+              {
+                "name": "transpose_weight",
+                "dtype": "bool",
+                "value": false
+              }
+            ]
+        },
+        {
+            "bin_filename": "MatmulAlltoAll_ND_ND_INT8_INT8_FP32_BF16",
+            "inputs": [
+                {
+                "name": "x",
+                "index": 0,
+                "dtype": "int8",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                    -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "weight",
+                "index": 1,
+                "dtype": "int8",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                    -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "scale",
+                "index": 2,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "offset",
+                "index": 3,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "pertoken_scale",
+                "index": 4,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "antiquant_scale",
+                "index": 5,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "antiquant_offset",
+                "index": 6,
+                "dtype": "float16",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                },
+                {
+                "name": "bias",
+                "index": 7,
+                "dtype": "float32",
+                "format": "ND",
+                "paramType": "optional",
+                "shape": [
+                    -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                "name": "y",
+                "index": 0,
+                "dtype": "bfloat16",
+                "format": "ND",
+                "paramType": "required",
+                "shape": [
+                    -2
+                ],
+                "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                "name": "group",
+                "dtype": "string",
+                "value": ""
+                },
+                {
+                "name": "worldSize",
+                "dtype": "int",
+                "value": 0
+                },
+                {
+                "name": "transpose_x",
+                "dtype": "bool",
+                "value": false
+                },
+                {
+                "name": "transpose_weight",
+                "dtype": "bool",
+                "value": false
+                }
+            ]
+        }
+    ]
+}

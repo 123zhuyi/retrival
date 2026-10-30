@@ -1,0 +1,94 @@
+/**
+ * This file is part of the OpenBOAT project at Harbin Institute of Technology (HIT)
+ * and is contributed to the CANN Open Software.
+ *
+ * Copyright (c) 2025 AISS Group, Harbin Institute of Technology (HIT).
+ * All Rights Reserved.
+ *
+ * Authors (accounts):
+ * - Tu Yuanhang <@TuYHAAAAAA>
+ * - Su Tonghua <@sutonghua>
+ *
+ * This program is free software: you can redistribute it and/or modify it.
+ * Licensed under the CANN Open Software License Agreement Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * See the LICENSE file at the root of the repository for the full text of the License.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ */
+
+/*!
+ * \file test_mul_v2.cpp
+ * \brief
+ */
+
+#include <array>
+#include <vector>
+#include <iostream>
+#include <string>
+#include <cstdint>
+#include "gtest/gtest.h"
+#include "tikicpulib.h"
+#include "../../../op_host/mul_v2_tiling.h"
+#include "data_utils.h"
+
+#include <cstdint>
+
+using namespace std;
+
+extern "C" __global__ __aicore__ void mul_v2(GM_ADDR x, GM_ADDR y, GM_ADDR gelu, GM_ADDR workspace, GM_ADDR tiling);
+
+class mul_v2_test : public testing::Test {
+protected:
+    static void SetUpTestCase() { cout << "mul_v2_test SetUp\n" << endl; }
+    static void TearDownTestCase() { cout << "mul_v2_test TearDown\n" << endl; }
+};
+
+TEST_F(mul_v2_test, test_case_101)
+{
+    size_t input1ByteSize = 256 * sizeof(int16_t);
+    size_t input2ByteSize = 1 * sizeof(int16_t);
+    size_t outputByteSize = 256 * sizeof(int16_t);
+    size_t tiling_data_size = sizeof(MulV2TilingData);
+
+    uint8_t* x1 = (uint8_t*)AscendC::GmAlloc(input1ByteSize);
+    uint8_t* x2 = (uint8_t*)AscendC::GmAlloc(32);
+    uint8_t* y = (uint8_t*)AscendC::GmAlloc(outputByteSize);
+    uint8_t* workspace = (uint8_t*)AscendC::GmAlloc(16 * 2);
+    uint8_t* tiling = (uint8_t*)AscendC::GmAlloc(tiling_data_size);
+    uint32_t blockDim = 40;
+    system("cp -r ../../../../../../../ops/built-in/tests/ut/fast_op_test/mul_v2/mul_v2_data ./");
+    system("chmod -R 755 ./mul_v2_data/");
+    system("cd ./mul_v2_data/ && rm -rf ./*bin");
+    system("cd ./mul_v2_data/ && python3 gen_data.py 1 1 256 float16");
+    system("cd ./mul_v2_data/ && python3 gen_tiling.py case0");
+
+    char* path_ = get_current_dir_name();
+    string path(path_);
+
+    MulV2TilingData* tilingDatafromBin = reinterpret_cast<MulV2TilingData*>(tiling);
+
+    tilingDatafromBin->mainCoreLoopNum = 1;
+    tilingDatafromBin->mainCoreTailLength = 0;
+    tilingDatafromBin->tailCoreLoopNum = 0;
+    tilingDatafromBin->tailCoreTailLength = 0;
+    tilingDatafromBin->realCoreNum = 1;
+    tilingDatafromBin->numPerCore = 1;
+    tilingDatafromBin->tilingKey = 101;
+    tilingDatafromBin->bufSize = 4096;
+    tilingDatafromBin->dataLength = 256;
+    tilingDatafromBin->blockSize = 16;
+
+    ReadFile(path + "/mul_v2_data/input_x1.bin", input1ByteSize, x1, input1ByteSize);
+    ReadFile(path + "/mul_v2_data/input_x2.bin", input2ByteSize, x2, input2ByteSize);
+    ICPU_SET_TILING_KEY(101);
+    ICPU_RUN_KF(mul_v2, blockDim, x1, x2, y, workspace, (uint8_t*)(tilingDatafromBin));
+
+    AscendC::GmFree(x1);
+    AscendC::GmFree(x2);
+    AscendC::GmFree(y);
+    AscendC::GmFree(workspace);
+    AscendC::GmFree(tiling);
+    free(path_);
+}

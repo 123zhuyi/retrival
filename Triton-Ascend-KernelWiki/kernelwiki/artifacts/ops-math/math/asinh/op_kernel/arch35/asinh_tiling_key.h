@@ -1,0 +1,46 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*!
+ * \file asinh_tiling_key.h
+ * \brief Asinh 算子 TilingKey 模板参数定义
+ *
+ * 与 DESIGN.md v1.1 §3.2 对齐：
+ *   - 模板参数 D_T_X 编码 dtype（C_DT_FLOAT / C_DT_FLOAT16 / C_DT_BF16）
+ *   - Kernel 入口 template<typename D_T_X> __global__ asinh(...)，
+ *     由构建系统按 ASCENDC_TPL_SEL 列表实例化
+ *   - dtype 分支在 Kernel 内通过 if constexpr (std::is_same_v<D_T_X, float>) 静态分发
+ *   - 不引入 BUFFER_MODE：本算子 19 步含 Log/Sqrt/Div/Compare 计算密集，
+ *     强制 BUFFER_NUM=2 双缓冲
+ *
+ *   ✅ 必须使用 ASCENDC_TPL_ARGS_DECL 模板编程方式
+ *   ❌ 禁止使用废弃的 TILING_KEY_IS 宏（REQUIREMENTS §8.4 强约束）
+ *
+ * 注意（迭代一）：
+ *   迭代一仅 FP32 路径完整实现；FP16/BF16 路径在迭代二完成。这里同时声明 3 个 dtype
+ *   以保持 TilingKey 接口稳定；Kernel Compute 中 FP16/BF16 路径已实现 Cast 骨架，
+ *   完整端到端验证在迭代二落地。
+ */
+#ifndef __ASINH_TILING_KEY_H__
+#define __ASINH_TILING_KEY_H__
+
+#include "ascendc/host_api/tiling/template_argument.h"
+
+ASCENDC_TPL_ARGS_DECL(Asinh,
+    ASCENDC_TPL_DATATYPE_DECL(D_T_X, C_DT_FLOAT, C_DT_FLOAT16, C_DT_BF16, ASCENDC_TPL_INPUT(0))
+);
+
+ASCENDC_TPL_SEL(
+    ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_DATATYPE_SEL(D_T_X, C_DT_FLOAT)),
+    ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_DATATYPE_SEL(D_T_X, C_DT_FLOAT16)),
+    ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_DATATYPE_SEL(D_T_X, C_DT_BF16)),
+);
+
+#endif // __ASINH_TILING_KEY_H__

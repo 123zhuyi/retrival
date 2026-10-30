@@ -1,0 +1,26 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/nsa_selected_attention/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-nsa-selected-attention
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: fde695d8839601d014fd66aa395dbb1d4685f392998a73718080b01cda48c3df
+- local_path: nsa-selected-attention-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 2683d56b6639e8ae4b5a09557c8581ae4745a2e7f9bcd0ec571132cf5d257ab8
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: e455afa5423eb397f3da19e3aca687d2e9df6f3d683eab6477fd31c7f67f9fb5
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: bebf64a5082a15e1de9ebd1576848918bca6e6e923a1880d6bbdff668ec79046

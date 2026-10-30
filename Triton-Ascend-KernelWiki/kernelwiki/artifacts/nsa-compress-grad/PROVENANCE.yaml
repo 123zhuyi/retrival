@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/nsa_compress_grad/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-nsa-compress-grad
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 2302d7829aa86ac9509e86da24acfcc706686ca67c6a992bfcb45f311497e8bd
+- local_path: nsa-compress-grad-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: b72f8f9adb36dbc859909e6236393865c212e5ce4d0da2d72761668a485abca0
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 98a34704536225ccc651268d85f8b8f90be73527b75b9adbc8a81a5704d188e2
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 8551bbd2803eec0c305ea4f7f9f8874a24cb8ee132327d798c0af87887a4d797
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: e9da9003eee00adb74215bac3da14e79207e811f26dd48102da531bcfca0c4b7

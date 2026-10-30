@@ -1,0 +1,99 @@
+{
+  "op_type": "InterleaveRope",
+  "op_list": [
+      {
+          "bin_filename": "InterleaveRope_B8B1918CF4B1F919BC0F2A58138E37AB",
+          "inputs": [
+              {
+                  "name": "x",
+                  "index": 0,
+                  "dtype": "float16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              },
+              {
+                  "name": "cos",
+                  "index": 1,
+                  "dtype": "float16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              },
+              {
+                  "name": "sin",
+                  "index": 2,
+                  "dtype": "float16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              }
+          ],
+          "outputs": [
+              {
+                  "name": "y",
+                  "index": 0,
+                  "dtype": "float16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              }
+          ]
+      },
+      {
+          "bin_filename": "InterleaveRope_5A99F786F3FB24A70D3CBC0A8D16CA01",
+          "inputs": [
+              {
+                  "name": "x",
+                  "index": 0,
+                  "dtype": "bfloat16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              },
+              {
+                  "name": "cos",
+                  "index": 1,
+                  "dtype": "bfloat16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              },
+              {
+                  "name": "sin",
+                  "index": 2,
+                  "dtype": "bfloat16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              }
+          ],
+          "outputs": [
+              {
+                  "name": "y",
+                  "index": 0,
+                  "dtype": "bfloat16",
+                  "format": "ND",
+                  "paramType": "required",
+                  "shape": [
+                      -2
+                  ]
+              }
+          ]
+      }
+  ]
+}

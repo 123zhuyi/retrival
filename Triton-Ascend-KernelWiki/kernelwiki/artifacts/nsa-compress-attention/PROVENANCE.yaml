@@ -1,0 +1,26 @@
+origin_url: local://artifacts/ops-transformer/attention/nsa_compress_attention
+upstream_repo: cann/ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/nsa_compress_attention/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-nsa-compress-attention
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 325126f83d9fa8ac6350a11ad119aaf5639261cad5ad64dd84ba3613917207c9
+- local_path: nsa-compress-attention-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 8b83177bfd71d07acfeca4a528fd1eff388167dffd43a2f61a158324cb5c0477
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: cab762d30bb7caa84108d2a2e9357647fe51304d57280c609dd0013a77c92f9a
+- local_path: source-file-inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: ff249e5caa7ce3c06fbf30a88e89c085345330fba3a315edc11ac39edf75a05c

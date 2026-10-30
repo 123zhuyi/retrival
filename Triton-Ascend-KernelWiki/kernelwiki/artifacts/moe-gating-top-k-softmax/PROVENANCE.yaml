@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: moe/moe_gating_top_k_softmax/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-08-03'
+asset_mode: derived
+derived_from: ops-transformer-moe-gating-top-k-softmax
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: a30335a541d9a66bc6e72e6614ef21332dc50ae093a93003e3a3f37e1a31ffae
+- local_path: moe-gating-top-k-softmax-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: a043cf097687f4e00b23c1e24e383e20579551e927d0a425c54ef191bd0aecec
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 7a5ff99e5cfeaaad600020166cd9db7be91214a460fc8ae7652a4f8c6c65c7e6
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: fa7717a59f0b6bdb807a23dc4e49890ba748008db50bcea9c94f4ddcdae726bd
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: f79a8c80bb6266b478f53346cf921af91c626510d66d427064904494c05281c1

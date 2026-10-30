@@ -1,0 +1,35 @@
+version: 1
+update_mode: proposal-only
+description: >-
+  Source Builder Agents may propose unknown controlled tags, but never edit
+  tags.yaml, architecture-aliases.yaml, or doc-tagging-rules.yaml automatically.
+controlled_fields:
+  architectures:
+    authority: cannBot ops/npu-arch/references/npu-hardware-params.md chip-model table
+    requirements:
+      - use the exact chip model, never A2/A3/A5, DAV_*, archXX, SocVersion, or a family name
+      - update npu-architecture-taxonomy-source.yaml with the pinned upstream commit
+      - update architecture-aliases.yaml only for query-time one-to-many expansion
+  hardware_features:
+    authority: cannBot ops/npu-arch references
+    requirements:
+      - add stable capabilities only
+      - keep numeric capacities and core counts as runtime facts rather than tags
+  kernel_types:
+    authority: CANN ops-nn, ops-math, and ops-transformer classification
+    requirements:
+      - pin the authoritative repository commit in operator-taxonomy-sources.yaml
+  symptoms:
+    authority: reviewed verifier-error taxonomy
+    requirements:
+      - provide reproducible error text or a reviewed upstream issue
+  techniques:
+    authority: reviewed KernelWiki technique taxonomy
+    requirements:
+      - provide a source page and a runnable or reviewable application example
+publication_gates:
+  - evidence snapshots pass SHA-256 verification
+  - all page schema fields are present
+  - every controlled tag already exists in tags.yaml
+  - every Wiki candidate cites its generated source page
+  - a human reviewer supplies approved_by

@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer/moe/moe_token_permute_with_ep_grad
+upstream_repo: cann/ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: moe/moe_token_permute_with_ep_grad/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-31'
+asset_mode: derived
+derived_from: ops-transformer-moe-token-permute-with-ep-grad
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: b478f18e96c7d0ae89f700326505c49714cae9008a358a187bc34b9ecac7a628
+- local_path: moe-token-permute-with-ep-grad-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: ed7e250e883b23e6f4a02743f8539f8eb75099f71c8a53f3e74b7520d35e3cd5
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 11e881ac22598197a55618130be580d82b25047716bebb4e6d1ba8bc78577b7f
+- local_path: source-file-inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 105a7a1bef7fb2fa9270a138b1edfa03ac535d344d978689e7448f76ba0c2674
+- local_path: tiling-dispatch-tables.md
+  role: approach-notes
+  mode: derived
+  sha256: a446a3d13a5c05cc900c2aef3ae0fb3d8a28651db97aa25c116faad7cedef269

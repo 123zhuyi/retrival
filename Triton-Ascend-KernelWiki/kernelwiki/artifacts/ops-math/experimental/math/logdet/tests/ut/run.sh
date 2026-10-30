@@ -1,0 +1,228 @@
+#!/bin/bash
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ============================================================================
+# logdet 算子 UT 测试执行脚本
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="${SCRIPT_DIR}/build"
+CLEAN_BUILD=true
+VERBOSE=false
+RUN_OP_HOST=true
+RUN_OP_KERNEL=false
+
+show_help() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "UT 测试（单元测试）：测试 Tiling、InferShape、Kernel 逻辑"
+    echo ""
+    echo "Options:"
+    echo "  -c, --clean      清理构建目录（默认: true）"
+    echo "  -v, --verbose    显示详细输出"
+    echo "  --ophost         仅运行 op_host 测试"
+    echo "  --kernel         运行 op_kernel 测试（需要 NPU 设备）"
+    echo "  --all            运行所有测试（op_host + op_kernel）"
+    echo "  -h, --help       显示帮助信息"
+    echo ""
+    echo "Examples:"
+    echo "  $0                  # 默认模式（清理 + 编译 + 运行 op_host 测试）"
+    echo "  $0 --all            # 运行所有测试"
+    echo "  $0 --kernel         # 仅运行 kernel 测试"
+    echo "  $0 -c false         # 不清理构建目录（增量编译）"
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--clean)
+            if [ "$2" = "false" ]; then
+                CLEAN_BUILD=false
+                shift 2
+            else
+                CLEAN_BUILD=true
+                shift
+            fi
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        --ophost)
+            RUN_OP_HOST=true
+            RUN_OP_KERNEL=false
+            shift
+            ;;
+        --kernel)
+            RUN_OP_HOST=false
+            RUN_OP_KERNEL=true
+            shift
+            ;;
+        --all)
+            RUN_OP_HOST=true
+            RUN_OP_KERNEL=true
+            shift
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "未知参数: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+echo "========================================"
+echo "logdet 算子 UT 测试"
+echo "========================================"
+echo "清理构建: ${CLEAN_BUILD}"
+echo "工作目录: ${SCRIPT_DIR}"
+echo "测试范围: op_host=${RUN_OP_HOST}, op_kernel=${RUN_OP_KERNEL}"
+echo "========================================"
+echo ""
+
+echo "检查依赖..."
+if ! command -v cmake &> /dev/null; then
+    echo "错误: 未找到 cmake"
+    exit 1
+fi
+if ! command -v g++ &> /dev/null; then
+    echo "错误: 未找到 g++"
+    exit 1
+fi
+echo "依赖检查完成"
+echo ""
+
+echo "设置环境变量..."
+if [ -z "$ASCEND_HOME_PATH" ]; then
+    echo "警告: 未设置 ASCEND_HOME_PATH 环境变量"
+    export ASCEND_HOME_PATH=/home/developer/Ascend/cann
+fi
+export LD_LIBRARY_PATH="${ASCEND_HOME_PATH}/lib64:${LD_LIBRARY_PATH}"
+echo "LD_LIBRARY_PATH: ${ASCEND_HOME_PATH}/lib64"
+echo "环境变量设置完成"
+echo ""
+
+if [ "$CLEAN_BUILD" = true ]; then
+    echo "清理构建目录..."
+    rm -rf "${BUILD_DIR}"
+fi
+
+echo "创建构建目录..."
+mkdir -p "${BUILD_DIR}"
+
+cmake_args=("..")
+make_args=()
+if [ "${VERBOSE}" = true ]; then
+    cmake_args+=("-DCMAKE_VERBOSE_MAKEFILE=ON")
+    make_args+=("VERBOSE=1")
+fi
+
+echo ""
+echo "CMake 配置..."
+cd "${BUILD_DIR}"
+cmake "${cmake_args[@]}"
+
+if [ $? -ne 0 ]; then
+    echo "错误: CMake 配置失败"
+    exit 1
+fi
+
+echo ""
+echo "编译 UT 测试..."
+make -j"$(nproc)" "${make_args[@]}"
+
+if [ $? -ne 0 ]; then
+    echo "错误: 编译失败"
+    exit 1
+fi
+
+echo "编译成功"
+echo ""
+
+echo "========================================"
+echo "执行 UT 测试"
+echo "========================================"
+
+FAILED_TESTS=()
+PASSED_TESTS=()
+
+if [ "$RUN_OP_HOST" = true ]; then
+    echo ""
+    echo ">>> 运行 op_host 测试 <<<"
+    echo ""
+    cd "${BUILD_DIR}/op_host"
+
+    if [ ! -f "./logdet_op_host_ut" ]; then
+        echo "错误: op_host UT 可执行文件不存在"
+        FAILED_TESTS+=("op_host")
+    else
+        if ./logdet_op_host_ut; then
+            PASSED_TESTS+=("op_host")
+            echo "[PASS] op_host 测试通过"
+        else
+            FAILED_TESTS+=("op_host")
+            echo "[FAIL] op_host 测试失败"
+        fi
+    fi
+fi
+
+if [ "$RUN_OP_KERNEL" = true ]; then
+    echo ""
+    echo ">>> 运行 op_kernel 测试 <<<"
+    echo ""
+    cd "${BUILD_DIR}/op_kernel"
+
+    if [ ! -f "./test_logdet" ]; then
+        echo "错误: op_kernel UT 可执行文件不存在"
+        FAILED_TESTS+=("op_kernel")
+    else
+        if ./test_logdet; then
+            PASSED_TESTS+=("op_kernel")
+            echo "[PASS] op_kernel 测试通过"
+        else
+            FAILED_TESTS+=("op_kernel")
+            echo "[FAIL] op_kernel 测试失败"
+        fi
+    fi
+fi
+
+echo ""
+echo "========================================"
+echo "测试结果汇总"
+echo "========================================"
+echo ""
+
+if [ ${#PASSED_TESTS[@]} -gt 0 ]; then
+    echo "✓ 通过的测试:"
+    for test in "${PASSED_TESTS[@]}"; do
+        echo "  - ${test}"
+    done
+fi
+
+if [ ${#FAILED_TESTS[@]} -gt 0 ]; then
+    echo ""
+    echo "✗ 失败的测试:"
+    for test in "${FAILED_TESTS[@]}"; do
+        echo "  - ${test}"
+    done
+    echo ""
+    echo "========================================"
+    echo "测试结果: FAIL ✗"
+    echo "========================================"
+    exit 1
+else
+    echo ""
+    echo "========================================"
+    echo "测试结果: PASS ✓"
+    echo "========================================"
+    exit 0
+fi

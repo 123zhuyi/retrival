@@ -1,0 +1,626 @@
+{
+    "op_type": "MoeTokenUnpermuteWithEp",
+    "op_list": [
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_0",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_1",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_2",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_3",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_4",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_5",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_6",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_7",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermuteWithEp_8",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "num_topk",
+                    "dtype": "int",
+                    "value": 1
+                },
+                {
+                    "name": "range",
+                    "dtype": "list_int",
+                    "value": []
+                },
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        }
+    ]
+}

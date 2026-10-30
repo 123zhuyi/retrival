@@ -1,0 +1,26 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/nsa_compress_attention_infer/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-nsa-compress-attention-infer
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 326fb95bfb44ee99cdc9771934e350cbc6c4d3e5048c2d00b2c3592daed6d92a
+- local_path: nsa-compress-attention-infer-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: f8378df3031349e9002af4a8964d2eb38c2d2ec772258160fa8bf710b14b1154
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: c3f0dd1cd6f79443473a105046e8c7673d3e22d12e366c62966f35e99aaa15dc
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 0127aecea254a128985c99d0d2fc6413d0dfd0a19f181fd9d01aa634140b7c6f

@@ -1,0 +1,340 @@
+{
+  "schema_version": "1.0",
+  "mode": "design",
+  "request": {
+    "op_name": "LayerNorm",
+    "semantic_ops": [
+      "layer_norm"
+    ],
+    "category": "normalization",
+    "kernel_type": "norm",
+    "architecture": "ascend910b1",
+    "normalized_architecture": "910b",
+    "symptom": null,
+    "keywords": []
+  },
+  "retrieval": {
+    "engine": "kernelwiki_title_tag_body",
+    "second_stage_reranking": false,
+    "limit_per_lane": 1,
+    "lanes_are_independent": true
+  },
+  "precedence": [
+    "task_desc semantics",
+    "template Layer 1 constraints",
+    "reviewed KernelWiki pages",
+    "official source documents",
+    "experimental or inferred pages"
+  ],
+  "lanes": [
+    {
+      "name": "official",
+      "consumer_field": "inspirations",
+      "purpose": "Official Triton-Ascend APIs and implementation examples",
+      "filters": {
+        "repo": "triton-lang/triton-ascend"
+      },
+      "page_count": 1,
+      "bundle": {
+        "query": [
+          "LayerNorm",
+          "layer_norm"
+        ],
+        "retrieval": "kernelwiki_title_tag_body",
+        "pages": [
+          {
+            "id": "doc-triton-ascend-en-examples-03-layer-norm-example",
+            "title": "Layer Normalization",
+            "type": "source-doc",
+            "path": "sources/docs/triton-ascend/en/examples/03_layer_norm_example.md",
+            "score": 36,
+            "frontmatter": {
+              "id": "doc-triton-ascend-en-examples-03-layer-norm-example",
+              "title": "Layer Normalization",
+              "repo": "triton-lang/triton-ascend",
+              "url": "https://github.com/triton-lang/triton-ascend/blob/e4c692be02c38f3d5e99ccaf314bf4148fa84413/docs/en/examples/03_layer_norm_example.md",
+              "source_category": "official-doc",
+              "architectures": [
+                "ascend"
+              ],
+              "tags": [
+                "triton_ascend",
+                "official_doc",
+                "examples"
+              ],
+              "retrieved_at": "2026-07-15",
+              "upstream_commit": "e4c692be02c38f3d5e99ccaf314bf4148fa84413",
+              "upstream_path": "docs/en/examples/03_layer_norm_example.md",
+              "content_sha256": "1da2e70807af50194a23bbdd4f23bf81052bcf786a62da78be4cbfaf5f455c83",
+              "snapshot_body_sha256": "1da2e70807af50194a23bbdd4f23bf81052bcf786a62da78be4cbfaf5f455c83",
+              "document_language": "en",
+              "source_format": "md",
+              "license": "MIT",
+              "generated_by": "scripts/ingest_triton_ascend_docs.py",
+              "kernel_types": [
+                "norm"
+              ],
+              "operators": [
+                "layer-norm"
+              ]
+            },
+            "body": "# Layer Normalization\n\nIn this section, you will use Triton to write a high-performance layer normalization kernel that runs faster than the PyTorch implementation.\n\n## Compute Kernel\n\n```Python\nimport pytest\nimport torch\nimport triton\nimport triton.language as tl\nimport torch_npu\n\n@triton.jit\ndef _layer_norm_fwd_fused(\n    X,  # Pointer to the input\n    Y,  # Pointer to the output\n    W,  # Pointer to the weights\n    B,  # Pointer to the biases\n    Mean,  # Pointer to the mean\n    Rstd,  # Pointer to the 1/std\n    stride,  # Number of elements to be added when the pointer moves by one row\n    N,  # Number of columns in X\n    eps,  # Epsilon used to avoid division by zero\n    BLOCK_SIZE: tl.constexpr,\n):\n    # Map the program ID to the corresponding rows of X and Y for computation.\n    row = tl.program_id(0)\n    Y += row * stride\n    X += row * stride\n    # Calculate the mean.\n    mean = 0\n    _mean = tl.zeros([BLOCK_SIZE], dtype=tl.float32)\n    for off in range(0, N, BLOCK_SIZE):\n        cols = off + tl.arange(0, BLOCK_SIZE)\n        a = tl.load(X + cols, mask=cols < N, other=0.).to(tl.float32)\n        _mean += a\n    mean = tl.sum(_mean, axis=0) / N\n    # Calculate the variance.\n    _var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)\n    for off in range(0, N, BLOCK_SIZE):\n        cols = off + tl.arange(0, BLOCK_SIZE)\n        x = tl.load(X + cols, mask=cols < N, other=0.).to(tl.float32)\n        x = tl.where(cols < N, x - mean, 0.)\n        _var += x * x\n    var = tl.sum(_var, axis=0) / N\n    rstd = 1 / tl.sqrt(var + eps)\n    # Write mean/rstd.\n    tl.store(Mean + row, mean)\n    tl.store(Rstd + row, rstd)\n    # Normalize and apply linear transformation.\n    for off in range(0, N, BLOCK_SIZE):\n        cols = off + tl.arange(0, BLOCK_SIZE)\n        mask = cols < N\n        w = tl.load(W + cols, mask=mask)\n        b = tl.load(B + cols, mask=mask)\n        x = tl.load(X + cols, mask=mask, other=0.).to(tl.float32)\n        x_hat = (x - mean) * rstd\n        y = x_hat * w + b\n        # Write the output.\n        tl.store(Y + cols, y, mask=mask)\n```\n\nLayerNorm Implementation Defined by Using Triton\n\n```Python\n@torch.inference_mode()\ndef layer_norm(x, weight, bias, eps=1e-5):\n    # Allocate the output tensor with the same shape and data type as the input.\n    y = torch.empty_like(x)\n\n    # Flatten the input x into a two-dimensional shape [-1, feature_dim] for processing the last dimension.\n    x_arg = x.reshape(-1, x.shape[-1])\n    M, N = x_arg.shape\n\n    mean = torch.empty((M, ), dtype=torch.float32, device=x.device)\n    rstd = torch.empty((M, ), dtype=torch.float32, device=x.device)\n\n    BLOCK_SIZE = 1024\n\n    # enqueue kernel\n    kernel = _layer_norm_fwd_fused[(M,)](# M indicates the number of blocks, and launch grid=(M,)\n        x_arg, y, weight, bias, mean, rstd,  # Input, output, and intermediate variables\n        x_arg.stride(0), N, eps,\n        BLOCK_SIZE=BLOCK_SIZE)\n    # Return the normalized output.\n    return y\n\n# Call layer normalization during forward pass.\ndef _layer_norm(M, N, dtype, eps=1e-5, device='npu'):\n    # Construct data.\n    x_shape = (M, N)\n    w_shape = (x_shape[-1], )\n    weight = torch.rand(w_shape, dtype=dtype, device=device, requires_grad=True)\n    bias = torch.rand(w_shape, dtype=dtype, device=device, requires_grad=True)\n    x = -2.3 + 0.5 * torch.randn(x_shape, dtype=dtype, device=device)\n    dy = .1 * torch.randn_like(x)\n    x.requires_grad_(True)\n    # Forward pass\n    y_tri = layer_norm(x, weight, bias, eps)\n    y_ref = torch.nn.functional.layer_norm(x, w_shape, weight, bias, eps).to(dtype)\n    # Determine whether the results are approximate.\n    assert torch.allclose(y_tri, y_ref, atol=1e-2, rtol=0)\n    print(f\"y_tri: {y_tri}\")\n    print(f\"y_ref: {y_ref}\")\n    print(f\"Layer Normalization {M},{N} {dtype} PASSED!\")\n\n# Perform the test.\nif __name__ == '__main__':\n    _layer_norm(128, 128, torch.float16)\n    _layer_norm(128, 128, torch.bfloat16)\n    _layer_norm(128, 128, torch.float32)\n```\n\nResult\n\n```bash\ny_tri: tensor([[ 0.2512,  0.0647,  0.8389,  ...,  2.3652,  1.5039,  1.1904],\n        [ 1.0908,  1.5391,  0.2269,  ...,  1.6846,  1.0996,  0.9614],\n        [-0.2974,  0.5918,  0.3225,  ...,  2.2891, -0.8418,  0.6885],\n        ...,\n        [ 0.5225, -0.0068,  0.4968,  ..., -1.1221,  1.7422,  0.6143],\n        [ 0.4463,  1.2441,  0.2224,  ...,  2.2969, -0.3311,  0.6177],\n        [-0.0113,  0.8423,  0.3696,  ...,  1.3838,  1.2471,  0.8750]],\n       device='npu:0', dtype=torch.float16)\ny_ref: tensor([[ 0.2512,  0.0647,  0.8389,  ...,  2.3652,  1.5039,  1.1904],\n        [ 1.0908,  1.5391,  0.2269,  ...,  1.6846,  1.0996,  0.9614],\n        [-0.2974,  0.5918,  0.3225,  ...,  2.2891, -0.8418,  0.6885],\n        ...,\n        [ 0.5225, -0.0068,  0.4968,  ..., -1.1221,  1.7422,  0.6143],\n        [ 0.4463,  1.2441,  0.2224,  ...,  2.2969, -0.3311,  0.6177],\n        [-0.0113,  0.8423,  0.3696,  ...,  1.3838,  1.2471,  0.8750]],\n       device='npu:0', dtype=torch.float16, grad_fn=<NativeLayerNormBackward0>)\nLayer Normalization 128,128 torch.float16 PASSED!\ny_tri: tensor([[-0.4180,  0.9648,  0.8633,  ...,  0.7656,  0.8438,  0.3633],\n        [ 0.4453,  0.5352,  0.9102,  ...,  1.1875, -0.0562,  0.5391],\n        [ 1.3125,  0.9961,  0.9219,  ...,  0.9688,  0.0025,  0.5156],\n        ...,\n        [-0.1426,  0.6289,  0.9609,  ...,  0.9648, -0.1260, -0.1270],\n        [ 1.1641,  0.6680,  0.8281,  ...,  0.9258,  0.9062,  0.1768],\n        [-0.2129,  0.7109,  0.9141,  ...,  0.7891, -0.0767,  0.5156]],\n       device='npu:0', dtype=torch.bfloat16)\ny_ref: tensor([[-0.4180,  0.9648,  0.8633,  ...,  0.7656,  0.8438,  0.3633],\n        [ 0.4453,  0.5352,  0.9102,  ...,  1.1875, -0.0562,  0.5391],\n        [ 1.3125,  0.9961,  0.9219,  ...,  0.9688,  0.0025,  0.5156],\n        ...,\n        [-0.1426,  0.6289,  0.9609,  ...,  0.9648, -0.1260, -0.1270],\n        [ 1.1641,  0.6680,  0.8281,  ...,  0.9258,  0.9062,  0.1768],\n        [-0.2129,  0.7109,  0.9141,  ...,  0.7891, -0.0767,  0.5156]],\n       device='npu:0', dtype=torch.bfloat16, grad_fn=<NativeLayerNormBackward0>)\nLayer Normalization 128,128 torch.bfloat16 PASSED!\ny_tri: tensor([[-0.2980,  0.2922,  0.6481,  ...,  0.9786,  0.7304,  0.8982],\n        [ 1.5911,  0.0474,  0.6518,  ...,  0.8013,  0.2435,  1.3748],\n        [ 1.3024,  0.6265,  0.6473,  ...,  0.8423,  0.0984, -1.1839],\n        ...,\n        [-0.2195,  0.1359,  0.6461,  ...,  0.8319,  1.0899,  1.5015],\n        [ 0.6371,  0.3687,  0.6530,  ...,  0.9359,  0.0818,  0.6499],\n        [ 0.1178,  0.3639,  0.6475,  ...,  0.7221,  0.4622,  1.4510]],\n       device='npu:0')\ny_ref: tensor([[-0.2980,  0.2922,  0.6481,  ...,  0.9786,  0.7304,  0.8982],\n        [ 1.5911,  0.0474,  0.6518,  ...,  0.8013,  0.2435,  1.3748],\n        [ 1.3024,  0.6265,  0.6473,  ...,  0.8423,  0.0984, -1.1839],\n        ...,\n        [-0.2195,  0.1359,  0.6461,  ...,  0.8319,  1.0899,  1.5015],\n        [ 0.6371,  0.3687,  0.6530,  ...,  0.9359,  0.0818,  0.6499],\n        [ 0.1178,  0.3639,  0.6475,  ...,  0.7221,  0.4622,  1.4510]],\n       device='npu:0', grad_fn=<NativeLayerNormBackward0>)\nLayer Normalization 128,128 torch.float32 PASSED!\n```\n\n\"Layer Normalization 128,128 torch.float16 PASSED!\", \\\n\"Layer Normalization 128,128 torch.bfloat16 PASSED!\", \\\nThe result \"Layer Normalization 128,128 torch.float32 PASSED!\" indicates that the output of float16, bfloat16, and float32 data types on Triton is the same as that on PyTorch."
+          }
+        ],
+        "source_excerpts": [],
+        "warnings": []
+      }
+    },
+    {
+      "name": "wiki-kernel",
+      "consumer_field": "history_context",
+      "purpose": "Reviewed or experimental kernel cases with explicit evidence metadata",
+      "filters": {
+        "type": "kernel",
+        "tag": "norm"
+      },
+      "page_count": 1,
+      "bundle": {
+        "query": [
+          "LayerNorm",
+          "layer_norm"
+        ],
+        "retrieval": "kernelwiki_title_tag_body",
+        "pages": [
+          {
+            "id": "kernel-rmsnorm-rope",
+            "title": "RMSNorm-RoPE fused kernel on Ascend 910B",
+            "type": "wiki-kernel",
+            "path": "wiki/kernels/rmsnorm-rope.md",
+            "score": 34,
+            "frontmatter": {
+              "id": "kernel-rmsnorm-rope",
+              "title": "RMSNorm-RoPE fused kernel on Ascend 910B",
+              "type": "kernel",
+              "tags": [
+                "rmsnorm",
+                "rope",
+                "normalization",
+                "vecutil_low",
+                "bf16"
+              ],
+              "techniques": [
+                "load_order",
+                "contiguous_access",
+                "fp32_accumulation"
+              ],
+              "hardware_features": [
+                "unified_buffer",
+                "vector_core"
+              ],
+              "architectures": [
+                "ascend910b"
+              ],
+              "languages": [
+                "python",
+                "triton_ascend"
+              ],
+              "kernel_types": [
+                "norm",
+                "posembedding"
+              ],
+              "operators": [
+                "rmsnorm",
+                "rope"
+              ],
+              "symptoms": [
+                "vecutil_low",
+                "precision_mismatch"
+              ],
+              "confidence": "experimental",
+              "reproducibility": "snippet",
+              "artifact_dir": "artifacts/demo-pr-993",
+              "related": [
+                "pattern-vecutil-low",
+                "technique-contiguous-load-order",
+                "technique-fp32-accumulation"
+              ],
+              "sources": [
+                "pr-triton-ascend-fixture-993",
+                "run-rmsnorm-rope-001"
+              ],
+              "performance_claims": []
+            },
+            "body": "# RMSNorm + RoPE\n\nAccumulate the sum of squares in FP32 and convert only at the output boundary. Keep the RoPE even/odd channel pairing explicit. For the documented small-batch, hidden-4096 case, inspect whether lanes access adjacent addresses before changing tile size.\n\n## Agent actions\n\n1. Preserve RMSNorm and RoPE semantics.\n2. Check UB use for input, weight, FP32 temporaries, and output.\n3. Apply a tail mask when the hidden dimension is not tile-aligned.\n4. Compare the current load order with the contiguous hidden dimension.\n5. Validate correctness before accepting a profiling improvement."
+          }
+        ],
+        "source_excerpts": [
+          {
+            "id": "pr-triton-ascend-fixture-993",
+            "title": "Demo PR 993: RMSNorm-RoPE load-order optimization",
+            "path": "sources/prs/triton-ascend/PR-993.md",
+            "excerpt": "# Demo PR source summary\n\nThis fixture demonstrates how a PR is represented as immutable source evidence. It records the reported problem, code change, applicable shapes, verification method, and repository link. It is not a claim that GitHub PR #993 exists.\n\nReported case: BF16 RMSNorm-RoPE with hidden size 4096 on Ascend 910B showed `vecutil_low`. The candidate change reorganized load order along the contiguous hidden dimension while retaining FP32 accumulation and RoPE pair semantics.\n\nRequir"
+          },
+          {
+            "id": "run-rmsnorm-rope-001",
+            "title": "RMSNorm-RoPE demo evaluation run",
+            "path": "sources/runs/rmsnorm-rope-001.md",
+            "excerpt": "# Evaluation evidence\n\nFixture conditions: small batch, hidden size 4096, BF16, Ascend 910B. The run checks compilation, numerical agreement, and profiler vector utilization before and after a contiguous-dimension load-order change. No numeric speedup is asserted in this Demo fixture."
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "wiki-technique",
+      "consumer_field": "history_context",
+      "purpose": "Reusable implementation techniques for the operator category",
+      "filters": {
+        "type": "technique",
+        "tag": "norm"
+      },
+      "page_count": 1,
+      "bundle": {
+        "query": [
+          "LayerNorm",
+          "layer_norm"
+        ],
+        "retrieval": "kernelwiki_title_tag_body",
+        "pages": [
+          {
+            "id": "technique-contiguous-load-order",
+            "title": "Organize loads along the contiguous dimension",
+            "type": "wiki-technique",
+            "path": "wiki/techniques/contiguous-load-order.md",
+            "score": 10,
+            "frontmatter": {
+              "id": "technique-contiguous-load-order",
+              "title": "Organize loads along the contiguous dimension",
+              "type": "technique",
+              "tags": [
+                "load_order",
+                "contiguous_access",
+                "vecutil_low"
+              ],
+              "techniques": [
+                "load_order",
+                "contiguous_access"
+              ],
+              "architectures": [
+                "ascend910b"
+              ],
+              "languages": [
+                "triton_ascend"
+              ],
+              "kernel_types": [
+                "norm",
+                "math"
+              ],
+              "symptoms": [
+                "vecutil_low"
+              ],
+              "confidence": "experimental",
+              "reproducibility": "snippet",
+              "prerequisites": [
+                "hw-ascend910b-constraints"
+              ],
+              "related": [
+                "pattern-vecutil-low",
+                "kernel-rmsnorm-rope"
+              ],
+              "sources": [
+                "pr-triton-ascend-fixture-993",
+                "run-rmsnorm-rope-001"
+              ]
+            },
+            "body": "# Contiguous load order\n\nMap neighboring lanes to neighboring addresses on the innermost contiguous dimension. Confirm the benefit with profiling; code appearance alone is not sufficient evidence."
+          }
+        ],
+        "source_excerpts": [
+          {
+            "id": "pr-triton-ascend-fixture-993",
+            "title": "Demo PR 993: RMSNorm-RoPE load-order optimization",
+            "path": "sources/prs/triton-ascend/PR-993.md",
+            "excerpt": "# Demo PR source summary\n\nThis fixture demonstrates how a PR is represented as immutable source evidence. It records the reported problem, code change, applicable shapes, verification method, and repository link. It is not a claim that GitHub PR #993 exists.\n\nReported case: BF16 RMSNorm-RoPE with hidden size 4096 on Ascend 910B showed `vecutil_low`. The candidate change reorganized load order along the contiguous hidden dimension while retaining FP32 accumulation and RoPE pair semantics.\n\nRequir"
+          },
+          {
+            "id": "run-rmsnorm-rope-001",
+            "title": "RMSNorm-RoPE demo evaluation run",
+            "path": "sources/runs/rmsnorm-rope-001.md",
+            "excerpt": "# Evaluation evidence\n\nFixture conditions: small batch, hidden size 4096, BF16, Ascend 910B. The run checks compilation, numerical agreement, and profiler vector utilization before and after a contiguous-dimension load-order change. No numeric speedup is asserted in this Demo fixture."
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "hardware",
+      "consumer_field": "hardware_context",
+      "purpose": "Architecture-specific hardware constraints",
+      "filters": {
+        "type": "hardware",
+        "architecture": "910b"
+      },
+      "page_count": 1,
+      "bundle": {
+        "query": [
+          "910b"
+        ],
+        "retrieval": "kernelwiki_title_tag_body",
+        "pages": [
+          {
+            "id": "hw-ascend910b-constraints",
+            "title": "Ascend 910B kernel constraints",
+            "type": "wiki-hardware",
+            "path": "wiki/hardware/ascend910b-constraints.md",
+            "score": 16,
+            "frontmatter": {
+              "id": "hw-ascend910b-constraints",
+              "title": "Ascend 910B kernel constraints",
+              "type": "hardware",
+              "tags": [
+                "ascend910b",
+                "unified_buffer",
+                "alignment",
+                "grid"
+              ],
+              "hardware_features": [
+                "unified_buffer",
+                "alignment",
+                "vector_core"
+              ],
+              "architectures": [
+                "ascend910b"
+              ],
+              "languages": [
+                "triton_ascend"
+              ],
+              "confidence": "source-reported",
+              "aliases": [
+                "910b"
+              ],
+              "related": [
+                "lang-triton-ascend-api",
+                "technique-tail-mask"
+              ],
+              "sources": [
+                "doc-triton-ascend-api"
+              ]
+            },
+            "body": "# Ascend 910B constraints\n\nEstimate peak Unified Buffer use from simultaneously live inputs, outputs, and FP32 temporaries. Reduce the tile when the estimate exceeds the project-specific device limit.\n\nCompute grid size with ceiling division. Every non-divisible tail must be protected by a mask. Treat alignment and supported API behavior as explicit preconditions rather than optimization suggestions."
+          }
+        ],
+        "source_excerpts": [
+          {
+            "id": "doc-triton-ascend-api",
+            "title": "Triton-Ascend API source notes",
+            "path": "sources/docs/triton-ascend-api.md",
+            "excerpt": "# API source notes\n\nStatic launch parameters may use `tl.constexpr`; runtime shapes remain scalar arguments. Non-divisible shapes require a boundary mask on load and store. Pointer expressions should be constructed from a valid base plus explicit non-negative offsets."
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "warnings": [
+    "KernelWiki score measures text relevance only; it is not confidence, correctness, or expected speedup.",
+    "Do not copy retrieved code blindly; adapt it to task_desc and Triton-Ascend constraints.",
+    "Verifier and benchmark outputs remain the only correctness and performance gates.",
+    "This context is read-only and must not be written back to KernelWiki automatically."
+  ]
+}

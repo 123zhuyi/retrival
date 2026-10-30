@@ -1,0 +1,18 @@
+schema_version: 1
+build_id: dynamic-tail-mask-demo
+evidence:
+- id: fixture-diff
+  kind: diff
+  locator: local://source-builder-demo/pr-1200.diff
+  snapshot_path: evidence/fixture-diff.txt
+  sha256: 0341883c065bb5dacd1276b5ee3050a0e950e0d88b2e6807c42e2f3c4bd74b86
+  bytes: 88
+  summary: Shows the boundary-condition change represented by the fixture.
+- id: fixture-correctness
+  kind: test
+  locator: local://source-builder-demo/ci/reference-correctness
+  snapshot_path: evidence/fixture-correctness.txt
+  sha256: 0cd9661f6bf16d40c54a63dba2c7f88875fe852a0deb19f874815e8407a4c0ef
+  bytes: 91
+  summary: Demonstrates the verification-record shape without asserting a real CI
+    result.

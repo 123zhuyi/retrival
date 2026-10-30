@@ -1,0 +1,45 @@
+/**
+ * This file is part of the OpenBOAT project at Harbin Institute of Technology (HIT)
+ * and is contributed to the CANN Open Software.
+ *
+ * Copyright (c) 2025 AISS Group, Harbin Institute of Technology (HIT).
+ * All Rights Reserved.
+ *
+ * Authors (accounts):
+ * - Zhou Jianhua<@LePenseur>
+ * - Su Tonghua <@sutonghua>
+ *
+ * This program is free software: you can redistribute it and/or modify it.
+ * Licensed under the CANN Open Software License Agreement Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * See the LICENSE file at the root of the repository for the full text of the License.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ */
+
+/*!
+ * \file sort_v2_tiling_data.h
+ * \brief tiling data struct
+ */
+
+#ifndef _SORT_V2_TILING_DATA_H_
+#define _SORT_V2_TILING_DATA_H_
+
+struct SortV2TilingData {
+    uint32_t smallCoreDataNum;
+    uint32_t bigCoreDataNum;
+    uint32_t smallCoreNum;
+    uint32_t bigCoreNum;
+    uint32_t axis;
+    uint32_t dimH;
+    uint32_t dimW;
+    uint32_t sliceLen;
+    uint32_t realSortLen;
+    uint32_t align8;
+    uint32_t padLen;
+    uint32_t dupCount;
+    uint32_t startBlockIdx;
+    bool descending;
+};
+#endif

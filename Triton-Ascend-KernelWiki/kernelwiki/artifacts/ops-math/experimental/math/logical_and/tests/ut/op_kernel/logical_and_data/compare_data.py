@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------------
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------
+
+import sys
+import numpy as np
+import glob
+import os
+
+curr_dir = os.path.dirname(os.path.realpath(__file__))
+
+def compare_data(golden_file_lists, output_file_lists, d_type):
+    if d_type == "bool":
+        np_dtype = np.bool_
+    else:
+        raise ValueError("d_type must be 'bool'")
+    
+    data_same = True
+    for gold, out in zip(golden_file_lists, output_file_lists):
+        tmp_out = np.fromfile(out, dtype=np_dtype)
+        tmp_gold = np.fromfile(gold, dtype=np_dtype)
+        
+        if tmp_out.size != tmp_gold.size:
+            print(f"FAILED! Size mismatch: output {tmp_out.size} vs golden {tmp_gold.size}")
+            data_same = False
+            continue
+
+        diff_res = (tmp_out != tmp_gold)
+        diff_idx = np.where(diff_res)[0]
+        
+        if len(diff_idx) == 0:
+            print(f"Compare {out} vs {gold}: PASSED!")
+        else:
+            print(f"Compare {out} vs {gold}: FAILED!")
+            for idx in diff_idx[:5]:
+                print(f" - index: {idx}, output: {tmp_out[idx]}, golden: {tmp_gold[idx]}")
+            data_same = False
+            
+    return data_same
+
+def get_file_lists(dtype):
+    golden_file_lists = sorted(glob.glob(curr_dir + "/*golden*.bin"))
+    output_file_lists = sorted(glob.glob(curr_dir + "/*output*.bin"))
+    return golden_file_lists, output_file_lists
+
+def process(d_type):
+    golden_file_lists, output_file_lists = get_file_lists(d_type)
+    result = compare_data(golden_file_lists, output_file_lists, d_type)
+    print("compare result:", result)
+    return result
+
+if __name__ == '__main__':
+    ret = process(sys.argv[1])
+    exit(0 if ret else 1)

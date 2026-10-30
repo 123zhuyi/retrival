@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: moe/moe_compute_expert_tokens/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-08-04'
+asset_mode: derived
+derived_from: ops-transformer-moe-compute-expert-tokens
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: ac43c143fab437fdc16bc1af92c1a8351a5b6e17c2d493156fd82bf9a2e253ac
+- local_path: moe-compute-expert-tokens-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 59614c1df28529ab40bd6145b9c9c201eb4c4f06b32d509a5cab2501e93974f2
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 7ecb57d3ac03b1e9a6cf90e31ad80ff7355883184308f2531b69d02d625eea90
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 580a0ba043112f617a4d3f54382d32bff4d8118977d474e529503277c5c92497
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 0ff7ed4a5ba3c386fb3e0f958212a7ced20ac8210ab96a0f87a0a4a0dbfde1bd

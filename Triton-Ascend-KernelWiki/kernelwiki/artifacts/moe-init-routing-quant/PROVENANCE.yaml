@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: moe/moe_init_routing_quant/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-08-03'
+asset_mode: derived
+derived_from: ops-transformer-moe-init-routing-quant
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 5a120a6e1ccf4172454df0ec482d2e5f90b4bb843f6ac3ab49f4f46aa52695a8
+- local_path: moe-init-routing-quant-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: deae71e30c1330fc8fd0b53cafde23b5c38e9707935e5f79c114b0a0f37bfaad
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: d013eebb700dd5ebf76a94a29da680a4285c714fdf410e1dd39dced4dc2f0634
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 0aff427de0fe54a6bde9ec397525f6763927c8f32779f60fae2df5a56adf3af7
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: e7b17987d0418570c1937403da03956a525d3f859d86a81efe63a5cb1a1e30e2

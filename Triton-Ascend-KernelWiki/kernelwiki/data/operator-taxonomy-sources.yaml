@@ -1,0 +1,18 @@
+retrieved_at: 2026-07-15
+classification_field: kernel_types
+sources:
+  - repo: cann/ops-nn
+    url: https://gitcode.com/cann/ops-nn
+    commit: 3c3dd72f31693118b96c47b89323cff62535fd11
+    evidence: top-level operator directories and classify_rule.yaml
+    categories: [activation, control, conv, foreach, hash, index, loss, matmul, norm, optim, pooling, quant, rnn, vfusion]
+  - repo: cann/ops-math
+    url: https://gitcode.com/cann/ops-math
+    commit: a8d45a6a7b8bce8a9de756f33620eecddf0acce9
+    evidence: top-level operator directories and classify_rule.yaml
+    categories: [conversion, math, random]
+  - repo: cann/ops-transformer
+    url: https://gitcode.com/cann/ops-transformer
+    commit: 38854175411a507ded2429e9d6d89d703b41ed9e
+    evidence: top-level operator directories, README, and classify_rule.yaml
+    categories: [attention, ffn, gmm, mamba, mc2, mhc, moe, posembedding]

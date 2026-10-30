@@ -1,0 +1,128 @@
+---
+id: doc-triton-ascend-zh-index
+title: Triton Ascend
+repo: triton-lang/triton-ascend
+url: https://github.com/triton-lang/triton-ascend/blob/e4c692be02c38f3d5e99ccaf314bf4148fa84413/docs/zh/index.rst
+source_category: official-doc
+tags:
+- triton_ascend
+- official_doc
+- guide
+retrieved_at: '2026-07-15'
+upstream_commit: e4c692be02c38f3d5e99ccaf314bf4148fa84413
+upstream_path: docs/zh/index.rst
+content_sha256: 93aaafd30d1a10faec2599e65beb937e910895499efc1bb74d02fc811ab9d39f
+snapshot_body_sha256: 93aaafd30d1a10faec2599e65beb937e910895499efc1bb74d02fc811ab9d39f
+document_language: zh
+source_format: rst
+license: MIT
+generated_by: scripts/ingest_triton_ascend_docs.py
+---
+
+Triton Ascend
+==============
+
+.. contents::
+    :local:
+    :depth: 2
+
+.. toctree::
+    :maxdepth: 2
+    :caption: 快速开始
+
+    quick_start.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: 安装指南
+
+    installation_guide.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: 架构设计与核心特性
+
+    architecture_design_and_core_features.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Triton 算子开发指南
+
+    programming_guide/index.md
+    programming_guide/vector_operator.md
+    programming_guide/cube_operator.md
+    programming_guide/cv_fusion_operator.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Triton 算子迁移指南
+
+    migration_guide/architecture_difference.md
+    migration_guide/migrate_from_gpu.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: 典型算子样例
+
+    examples/index.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: 算子调试与调优
+
+    autotune_guide.md
+    max_autotune_guide.md
+    debug_guide/debugging.md
+    debug_guide/profiling.md
+    debug_guide/precision.md
+    debug_guide/ub_overflow.md
+
+.. toctree::
+    :maxdepth: 3
+    :caption: Triton API 接口说明
+
+    triton_api/index.md
+    triton_api/triton/index.md
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Libdevice 开发者手册
+
+    libdevice/libdevice_developer_guide.md
+
+.. toctree::
+    :maxdepth: 2
+    :caption: 昇腾扩展 API 接口说明
+
+    triton_api_extension/index.md
+
+.. toctree::
+    :maxdepth: 1
+    :caption: 环境变量和编译选项
+
+    environment_variable_and_compiler_options_reference.md
+
+.. toctree::
+    :maxdepth: 1
+    :caption: 常见问题
+
+    FAQ.md
+
+.. toctree::
+    :maxdepth: 1
+    :caption: 贡献指南
+
+    community/CONTRIBUTING_zh.md
+    community/roadmap_guide.md
+
+.. toctree::
+    :maxdepth: 1
+    :caption: 社区治理
+
+    community/CODE_OF_CONDUCT_zh.md
+    community/GOVERNANCE_zh.md
+    community/community_technical_meeting.md
+    community/release_policy.md
+    community/MAINTAINERS.md
+    community/contributor.md
+    community/SECURITYNOTE_zh.md

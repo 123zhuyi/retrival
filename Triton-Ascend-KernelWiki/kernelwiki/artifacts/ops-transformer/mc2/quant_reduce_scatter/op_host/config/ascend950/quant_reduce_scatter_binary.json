@@ -1,0 +1,1865 @@
+{
+    "op_type": "QuantReduceScatter",
+    "op_list": [
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_INT8_FP_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_INT8_FP_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_INT8_FP_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "int8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_HF8_FP_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "hifloat8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_HF8_FP_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "hifloat8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_HF8_FP_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "hifloat8",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E5M2_FP_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e5m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E5M2_FP_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e5m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E5M2_FP_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e5m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E4M3_FP_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e4m3fn",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E4M3_FP_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e4m3fn",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E4M3_FP_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e4m3fn",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E5M2_FP8E8M0_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e5m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E5M2_FP8E8M0_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e5m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E5M2_FP8E8M0_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e5m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E4M3_FP8E8M0_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e4m3fn",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E4M3_FP8E8M0_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e4m3fn",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP8E4M3_FP8E8M0_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float8_e4m3fn",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E2M1_FP_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e2m1",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E2M1_FP_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e2m1",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E2M1_FP_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e2m1",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E1M2_FP_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e1m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E1M2_FP_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e1m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E1M2_FP_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e1m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E2M1_FP8E8M0_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e2m1",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E2M1_FP8E8M0_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e2m1",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E2M1_FP8E8M0_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e2m1",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E1M2_FP8E8M0_FP16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e1m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E1M2_FP8E8M0_BF16",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e1m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "bfloat16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        },
+        {
+            "bin_filename": "QuantReduceScatter_ND_ND_ND_FP4E1M2_FP8E8M0_FP",
+            "inputs": [
+                {
+                    "name": "x",
+                    "index": 0,
+                    "dtype": "float4_e1m2",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                },
+                {
+                    "name": "scales",
+                    "index": 1,
+                    "dtype": "float8_e8m0",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out_put",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ],
+                    "format_match_mode": "FormatAgnostic"
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "group",
+                    "dtype": "string",
+                    "value": ""
+                },
+                {
+                    "name": "reduce_op",
+                    "dtype": "string",
+                    "value": "sum"
+                },
+                {
+                    "name": "output_dtype",
+                    "dtype": "int",
+                    "value": 27
+                },
+                {
+                    "name": "world_size",
+                    "dtype": "int",
+                    "value": -1
+                }
+            ]
+        }
+    ]
+}

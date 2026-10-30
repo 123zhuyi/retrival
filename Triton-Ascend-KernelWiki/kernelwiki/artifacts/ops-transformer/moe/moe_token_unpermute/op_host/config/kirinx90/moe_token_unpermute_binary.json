@@ -1,0 +1,241 @@
+{
+    "op_type": "MoeTokenUnpermute",
+    "op_list": [
+        {
+            "bin_filename": "MoeTokenUnpermute_fp16_int32_fp16_false",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermute_fp32_int32_fp32_false",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermute_fp16_int32_fp32_false",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        },
+        {
+            "bin_filename": "MoeTokenUnpermute_fp32_int32_fp16_false",
+            "inputs": [
+                {
+                    "name": "permuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "sorted_indices",
+                    "index": 1,
+                    "dtype": "int32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "name": "probs",
+                    "index": 2,
+                    "dtype": "float16",
+                    "format": "ND",
+                    "paramType": "optional",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "unpermuted_tokens",
+                    "index": 0,
+                    "dtype": "float32",
+                    "format": "ND",
+                    "paramType": "required",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "name": "padded_mode",
+                    "dtype": "bool",
+                    "value": false
+                },
+                {
+                    "name": "restore_shape",
+                    "dtype": "list_int",
+                    "value": []
+                }
+            ]
+        }
+    ]
+}

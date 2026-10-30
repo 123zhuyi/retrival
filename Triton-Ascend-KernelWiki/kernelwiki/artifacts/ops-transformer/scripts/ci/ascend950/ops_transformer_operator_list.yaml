@@ -1,0 +1,196 @@
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
+operator_group_1:
+  - mla_prolog
+  - mla_prolog_v2
+  - mla_prolog_v3
+  - gather_pa_kv_cache
+  - scatter_pa_cache
+  - scatter_pa_kv_cache
+  - attention_update
+  - fused_infer_attention_score,10-7
+operator_group_2:
+  - grouped_matmul
+  - grouped_matmul_add
+  - kv_rms_norm_rope_cache
+  - grouped_matmul_finalize_routing
+  - grouped_matmul_swiglu_quant_v2
+  - quant_grouped_matmul_inplace_add
+  - fused_infer_attention_score,10-8
+operator_group_3:
+  - incre_flash_attention,2-0
+operator_group_4:
+  - moe_token_unpermute_with_routing_map_grad
+  - moe_finalize_routing
+  - moe_finalize_routing_v2
+  - moe_finalize_routing_v2_grad
+  - moe_gating_top_k
+  - moe_gating_top_k_softmax
+  - moe_gating_top_k_softmax_v2
+  - moe_init_routing
+  - moe_init_routing_quant_v2
+  - moe_init_routing_v2
+  - moe_init_routing_v2_grad
+  - moe_init_routing_v3
+  - moe_token_permute_with_routing_map_grad
+  - moe_token_unpermute_with_routing_map
+  - rope_with_sin_cos_cache
+  - moe_re_routing
+  - moe_compute_expert_tokens
+  - apply_rotary_pos_emb
+  - rotary_position_embedding
+  - rotary_position_embedding_grad
+  - ring_attention_update
+  - sparse_flash_attention_grad
+  - fused_infer_attention_score,10-9
+  - moe_token_permute_with_routing_map
+operator_group_5:
+  - flash_attention_score,3-0
+operator_group_6:
+  - sparse_lightning_indexer_grad_kl_loss
+  - prompt_flash_attention
+  - kv_quant_sparse_flash_attention
+  - quant_lightning_indexer
+operator_group_7:
+  - fused_infer_attention_score,10-0
+operator_group_8:
+  - fused_infer_attention_score,10-1
+operator_group_9:
+  - fused_infer_attention_score,10-2
+  - norm_rope_concat
+  - norm_rope_concat_grad
+operator_group_10:
+  - allto_allv_grouped_mat_mul
+  - grouped_mat_mul_allto_allv
+  - all_gather_matmul_v2
+  - all_gather_matmul
+  - allto_all_matmul
+  - matmul_allto_all
+  - matmul_reduce_scatter
+  - matmul_reduce_scatter_v2
+  - matmul_all_reduce
+  - moe_distribute_combine
+  - moe_distribute_combine_v2
+  - moe_distribute_combine_add_rms_norm
+  - moe_distribute_dispatch
+  - moe_distribute_dispatch_v2
+  - quant_all_reduce
+  - quant_reduce_scatter
+  - moe_update_expert
+  - distribute_barrier
+operator_group_11:
+  - fused_infer_attention_score,10-3
+operator_group_12:
+  - fused_infer_attention_score,10-4
+operator_group_13:
+  - fused_infer_attention_score,10-5
+operator_group_14:
+  - fused_infer_attention_score,10-6
+operator_group_15:
+  - incre_flash_attention,2-1
+operator_group_16:
+  - flash_attention_score_grad,3-0
+operator_group_17:
+  - flash_attention_score_grad,3-1
+operator_group_18:
+  - flash_attention_score_grad,3-2
+operator_group_19:
+  - flash_attention_score,3-1
+operator_group_20:
+  - flash_attention_score,3-2
+
+
+
+#allto_allv_grouped_mat_mul
+#all_gather_matmul
+#all_gather_matmul_v2
+#grouped_mat_mul_allto_allv
+#matmul_all_reduce
+#matmul_reduce_scatter
+#matmul_reduce_scatter_v2
+#moe_distribute_combine
+#moe_distribute_combine_v2
+#moe_distribute_dispatch
+#moe_distribute_dispatch_v2
+#quant_all_reduce
+#quant_reduce_scatter
+
+
+# operator_group_2:
+#   - incre_flash_attention
+#   - prompt_flash_attention
+# operator_group_3:
+#   - fused_infer_attention_score
+# operator_group_4:
+#   - flash_attention_score
+#   - flash_attention_score_grad
+# operator_group_5:
+#   - quant_lightning_indexer
+#   - lightning_indexer_grad
+#   - sparse_flash_attention_grad
+#   - gather_pa_kv_cache
+#   - rain_fusion_attention
+#   - recurrent_gated_delta_rule
+#   - ring_attention_update
+# operator_group_6:
+#   - sparse_lightning_indexer_grad_kl_loss
+#   - attention_update
+#   - kv_quant_sparse_flash_attention
+#   - sparse_flash_attention
+#   - scatter_pa_kv_cache
+#   - lightning_indexer
+# operator_group_7:
+#   - ffn
+#   - grouped_matmul_swiglu_quant
+#   - grouped_matmul
+#   - grouped_matmul_add
+#   - grouped_matmul_swiglu_quant_v2
+#   - grouped_matmul_finalize_routing
+# operator_group_8:
+#   - moe_compute_expert_tokens
+#   - moe_finalize_routing
+#   - moe_finalize_routing_v2
+#   - moe_finalize_routing_v2_grad
+#   - moe_fused_topk
+#   - moe_gating_top_k
+#   - moe_gating_top_k_softmax
+#   - moe_gating_top_k_softmax_v2
+#   - moe_init_routing
+#   - moe_init_routing_quant
+#   - moe_init_routing_quant_v2
+#   - moe_init_routing_v2
+#   - moe_init_routing_v2_grad
+#   - moe_init_routing_v3
+#   - moe_re_routing
+#   - moe_token_permute
+#   - moe_token_permute_grad
+#   - moe_token_permute_with_ep
+#   - moe_token_permute_with_ep_grad
+#   - moe_token_permute_with_routing_map
+#   - moe_token_permute_with_routing_map_grad
+#   - moe_token_unpermute
+#   - moe_token_unpermute_grad
+#   - moe_token_unpermute_with_ep
+#   - moe_token_unpermute_with_ep_grad
+#   - moe_token_unpermute_with_routing_map
+#   - moe_token_unpermute_with_routing_map_grad
+# operator_group_9:
+#   - dequant_rope_quant_kvcache
+#   - interleave_rope
+#   - rope_with_sin_cos_cache
+#   - rotary_position_embedding_grad
+#   - norm_rope_concat
+#   - norm_rope_concat_grad
+#   - apply_rotary_pos_emb
+#   - rotary_position_embedding
+# operator_group_10:
+# apply_rotary_pos_emb
+# rotary_position_embedding
+# rotary_position_embedding_grad

@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------------
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------
+
+import torch
+import torch_npu
+import torch.nn.functional as F
+import ascend_ops
+import pytest
+
+
+def test_gelu_interface_exist():
+    """
+    Test that the 'ascend_ops.gelu' operator is present in torch.ops.
+    """
+    print(torch.ops.ascend_ops.gelu)
+    assert hasattr(torch.ops.ascend_ops, "gelu"), \
+        "The 'gelu' operator is not registered in the 'torch.ops.ascend_ops' namespace."
+
+
+SHAPES = [
+    (1,),
+    (3,),
+    (10,),
+    (100,),
+    (1024,),
+    (10000,),
+    (10, 10),
+    (32, 32),
+    (100, 100),
+    (10, 100),
+    (100, 10),
+    (256, 512),
+    (5, 10, 15),
+    (16, 32, 64),
+    (32, 64, 128),
+    (1, 3, 32, 32),
+    (4, 3, 64, 64),
+    (8, 3, 128, 128),
+    (1000, 1000),
+]
+
+DTYPES = [
+    torch.float32,
+]
+
+
+@pytest.mark.skipif(not torch.npu.is_available(), reason="NPU device not found")
+@pytest.mark.parametrize("shape", SHAPES)
+@pytest.mark.parametrize("dtype", DTYPES)
+def test_gelu_operator(shape, dtype):
+    """
+    Test the functionality of the gelu operator.
+    
+    GeLU uses tanh approximation:
+    GeLU(x) = x / (1 + exp((x / 0.044715 + x^3) * (-1.595769121 * 0.044715)))
+    """
+    a = torch.randn(*shape, dtype=dtype)
+
+    expected = F.gelu(a, approximate='tanh')
+    
+    a_npu = a.npu()
+    result_npu = torch.ops.ascend_ops.gelu(a_npu)
+    result = result_npu.cpu()
+
+    assert torch.allclose(result, expected, rtol=1e-4, atol=1e-4), \
+        f"Gelu failed for shape {shape}, dtype {dtype}. " \
+        f"Max diff: {torch.max(torch.abs(result - expected)):.6f}"
+
+    print(f"Test passed: shape={shape}, dtype={dtype}")

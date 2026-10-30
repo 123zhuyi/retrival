@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/kv_quant_sparse_flash_attention/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-kv-quant-sparse-flash-attention
+fixture: true
+files:
+- local_path: kv-quant-sparse-flash-attention-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 87ad4af780e104b9cc30577df79116f8036df03ea4720f9a1dbd794e04ce27b3
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: f5b19c3aa05d6096789d8f198c80db210a74029f6798a3d75b4d253283729ace
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: 6c38e28a8f4260d921b97b308c744b1d3e7bf9482b3edc70edb94b48c67bbfa6
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 47f35a0360d1f4684de76dbf4c02c0599feefc870b271f2a47fc38f5161cdfe7
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 8ba89e140e9b836ce72000202e31e4ed319d0a8876fd41843d7faa5600cd41c8

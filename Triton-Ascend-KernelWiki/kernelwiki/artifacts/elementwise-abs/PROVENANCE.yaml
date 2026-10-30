@@ -1,0 +1,26 @@
+origin_url: local://cann/ops-math
+upstream_repo: ops-math
+upstream_commit: b56b2db0ebc3fcc96f5f4c7f3060b4375481175e
+upstream_path: math/abs
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: 2026-07-27
+asset_mode: extracted
+derived_from: source-cann-ops-math-abs
+extraction_method: manual analysis of CANN ops-math Abs operator source
+files:
+  - local_path: source_file_inventory.md
+    role: inventory
+    mode: generated
+    sha256: 7aa725421b77c921abb09c971c4e310fffed20ae1e2218779cb94323965c11ee
+  - local_path: tiling_dispatch_tables.md
+    role: tiling-reference
+    mode: generated
+    sha256: e4b7fd7a5a44be298b0bb3a545c94e5ed0977f1ff0d62f3b3fcb2449f8dbd9b5
+  - local_path: abs_triton_ascend_skeleton.py
+    role: triton-skeleton
+    mode: generated
+    sha256: 76982332e79fe1a18cd2f7ad46b23a2fd13a8c97754665eacaa152bea81245e8
+  - local_path: codegen_constraints.yaml
+    role: codegen-constraints
+    mode: generated
+    sha256: 6327541ecf5e6818881b02195baf0edbaa51d25117cec72f74f0fd76852bcffc

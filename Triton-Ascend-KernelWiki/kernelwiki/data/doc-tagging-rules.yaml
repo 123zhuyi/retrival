@@ -1,0 +1,192 @@
+version: 2
+description: Deterministic architecture, hardware, symptom, and operator rules for imported Triton-Ascend documentation.
+
+# Architecture tags are assigned only when an exact chip model from the
+# npu-hardware-params product table is present. Family/NpuArch names remain
+# query selectors and do not cause a specific-model tag to be fabricated.
+architectures:
+  - value: Ascend910
+    body_regex: ['\bAscend910\b']
+  - value: Ascend310P1
+    body_regex: ['\bAscend310P1\b']
+  - value: Ascend310P3
+    body_regex: ['\bAscend310P3\b']
+  - value: Ascend310P5
+    body_regex: ['\bAscend310P5\b']
+  - value: Ascend310P7
+    body_regex: ['\bAscend310P7\b']
+  - value: Ascend910B1
+    body_regex: ['\bAscend910B1\b', 'Ascend910B1\s*[~-]\s*B4']
+  - value: Ascend910B2
+    body_regex: ['\bAscend910B2\b', 'Ascend910B1\s*[~-]\s*B4']
+  - value: Ascend910B2C
+    body_regex: ['\bAscend910B2C\b']
+  - value: Ascend910B3
+    body_regex: ['\bAscend910B3\b', 'Ascend910B1\s*[~-]\s*B4']
+  - value: Ascend910B4
+    body_regex: ['\bAscend910B4\b', 'Ascend910B1\s*[~-]\s*B4']
+  - value: Ascend910_93
+    body_regex: ['\bAscend910_93\b']
+  - value: Ascend310B1
+    body_regex: ['\bAscend310B1\b', 'Ascend310B1\s*[~-]\s*B4']
+  - value: Ascend310B2
+    body_regex: ['\bAscend310B2\b', 'Ascend310B1\s*[~-]\s*B4']
+  - value: Ascend310B3
+    body_regex: ['\bAscend310B3\b', 'Ascend310B1\s*[~-]\s*B4']
+  - value: Ascend310B4
+    body_regex: ['\bAscend310B4\b', 'Ascend310B1\s*[~-]\s*B4']
+  - value: Ascend950DT
+    body_regex: ['\bAscend950DT\b']
+  - value: Ascend950PR
+    body_regex: ['\bAscend950PR\b']
+  - value: Kirin9030
+    body_regex: ['\bKirin9030\b']
+  - value: KirinX90
+    body_regex: ['\bKirinX90\b']
+
+hardware_features:
+  - value: global_memory
+    body_regex: ['Global Memory', '\bGM\b']
+  - value: l2_cache
+    body_regex: ['\bL2(?: Cache)?\b']
+  - value: l1_buffer
+    body_regex: ['\bL1(?: Buffer)?\b']
+  - value: l0a_buffer
+    body_regex: ['\bL0A(?: Buffer)?\b']
+  - value: l0b_buffer
+    body_regex: ['\bL0B(?: Buffer)?\b']
+  - value: l0c_buffer
+    body_regex: ['\bL0C(?: Buffer)?\b']
+  - value: unified_buffer
+    body_regex: ['Unified Buffer', '\bUBuffer\b', '\bUBSIZE\b', '\bUB\b']
+  - value: bias_table_buffer
+    body_regex: ['\bBT(?: Buffer)?\b', 'Bias Table', 'FP Buffer']
+  - value: ss_buffer
+    body_regex: ['\bSSBuffer\b', '\bSS Buffer\b']
+  - value: nd_dma_cache
+    body_regex: ['ND[- ]?DMA Cache']
+  - value: simt_dcache
+    body_regex: ['SIMT DCache']
+  - value: register_file
+    body_regex: ['Register File', '寄存器文件']
+  - value: ai_core
+    body_regex: ['AI Core', '\bAICore\b']
+  - value: cube_core
+    body_regex: ['Cube Core', '\bCubeCore\b']
+  - value: vector_core
+    body_regex: ['Vector Core', '\bVectorCore\b']
+  - value: scalar_unit
+    body_regex: ['Scalar Unit', 'Scalar.*instruction queue', 'Scalar.*指令队列']
+  - value: fixpipe
+    body_regex: ['\bFixPipe\b']
+  - value: mte1
+    body_regex: ['\bMTE1\b']
+  - value: mte2
+    body_regex: ['\bMTE2\b']
+  - value: mte3
+    body_regex: ['\bMTE3\b']
+  - value: simt
+    body_regex: ['\bSIMT\b']
+  - value: simd
+    body_regex: ['\bSIMD\b']
+  - value: simd_regbase
+    body_regex: ['SIMD[- ]?Regbase']
+  - value: simd_membase
+    body_regex: ['SIMD[- ]?Membase']
+  - value: warp_scheduler
+    body_regex: ['Warp Scheduler']
+  - value: nddma
+    body_regex: ['\bNDDMA\b', 'ND[- ]DMA']
+  - value: ccu
+    body_regex: ['\bCCU\b']
+  - value: l0c_to_ub
+    body_regex: ['L0C\s*(?:→|->|to)\s*(?:UBuffer|UB)']
+  - value: ub_l1_bidirectional
+    body_regex: ['(?:UBuffer|UB)\s*(?:↔|<->)\s*L1']
+  - value: ssbuffer_messaging
+    body_regex: ['SSBuffer.*(?:message|消息|通路)']
+  - value: buffer_id_sync
+    body_regex: ['BufferID.*(?:sync|同步)', 'Buffer ID.*(?:sync|同步)']
+  - value: direct_gm_access
+    body_regex: ['direct.*Global Memory', 'direct.*\bGM\b', '直接.*\bGM\b']
+  - value: cube_vector_1_to_2
+    body_regex: ['(?:Cube|AIC).*(?:Vector|AIV).*1\s*:\s*2', '1\s*:\s*2.*(?:Cube|AIC).*(?:Vector|AIV)']
+  - value: fp8
+    body_regex: ['\bFP8\b']
+  - value: mxfp8
+    body_regex: ['\bMXFP8\b']
+  - value: mxfp4
+    body_regex: ['\bMXFP4\b']
+  - value: hif8
+    body_regex: ['\bHiF8\b']
+  - value: sparsity_4_to_2
+    body_regex: ['4\s*:\s*2.*(?:spars|稀疏)', '(?:spars|稀疏).*4\s*:\s*2']
+  - value: alignment
+    body_regex: ['\balign(?:ment|ed)?\b', '对齐']
+
+symptoms:
+  - value: compile_error
+    path_regex: ['debug_guide/debugging\.md$', 'FAQ\.md$']
+    body_regex: ['MLIRCompileError', 'compilation error', 'compilation fails', '编译错误', '编译报错']
+  - value: runtime_error
+    body_regex: ['RuntimeError', 'runtime error', '运行错误', '运行报错']
+  - value: precision_mismatch
+    path_regex: ['debug_guide/precision\.md$', 'examples/07_accuracy_comparison_example\.md$']
+    body_regex: ['precision does not meet', 'precision mismatch', '精度不达标', '精度问题', '精度误差']
+  - value: ub_overflow
+    path_regex: ['debug_guide/ub_overflow\.md$']
+    body_regex: ['UBSIZE Out of Memory', 'UB Overflow', 'UB overflow', 'UB溢出', 'UB空间不足']
+  - value: out_of_memory
+    body_regex: ['out of memory', '内存不足']
+  - value: illegal_memory_access
+    body_regex: ['illegal memory access', 'out of bounds', '内存越界', '越界访问', '地址越界']
+  - value: shape_mismatch
+    body_regex: ['shape mismatch', 'shape does not match', 'shape不匹配', '形状不匹配', '维度不匹配']
+  - value: alignment_error
+    body_regex: ['alignment error', 'not aligned', '未对齐', '对齐错误']
+  - value: unsupported_operation
+    body_regex: ['unsupported operation', 'operation is not supported', '不支持的操作', '算子不支持']
+  - value: performance_bottleneck
+    path_regex: ['debug_guide/profiling\.md$', 'migration_guide/performance_guidelines\.md$']
+    body_regex: ['performance bottleneck', '性能瓶颈']
+
+kernel_types:
+  - value: math
+    path_regex: ['examples/01_vector_add_example\.md$', 'triton_api/(Atomic_Ops|Comparing_Ops|Logical_Ops|Math_Ops|Reduction_Ops)/', 'triton_api/Scan_Sort_Ops/(associative_scan|cumprod|cumsum|histogram)\.md$']
+  - value: activation
+    path_regex: ['examples/02_fused_softmax_example\.md$', 'triton_api/Math_Ops/(softmax|sigmoid)\.md$']
+  - value: norm
+    path_regex: ['examples/03_layer_norm_example\.md$']
+  - value: attention
+    path_regex: ['examples/04_fused_attention_example\.md$']
+    body_regex: ['flash attention', 'fused attention', '稀疏注意力']
+  - value: matmul
+    path_regex: ['examples/05_matrix_multiplication_example\.md$', 'triton_api/Linear_Algebra_Ops/']
+  - value: vfusion
+    path_regex: ['examples/0[234]_fused_.*\.md$', 'programming_guide/cv_fusion_operator\.md$']
+  - value: index
+    path_regex: ['triton_api/Indexing_Ops/']
+  - value: conversion
+    path_regex: ['triton_api/(Creation_Ops|Memory_Pointer_Ops|Shape_Manipulation_Ops)/']
+  - value: random
+    path_regex: ['triton_api/Random_Number_Generation/']
+  - value: index
+    path_regex: ['triton_api/Scan_Sort_Ops/(sort|topk|index)\.md$']
+  - value: control
+    path_regex: ['triton_api/(Debug_Ops|Compiler_Hint_Ops|Programming_Model)/']
+  - value: quant
+    body_regex: ['quantization', 'dequantization', '量化', '反量化']
+  - value: moe
+    body_regex: ['mixture of experts', '\bMoE\b', '混合专家']
+  - value: ffn
+    body_regex: ['feed-forward network', '\bFFN\b', '前馈网络']
+  - value: gmm
+    body_regex: ['grouped matmul', 'grouped matrix multiplication', '分组矩阵乘']
+  - value: posembedding
+    body_regex: ['rotary position', '\bRoPE\b', '旋转位置编码']
+  - value: mc2
+    body_regex: ['all-gather matmul', 'matmul reduce-scatter', 'all-to-all matmul', '通信计算融合']
+  - value: mamba
+    body_regex: ['\bMamba\b', 'causal conv1d']
+  - value: mhc
+    body_regex: ['\bMHC\b', 'multi-head communication']

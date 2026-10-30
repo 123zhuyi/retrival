@@ -1,0 +1,27 @@
+{
+    "Pow":{
+        "opInfo":{
+            "computeCost":"100",
+            "engine":"DNN_VM_AICPU",
+            "flagAsync":"False",
+            "flagPartial":"False",
+            "functionName":"RunCpuKernel",
+            "kernelSo":"libmath_aicpu_kernels.so",
+            "opKernelLib":"CUSTAICPUKernel",
+            "userDefined":"True",
+            "workspaceSize":"100"
+        },
+        "input0": {
+            "type": "DT_FLOAT16,DT_FLOAT,DT_INT16,DT_INT32,DT_INT64,DT_INT8,DT_UINT8,DT_DOUBLE,DT_COMPLEX64,DT_COMPLEX128",
+            "name": "x1"
+        },
+        "input1": {
+            "type": "DT_FLOAT16,DT_FLOAT,DT_INT16,DT_INT32,DT_INT64,DT_INT8,DT_UINT8,DT_DOUBLE,DT_COMPLEX64,DT_COMPLEX128",
+            "name": "x2"
+        },
+        "output0": {
+            "type": "DT_FLOAT16,DT_FLOAT,DT_INT16,DT_INT32,DT_INT64,DT_INT8,DT_UINT8,DT_DOUBLE,DT_COMPLEX64,DT_COMPLEX128",
+            "name": "y"
+        }
+    }
+}

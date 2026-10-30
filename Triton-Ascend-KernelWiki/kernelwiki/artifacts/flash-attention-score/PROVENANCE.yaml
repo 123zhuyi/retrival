@@ -1,0 +1,24 @@
+origin_url: local://artifacts/ops-transformer/flash-attention-score
+upstream_repo: kunpengcompute/CANN-ops-transformer
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: "2026-07-22"
+asset_mode: derived
+derived_from: commit-d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+fixture: true
+files:
+  - local_path: flash-attention-triton-skeleton.py
+    role: derived-source
+    mode: derived
+    sha256: 111a0c09651fe55fc59a4d7c94d334021f3f818369ec736daa94ea1a9d4d33c2
+  - local_path: flash-attention-tiling-table.md
+    role: approach-notes
+    mode: derived
+    sha256: dcf6f0afd4370cd7e874fbdfc01e1ad1bde1d9285ad2f8fadaeaaac9887d195d
+  - local_path: flash-attention-template-dispatch.md
+    role: approach-notes
+    mode: derived
+    sha256: 815f32eb1a89560e7ceb13d5b13df4567d86249ed567931c51931273ebdab6d3
+  - local_path: flash-attention-pipeline-diagram.md
+    role: approach-notes
+    mode: derived
+    sha256: de42308dd47bb6d66591c62f6b06a588a755ef730841db7ba9b0d6fd41fc340c

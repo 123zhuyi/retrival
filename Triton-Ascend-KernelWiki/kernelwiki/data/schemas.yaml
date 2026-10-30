@@ -1,0 +1,74 @@
+source-pr:
+  required: [id, repo, pr, title, author, date, url, source_category, architectures, tags, techniques, hardware_features, kernel_types, captured_at, status]
+  optional: [description, inclusion_reason, changed_paths, artifact_dir, fixture]
+  constraints:
+    source_category: upstream-code
+    status: [open, merged, closed]
+
+source-doc:
+  required: [id, title, url, source_category, tags, retrieved_at]
+  optional: [repo, author, description, architectures, hardware_features, upstream_commit, upstream_path, content_sha256, snapshot_body_sha256, document_language, source_format, license, generated_by, symptoms, kernel_types, operators]
+  constraints:
+    source_category: [official-doc, paper]
+
+# Triton-Ascend extension: reproducible local compiler/correctness/profiler evidence.
+source-run:
+  required: [id, title, url, source_category, architectures, tags, captured_at, fixture]
+  optional: [repo, kernel_types, artifact_dir]
+  constraints:
+    source_category: reproduction
+
+wiki-hardware:
+  required: [id, title, type, architectures, tags, confidence, related, sources, aliases]
+  optional: [reproducibility, prerequisites, evidence_basis, hardware_features]
+  constraints: {type: hardware, id_prefix: hw-}
+
+wiki-technique:
+  required: [id, title, type, architectures, tags, confidence, reproducibility, prerequisites, related, sources]
+  optional: [aliases, symptoms, evidence_basis, artifact_dir, techniques, hardware_features, kernel_types]
+  constraints: {type: technique, id_prefix: technique-, reproducibility_minimum: snippet}
+
+wiki-pattern:
+  required: [id, title, type, tags, symptoms, candidate_techniques, related, sources]
+  optional: [architectures, confidence, evidence_basis, techniques, kernel_types]
+  constraints: {type: pattern, id_prefix: pattern-}
+
+wiki-kernel:
+  required: [id, title, type, architectures, tags, confidence, reproducibility, kernel_types, related, sources, performance_claims]
+  optional: [aliases, prerequisites, symptoms, evidence_basis, artifact_dir, techniques, hardware_features, operators]
+  constraints: {type: kernel, id_prefix: kernel-, reproducibility_minimum: snippet}
+
+wiki-language:
+  required: [id, title, type, tags, related, sources, reproducibility]
+  optional: [architectures, confidence, aliases, evidence_basis, symptoms]
+  constraints: {type: language, id_prefix: lang-, reproducibility_minimum: snippet}
+
+artifact-bundle-provenance:
+  required: [origin_url, upstream_repo, license, retrieved_at, asset_mode, files]
+  optional: [upstream_sha, derived_from, size_cap_truncated, license_notice, fixture]
+  constraints:
+    asset_mode: [verbatim, extracted, derived]
+  files_schema:
+    required: [local_path, role, mode, sha256]
+    constraints:
+      role: [upstream-file, extracted-block, derived-source, approach-notes, bench-record]
+      mode: [verbatim, extracted, derived]
+
+triton-ascend-doc-snapshot:
+  required: [upstream_repo, origin_url, upstream_commit, retrieved_at, license, document_roots, generated_by, page_count, total_bytes, pages]
+  page_schema:
+    required: [id, local_path, upstream_path, content_sha256, snapshot_body_sha256, bytes]
+
+operator-taxonomy-sources:
+  required: [retrieved_at, classification_field, sources]
+  source_schema:
+    required: [repo, url, commit, evidence, categories]
+
+doc-tagging-rules:
+  required: [version, description, architectures, hardware_features, symptoms, kernel_types]
+
+npu-architecture-taxonomy-source:
+  required: [retrieved_at, upstream_repo, origin_url, upstream_commit, canonical_field, source_paths]
+
+tag-governance:
+  required: [version, update_mode, controlled_fields, publication_gates]

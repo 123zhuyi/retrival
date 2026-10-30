@@ -1,0 +1,30 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/ring_attention_update/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-31'
+asset_mode: derived
+derived_from: ops-transformer-ring-attention-update
+fixture: true
+files:
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: a7303a1d4682ec07128126f0e503d505b8de4ce04ad9b5ceb9ad95b3e3eea58e
+- local_path: pipeline-diagram.md
+  role: approach-notes
+  mode: derived
+  sha256: f02d9db06b5c158ba819436e85ae33745a0608ec729554aa754a2307e895e051
+- local_path: ring-attention-update-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: a30e30acdb3cd2cf52284ba6b39323a0157e71f3e34a09e9bc06b5d03115d0b4
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 3d93dcf0d507189e759d478aab7f0e07fab496f7d6a152733a23b5d05ad2dbac
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: a2f41ebf6c31ab0f998aed2b15ccf8a25cd6715db389ade2175fc9c0697abf4c

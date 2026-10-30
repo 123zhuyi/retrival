@@ -1,0 +1,64 @@
+[
+  {
+    "id": 1,
+    "name": "isneginf smoke fp16",
+    "aclnn_name": "aclnnIsNegInf",
+    "version": "v1.0",
+    "expected_error_msg": null,
+    "api": "pytorch",
+    "api_type": "ascend_is_neg_inf",
+    "aclnn_api_type": "aclnn_is_neg_inf",
+    "backward": false,
+    "standard": {
+      "acc": "default",
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "input",
+        "type": "tensor",
+        "required": true,
+        "dtype": "fp16",
+        "shape": [128],
+        "range_values": "-inf",
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "acl_json": "",
+    "method_inputs": null,
+    "tensor_input": null
+  },
+  {
+    "id": 2,
+    "name": "isneginf smoke int32",
+    "aclnn_name": "aclnnIsNegInf",
+    "version": "v1.0",
+    "expected_error_msg": null,
+    "api": "pytorch",
+    "api_type": "ascend_is_neg_inf",
+    "aclnn_api_type": "aclnn_is_neg_inf",
+    "backward": false,
+    "standard": {
+      "acc": "default",
+      "perf": "not_key"
+    },
+    "outputs": null,
+    "inputs": [
+      {
+        "name": "input",
+        "type": "tensor",
+        "required": true,
+        "dtype": "int32",
+        "shape": [64],
+        "range_values": [-5, 5],
+        "backward": false,
+        "align_32B": null
+      }
+    ],
+    "acl_json": "",
+    "method_inputs": null,
+    "tensor_input": null
+  }
+]

@@ -1,0 +1,22 @@
+retrieved_at: 2026-07-16
+upstream_repo: cann/cannbot-skills
+origin_url: https://gitcode.com/cann/cannbot-skills
+upstream_commit: 279417465ecfbf56de6b7a6dc9f3814db600adb8
+canonical_field: architectures
+source_paths:
+  - ops/npu-arch/SKILL.md
+  - ops/npu-arch/references/npu-hardware-params.md
+  - ops/npu-arch/references/npu-arch-guide.md
+  - ops/npu-arch/references/simt-arch-guide.md
+  - ops/npu-arch/references/npu-arch-guide-triton.md
+policy:
+  architecture_identity: chip_model
+  chip_model_source: ops/npu-arch/references/npu-hardware-params.md#0-产品映射表
+  npu_arch_is_query_selector: true
+  aliases_are_not_tags: true
+  exclude_runtime_variant_values:
+    - core_count
+    - frequency
+    - l2_capacity
+    - device_memory_capacity
+  runtime_source_of_truth: PlatformAscendC

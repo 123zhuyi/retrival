@@ -1,0 +1,292 @@
+{
+  "op_type": "ChunkCat",
+  "op_list": [
+    {
+      "bin_filename": "ChunkCat_fp16_fp16",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    },
+    {
+      "bin_filename": "ChunkCat_fp16_bf16",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    },
+    {
+      "bin_filename": "ChunkCat_fp16_fp32",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    },
+    {
+      "bin_filename": "ChunkCat_bf16_fp16",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    },
+    {
+      "bin_filename": "ChunkCat_bf16_bf16",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bfloat16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    },
+    {
+      "bin_filename": "ChunkCat_bf16_fp32",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "bfloat16",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    },
+    {
+      "bin_filename": "ChunkCat_fp32_fp32",
+      "inputs": [
+        [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "dynamic",
+            "shape": [
+              -2
+            ]
+          }
+        ]
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+          {
+            "name": "dim",
+            "dtype": "int",
+            "value": null
+          },
+          {
+            "name": "num_chunks",
+            "dtype": "int",
+            "value": null
+          }
+        ]
+    }
+  ]
+}

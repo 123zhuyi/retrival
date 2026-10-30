@@ -1,0 +1,40 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#ifndef AICPU_KERNELS_NORMALIZED_SUB_H
+#define AICPU_KERNELS_NORMALIZED_SUB_H
+
+#include "cpu_kernel.h"
+#include "unsupported/Eigen/CXX11/Tensor"
+#include "utils/bcast.h"
+
+namespace aicpu {
+template <typename T>
+using TensorMap =
+    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>,
+                     Eigen::Aligned>;
+
+class SubCpuKernel : public CpuKernel {
+ public:
+  SubCpuKernel() = default;
+  ~SubCpuKernel() = default;
+
+  uint32_t Compute(CpuKernelContext &ctx) override;
+
+ private:
+  template <typename T>
+  uint32_t DoCompute(const CpuKernelContext &ctx);
+
+  template <typename T, int32_t RANK>
+  uint32_t BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y, TensorMap<T> &out,
+                            const Bcast &bcast);
+};
+}  // namespace aicpu
+#endif

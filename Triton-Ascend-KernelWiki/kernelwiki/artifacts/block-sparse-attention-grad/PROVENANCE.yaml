@@ -1,0 +1,26 @@
+origin_url: local://artifacts/ops-transformer
+upstream_repo: kunpengcompute/CANN-ops-transformer
+upstream_sha: d28d8f99a8858b71caa27a535da32bb5ba68ce2a
+upstream_path: attention/block_sparse_attention_grad/
+license: CANN Open Software License Agreement Version 2.0
+retrieved_at: '2026-07-29'
+asset_mode: derived
+derived_from: ops-transformer-block-sparse-attention-grad
+fixture: true
+files:
+- local_path: block-sparse-attention-grad-triton-skeleton.py
+  role: derived-source
+  mode: derived
+  sha256: 72ae8bfc4d84c57d07ed9a69a07a98e71c506fa72bac1b2af59493d6fc67d0b4
+- local_path: migration-table.md
+  role: approach-notes
+  mode: derived
+  sha256: 59bc7db609730f3755d5666d0fca4b699532342e96cf4784e25dc9eb330fab0d
+- local_path: source_file_inventory.md
+  role: approach-notes
+  mode: derived
+  sha256: 2579d588a3f8bcbab934555f96334cde9a4cbbeddc0be0b552e601f0c74e54a5
+- local_path: tiling_dispatch_tables.md
+  role: approach-notes
+  mode: derived
+  sha256: 9eb642d7490e81ad01ac3e5f16b392e3d0cbf9fa31d8c9820650ac6385858da8
