@@ -1,0 +1,80 @@
+=================================================================
+                   >>>>>   MindStudio   <<<<<
+    THE END-TO-END TOOLCHAIN TO UNLEASH HUAWEI ASCEND COMPUTE
+=================================================================
+
+[W1021 19:39:15.073441108 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+[WARN]  Currently, the root permission is used, which is unrecommended. Please ensure the security of the execution environment and programs.
+[INFO]  Op profiling analysis start.
+[INFO]  Running device task: DeviceProf
+[INFO] <ProfData> Start profiling on device 0, kernel: _skrow12
+[INFO] <WarmUp> Warm Up enabled. times:5
+[INFO] <ProfData> Start profiling on device 0, kernel: _skrow12
+[INFO] <WarmUp> Warm Up enabled. times:5
+[INFO] <ProfData> Start profiling on device 0, kernel: _skrow12
+[INFO] <WarmUp> Warm Up enabled. times:5
+DONE torch.Size([1024, 12, 12])
+[INFO]  Profiling running finished. All task success.
+[INFO]  Start analyze kernel on device: device0, kernel: _skrow12, name is: 0
+[INFO]  Save profiling data with metric [PipeUtilization] success.
+[INFO]  Save profiling data with metric [L2Cache] success.
+[INFO]  Save profiling data with metric [ResourceConflictRatio] success.
+[INFO]  Performance Summary Report:
+
+	1) MTE2 bandwidth utilization lower than 80% when active.
+
+[INFO]  Operator Basic Information:
+
+	Op Name: _skrow12
+	Op Type: vector
+	Task Duration(us): 43.887001
+	Block Dim: 32
+	Mix Block Dim: 
+	Device Id: 0
+	Pid: 2298693
+	Current Freq: 1650
+	Rated Freq: 1650
+
+[INFO]  Start analyze kernel on device: device0, kernel: _skrow12, name is: 1
+[INFO]  Save profiling data with metric [PipeUtilization] success.
+[INFO]  Save profiling data with metric [L2Cache] success.
+[INFO]  Save profiling data with metric [ResourceConflictRatio] success.
+[INFO]  Performance Summary Report:
+
+	1) MTE2 bandwidth utilization lower than 80% when active.
+
+[INFO]  Operator Basic Information:
+
+	Op Name: _skrow12
+	Op Type: vector
+	Task Duration(us): 44.265999
+	Block Dim: 32
+	Mix Block Dim: 
+	Device Id: 0
+	Pid: 2298693
+	Current Freq: 1650
+	Rated Freq: 1650
+
+[INFO]  Start analyze kernel on device: device0, kernel: _skrow12, name is: 2
+[INFO]  Save profiling data with metric [PipeUtilization] success.
+[INFO]  Save profiling data with metric [L2Cache] success.
+[INFO]  Save profiling data with metric [ResourceConflictRatio] success.
+[INFO]  Performance Summary Report:
+
+	1) MTE2 bandwidth utilization lower than 80% when active.
+
+[INFO]  Operator Basic Information:
+
+	Op Name: _skrow12
+	Op Type: vector
+	Task Duration(us): 43.641998
+	Block Dim: 32
+	Mix Block Dim: 
+	Device Id: 0
+	Pid: 2298693
+	Current Freq: 1650
+	Rated Freq: 1650
+
+[INFO]  Profiling results saved in /data/l30083907/cannbot-skills_5171/output1014/MhcSinkhorn/experiments/r6_prof_guided/opt_iter_7_analysis/board_v14_case11/OPPROF_20261021193914_BDFJITODEVVLYGBR
+[INFO]  Profiling data parse finished.
+[INFO]  Op profiling finish. Welcome to next use.

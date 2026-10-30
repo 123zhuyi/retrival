@@ -1,0 +1,299 @@
+[0;34m[INFO][0m Kernel Bench 评测脚本
+[0;34m[INFO][0m 项目根目录: /data/l30083907/cannbot-skills_5171/cann-bench
+[0;34m[INFO][0m 操作: eval
+[0;34m[INFO][0m 评测集: cann
+[0;34m[INFO][0m Python版本: Python 3.11.0
+[0;34m[INFO][0m cann_bench_utils 已安装
+[0;34m[INFO][0m 卸载已安装的包: cann_bench
+[0;34m[INFO][0m tasks 目录: /data/l30083907/cannbot-skills_5171/cann-bench/tasks
+[0;34m[INFO][0m 源码目录: /data/l30083907/cannbot-skills_5171/output1014/MhcSinkhorn/canbench/mhc_sinkhorn_v25
+[0;34m[INFO][0m 评测目录: tasks
+[0;34m[INFO][0m 算子: MhcSinkhorn
+[0;34m[INFO][0m 设备模式: 多卡并行（自动检测）
+[0;34m[INFO][0m 进程配置: 2 进程/卡
+[0;34m[INFO][0m 进程超时: 300s
+[0;34m[INFO][0m 预热次数: 3
+[0;34m[INFO][0m 采集次数: 5
+[0;34m[INFO][0m Profiler: Level1
+[0;34m[INFO][0m 性能采集: 批量 case（VmRSS 阈值 32768MB，OOM 自动逐 case 回退）
+[0;34m[INFO][0m 评测模式: 编译/精度/性能三阶段
+[0;34m[INFO][0m 开始执行...
+[0;34m[INFO][0m 命令: python -m kernel_eval.staged_eval --bench-name cann --reports-dir /data/l30083907/cannbot-skills_5171/cann-bench/reports --source-dir /data/l30083907/cannbot-skills_5171/output1014/MhcSinkhorn/canbench/mhc_sinkhorn_v25 --task-dir tasks --operator MhcSinkhorn --device npu --processes-per-card 2 --timeout-per-operator 300 --warmup 3 --repeat 5 --profiler-level Level1 --perf-batch-case-memory-limit-mb 32768 --perf-batch-cases 
+[staged_eval] stage 1/3: compile
+[INFO] 编译: bash build.sh → _compile.log
+[INFO] 编译成功
+[staged_eval] compile: built cann_bench-1.0.0-py3-none-any.whl
+[staged_eval] stage 2/3: correctness
+[INFO] 安装whl包: cann_bench-1.0.0-py3-none-any.whl
+[INFO] 安装: pip install --force-reinstall --no-deps /data/l30083907/cannbot-skills_5171/output1014/MhcSinkhorn/canbench/mhc_sinkhorn_v25/dist/cann_bench-1.0.0-py3-none-any.whl
+[pip] Processing ./mhc_sinkhorn_v25/dist/cann_bench-1.0.0-py3-none-any.whl
+[pip] Installing collected packages: cann-bench
+[pip] Successfully installed cann-bench-1.0.0
+[pip-warn] WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+[INFO] cann_bench 安装位置: /root/miniconda3/envs/py311/lib/python3.11/site-packages/cann_bench/__init__.py
+[INFO] whl包安装成功
+[INFO] 跳过编译安装，扫描已安装的cann_bench
+
+============================================================
+扫描到的 cann_bench 接口:
+============================================================
+  1. mhc_sinkhorn(comb, iter_step=20, eps=1e-06)
+
+共 1 个算子接口
+============================================================
+
+[INFO] 匹配到 1 个tasks 算子:
+       - MhcSinkhorn
+[INFO] 使用NPU设备: npu:0
+[WARN] NPU:0 状态异常，跳过该卡
+[WARN] NPU:2 状态异常，跳过该卡
+[WARN] NPU:3 状态异常，跳过该卡
+[INFO] 检测到 8 张 NPU 卡, 5 张健康
+  NPU:1 - Ascend950PR_9579
+  NPU:4 - Ascend950PR_9579
+  NPU:5 - Ascend950PR_9579
+  NPU:6 - Ascend950PR_9579
+  NPU:7 - Ascend950PR_9579
+[INFO] 配置: 5 卡 × 2 并发/卡
+[INFO] TaskUnit 数: 5, 用例数: 20
+[INFO] 单算子超时: 300s
+[INFO] 最大并发: 10
+[INFO] 重试策略: 最大重试 1 次 (timeout=True, oom=True, failure=True)
+[INFO] oom_score_adj=1000 设置成功: PID=2471921
+[INFO] oom_score_adj=1000 设置成功: PID=2471922
+[INFO] oom_score_adj=1000 设置成功: PID=2471920
+[INFO] oom_score_adj=1000 设置成功: PID=2471923
+[INFO] oom_score_adj=1000 设置成功: PID=2471924
+[INFO] oom_score_adj=1000 设置成功: PID=2471924
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 5: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_17: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.229766e-06, MARE=1.759610e-04)
+[2/4] level3/mhc_sinkhorn_18: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=8.813554e-08, MARE=1.135239e-07)
+[3/4] level3/mhc_sinkhorn_19: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.504424e-06, MARE=1.852304e-04)
+[4/4] level3/mhc_sinkhorn_20: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=0.000000, MARE=0.000000)
+[eval-child] Card 5: 完成 4/4 通过
+
+执行耗时: 2.50s
+compare: 所有有效位置均为 NaN/Inf 且匹配；两个算子均输出 NaN 的极端情况可能掩盖独立的数值 bug，请人工核查 case 输入分布。 (total=16384, dtype=float32)
+[INFO] [1/5] Card 5: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2471922
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 4: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_13: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=6.068501e-08, MARE=3.568476e-07)
+[2/4] level3/mhc_sinkhorn_14: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=7.875723e-08, MARE=4.470525e-07)
+[3/4] level3/mhc_sinkhorn_15: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.498120e-06, MARE=2.709790e-04)
+[4/4] level3/mhc_sinkhorn_16: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.337701e-06, MARE=1.916894e-04)
+[eval-child] Card 4: 完成 4/4 通过
+
+执行耗时: 2.72s
+[INFO] [2/5] Card 4: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2471921
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 4: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_9: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=3.908331e-06, MARE=2.634993e-04)
+[2/4] level3/mhc_sinkhorn_10: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=1.528559e-05, MARE=3.933707e-04)
+[3/4] level3/mhc_sinkhorn_11: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=4.126949e-06, MARE=7.834669e-05)
+[4/4] level3/mhc_sinkhorn_12: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=1.625541e-06, MARE=3.189199e-05)
+[eval-child] Card 4: 完成 4/4 通过
+
+执行耗时: 3.80s
+[INFO] [3/5] Card 4: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2471920
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 1: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_1: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=7.567598e-08, MARE=2.177050e-07)
+[2/4] level3/mhc_sinkhorn_2: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=1.149038e-06, MARE=2.700863e-05)
+[3/4] level3/mhc_sinkhorn_3: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.493802e-06, MARE=2.707481e-04)
+[4/4] level3/mhc_sinkhorn_4: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.229649e-06, MARE=1.238838e-04)
+[eval-child] Card 1: 完成 4/4 通过
+
+执行耗时: 3.09s
+[INFO] [4/5] Card 1: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2471923
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 1: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_5: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.458368e-06, MARE=4.047827e-04)
+[2/4] level3/mhc_sinkhorn_6: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.372884e-06, MARE=6.446481e-04)
+[3/4] level3/mhc_sinkhorn_7: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=3.201849e-06, MARE=5.771771e-04)
+[4/4] level3/mhc_sinkhorn_8: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=9.509299e-07, MARE=6.350206e-05)
+[eval-child] Card 1: 完成 4/4 通过
+
+执行耗时: 3.82s
+[level3/mhc_sinkhorn] aggregate_eq4: 20 / 20 个精度通过的 case 因 profiler 采集功能异常（未产出 kernel_details.csv 等）无性能数据，该 case 性能项按 0 计入，不触发反作弊。请排查 profiler/环境问题。
+[level3/mhc_sinkhorn] aggregate_eq4: 20 / 20 个精度通过的 case 缺 baseline_perf_us / t_hw_us 锚点，按 spec §3.3 按 0 计入性能项。若分数偏低，请先核查这些 case 的基线是否已填充。
+[INFO] [5/5] Card 1: MhcSinkhorn ✅ (4/4)
+[INFO] 初次调度完成: 5/5 个 TaskUnit
+[INFO] 调度完成: 总共 5 + 0 个 TaskUnit
+[INFO] JSON报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_correctness_eval_20261022_111913.json
+[INFO] Markdown报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_correctness_eval_20261022_111913.md
+[INFO] HTML报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_correctness_eval_20261022_111913.html
+[staged_eval] stage 3/3: performance (20 correctness-passed cases; 20 batch eligible, 0 per-case profiler)
+[INFO] 安装whl包: cann_bench-1.0.0-py3-none-any.whl
+[INFO] 安装: pip install --force-reinstall --no-deps /data/l30083907/cannbot-skills_5171/output1014/MhcSinkhorn/canbench/mhc_sinkhorn_v25/dist/cann_bench-1.0.0-py3-none-any.whl
+[pip] Processing ./mhc_sinkhorn_v25/dist/cann_bench-1.0.0-py3-none-any.whl
+[pip] Installing collected packages: cann-bench
+[pip]   Attempting uninstall: cann-bench
+[pip]     Found existing installation: cann_bench 1.0.0
+[pip]     Uninstalling cann_bench-1.0.0:
+[pip]       Successfully uninstalled cann_bench-1.0.0
+[pip] Successfully installed cann-bench-1.0.0
+[pip-warn] WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+[INFO] cann_bench 安装位置: /root/miniconda3/envs/py311/lib/python3.11/site-packages/cann_bench/__init__.py
+[INFO] whl包安装成功
+[INFO] 跳过编译安装，扫描已安装的cann_bench
+
+============================================================
+扫描到的 cann_bench 接口:
+============================================================
+  1. mhc_sinkhorn(comb, iter_step=20, eps=1e-06)
+
+共 1 个算子接口
+============================================================
+
+[INFO] 匹配到 1 个tasks 算子:
+       - MhcSinkhorn
+[INFO] 使用NPU设备: npu:0
+[WARN] NPU:0 状态异常，跳过该卡
+[WARN] NPU:2 状态异常，跳过该卡
+[WARN] NPU:3 状态异常，跳过该卡
+[INFO] 检测到 8 张 NPU 卡, 5 张健康
+  NPU:1 - Ascend950PR_9579
+  NPU:4 - Ascend950PR_9579
+  NPU:5 - Ascend950PR_9579
+  NPU:6 - Ascend950PR_9579
+  NPU:7 - Ascend950PR_9579
+[INFO] 配置: 5 卡 × 1 并发/卡
+[INFO] TaskUnit 数: 5, 用例数: 20
+[INFO] 单算子超时: 300s
+[INFO] 最大并发: 5
+[INFO] 重试策略: 最大重试 1 次 (timeout=True, oom=True, failure=True)
+[INFO] oom_score_adj=1000 设置成功: PID=2473118
+[INFO] oom_score_adj=1000 设置成功: PID=2473119
+[INFO] oom_score_adj=1000 设置成功: PID=2473120
+[INFO] oom_score_adj=1000 设置成功: PID=2473121
+[INFO] oom_score_adj=1000 设置成功: PID=2473122
+[INFO] oom_score_adj=1000 设置成功: PID=2473118
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 1: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_1: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=7.567598e-08, MARE=2.177050e-07)
+[2/4] level3/mhc_sinkhorn_2: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=1.149038e-06, MARE=2.700863e-05)
+[3/4] level3/mhc_sinkhorn_3: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.493802e-06, MARE=2.707481e-04)
+[4/4] level3/mhc_sinkhorn_4: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.229649e-06, MARE=1.238838e-04)
+[INFO] 批量性能采集完成: 4/4 有效, 0 个 case 回退逐 case
+[eval-child] Card 1: 完成 4/4 通过
+
+执行耗时: 10.12s
+[INFO] [1/5] Card 1: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2473122
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 7: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_17: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.229766e-06, MARE=1.759610e-04)
+[2/4] level3/mhc_sinkhorn_18: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=8.813554e-08, MARE=1.135239e-07)
+[3/4] level3/mhc_sinkhorn_19: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.504424e-06, MARE=1.852304e-04)
+[4/4] level3/mhc_sinkhorn_20: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=0.000000, MARE=0.000000)
+[INFO] 批量性能采集完成: 4/4 有效, 0 个 case 回退逐 case
+[eval-child] Card 7: 完成 4/4 通过
+
+执行耗时: 10.04s
+compare: 所有有效位置均为 NaN/Inf 且匹配；两个算子均输出 NaN 的极端情况可能掩盖独立的数值 bug，请人工核查 case 输入分布。 (total=16384, dtype=float32)
+[INFO] [2/5] Card 7: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2473120
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 6: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_13: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=6.068501e-08, MARE=3.568476e-07)
+[2/4] level3/mhc_sinkhorn_14: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=7.875723e-08, MARE=4.470525e-07)
+[3/4] level3/mhc_sinkhorn_15: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.498120e-06, MARE=2.709790e-04)
+[4/4] level3/mhc_sinkhorn_16: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.337701e-06, MARE=1.916894e-04)
+[INFO] 批量性能采集完成: 4/4 有效, 0 个 case 回退逐 case
+[eval-child] Card 6: 完成 4/4 通过
+
+执行耗时: 10.08s
+[INFO] [3/5] Card 6: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2473121
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 5: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_9: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=3.908331e-06, MARE=2.634993e-04)
+[2/4] level3/mhc_sinkhorn_10: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=1.528559e-05, MARE=3.933707e-04)
+[3/4] level3/mhc_sinkhorn_11: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=4.126949e-06, MARE=7.834669e-05)
+[4/4] level3/mhc_sinkhorn_12: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=1.625541e-06, MARE=3.189199e-05)
+[INFO] 批量性能采集完成: 4/4 有效, 0 个 case 回退逐 case
+[eval-child] Card 5: 完成 4/4 通过
+
+执行耗时: 10.60s
+[INFO] [4/5] Card 5: MhcSinkhorn ✅ (4/4)
+[INFO] oom_score_adj=1000 设置成功: PID=2473119
+[INFO] 使用NPU设备: npu:0
+[INFO] 使用NPU设备: npu:0
+[eval-child] Card 4: 4 用例开始评测
+[INFO] 评测算子 MhcSinkhorn (level3/mhc_sinkhorn), 用例数: 4
+[1/4] level3/mhc_sinkhorn_5: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.458368e-06, MARE=4.047827e-04)
+[2/4] level3/mhc_sinkhorn_6: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=2.372884e-06, MARE=6.446481e-04)
+[3/4] level3/mhc_sinkhorn_7: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=3.201849e-06, MARE=5.771771e-04)
+[4/4] level3/mhc_sinkhorn_8: ✅ (耗时: N/A, 加速比: N/A, float32[comb_out]: ✅ MERE=9.509299e-07, MARE=6.350206e-05)
+[INFO] 批量性能采集完成: 4/4 有效, 0 个 case 回退逐 case
+[eval-child] Card 4: 完成 4/4 通过
+
+执行耗时: 11.75s
+[INFO] [5/5] Card 4: MhcSinkhorn ✅ (4/4)
+[INFO] 初次调度完成: 5/5 个 TaskUnit
+[INFO] 调度完成: 总共 5 + 0 个 TaskUnit
+[INFO] JSON报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_performance_eval_20261022_111943.json
+[INFO] Markdown报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_performance_eval_20261022_111943.md
+[INFO] HTML报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_performance_eval_20261022_111943.html
+[INFO] JSON报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_final_eval_20261022_111943.json
+[INFO] Markdown报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_final_eval_20261022_111943.md
+[INFO] HTML报告已保存到: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_final_eval_20261022_111943.html
+[0;32m[SUCCESS][0m 执行完成
+[0;32m[SUCCESS][0m 报告已生成: /data/l30083907/cannbot-skills_5171/cann-bench/reports/cann_final_eval_20261022_111943.md
+
+========================================
+报告摘要:
+========================================
+# 算子评测报告
+
+**评测代号**: cann_final_eval_20261022_111943
+**评测时间**: 2026-10-22T11:19:43.306797
+**设备**: npu:0
+**框架版本**: V1.0.0
+**评测集版本**: tasks-v1.0.0
+
+## 概览
+
+| 指标 | 数值 |
+|------|------|
+| 评测算子数 | 1 |
+| 总用例数 | 20 |
+| 通过用例数 | 20 |
+| 失败用例数 | 0 |
+| 通过率 | 100.00% |
+| 综合得分 | 79.62 |
+
+## 算子详情
+
+### MhcSinkhorn（level3/mhc_sinkhorn）
+
+| 指标 | 数值 |
+|------|------|
+| 用例数 | 20 |
+| 通过数 | 20 |
+| 失败数 | 0 |
+| 通过率 | 100.00% |
+| 平均加速比 | 1.54x |

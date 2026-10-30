@@ -1,0 +1,37 @@
+=================================================================
+                   >>>>>   MindStudio   <<<<<
+    THE END-TO-END TOOLCHAIN TO UNLEASH HUAWEI ASCEND COMPUTE
+=================================================================
+
+[W1020 15:55:54.067696439 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+[WARN]  Currently, the root permission is used, which is unrecommended. Please ensure the security of the execution environment and programs.
+[INFO]  Op profiling analysis start.
+[INFO]  Running device task: DeviceProf
+[INFO] <ProfData> Start profiling on device 0, kernel: _sk4
+[INFO] <WarmUp> Warm Up enabled. times:3
+[WARN] <GetCoreNumForDbi> Some sub block may lose dynamic instrumentation data because sub blocks exceeding 108.
+DONE torch.Size([16384, 4, 4])
+[INFO]  Profiling running finished. All task success.
+[INFO]  Start analyze kernel on device: device0, kernel: _sk4, name is: 0
+[INFO]  Save profiling data with metric [PipeUtilization] success.
+[INFO]  Save profiling data with metric [L2Cache] success.
+[INFO]  Save profiling data with metric [ResourceConflictRatio] success.
+[INFO]  Performance Summary Report:
+
+	1) MTE2 bandwidth utilization lower than 80% when active.
+
+[INFO]  Operator Basic Information:
+
+	Op Name: _sk4
+	Op Type: vector
+	Task Duration(us): 38.632999
+	Block Dim: 56
+	Mix Block Dim: 
+	Device Id: 0
+	Pid: 1854610
+	Current Freq: 1650
+	Rated Freq: 1650
+
+[INFO]  Profiling results saved in /data/l30083907/cannbot-skills_5171/output1014/MhcSinkhorn/profiling/v4sk2_analysis/board/case6_sk4_bm128/OPPROF_20261020155553_YHLRXABBUKPUIZRS
+[INFO]  Profiling data parse finished.
+[INFO]  Op profiling finish. Welcome to next use.
