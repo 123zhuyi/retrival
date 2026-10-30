@@ -1,0 +1,32 @@
+{
+  "name": "CreateFlashmlaKvIndices",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "req_to_token": {
+      "description": "Input 'req_to_token'."
+    },
+    "req_pool_indices": {
+      "description": "Input 'req_pool_indices'."
+    },
+    "page_kernel_lens": {
+      "description": "Input 'page_kernel_lens'."
+    },
+    "kv_start_idx": {
+      "description": "Input 'kv_start_idx'."
+    },
+    "kv_indices_width": {
+      "description": "Input 'kv_indices_width'."
+    },
+    "page_size": {
+      "description": "Input 'page_size'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(req_to_token, req_pool_indices, page_kernel_lens, kv_start_idx, kv_indices_width: int, page_size: int=64):\n    bs = page_kernel_lens.shape[0]\n    kv_indices = torch.full((bs, kv_indices_width), -1, dtype=torch.int32)\n    for b in range(bs):\n        pool = int(req_pool_indices[b])\n        kv_start = int(kv_start_idx[b]) if kv_start_idx.numel() else 0\n        kv_len = int(page_kernel_lens[b])\n        n_pages = (kv_len + page_size - 1) // page_size\n        for j in range(min(n_pages, kv_indices_width)):\n            slot = int(req_to_token[pool, kv_start + j * page_size])\n            kv_indices[b, j] = slot // page_size\n    return kv_indices",
+  "description": "Model that creates FlashMLA block-level kv_indices (paged KV 索引构建)。 对标 sglang create_flashmla_kv_indices_triton (python/sglang/kernels/ops/kvcache/kv_indices.py:99, sglang/srt/layers/attention/flashmla_backend.py 调用, PAGED_SIZE=64)。"
+}

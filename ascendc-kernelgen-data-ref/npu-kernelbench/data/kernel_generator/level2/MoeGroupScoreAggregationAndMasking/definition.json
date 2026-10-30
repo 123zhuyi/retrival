@@ -1,0 +1,20 @@
+{
+  "name": "MoeGroupScoreAggregationAndMasking",
+  "op_type": "routing",
+  "axes": {},
+  "inputs": {
+    "scores": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Masked group scores"
+    },
+    "1": {
+      "description": "Group mask"
+    }
+  },
+  "reference": "import torch\n\ndef run(scores):\n    num_experts = 256\n    n_group = 8\n    topk_group = 4\n    experts_per_group = num_experts // n_group\n    num_tokens = scores.size(0)\n    group_scores_reshaped = scores.view(num_tokens, n_group, experts_per_group)\n    top2_per_group = torch.topk(group_scores_reshaped, k=2, dim=-1)[0]\n    group_scores = top2_per_group.sum(dim=-1)\n    group_idx = torch.topk(group_scores, k=topk_group, dim=-1, sorted=False)[1]\n    group_mask = torch.zeros_like(group_scores)\n    group_mask.scatter_(1, group_idx, 1)\n    score_mask = group_mask.unsqueeze(-1).expand(num_tokens, n_group, experts_per_group).reshape(num_tokens, num_experts)\n    masked_scores = scores.masked_fill(~score_mask.bool(), float('-inf'))\n    return masked_scores, group_mask\n",
+  "description": "MoE group score aggregation and masking. Aggregates expert scores within groups and applies masking. Returns (masked_scores, group_mask). Pure PyTorch: group score aggregation + top-k masking."
+}

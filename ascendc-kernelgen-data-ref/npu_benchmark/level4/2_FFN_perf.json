@@ -1,0 +1,2065 @@
+{
+ "op_name": "2_FFN",
+ "source": "model.py forward NPU 实测基线（2026-09-15, 910B2C, wall-clock 逐 case, warmup=1, repeat=1）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 46,
+ "impl_latency_geomean_us": 616.2189966086812,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    },
+    {
+     "name": "output_dtype",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 201.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      64,
+      128
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      128,
+      512
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      512,
+      128
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 3183.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "bias1",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "bias2",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 203.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      256
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      256,
+      1024
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      1024,
+      256
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "relu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 108.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      64,
+      128
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      128,
+      512
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      512,
+      128
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 95.5,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      768
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      768,
+      3072
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      1536,
+      768
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "reglu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 114.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "geglu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 167.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      768
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      768,
+      3072
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      3072,
+      768
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 104.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "swiglu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 202.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      512
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 92.1,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5632,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 536.5,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2560,
+      10240
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      10240,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 519.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      4096
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      16384,
+      4096
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 3314.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2560,
+      10240
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      10240,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 3853.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      4096
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      16384,
+      4096
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 585.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      1536
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1536,
+      12288
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      6144,
+      1536
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_ffn:third_party/op-plugin/op_plugin/ops/opapi/FFNKernelNpuOpApi.cpp:70 NPU function error: call aclnnFFNV2 failed, error code is 161002\n[ERROR] 2026-09-15-11:45:38 (PID:26605, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID: 26605] 2026-09-15-11:45:38.654.231 AclNN_Parameter_Error(EZ"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2560,
+      6912
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      6912,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 414.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      1536
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1536,
+      6144
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      6144,
+      1536
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 223.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      768
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2,
+      768,
+      12288
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2,
+      3072,
+      768
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "relu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      128,
+      128
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_ffn:third_party/op-plugin/op_plugin/ops/opapi/FFNKernelNpuOpApi.cpp:70 NPU function error: call aclnnFFNV2 failed, error code is 161002\n[ERROR] 2026-09-15-11:45:38 (PID:26605, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID: 26605] 2026-09-15-11:45:38.693.794 AclNN_Parameter_Error(EZ"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2560,
+      13824
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      6912,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_ffn:third_party/op-plugin/op_plugin/ops/opapi/FFNKernelNpuOpApi.cpp:70 NPU function error: call aclnnFFNV2 failed, error code is 161002\n[ERROR] 2026-09-15-11:45:38 (PID:26605, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID: 26605] 2026-09-15-11:45:38.716.751 AclNN_Parameter_Error(EZ"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      512
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2,
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2,
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      128,
+      128
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 997.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 2045.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 2671.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2560,
+      20480
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      10240,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_ffn:third_party/op-plugin/op_plugin/ops/opapi/FFNKernelNpuOpApi.cpp:70 NPU function error: call aclnnFFNV2 failed, error code is 161002\n[ERROR] 2026-09-15-11:45:38 (PID:26605, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID: 26605] 2026-09-15-11:45:38.789.581 AclNN_Parameter_Error(EZ"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      8,
+      2560,
+      10240
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8,
+      10240,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 1728.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1954,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      16,
+      2560,
+      5120
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      16,
+      5120,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      227,
+      62,
+      78,
+      126,
+      178,
+      27,
+      122,
+      1,
+      19,
+      182,
+      166,
+      118,
+      66,
+      217,
+      122,
+      243
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 2673.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      8,
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8,
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 386.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      8,
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8,
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 385.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      16,
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      16,
+      4096,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 881.5,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      2560
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      8,
+      2560,
+      10240
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8,
+      10240,
+      2560
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 2300.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      4,
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4,
+      16384,
+      4096
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      16,
+      16,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 2768.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      768
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      768,
+      3072
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      3072,
+      768
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "relu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 372.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      16,
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 3666.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      4,
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4,
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "silu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      128,
+      128,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 1513.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      4,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "expert_tokens",
+     "value": [
+      128,
+      128,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "bias1",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "bias2",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 166.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      256
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      256,
+      1024
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      1024,
+      256
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 87.3,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      64,
+      512
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "relu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 465.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "bias1",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "bias2",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 519.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16,
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 3608.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 2142.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      768
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      768,
+      3072
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      3072,
+      768
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "relu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 8158.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16,
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 1066.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 3487.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    },
+    {
+     "name": "output_dtype",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 2511.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 250.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      2048,
+      512
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 148.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      8,
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 295.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "fastgelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 293.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 239.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32,
+      64,
+      1024
+     ]
+    },
+    {
+     "name": "weight1",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight2",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "activation",
+     "value": "gelu"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 317.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  }
+ ]
+}

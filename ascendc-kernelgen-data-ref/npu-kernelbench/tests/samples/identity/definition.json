@@ -1,0 +1,22 @@
+{
+  "name": "identity",
+  "axes": {
+    "N": {"type": "var", "description": "batch size"}
+  },
+  "inputs": {
+    "x": {
+      "shape": ["N"],
+      "dtype": "float32",
+      "description": "input tensor"
+    }
+  },
+  "outputs": {
+    "y": {
+      "shape": ["N"],
+      "dtype": "float32",
+      "description": "output tensor"
+    }
+  },
+  "reference": "import torch\ndef run(x):\n    return x\n",
+  "description": "Identity kernel"
+}

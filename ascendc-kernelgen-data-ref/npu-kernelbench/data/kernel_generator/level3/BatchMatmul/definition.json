@@ -1,0 +1,20 @@
+{
+  "name": "BatchMatmul",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "A": {
+      "description": "shape varies; supports float32, float16, bfloat16"
+    },
+    "B": {
+      "description": "shape varies; supports float32, float16, bfloat16"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Batch matrix multiplication result, shape [batch, m, p]"
+    }
+  },
+  "reference": "import torch\n\ndef run(A, B):\n    return torch.bmm(A, B)\n",
+  "description": "Batch matrix multiplication. torch.bmm(A, B) for 3D tensors (batch, m, k) x (batch, k, p) -> (batch, m, p). Supports float32, float16, bfloat16."
+}

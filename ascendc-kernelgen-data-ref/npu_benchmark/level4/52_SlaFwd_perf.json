@@ -1,0 +1,1884 @@
+{
+ "op_name": "101_SlaFwd",
+ "source": "torch reference 逐 case 实测（run_perf_gpu.py，cuda，warmup=1，repeats=1，cuda event 端到端）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "accuracy_approx_cases": 0,
+ "speedup_vs_reference_geomean": 1.3969,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "500-1000us": {
+   "count": 14,
+   "ratio": 0.28
+  },
+  ">1000us": {
+   "count": 36,
+   "ratio": 0.72
+  }
+ },
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 2005.0,
+   "impl_latency_us": 1022.0,
+   "speedup_vs_reference": 1.962,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      8,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      8,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      8,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1152.0,
+   "impl_latency_us": 833.5,
+   "speedup_vs_reference": 1.382,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1041.4,
+   "impl_latency_us": 780.3,
+   "speedup_vs_reference": 1.335,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      8,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      8,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      8,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1041.4,
+   "impl_latency_us": 786.4,
+   "speedup_vs_reference": 1.324,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1027.1,
+   "impl_latency_us": 795.6,
+   "speedup_vs_reference": 1.291,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      32,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      32,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      32,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1024.0,
+   "impl_latency_us": 767.0,
+   "speedup_vs_reference": 1.335,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      32,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      32,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      32,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1034.2,
+   "impl_latency_us": 768.0,
+   "speedup_vs_reference": 1.347,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      64,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      64,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      64,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 907.3,
+   "impl_latency_us": 747.5,
+   "speedup_vs_reference": 1.214,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      64,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 939.0,
+   "impl_latency_us": 784.4,
+   "speedup_vs_reference": 1.197,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      64,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      64,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      64,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 934.9,
+   "impl_latency_us": 760.8,
+   "speedup_vs_reference": 1.229,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      64,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 926.7,
+   "impl_latency_us": 774.1,
+   "speedup_vs_reference": 1.197,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      128,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 950.3,
+   "impl_latency_us": 760.8,
+   "speedup_vs_reference": 1.249,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      256,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      256,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      256,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 899.1,
+   "impl_latency_us": 743.4,
+   "speedup_vs_reference": 1.209,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      128,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 968.7,
+   "impl_latency_us": 772.1,
+   "speedup_vs_reference": 1.255,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      256,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 912.4,
+   "impl_latency_us": 786.4,
+   "speedup_vs_reference": 1.16,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 940.0,
+   "impl_latency_us": 768.0,
+   "speedup_vs_reference": 1.224,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 962.6,
+   "impl_latency_us": 1176.6,
+   "speedup_vs_reference": 0.818,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      256,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1353.7,
+   "impl_latency_us": 756.7,
+   "speedup_vs_reference": 1.789,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 923.6,
+   "impl_latency_us": 754.7,
+   "speedup_vs_reference": 1.224,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1045.5,
+   "impl_latency_us": 772.1,
+   "speedup_vs_reference": 1.354,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 914.4,
+   "impl_latency_us": 793.6,
+   "speedup_vs_reference": 1.152,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 968.7,
+   "impl_latency_us": 737.3,
+   "speedup_vs_reference": 1.314,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1017.9,
+   "impl_latency_us": 755.7,
+   "speedup_vs_reference": 1.347,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      1024,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1100.8,
+   "impl_latency_us": 743.4,
+   "speedup_vs_reference": 1.481,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1122.3,
+   "impl_latency_us": 797.7,
+   "speedup_vs_reference": 1.407,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1115.1,
+   "impl_latency_us": 810.0,
+   "speedup_vs_reference": 1.377,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1091.6,
+   "impl_latency_us": 797.7,
+   "speedup_vs_reference": 1.368,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      8,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      8,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      8,
+      512,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 947.2,
+   "impl_latency_us": 762.9,
+   "speedup_vs_reference": 1.242,
+   "accuracy": "pass",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1139.7,
+   "impl_latency_us": 783.4,
+   "speedup_vs_reference": 1.455,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      1024,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1098.8,
+   "impl_latency_us": 814.1,
+   "speedup_vs_reference": 1.35,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      1024,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1065.0,
+   "impl_latency_us": 896.0,
+   "speedup_vs_reference": 1.189,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      6,
+      768,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      6,
+      768,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      6,
+      768,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1028.1,
+   "impl_latency_us": 791.6,
+   "speedup_vs_reference": 1.299,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      768,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      768,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      768,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1047.6,
+   "impl_latency_us": 771.1,
+   "speedup_vs_reference": 1.359,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      6,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      6,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      6,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1114.1,
+   "impl_latency_us": 795.6,
+   "speedup_vs_reference": 1.4,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      8,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1135.6,
+   "impl_latency_us": 803.8,
+   "speedup_vs_reference": 1.413,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1076.2,
+   "impl_latency_us": 778.2,
+   "speedup_vs_reference": 1.383,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      8,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1267.7,
+   "impl_latency_us": 795.6,
+   "speedup_vs_reference": 1.593,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      16,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1275.9,
+   "impl_latency_us": 821.2,
+   "speedup_vs_reference": 1.554,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      24,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      24,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      24,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1281.0,
+   "impl_latency_us": 792.6,
+   "speedup_vs_reference": 1.616,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      6,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      6,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      6,
+      2048,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1639.4,
+   "impl_latency_us": 783.4,
+   "speedup_vs_reference": 2.093,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      16,
+      1024,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1366.0,
+   "impl_latency_us": 2098.2,
+   "speedup_vs_reference": 0.651,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 3350.5,
+   "impl_latency_us": 2161.7,
+   "speedup_vs_reference": 1.55,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 3249.2,
+   "impl_latency_us": 2110.5,
+   "speedup_vs_reference": 1.54,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      12,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      12,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      12,
+      2048,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 3374.1,
+   "impl_latency_us": 2132.0,
+   "speedup_vs_reference": 1.583,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 3439.6,
+   "impl_latency_us": 2369.5,
+   "speedup_vs_reference": 1.452,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      16,
+      2048,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 3426.3,
+   "impl_latency_us": 2261.0,
+   "speedup_vs_reference": 1.515,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      4096,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 4986.9,
+   "impl_latency_us": 2336.8,
+   "speedup_vs_reference": 2.134,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 4346.9,
+   "impl_latency_us": 2701.3,
+   "speedup_vs_reference": 1.609,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 5569.5,
+   "impl_latency_us": 2862.1,
+   "speedup_vs_reference": 1.946,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      16,
+      4096,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 6566.9,
+   "impl_latency_us": 1904.6,
+   "speedup_vs_reference": 3.448,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  }
+ ],
+ "profiling_pipes": "aiv_vec 0.337, aiv_scalar 0.564, aiv_mte2 0.426, aiv_mte3 0.263",
+ "bound_type": "vector",
+ "profiling_source": "board msprof op --aic-metrics=PipeUtilization @ Ascend910B2C (warmup=1, launch=1), kernel=_sla_main_kernel, 最大 case case48(max): q[1,32,2048,128] topk=0.12; 各 pipe 取最忙核 ratio; 主导 pipe=scalar; 核数 AIV/AIC=48/24 ; 另采 ArithmeticUtilization（算力利用率）",
+ "profiling_pipes_aic": "aic_cube 0.024, aic_scalar 0.240, aic_mte1 0.036, aic_mte2 0.067, aic_mte3 0.000, aic_fixpipe 0.056",
+ "profiling_util": "aiv_vec_ratio 0.339, aiv_vec_fp32_ratio 0.234, aiv_vec_fp16_ratio 0.000, aiv_vec_int32_ratio 0.000, aic_cube_ratio 0.024, aic_cube_fp16_ratio 0.024, aic_cube_int8_ratio 0.000",
+ "profiling_util_fops": "aiv_vec_fops 1.842e+07, aic_cube_fops 2.818e+06"
+}

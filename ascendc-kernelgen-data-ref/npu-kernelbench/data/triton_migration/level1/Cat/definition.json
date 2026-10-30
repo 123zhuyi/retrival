@@ -1,0 +1,20 @@
+{
+  "name": "Cat",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "tensors": {
+      "description": "Input 'tensors'."
+    },
+    "dim": {
+      "description": "Input 'dim'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(tensors: list, dim: int=0) -> torch.Tensor:\n    \"\"\"\n        Concatenates the given sequence of tensors in the given dimension.\n\n        Args:\n            tensors (list): List of tensors to concatenate. All tensors must have the same shape except in the concatenating dimension.\n            dim (int, optional): The dimension over which the tensors are concatenated.\n\n        Returns:\n            torch.Tensor: Concatenated tensor.\n        \"\"\"\n    return torch.cat(tensors, dim=dim)",
+  "description": "Simple model that concatenates tensors along a dimension. torch.cat = cat(...) cat(tensors, dim=0, *, out=None) -> Tensor"
+}

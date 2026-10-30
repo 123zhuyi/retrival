@@ -1,0 +1,23 @@
+{
+  "name": "GroupedMatmul",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "A": {
+      "description": "shape varies; supports float32"
+    },
+    "B": {
+      "description": "shape varies; supports float32"
+    },
+    "offsets": {
+      "description": "shape varies; supports int32"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Concatenated grouped matmul results"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef _fallback_grouped_mm(A, B, offsets=None):\n    if offsets is None:\n        if A.dim() == 3:\n            return torch.bmm(A, B)\n        return A @ B\n    ends = offsets.to(device=A.device, dtype=torch.long).flatten()\n    results = []\n    start = 0\n    for i in range(B.shape[0]):\n        end = int(ends[i].item())\n        results.append(A[start:end] @ B[i])\n        start = end\n    return torch.cat(results, dim=0)\n\ndef run(A, B, offsets=None):\n    if hasattr(F, \"grouped_mm\"):\n        return F.grouped_mm(A, B, offs=offsets)\n    if hasattr(torch, \"_grouped_mm\"):\n        return torch._grouped_mm(A, B, offs=offsets)\n    return _fallback_grouped_mm(A, B, offsets)\n",
+  "description": "Model that performs grouped matrix multiplication using torch.nn.functional.grouped_mm.\nSupports both 3D inputs (direct grouping) and 2D inputs with offset-based grouping.\n\nNative reference implementation (end offsets semantics, aligned with F.grouped_mm):\n    def forward_native(A, B, offs):\n        # A: (total_rows, K), B: (num_groups, K, N)\n        # offs: (num_groups,) end offsets, offs[i] = exclusive end of group i\n        outputs = []\n        start = 0\n        for i in range(B.shape[0]):\n            end = offs[i]\n            outputs.append(A[start:end] @ B[i])\n            start = end\n        return torch.cat(outputs, dim=0)"
+}

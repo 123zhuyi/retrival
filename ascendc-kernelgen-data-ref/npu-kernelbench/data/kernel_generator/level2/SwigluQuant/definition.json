@@ -1,0 +1,41 @@
+{
+  "name": "SwigluQuant",
+  "op_type": "quantization",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "smooth_scales": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "offsets": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "group_index": {
+      "description": "shape varies; supports int32; optional, may be None"
+    },
+    "activate_left": {
+      "description": "bool, default=True; optional"
+    },
+    "quant_mode": {
+      "description": "int, default=1; optional"
+    },
+    "group_list_type": {
+      "description": "int, default=0; optional"
+    },
+    "dst_type": {
+      "description": "dtype; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Quantized output, int8"
+    },
+    "1": {
+      "description": "Quantization scales"
+    }
+  },
+  "reference": "import torch\n\ndef pack_int4_to_int8(quantized):\n    flat = quantized.reshape(-1)\n    if flat.shape[0] % 2 != 0:\n        flat = torch.nn.functional.pad(flat, (0, 1), value=0)\n    even = flat[0::2]\n    odd = flat[1::2]\n    packed = (even.to(torch.uint8) & 0xF) | ((odd.to(torch.uint8) & 0xF) << 4)\n    return packed.to(torch.int8)\n\ndef run(x, smooth_scales=None, offsets=None, group_index=None, activate_left=False, quant_mode=0, group_list_type=0, dst_type=None):\n    x_float = x.float()\n    half_size = x_float.shape[-1] // 2\n    x_left = x_float[..., :half_size]\n    x_right = x_float[..., half_size:]\n    if activate_left:\n        activated = torch.sigmoid(x_left) * x_left\n        output = activated * x_right\n    else:\n        activated = torch.sigmoid(x_right) * x_right\n        output = activated * x_left\n    ori_shape = output.shape\n    prefix_shape = output.shape[:-1]\n    prefix_dims = 1\n    for s in prefix_shape:\n        prefix_dims *= s\n    last_dim = output.shape[-1]\n    output_2d = output.reshape(prefix_dims, last_dim)\n    swiglu_2d = output_2d.clone()\n    boundaries = None\n    if group_index is not None:\n        if group_list_type == 0:\n            boundaries = [0] + group_index.tolist()\n        else:\n            boundaries = [0]\n            cumsum = 0\n            for c in group_index.tolist():\n                cumsum += int(c)\n                boundaries.append(cumsum)\n    is_int4 = dst_type is not None and (str(dst_type) == 'int4' or dst_type == torch.quint4x2)\n    if is_int4:\n        int_scale = 7\n        clip_min, clip_max = -8, 7\n    else:\n        int_scale = 127\n        clip_min, clip_max = -128, 127\n    if quant_mode == 1:\n        if smooth_scales is not None and boundaries is not None:\n            smooth_f = smooth_scales.float()\n            for i in range(len(boundaries) - 1):\n                start = boundaries[i]\n                end = boundaries[i + 1]\n                if start < end and i < smooth_f.shape[0]:\n                    s = smooth_f[i]\n                    if s.dim() >= 1 and s.shape[-1] != last_dim:\n                        s = s[:last_dim] if s.shape[-1] > last_dim else s\n                    output_2d[start:end] = swiglu_2d[start:end] * s\n        elif smooth_scales is not None:\n            output_2d = output_2d * smooth_scales.float()\n        y_max = torch.amax(torch.abs(output_2d), dim=-1, keepdim=True)\n        y_max = torch.clamp(y_max, min=1e-10)\n        dynamic_scale = float(int_scale) / y_max\n        quantized_2d = torch.round(torch.clamp(output_2d * dynamic_scale, clip_min, clip_max)).to(torch.int8)\n        if is_int4:\n            quantized_2d = pack_int4_to_int8(quantized_2d)\n            ori_shape = list(ori_shape)\n            ori_shape[-1] = ori_shape[-1] // 2\n        quantized = quantized_2d.reshape(ori_shape)\n        quant_scales = dynamic_scale.squeeze(-1).reshape(prefix_shape)\n        return quantized, quant_scales\n    else:\n        if smooth_scales is not None and boundaries is not None:\n            smooth_f = smooth_scales.float()\n            offsets_f = offsets.float() if offsets is not None else None\n            for i in range(len(boundaries) - 1):\n                start = boundaries[i]\n                end = boundaries[i + 1]\n                if start < end and i < smooth_f.shape[0]:\n                    s = smooth_f[i]\n                    if s.dim() >= 1 and s.shape[-1] != last_dim:\n                        s = s[:last_dim] if s.shape[-1] > last_dim else s\n                    output_2d[start:end] = swiglu_2d[start:end] * s\n                    if offsets_f is not None and i < offsets_f.shape[0]:\n                        o = offsets_f[i]\n                        if o.dim() >= 1 and o.shape[-1] != last_dim:\n                            o = o[:last_dim] if o.shape[-1] > last_dim else o\n                        output_2d[start:end] = output_2d[start:end] + o\n        elif smooth_scales is not None:\n            output_2d = output_2d * smooth_scales.float()\n            if offsets is not None:\n                output_2d = output_2d + offsets.float()\n        quantized_2d = torch.round(output_2d).clamp(clip_min, clip_max).to(torch.int8)\n        if is_int4:\n            quantized_2d = pack_int4_to_int8(quantized_2d)\n            ori_shape = list(ori_shape)\n            ori_shape[-1] = ori_shape[-1] // 2\n        quantized = quantized_2d.reshape(ori_shape)\n        quant_scales = torch.zeros(prefix_shape, dtype=torch.float32, device=x.device)\n        return quantized, quant_scales\n",
+  "description": "Fused SwiGLU + quantization. torch_npu.npu_swiglu_quant(x, smooth_scales, offsets, group_index, ...) returns (quantized, quant_scales). Supports static/dynamic quant, int4/int8 output."
+}

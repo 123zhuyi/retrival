@@ -1,0 +1,3009 @@
+{
+ "op_name": "38_JaggedDenseFlashAttention",
+ "source": "910b2 triton",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 471.22275196866605,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      32,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    }
+   ],
+   "impl_latency_us": 10.4,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    }
+   ],
+   "impl_latency_us": 18.3,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 20.6,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      32,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    }
+   ],
+   "impl_latency_us": 24.2,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    }
+   ],
+   "impl_latency_us": 34.3,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4899,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4899,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 34.8,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4899,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4899,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 45.0,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      9984,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      9984,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 48.5,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 192.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19608,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19608,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 80.5,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 202.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19454,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19454,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    }
+   ],
+   "impl_latency_us": 347.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 699.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    }
+   ],
+   "impl_latency_us": 378.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 407.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 360.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 825.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 719.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 734.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 700.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 705.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 1455.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 1380.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 736.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 2793.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    }
+   ],
+   "impl_latency_us": 756.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      512,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 1654.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 696.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 2763.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 1493.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 1497.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 1464.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 2775.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 2876.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 1525.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 2748.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 748.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 363.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 350.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 734.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 367.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    }
+   ],
+   "impl_latency_us": 389.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 800.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      78047,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      78047,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 1246.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 1365.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      78330,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      78330,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 924.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      32
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 702.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 692.5,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      157272,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      157272,
+      64
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    }
+   ],
+   "impl_latency_us": 1938.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "attn_bias",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "jagged_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 1574.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  }
+ ]
+}

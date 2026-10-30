@@ -1,0 +1,26 @@
+{
+  "name": "GlobalFilter",
+  "op_type": "mlp",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, N, C)"
+    },
+    "dim": {
+      "description": "feature dimension; defaults to C"
+    },
+    "h": {
+      "description": "spatial height; defaults to sqrt(N)"
+    },
+    "w": {
+      "description": "spatial width; derived from N"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "filtered tensor (B, N, C)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(x, dim=None, h=None, w=None):\n    torch.manual_seed(42)\n    B, N, C = x.shape\n    if dim is None:\n        dim = C\n    if h is None and w is None:\n        h = int(N ** 0.5)\n        w = N // h\n        while h * w != N and h > 1:\n            h -= 1\n            w = N // h\n    elif h is None:\n        h = N // w\n    elif w is None:\n        w = N // h\n    if h * w != N:\n        raise ValueError(f\"GlobalFilter: h*w ({h}*{w}={h*w}) must equal N ({N})\")\n    dtype = x.dtype\n    x = x.view(B, h, w, C).float()\n    x_fft = torch.fft.rfft2(x, dim=(1, 2), norm='ortho')\n    r_w = x_fft.shape[2]\n    weight = nn.Parameter(torch.randn(h, r_w, C, 2, device=x.device, dtype=torch.float32) * 0.02)\n    weight_c = torch.view_as_complex(weight)\n    x_fft = x_fft * weight_c\n    x_ifft = torch.fft.irfft2(x_fft, s=(h, w), dim=(1, 2), norm='ortho')\n    return x_ifft.reshape(B, N, C).to(dtype)\n",
+  "description": "Migrated GlobalFilter operator from old npu_benchmark architecture."
+}

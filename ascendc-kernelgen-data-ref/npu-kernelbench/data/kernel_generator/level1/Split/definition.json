@@ -1,0 +1,14 @@
+{
+  "name": "Split",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor. Supports float32, float16, bfloat16."},
+    "split_size_or_sections": {"description": "int (chunk size) or list[int] (sizes per chunk)."},
+    "dim": {"description": "int, dimension along which to split."}
+  },
+  "outputs": {
+    "chunks": {"description": "Tuple of tensors, each same dtype as x. Count depends on split_size_or_sections."}
+  },
+  "reference": "import torch\n\ndef run(x, split_size_or_sections, dim=0):\n    if isinstance(split_size_or_sections, int):\n        dim_size = x.shape[dim]\n        chunk = split_size_or_sections\n        n_full = dim_size // chunk\n        rem = dim_size - n_full * chunk\n        sections = [chunk] * n_full + ([rem] if rem > 0 else [])\n    else:\n        sections = list(split_size_or_sections)\n    if x.device.type == \"cpu\":\n        return torch.split(x, sections, dim=dim)\n    out_list = []\n    for s in sections:\n        shape = list(x.shape)\n        shape[dim] = s\n        out_list.append(torch.empty(shape, dtype=x.dtype, device=x.device))\n    torch.split_with_sizes_copy(x, sections, dim=dim, out=out_list)\n    return out_list\n",
+  "description": "Split: Splits the tensor into chunks.\n\nOn NPU uses torch.split_with_sizes_copy (vendor API) with pre-allocated outputs to avoid view semantics issues. On CPU uses torch.split which returns views.\n\ntorch.split = split(tensor, split_size_or_sections, dim=0) -> tuple[Tensor, ...]\n\nIf split_size_or_sections is an integer type, then tensor will be split into equally sized chunks (if possible). Last chunk will be smaller if the tensor size along the given dimension dim is not divisible by split_size.\n\nIf split_size_or_sections is a list, then tensor will be split into len(split_size_or_sections) chunks with sizes in dim according to split_size_or_sections.\n\nArgs:\n    x (Tensor): tensor to split.\n    split_size_or_sections (int or list[int]): size of a single chunk or list of sizes for each chunk.\n    dim (int): dimension along which to split the tensor.\n\nReturns: list of tensors (on NPU) or tuple of tensors (on CPU)."
+}

@@ -1,0 +1,49 @@
+{
+  "name": "FusionAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "shape varies; supports float16"
+    },
+    "key": {
+      "description": "shape varies; supports float16"
+    },
+    "value": {
+      "description": "shape varies; supports float16"
+    },
+    "head_num": {
+      "description": "int, default=8"
+    },
+    "input_layout": {
+      "description": "str"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Attention output"
+    },
+    "1": {
+      "description": "Softmax max float32"
+    },
+    "2": {
+      "description": "Softmax sum float32"
+    },
+    "3": {
+      "description": "Reserved tensor"
+    },
+    "4": {
+      "description": "Seed int"
+    },
+    "5": {
+      "description": "Offset int"
+    },
+    "6": {
+      "description": "Mask length int"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(query, key, value, head_num, input_layout, pse=None, padding_mask=None, atten_mask=None, scale=1., keep_prob=1., pre_tockens=2147483647, next_tockens=2147483647, inner_precise=0, prefix=None, actual_seq_qlen=None, actual_seq_kvlen=None, sparse_mode=0, gen_mask_parallel=True, sync=False, softmax_layout=\"\", sink=None):\n    return torch_npu.npu_fusion_attention(query, key, value, head_num, input_layout, pse=pse, padding_mask=padding_mask, atten_mask=atten_mask, scale=scale, keep_prob=keep_prob, pre_tockens=pre_tockens, next_tockens=next_tockens, inner_precise=inner_precise, prefix=prefix, actual_seq_qlen=actual_seq_qlen, actual_seq_kvlen=actual_seq_kvlen, sparse_mode=sparse_mode, gen_mask_parallel=gen_mask_parallel, sync=sync, softmax_layout=softmax_layout, sink=sink)\n",
+  "kernel_reference_repo": null,
+  "kernel_reference": null,
+  "description": "Fused Transformer Attention Score computation. torch_npu.npu_fusion_attention with support for BSH/SBH/BSND/BNSD/TND layouts, sparse modes, dropout, position encoding, variable-length sequences. Returns (attention_out, softmax_max, softmax_sum, reserved, seed, offset, mask_length)."
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Cat",
+  "axes": {},
+  "inputs": {
+    "tensors": {
+      "description": "List of tensors with same shape (except cat dim) and same dtype. Supports float32, float16, bfloat16.",
+      "dtype": "float32",
+      "shape": null
+    },
+    "dim": {
+      "description": "int, dimension along which to concatenate."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Concatenated tensor, same dtype as inputs."
+    }
+  },
+  "reference": "import torch\n\ndef run(tensors, dim=0):\n    return torch.cat(tensors, dim=dim)\n",
+  "description": "Cat: Concatenates the given sequence of tensors in the given dimension.\n\ntorch.cat = cat(tensors, dim=0, *, out=None) -> Tensor\n\nAll tensors must either have the same shape (except in the concatenating dimension) or be a 1-D empty tensor with size (0,). torch.cat can be seen as an inverse operation for torch.split and torch.chunk.\n\nArgs:\n    tensors (sequence of Tensors): Non-empty tensors provided must have the same shape, except in the cat dimension.\n    dim (int, optional): the dimension over which the tensors are concatenated.\n\nKeyword args:\n    out (Tensor, optional): the output tensor.\n\nExample:\n    >>> x = torch.randn(2, 3)\n    >>> torch.cat((x, x, x), 0)\n    tensor([[ 0.6580, -1.0969, -0.4614],\n            [-0.1034, -0.5790,  0.1497],\n            [ 0.6580, -1.0969, -0.4614],\n            [-0.1034, -0.5790,  0.1497],\n            [ 0.6580, -1.0969, -0.4614],\n            [-0.1034, -0.5790,  0.1497]])\n\nReturns: Tensor."
+}

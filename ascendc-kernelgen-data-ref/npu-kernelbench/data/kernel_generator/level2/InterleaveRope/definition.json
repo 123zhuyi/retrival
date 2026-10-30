@@ -1,0 +1,23 @@
+{
+  "name": "InterleaveRope",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "cos": {
+      "description": "shape varies; supports float16"
+    },
+    "sin": {
+      "description": "shape varies; supports float16"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output with interleave RoPE applied, same shape and dtype as input"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, cos, sin):\n    return torch_npu.npu_interleave_rope(x, cos, sin)\n",
+  "description": "Interleave-style Rotary Position Embedding. torch_npu.npu_interleave_rope(x, cos, sin) applies rotary transform with interleave pattern (even/odd index rotation). Pure PyTorch: x1=x[...,0::2], x2=x[...,1::2], stack(-x2,x1) and flatten."
+}

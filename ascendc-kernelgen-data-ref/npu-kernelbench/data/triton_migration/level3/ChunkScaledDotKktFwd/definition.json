@@ -1,0 +1,35 @@
+{
+  "name": "ChunkScaledDotKktFwd",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "k": {
+      "description": "Input 'k'."
+    },
+    "g": {
+      "description": "Input 'g'."
+    },
+    "beta": {
+      "description": "Input 'beta'."
+    },
+    "cu_seqlens": {
+      "description": "Input 'cu_seqlens'."
+    },
+    "chunk_indices": {
+      "description": "Input 'chunk_indices'."
+    },
+    "chunk_size": {
+      "description": "Input 'chunk_size'."
+    },
+    "output_dtype": {
+      "description": "Input 'output_dtype'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import json\nimport os\nimport torch\nimport torch.nn as nn\n\n\ndef run(k, g=None, beta=None, cu_seqlens=None, chunk_indices=None, chunk_size=None, output_dtype=torch.float32):\n    \"\"\"\n        Computes beta * K * K^T.\n\n        Args:\n            k (Tensor): Key tensor of shape [B, T, Hg, K].\n            g (Tensor, optional): Cumulative sum of the gate tensor of shape [B, T, H].\n            beta (Tensor): Beta tensor of shape [B, T, H].\n            cu_seqlens (Tensor, optional): Cumulative sequence lengths of the input tensor.\n            chunk_indices (Tensor, optional): Pre-computed chunk indices.\n            chunk_size (int): The chunk size. Default: 64.\n            output_dtype (torch.dtype): The dtype of the output tensor. Default: torch.float32.\n\n        Returns:\n            Tensor: beta * K * K^T of shape [B, T, H, BT] where BT is the chunk size.\n        \"\"\"\n    if chunk_size is None:\n        chunk_size = self.FLA_CHUNK_SIZE\n    B, T, Hg, K = k.shape\n    H = beta.shape[-1]\n    BT = chunk_size\n    group = H // Hg\n    A = torch.zeros(B, T, H, BT, device=k.device, dtype=output_dtype)\n    tril_mask = torch.tril(torch.ones(BT, BT, dtype=torch.bool, device=k.device), diagonal=-1)\n    if cu_seqlens is not None:\n        cu = cu_seqlens.cpu().tolist()\n        spans = [(0, cu[i], cu[i + 1]) for i in range(len(cu) - 1)]\n    else:\n        spans = [(b, 0, T) for b in range(B)]\n    for b, bos, eos in spans:\n        T_seq = eos - bos\n        for h in range(H):\n            hg = h // group\n            for s in range(0, T_seq, BT):\n                row0, row1 = (bos + s, min(bos + s + BT, eos))\n                L = row1 - row0\n                kc = k[b, row0:row1, hg, :].to(torch.float32)\n                a = kc @ kc.transpose(0, 1)\n                if g is not None:\n                    gc = g[b, row0:row1, h].to(torch.float32)\n                    diff = gc[:, None] - gc[None, :]\n                    a = a * torch.exp(torch.clamp(diff, max=0.0))\n                bc = beta[b, row0:row1, h].to(torch.float32)\n                a = a * bc[:, None]\n                a = a * tril_mask[:L, :L]\n                A[b, row0:row1, h, :L] = a.to(output_dtype)\n    return A",
+  "description": "Model that performs chunk-scaled dot product KKT forward computation. Computes beta * K * K^T with optional gate accumulation and chunked processing."
+}

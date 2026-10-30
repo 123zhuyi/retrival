@@ -1,0 +1,26 @@
+{
+  "name": "QuantMatmulReduceSum",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "x1": {
+      "description": "shape varies; supports int8"
+    },
+    "x2": {
+      "description": "shape varies; supports int8"
+    },
+    "x1_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "x2_scale": {
+      "description": "shape varies; supports bfloat16"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Quant matmul + reduce sum output, float32"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(x1: torch.Tensor, x2: torch.Tensor, x1_scale=None, x2_scale=None):\n    \"\"\"\n        Performs quantized matmul reduce sum.\n\n        Args:\n            x1 (Tensor): Left matrix, shape [batch, m, k], dtype int8.\n            x2 (Tensor): Right matrix, shape [batch, k, n], dtype int8.\n            x1_scale (Tensor): Left matrix quantization scale, shape [batch, m], dtype float32.\n            x2_scale (Tensor): Right matrix quantization scale, shape [n], dtype bfloat16.\n\n        Returns:\n            Tensor: Sum of all group matmul results, shape [m, n], dtype float32.\n        \"\"\"\n    mid = torch.bmm(x1.float(), x2.float()) * x1_scale.unsqueeze(-1)\n    M, N = (mid.shape[1], mid.shape[2])\n    acc = torch.zeros(M, N, device=x1.device, dtype=torch.float32)\n    for b in range(mid.shape[0]):\n        acc = acc + mid[b]\n    return acc * x2_scale.float()\n",
+  "description": "Model that performs quantized matmul reduce sum.\nComputes quantized grouped matrix multiplication and sums results across all groups."
+}

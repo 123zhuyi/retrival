@@ -1,0 +1,18 @@
+{
+  "name": "NMS",
+  "axes": {},
+  "inputs": {
+    "boxes": {"description": "Bounding boxes tensor of shape (N, 4). Supports float32, float16."},
+    "scores": {"description": "Scores tensor of shape (N,). Same dtype as boxes."},
+    "max_output_size": {"description": "int, maximum number of output boxes."},
+    "iou_threshold": {"description": "float, IoU threshold for suppression."},
+    "scores_threshold": {"description": "float, score threshold to filter boxes."},
+    "pad_to_max_output_size": {"description": "Optional bool, pad output to max_output_size. Default false."}
+  },
+  "outputs": {
+    "selected_indices": {"description": "Selected box indices tensor, int32."},
+    "num_selected": {"description": "Number of selected boxes, int32 scalar tensor."}
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(boxes, scores, max_output_size, iou_threshold, scores_threshold, pad_to_max_output_size=False):\n    iou_threshold_tensor = torch.tensor(iou_threshold, dtype=torch.float32, device=boxes.device)\n    scores_threshold_tensor = torch.tensor(scores_threshold, dtype=torch.float32, device=boxes.device)\n    return torch_npu.npu_nms_v4(boxes, scores, max_output_size, iou_threshold_tensor, scores_threshold_tensor, pad_to_max_output_size=pad_to_max_output_size)\n",
+  "description": "NMS: NPU-accelerated Non-Maximum Suppression on bounding boxes.\n\ntorch_npu.npu_nms_v4 — performs NMS on NPU, filtering overlapping boxes by IoU.\n\nArgs:\n    boxes (Tensor): Bounding boxes tensor of shape (N, 4) in (x1, y1, x2, y2) format.\n    scores (Tensor): Scores tensor of shape (N,).\n    max_output_size (int): Maximum number of output boxes.\n    iou_threshold (float): IoU threshold for suppression.\n    scores_threshold (float): Score threshold to filter low-confidence boxes.\n    pad_to_max_output_size (bool, optional): Whether to pad output to max_output_size. Default: False.\n\nReturns: tuple of (selected_indices, num_selected).\n\n---\nPure PyTorch equivalent:\n    1. Filter boxes by scores > scores_threshold\n    2. Sort remaining boxes by score descending\n    3. Iteratively select highest-scoring box, suppress boxes with IoU >= iou_threshold\n    4. Return selected indices and count"
+}

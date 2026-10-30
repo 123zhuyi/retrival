@@ -1,0 +1,47 @@
+{
+  "name": "FusedMoeKernelGptqAwq",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "hidden_states": {
+      "description": "Input 'hidden_states'."
+    },
+    "w1_q": {
+      "description": "Input 'w1_q'."
+    },
+    "w1_scale": {
+      "description": "Input 'w1_scale'."
+    },
+    "w1_zp": {
+      "description": "Input 'w1_zp'."
+    },
+    "w2_q": {
+      "description": "Input 'w2_q'."
+    },
+    "w2_scale": {
+      "description": "Input 'w2_scale'."
+    },
+    "w2_zp": {
+      "description": "Input 'w2_zp'."
+    },
+    "topk_weights": {
+      "description": "Input 'topk_weights'."
+    },
+    "topk_ids": {
+      "description": "Input 'topk_ids'."
+    },
+    "group_size": {
+      "description": "Input 'group_size'."
+    },
+    "has_zp": {
+      "description": "Input 'has_zp'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\ndef _dequant(w_q, scale, w_zp, group_size, has_zp):\n    even = w_q & 15\n    odd = w_q >> 4 & 15\n    q = torch.stack([even, odd], dim=2).reshape(w_q.shape[0], -1, w_q.shape[2])\n    q = q.float()\n    E, K, N = q.shape\n    gs = min(group_size, K)\n    if has_zp:\n        zp_e = w_zp & 15\n        zp_o = w_zp >> 4 & 15\n        zp = torch.stack([zp_e, zp_o], dim=3).reshape(E, -1, N).float()\n    else:\n        zp = torch.full((E, K // gs, N), 8.0, dtype=torch.float32)\n    s = scale.float().repeat_interleave(gs, dim=1)\n    zp = zp.repeat_interleave(gs, dim=1)\n    return ((q - zp) * s).permute(0, 2, 1).contiguous()\n\ndef run(hidden_states, w1_q, w1_scale, w1_zp, w2_q, w2_scale, w2_zp, topk_weights, topk_ids, group_size: int, has_zp: int):\n    M, H = hidden_states.shape\n    w1 = _dequant(w1_q, w1_scale, w1_zp, group_size, has_zp)\n    w2 = _dequant(w2_q, w2_scale, w2_zp, group_size, has_zp)\n    I = w1.shape[1] // 2\n    topk = topk_ids.shape[1]\n    out = torch.zeros(M, H, dtype=torch.float32)\n    x = hidden_states.float()\n    for m in range(M):\n        for kk in range(topk):\n            e = int(topk_ids[m, kk])\n            y = x[m] @ w1[e].T\n            inter = torch.nn.functional.silu(y[:I]) * y[I:]\n            out[m] += float(topk_weights[m, kk]) * (inter @ w2[e].T)\n    return out.to(hidden_states.dtype)",
+  "description": "Model that performs fused MoE expert computation with GPTQ/AWQ int4 weights. 对标 vLLM fused_moe_kernel_gptq_awq 的两段式调用 (vllm/model_executor/layers/fused_moe/fused_moe.py:61, v0.26.0; 编排逻辑同 fused_experts_impl: GEMM1 -> silu_and_mul -> GEMM2(mul_routed_weight) -> sum)。"
+}

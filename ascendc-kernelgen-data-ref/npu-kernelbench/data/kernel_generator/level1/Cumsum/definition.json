@@ -1,0 +1,13 @@
+{
+  "name": "Cumsum",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "dim": {"description": "int, dimension along which to compute cumulative sum."}
+  },
+  "outputs": {
+    "y": {"description": "Output tensor, same shape and dtype as input x."}
+  },
+  "reference": "import torch\n\ndef run(x, dim):\n    return torch.cumsum(x, dim=dim)\n",
+  "description": "Cumsum: Returns the cumulative sum of elements along dimension dim.\n\ntorch.cumsum = cumsum(input, dim, *, dtype=None, out=None) -> Tensor\n\ny_i = x_1 + x_2 + x_3 + ... + x_i (along dim)\n\nArgs:\n    input (Tensor): the input tensor.\n    dim (int): the dimension to do the operation over.\n\nKeyword args:\n    dtype (torch.dtype, optional): the desired data type of returned tensor. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. Default: None.\n    out (Tensor, optional): the output tensor.\n\nExample:\n    >>> a = torch.randint(1, 20, (10,))\n    >>> torch.cumsum(a, dim=0)\n    tensor([13, 20, 23, 33, 46, 49, 64, 74, 83, 93])\n\nReturns: Tensor, same shape as input."
+}

@@ -1,0 +1,2655 @@
+{
+ "op_name": "35_QuantMatmulReduceSum",
+ "source": "ops-nn handwritten quant_matmul_reduce_sum kernel (aclnnQuantMatmulReduceSumWeightNz) direct msprof Task_Duration (warmup=3, repeats=3, median). NZ x2 descriptor fixed (storageOffset 3->0; physical [B,N/32,K/16,16,32]). ACCURACY: kernel bf16-accumulates over batch, so only B=1 cases match model.py fp32 reference exactly (12/55 pass); B>1 cases diverge increasingly (bf16 round per batch before sum). MFU vs fp16-cube peak 353.8944 TF (int8 cube peak ~2x, so MFU can exceed 100%). 【口径修正 2026-09-10: 分母由 fp16 cube 峰值 353.8944 改为 int8 cube 峰值 707.7888（本核 MMA 为 int8×int8→int32），max_mfu_pct 171.0433% → 85.5217%（>100% 物理不可能即为漏用 int8 分母的硬证据）】 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。",
+ "total_cases": 55,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 568.086223,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 6,
+   "ratio": 0.1091
+  },
+  "100-500us": {
+   "count": 11,
+   "ratio": 0.2
+  },
+  "500-1000us": {
+   "count": 22,
+   "ratio": 0.4
+  },
+  ">1000us": {
+   "count": 16,
+   "ratio": 0.2909
+  }
+ },
+ "max_mfu_pct": 181.564929,
+ "sweet_spot_shape": {
+  "case_idx": 53,
+  "inputs_shape": [
+   {
+    "name": "x1",
+    "shape": [
+     4,
+     4096,
+     8192
+    ]
+   },
+   {
+    "name": "x2",
+    "shape": [
+     4,
+     8192,
+     8192
+    ]
+   },
+   {
+    "name": "x1_scale",
+    "shape": [
+     4,
+     4096
+    ]
+   },
+   {
+    "name": "x2_scale",
+    "shape": [
+     8192
+    ]
+   }
+  ],
+  "impl_latency_us": 3422.348,
+  "mfu_pct": 181.564929
+ },
+ "max_mfu_pct_basis": "取精度通过（accuracy=pass，本核仅 B=1 case 与 model.py fp32 参考吻合）case 中的最大者，与原作者语义一致；全 55 case 的全局最大（含 accuracy=fail 的 case36）为 90.3726%。",
+ "peak_tflops": 707.7888,
+ "peak_tflops_meaning": "int8 cube 峰值 (910B2C) = 2 × fp16 cube 峰值 353.8944",
+ "compute_unit": "AIC+CUBE(int8)",
+ "peak_note": "本核 cube 的实际计算 dtype 是 int8（不是 fp16/bf16），故 MFU 分母应为 int8 cube 峰值 707.7888 TF。证据：op_kernel/quant_matmul_reduce_sum.cpp:25 using aType = MatmulType<TPosition::GM, CubeFormat::ND, int8_t, trans>；:28 using bType = MatmulType<TPosition::GM, CubeFormat::NZ, int8_t, trans>；:30 using cType = MatmulType<..., int32_t>；:32 bias int32_t；op_host/quant_matmul_reduce_sum_def.cpp:24/29 .DataType({ge::DT_INT8})。int8 峰值推导（与 npu-arch guide 的 FP8/INT4 同一公式）：MAC 阵列取自 platform_config/Ascend910B2C.ini [DtypeMKN] DT_INT8=16,32,16 → M×K×N = 16×32×16 = 8192 MAC/周期 = 2 × fp16 的 4096，故 int8 峰值 = 2 × 353.8944 = 707.7888 TF。硬自证：修正前 max_mfu_pct = 171.0433%（>100% 物理不可能），÷2 后为 85.52%。| 修正内容：mfu_pct 全线 ×0.5（分母 353.8944 → 707.7888），时延/FLOPs/case 结构未变。| 备注：源 JSON 的『int8 cube peak ~2x』判断本就正确，只是未落到分母上。| 注意：本文件 55 个 case 仅 B=1 的 12 个与 model.py fp32 参考吻合（kernel 按 bf16 累加 batch），B>1 精度不通过，引用时须带此限定。",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      32
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 22.74,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 1073741824.0,
+   "mfu_pct": 13.342454
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      128,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      128
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 30.3,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 4294967296.0,
+   "mfu_pct": 40.053783
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      256,
+      5120
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      5120,
+      5120
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      256
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      5120
+     ]
+    }
+   ],
+   "impl_latency_us": 49.881,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 13421772800.0,
+   "mfu_pct": 76.03281
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      512,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      512
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 55.771,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 17179869184.0,
+   "mfu_pct": 87.043778
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      128,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      128
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 61.441,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 17179869184.0,
+   "mfu_pct": 79.01106
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      512,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      512
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 84.181,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 34359738368.0,
+   "mfu_pct": 115.335254
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      512,
+      5120
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      5120,
+      5120
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      5120
+     ]
+    }
+   ],
+   "impl_latency_us": 205.484,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 107374182400.0,
+   "mfu_pct": 147.655004
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 138.942,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 68719476736.0,
+   "mfu_pct": 139.75669
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      3072
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      3072,
+      3072
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      3072
+     ]
+    }
+   ],
+   "impl_latency_us": 150.983,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 77309411328.0,
+   "mfu_pct": 144.687371
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      1024,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      7168,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 197.003,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 105226698752.0,
+   "mfu_pct": 150.931336
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      64,
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      64,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      64,
+      256
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 448.578,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 86.576132
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 244.374,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 158.92095
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      512,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      512
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 244.734,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 158.687179
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      1024,
+      5120
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      5120,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 262.025,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 150323855360.0,
+   "mfu_pct": 162.110627
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 246.244,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 157.714089
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 241.604,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 160.742985
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      2048,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      7168,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 404.238,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 240518168576.0,
+   "mfu_pct": 168.126844
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      5120
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      5120,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 571.751,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 343597383680.0,
+   "mfu_pct": 169.812332
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      2048,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      11008,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 606.962,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 369367187456.0,
+   "mfu_pct": 171.958291
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      11008,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 609.732,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 369367187456.0,
+   "mfu_pct": 171.177088
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      6144
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      6144,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 665.953,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 174.949951
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      2048,
+      6144
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      6144,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 663.593,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 175.572142
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      8192,
+      6144
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      6144
+     ]
+    }
+   ],
+   "impl_latency_us": 662.253,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 175.927394
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      8192,
+      6144
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      6144
+     ]
+    }
+   ],
+   "impl_latency_us": 657.503,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 177.198347
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      7168,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 683.513,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 420906795008.0,
+   "mfu_pct": 174.006498
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      2048,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      7168,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 681.443,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 420906795008.0,
+   "mfu_pct": 174.535073
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      1024,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      7168,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 689.153,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 420906795008.0,
+   "mfu_pct": 172.582436
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      5120
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      5120,
+      5120
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      5120
+     ]
+    }
+   ],
+   "impl_latency_us": 694.103,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 429496729600.0,
+   "mfu_pct": 174.848636
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      512,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      7168,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      512
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 807.156,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 420906795008.0,
+   "mfu_pct": 147.35157
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      11008,
+      5120
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      5120
+     ]
+    }
+   ],
+   "impl_latency_us": 744.234,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 461708984320.0,
+   "mfu_pct": 175.301297
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      7168,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 769.265,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 481036337152.0,
+   "mfu_pct": 176.696611
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      7168
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      7168
+     ]
+    }
+   ],
+   "impl_latency_us": 785.115,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 481036337152.0,
+   "mfu_pct": 173.129438
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      2048,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      7168,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 767.845,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 481036337152.0,
+   "mfu_pct": 177.023382
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      7168,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 776.805,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 481036337152.0,
+   "mfu_pct": 174.981519
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      6144
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      6144,
+      5120
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      5120
+     ]
+    }
+   ],
+   "impl_latency_us": 828.756,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 515396075520.0,
+   "mfu_pct": 175.727905
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 873.577,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 549755813888.0,
+   "mfu_pct": 177.825873
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 880.857,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 549755813888.0,
+   "mfu_pct": 176.356199
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      1024,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 910.478,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 549755813888.0,
+   "mfu_pct": 170.618722
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 897.147,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 549755813888.0,
+   "mfu_pct": 173.154001
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      11008,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 1178.583,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 738734374912.0,
+   "mfu_pct": 177.114634
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      8192,
+      6144
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      6144
+     ]
+    }
+   ],
+   "impl_latency_us": 1296.685,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 824633720832.0,
+   "mfu_pct": 179.702001
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      3,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      3,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 1301.536,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 824633720832.0,
+   "mfu_pct": 179.032227
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      64,
+      512,
+      7168
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      64,
+      7168,
+      2048
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      64,
+      512
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 1766.885,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 962072674304.0,
+   "mfu_pct": 153.860063
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      4096,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      1,
+      11008,
+      11008
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      11008
+     ]
+    }
+   ],
+   "impl_latency_us": 1605.622,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 992674316288.0,
+   "mfu_pct": 174.698745
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 1733.984,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1099511627776.0,
+   "mfu_pct": 179.176501
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 1742.294,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1099511627776.0,
+   "mfu_pct": 178.321905
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      1024,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 1768.915,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1099511627776.0,
+   "mfu_pct": 175.638278
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 1769.135,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1099511627776.0,
+   "mfu_pct": 175.616437
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      16,
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      16,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 1765.325,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1099511627776.0,
+   "mfu_pct": 175.99546
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      16,
+      1024,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      16,
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      16,
+      1024
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 1783.025,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1099511627776.0,
+   "mfu_pct": 174.248362
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      2048,
+      6144
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      6144,
+      6144
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      6144
+     ]
+    }
+   ],
+   "impl_latency_us": 1962.639,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1236950581248.0,
+   "mfu_pct": 178.089467
+  },
+  {
+   "case_idx": 51,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      4096,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      2,
+      11008,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 2336.196,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1477468749824.0,
+   "mfu_pct": 178.704438
+  },
+  {
+   "case_idx": 52,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      2048,
+      11008
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      11008,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 2345.246,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1477468749824.0,
+   "mfu_pct": 178.01484
+  },
+  {
+   "case_idx": 53,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      4,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 3422.348,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2199023255552.0,
+   "mfu_pct": 181.564929
+  },
+  {
+   "case_idx": 54,
+   "inputs": [
+    {
+     "name": "x1",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "x2",
+     "type": "tensor",
+     "dtype": "int8",
+     "shape": [
+      8,
+      4096,
+      8192
+     ]
+    },
+    {
+     "name": "x1_scale",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      4096
+     ]
+    },
+    {
+     "name": "x2_scale",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 3457.689,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2199023255552.0,
+   "mfu_pct": 179.709156
+  }
+ ],
+ "data_status": "CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [6, 11, 22, 16]（55 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。"
+}

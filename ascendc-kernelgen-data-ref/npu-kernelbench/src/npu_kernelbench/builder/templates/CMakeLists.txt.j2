@@ -1,0 +1,74 @@
+cmake_minimum_required(VERSION 3.16.0)
+project(AscendC_Kernel)
+set(LINUX TRUE)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type Release/Debug" FORCE)
+
+message(STATUS "Determined _GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")
+set(_GLIBCXX_USE_CXX11_ABI ${GLIBCXX_USE_CXX11_ABI})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=${_GLIBCXX_USE_CXX11_ABI}")
+
+set(SOC_VERSION "{{ soc_version }}" CACHE STRING "system on chip type")
+
+# ASCEND_CANN_PACKAGE_PATH detection
+if(DEFINED ASCEND_CANN_PACKAGE_PATH)
+elseif(DEFINED ENV{ASCEND_HOME_PATH})
+    set(ASCEND_CANN_PACKAGE_PATH "$ENV{ASCEND_HOME_PATH}" CACHE PATH "ASCEND CANN package installation directory" FORCE)
+endif()
+
+if(EXISTS ${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/ascendc_kernel_cmake)
+    set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/ascendc_kernel_cmake)
+elseif(EXISTS ${ASCEND_CANN_PACKAGE_PATH}/compiler/tikcpp/ascendc_kernel_cmake)
+    set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/compiler/tikcpp/ascendc_kernel_cmake)
+elseif(EXISTS ${ASCEND_CANN_PACKAGE_PATH}/ascendc_devkit/tikcpp/samples/cmake)
+    set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/ascendc_devkit/tikcpp/samples/cmake)
+else()
+    message(FATAL_ERROR "ascendc_kernel_cmake not found, please check CANN installation")
+endif()
+
+include(${ASCENDC_CMAKE_DIR}/ascendc.cmake)
+
+{% if kernel_sources %}
+ascendc_library(kernel_lib STATIC
+{% for src in kernel_sources %}
+    {{ src }}
+{% endfor %}
+)
+target_include_directories(kernel_lib PRIVATE
+{% for inc in include_dirs %}
+    {{ inc }}
+{% endfor %}
+)
+{% endif %}
+
+add_library(kernel SHARED
+{% for src in shared_sources %}
+    {{ src }}
+{% endfor %}
+)
+target_link_libraries(kernel PRIVATE
+{% if kernel_sources %}
+    kernel_lib
+{% endif %}
+    torch_npu
+    ascendcl
+    tiling_api
+    register
+    platform
+    ascendalog
+    dl
+)
+{% if link_dirs %}
+target_link_directories(kernel PRIVATE
+{% for d in link_dirs %}
+    {{ d }}
+{% endfor %}
+)
+{% endif %}
+target_include_directories(kernel PRIVATE
+{% for inc in include_dirs %}
+    {{ inc }}
+{% endfor %}
+)

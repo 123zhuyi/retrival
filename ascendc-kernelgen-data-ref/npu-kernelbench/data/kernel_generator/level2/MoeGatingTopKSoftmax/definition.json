@@ -1,0 +1,29 @@
+{
+  "name": "MoeGatingTopKSoftmax",
+  "op_type": "routing",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "finished": {
+      "description": "shape varies; supports bool; optional, may be None"
+    },
+    "k": {
+      "description": "int, default=2; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Gating output"
+    },
+    "1": {
+      "description": "Top-K indices, int32"
+    },
+    "2": {
+      "description": "Top-K weights"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, finished=None, k=1):\n    return torch_npu.npu_moe_gating_top_k_softmax(x, finished=finished, k=k)\n",
+  "description": "MoE gating with TopK softmax. torch_npu.npu_moe_gating_top_k_softmax(x, finished, k) returns (output, topk_indices, topk_weights). Pure PyTorch: softmax(x) + topk + row_idx computation."
+}

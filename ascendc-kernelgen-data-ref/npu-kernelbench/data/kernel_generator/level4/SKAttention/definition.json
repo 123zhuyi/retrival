@@ -1,0 +1,32 @@
+{
+  "name": "SKAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "channel": {
+      "description": "number of input channels"
+    },
+    "kernels": {
+      "description": "list of kernel sizes"
+    },
+    "reduction": {
+      "description": "reduction factor; default 16"
+    },
+    "group": {
+      "description": "group convolution parameter; default 1"
+    },
+    "L": {
+      "description": "minimum fc dimension; default 32"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, channel, kernels, reduction=16, group=1, L=32):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    if channel is None:\n        channel = c\n    d = max(L, channel // reduction)\n    convs = nn.ModuleList()\n    for k in kernels:\n        convs.append(nn.Sequential(\n            nn.Conv2d(channel, channel, kernel_size=k, padding=k // 2, groups=group).to(device=x.device, dtype=x.dtype),\n            nn.BatchNorm2d(channel).to(device=x.device, dtype=x.dtype),\n            nn.ReLU()\n        ))\n    fc = nn.Linear(channel, d).to(device=x.device, dtype=x.dtype)\n    fcs = nn.ModuleList()\n    for _ in kernels:\n        fcs.append(nn.Linear(d, channel).to(device=x.device, dtype=x.dtype))\n\n    conv_outs = []\n    for conv in convs:\n        conv_outs.append(conv(x))\n    feats = torch.stack(conv_outs, 0)\n    U = sum(conv_outs)\n    S = U.mean(-1).mean(-1)\n    Z = fc(S)\n    weights = []\n    for fc_i in fcs:\n        w = fc_i(Z).view(b, c, 1, 1)\n        weights.append(w)\n    attention_weights = torch.stack(weights, 0)\n    attention_weights = F.softmax(attention_weights, dim=0)\n    V = (attention_weights * feats).sum(0)\n    return V\n",
+  "description": "Migrated SKAttention operator."
+}

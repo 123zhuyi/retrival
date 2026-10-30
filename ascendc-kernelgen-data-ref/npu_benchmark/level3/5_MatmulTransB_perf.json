@@ -1,0 +1,1221 @@
+{
+ "op_name": "5_MatmulTransB",
+ "source": "融合算子(model.py PyTorch) 实测；impl=融合参考时延；asc_latency_us 为生成核时延。MFU vs fp32 176.947TF",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 511.72681467504447,
+ "reference_latency_geomean_us": 511.72681467504447,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 9,
+   "ratio": 0.18
+  },
+  "100-500us": {
+   "count": 12,
+   "ratio": 0.24
+  },
+  "500-1000us": {
+   "count": 13,
+   "ratio": 0.26
+  },
+  ">1000us": {
+   "count": 16,
+   "ratio": 0.32
+  }
+ },
+ "max_mfu_pct": 1.059383405752121,
+ "sweet_spot_shape": {
+  "case_idx": 2,
+  "impl_latency_us": 143.2,
+  "mfu_pct": 1.059383405752121
+ },
+ "max_mfu_pct_basis": "语义 FLOPs(2·b·m·k·n) / 该 case 计算 dtype 峰值（fp16/bf16 → 353.8944，fp32 → 176.947），与 level4_archive/BatchMatmul/drive.py 的 PEAK 表一致",
+ "max_mfu_pct_note": "max_mfu_pct = 全体 case 的最大值（case3, 计算 dtype=float32）；最佳 fp16/bf16 case 为 case43（mfu_pct=7.43719，峰值 353.8944 口径）。两类 case 的峰值分母不同，横向比较时须注意口径。",
+ "compute_dtype_evidence": "mtb_common.h: gemm_v0 经 mma<T,float> 单条 Mmad；matmul_transb_kernels.cpp 三入口 half/bfloat16_t/float (AIC_ONLY)，无 3-term 仿真",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      4096,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 198.9,
+   "reference_latency_us": 198.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      2048,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 78.3,
+   "reference_latency_us": 78.3,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1024,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 143.2,
+   "reference_latency_us": 143.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 268435456.0,
+   "asc_latency_us": 19.9285,
+   "mfu_pct": 1.059383405752121
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      256,
+      512
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1024,
+      512
+     ]
+    }
+   ],
+   "impl_latency_us": 217.5,
+   "reference_latency_us": 217.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 268435456.0,
+   "asc_latency_us": 17.8885,
+   "mfu_pct": 0.6974882928905917
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      32,
+      64
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      128,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 42.2,
+   "reference_latency_us": 42.2,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 524288.0,
+   "asc_latency_us": 8.928999999999998,
+   "mfu_pct": 0.007021239248727401
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1480,
+      736
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      5904,
+      736
+     ]
+    }
+   ],
+   "impl_latency_us": 314.1,
+   "reference_latency_us": 314.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      4096,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 257.7,
+   "reference_latency_us": 257.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1336,
+      2672
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      5336,
+      2672
+     ]
+    }
+   ],
+   "impl_latency_us": 472.6,
+   "reference_latency_us": 472.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      864,
+      13800
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1728,
+      13800
+     ]
+    }
+   ],
+   "impl_latency_us": 358.9,
+   "reference_latency_us": 358.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      30576,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 225.2,
+   "reference_latency_us": 225.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      480,
+      7640
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      952,
+      7640
+     ]
+    }
+   ],
+   "impl_latency_us": 196.5,
+   "reference_latency_us": 196.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      131072,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 247.4,
+   "reference_latency_us": 247.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      720,
+      2888
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1440,
+      2888
+     ]
+    }
+   ],
+   "impl_latency_us": 171.8,
+   "reference_latency_us": 171.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      131072,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 160.6,
+   "reference_latency_us": 160.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1480,
+      736
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      23616,
+      736
+     ]
+    }
+   ],
+   "impl_latency_us": 742.9,
+   "reference_latency_us": 742.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      848,
+      13520
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1688,
+      13520
+     ]
+    }
+   ],
+   "impl_latency_us": 727.7,
+   "reference_latency_us": 727.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      122304,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 808.6,
+   "reference_latency_us": 808.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1440,
+      5776
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      2880,
+      5776
+     ]
+    }
+   ],
+   "impl_latency_us": 849.4,
+   "reference_latency_us": 849.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      904,
+      14352
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1792,
+      14352
+     ]
+    }
+   ],
+   "impl_latency_us": 842.2,
+   "reference_latency_us": 842.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      524288,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 828.1,
+   "reference_latency_us": 828.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      288384,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 716.3,
+   "reference_latency_us": 716.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      524288,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 772.0,
+   "reference_latency_us": 772.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      12472,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 1006.1,
+   "reference_latency_us": 1006.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      131072,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 1994.6,
+   "reference_latency_us": 1994.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1336,
+      2672
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      21344,
+      2672
+     ]
+    }
+   ],
+   "impl_latency_us": 841.8,
+   "reference_latency_us": 841.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      856,
+      13624
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1696,
+      13624
+     ]
+    }
+   ],
+   "impl_latency_us": 897.2,
+   "reference_latency_us": 897.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      16384,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 871.9,
+   "reference_latency_us": 871.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      864,
+      23208
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1728,
+      23208
+     ]
+    }
+   ],
+   "impl_latency_us": 1252.0,
+   "reference_latency_us": 1252.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      960,
+      15280
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1904,
+      15280
+     ]
+    }
+   ],
+   "impl_latency_us": 933.6,
+   "reference_latency_us": 933.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      978360,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 7465.3,
+   "reference_latency_us": 7465.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      978360,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 3650.2,
+   "reference_latency_us": 3650.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      456456,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 3581.4,
+   "reference_latency_us": 3581.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1440,
+      11160
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      2880,
+      11160
+     ]
+    }
+   ],
+   "impl_latency_us": 5666.7,
+   "reference_latency_us": 5666.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      512,
+      256
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      489216,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 1886.3,
+   "reference_latency_us": 1886.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      960,
+      21608
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1904,
+      21608
+     ]
+    }
+   ],
+   "impl_latency_us": 1741.9,
+   "reference_latency_us": 1741.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      32768,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 1672.6,
+   "reference_latency_us": 1672.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1336,
+      2672
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      39832,
+      2672
+     ]
+    }
+   ],
+   "impl_latency_us": 1665.7,
+   "reference_latency_us": 1665.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1336,
+      2672
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      42688,
+      2672
+     ]
+    }
+   ],
+   "impl_latency_us": 1686.2,
+   "reference_latency_us": 1686.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      904,
+      20296
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1792,
+      20296
+     ]
+    }
+   ],
+   "impl_latency_us": 1428.9,
+   "reference_latency_us": 1428.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      864,
+      43928
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1728,
+      43928
+     ]
+    }
+   ],
+   "impl_latency_us": 1297.7,
+   "reference_latency_us": 1297.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      23272,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 1248.8,
+   "reference_latency_us": 1248.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1440,
+      8168
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      2880,
+      8168
+     ]
+    }
+   ],
+   "impl_latency_us": 6430.1,
+   "reference_latency_us": 6430.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      32,
+      64
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      128,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 47.9,
+   "reference_latency_us": 47.9,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 524288.0,
+   "asc_latency_us": 6.199,
+   "mfu_pct": 0.006185726436248357
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      50,
+      100
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      75,
+      100
+     ]
+    }
+   ],
+   "impl_latency_us": 65.8,
+   "reference_latency_us": 65.8,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 750000.0,
+   "asc_latency_us": 8.629,
+   "mfu_pct": 0.006441569175320839
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      11,
+      19
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      23,
+      19
+     ]
+    }
+   ],
+   "impl_latency_us": 57.7,
+   "reference_latency_us": 57.7,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 9614.0,
+   "asc_latency_us": 6.839,
+   "mfu_pct": 9.416393738165156e-05
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      13,
+      29
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      31,
+      29
+     ]
+    }
+   ],
+   "impl_latency_us": 54.4,
+   "reference_latency_us": 54.4,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 23374.0,
+   "asc_latency_us": 6.379,
+   "mfu_pct": 0.00024282334936470245
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      128,
+      512
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      256,
+      512
+     ]
+    }
+   ],
+   "impl_latency_us": 76.2,
+   "reference_latency_us": 76.2,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 33554432.0,
+   "asc_latency_us": 15.068999999999999,
+   "mfu_pct": 0.24885778166618058
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1,
+      1
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      1,
+      1
+     ]
+    }
+   ],
+   "impl_latency_us": 64.6,
+   "reference_latency_us": 64.6,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 2.0,
+   "asc_latency_us": 6.209,
+   "mfu_pct": 1.7496604818828117e-08
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      1,
+      1
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      10,
+      1
+     ]
+    }
+   ],
+   "impl_latency_us": 38.9,
+   "reference_latency_us": 38.9,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 20.0,
+   "asc_latency_us": 5.959,
+   "mfu_pct": 2.90560583880796e-07
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "A",
+     "shape": [
+      7,
+      13
+     ]
+    },
+    {
+     "name": "B",
+     "shape": [
+      17,
+      13
+     ]
+    }
+   ],
+   "impl_latency_us": 626.1,
+   "reference_latency_us": 626.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 3094.0,
+   "asc_latency_us": 6.819,
+   "mfu_pct": 2.792755467968967e-06
+  }
+ ],
+ "remeasure_note": "2026-09-15 重测：Model.forward NPU wall-clock 逐 case 实测（910B2C, warmup=1, repeat=1, perf_counter + npu.synchronize）；口径为端到端单次的 host+device 时延（含 launch 开销），与旧 kernel 级口径不可直接比较。；任务 .json 已于此前扩展重建（shape 全换/部分换），flops/mfu_pct/asc_latency_us 仅保留与新 shape 匹配的旧 case，mfu_pct 已按新旧延迟比换算"
+}

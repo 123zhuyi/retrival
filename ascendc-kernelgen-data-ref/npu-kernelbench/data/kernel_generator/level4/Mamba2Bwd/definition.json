@@ -1,0 +1,83 @@
+{
+  "name": "Mamba2Bwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "输入张量, shape (B, T, H, P); bfloat16/float16/float32"
+    },
+    "dt": {
+      "description": "时间步 raw 值, shape (B, T, H); 与 x 同 dtype"
+    },
+    "A": {
+      "description": "状态衰减系数 (恒负), shape (H,); float32"
+    },
+    "B": {
+      "description": "SSM B 矩阵, shape (B, T, G, N); 与 x 同 dtype"
+    },
+    "C": {
+      "description": "SSM C 矩阵, shape (B, T, G, N); 与 x 同 dtype"
+    },
+    "D": {
+      "description": "跳连系数, shape (H,) 或 (H, P); float32"
+    },
+    "z": {
+      "description": "门控张量, shape (B, T, H, P); shape[0]==0 表示无 z"
+    },
+    "dt_bias": {
+      "description": "dt 偏置, shape (H,); float32"
+    },
+    "initial_states": {
+      "description": "初始状态, shape (B, H, P, N) float32; shape[0]==0 表示无"
+    },
+    "dout": {
+      "description": "输出梯度, shape (B, T, H, P); 与 x 同 dtype"
+    },
+    "dfinal_states": {
+      "description": "末状态梯度, shape (B, H, P, N) float32; shape[0]==0 表示无回传"
+    },
+    "chunk_size": {
+      "description": "kernel 分块大小, int 标量"
+    },
+    "dt_softplus": {
+      "description": "是否对 dt 施加 softplus, int 0/1"
+    },
+    "dt_limit_lo": {
+      "description": "dt 截断下界, float"
+    },
+    "dt_limit_hi": {
+      "description": "dt 截断上界, float"
+    }
+  },
+  "outputs": {
+    "dx": {
+      "description": "x 梯度, 同 x 形状与 dtype"
+    },
+    "ddt": {
+      "description": "dt 梯度, 同 dt 形状与 dtype"
+    },
+    "dA": {
+      "description": "A 梯度, shape (H,) float32"
+    },
+    "dB": {
+      "description": "B 梯度, shape (B, T, G, N), 与 B 同 dtype (GQA 组内各头求和)"
+    },
+    "dC": {
+      "description": "C 梯度, shape (B, T, G, N), 与 C 同 dtype"
+    },
+    "dD": {
+      "description": "D 梯度, 同 D 形状 float32; D 缺省时为空张量 [0]"
+    },
+    "dz": {
+      "description": "z 梯度, 同 z 形状与 dtype; z 缺省时为空张量 [0]"
+    },
+    "ddt_bias": {
+      "description": "dt_bias 梯度, shape (H,) float32"
+    },
+    "dinitial_states": {
+      "description": "初始状态梯度, shape (B, H, P, N) float32; 无初始状态时为空张量 [0, H, P, N]"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\n\ndef run(x, dt, A, B, C, D, z, dt_bias, initial_states,\n        dout, dfinal_states,\n        chunk_size, dt_softplus, dt_limit_lo, dt_limit_hi):\n    device = x.device\n    Bsz, T, H, P = x.shape\n    G, N = B.shape[2], B.shape[3]\n    R = H // G\n\n    xf = x.float()\n    Bh = B.float().repeat_interleave(R, dim=2)\n    Ch = C.float().repeat_interleave(R, dim=2)\n    has_z = z.shape[0] > 0\n    has_init = initial_states.shape[0] > 0\n    has_dD = D.numel() > 0\n    Af = A.float()\n\n    raw = dt.float() + dt_bias.float()\n    sp = F.softplus(raw) if dt_softplus else raw\n    dtr = sp.clamp(dt_limit_lo, dt_limit_hi)\n    a = (dtr * Af).exp()\n\n    Df = D.float() if has_dD else None\n    Dv = (Df.view(1, H, 1) if Df.dim() == 1\n          else Df.view(1, H, P)) if has_dD else None\n\n    S = (initial_states.float().clone() if has_init\n         else torch.zeros(Bsz, H, P, N, device=device))\n    S_all = torch.empty(T, Bsz, H, P, N, device=device)\n    y_all = torch.empty(Bsz, T, H, P, device=device)\n    for t in range(T):\n        S = (a[:, t].unsqueeze(-1).unsqueeze(-1) * S\n             + (dtr[:, t].unsqueeze(-1).unsqueeze(-1)\n                * xf[:, t].unsqueeze(-1)) * Bh[:, t].unsqueeze(-2))\n        S_all[t] = S\n        y_all[:, t] = (S * Ch[:, t].unsqueeze(-2)).sum(-1)\n    if has_dD:\n        y_all = y_all + xf * Dv.unsqueeze(0)\n\n    if has_z:\n        zf = z.float()\n        sig = torch.sigmoid(zf)\n        sil = zf * sig\n        dsil = sig * (1.0 + zf * (1.0 - sig))\n    else:\n        sil = None\n        dsil = None\n\n    S0 = (initial_states.float() if has_init\n          else torch.zeros(Bsz, H, P, N, device=device))\n\n    dof = dout.float()\n    dxf = torch.zeros_like(xf)\n    dBh = torch.zeros_like(Bh)\n    dCh = torch.zeros_like(Ch)\n    ddtp = torch.zeros_like(dtr)\n    dAf = torch.zeros_like(Af)\n    dDf = torch.zeros_like(Df) if has_dD else None\n    dzf = (torch.zeros(Bsz, T, H, P, device=device)\n           if has_z else None)\n    dS = (dfinal_states.float().clone() if dfinal_states.shape[0] > 0\n          else torch.zeros(Bsz, H, P, N, device=device))\n\n    for t in reversed(range(T)):\n        dy = dof[:, t] * sil[:, t] if has_z else dof[:, t]\n        if has_z:\n            dzf[:, t] = dof[:, t] * y_all[:, t] * dsil[:, t]\n        S_t = S_all[t]\n        dCh[:, t] = (S_t * dy.unsqueeze(-1)).sum(-2)\n        dS = dS + dy.unsqueeze(-1) * Ch[:, t].unsqueeze(-2)\n        if has_dD:\n            acc = dy * xf[:, t]\n            dDf += acc.sum((0, 2)) if Df.dim() == 1 else acc.sum(0)\n            dxf[:, t] = Dv * dy\n        dxf[:, t] += dtr[:, t].unsqueeze(-1) * (dS * Bh[:, t].unsqueeze(-2)).sum(-1)\n        dBh[:, t] = dtr[:, t].unsqueeze(-1) * (dS * xf[:, t].unsqueeze(-1)).sum(-2)\n        ddtp[:, t] += (dS * (xf[:, t].unsqueeze(-1)\n                             * Bh[:, t].unsqueeze(-2))).sum((-1, -2))\n        S_prev = S_all[t - 1] if t > 0 else S0\n        ddA = a[:, t] * (dS * S_prev).sum((-1, -2))\n        dAf += (ddA * dtr[:, t]).sum(0)\n        ddtp[:, t] += ddA * Af\n        dS = a[:, t].unsqueeze(-1).unsqueeze(-1) * dS\n    dinitial = dS\n\n    unclamped = (sp >= dt_limit_lo) & (sp <= dt_limit_hi)\n    draw = ddtp * unclamped\n    if dt_softplus:\n        draw = draw * torch.where(raw <= 20.0, torch.sigmoid(raw),\n                                  torch.ones_like(raw))\n    ddt_bias = draw.sum((0, 1))\n\n    dB = dBh.view(Bsz, T, G, R, N).sum(3).to(B.dtype)\n    dC = dCh.view(Bsz, T, G, R, N).sum(3).to(C.dtype)\n\n    dz_out = dzf.to(z.dtype) if has_z else torch.empty(0, device=device)\n    dinit_out = dinitial if has_init else torch.empty(0, H, P, N, device=device)\n    return (dxf.to(x.dtype), draw.to(dt.dtype), dAf, dB, dC,\n            dDf if has_dD else torch.empty(0, device=device),\n            dz_out, ddt_bias, dinit_out)\n",
+  "description": "Mamba-2 SSD chunk-scan 反向标杆。对标 state-spaces/mamba @ main 的 _mamba_chunk_scan_combined_bwd (mamba_ssm/ops/triton/ssd_combined.py:397, 由 MambaChunkScanCombinedFn.backward :596 调用), 返回 (dx, ddt, dA, dB, dC, dD, dz, ddt_bias, dinitial_states)。前向数学定义见 Mamba2Fwd。\n反向 (逐 token 精确伴随, dS 从 dfinal_states 初始化, 逆序传播; 记 a_t = exp(A_h * dt'_t), W_t = dt'_t * x_t ⊗ B_t):\n    dy    = dout_t * silu(z_t)\n    dz_t  = dout_t * y_t * silu'(z_t)     silu'(z)=σ(z)(1+z(1-σ(z)))\n    dC_t  = S_t^T · dy ; dS += dy ⊗ C_t   (读出路径)\n    dD   += dy ⊙ x_t ; dx_t = D ⊙ dy      (D 跳连路径)\n    dx_t += dt'_t * (dS · B_t)            (写入路径)\n    dB_t  = dt'_t * (dS^T · x_t)\n    ddt'_t += sum_{p,n} dS * x_t ⊗ B_t\n    ddA_t = a_t * sum(dS ⊙ S_{t-1})\n    dA_h += ddA_t * dt'_t ; ddt'_t += ddA_t * A_h\n    dS   <- a_t ⊙ dS\n    dinitial_states = 递推结束时的 dS\ndt 预处理链反传: d(raw) = ddt' * [lo <= sp <= hi] * (σ(raw) 若 raw<=20 否则 1), sp = softplus(raw), raw = dt + dt_bias; ddt = d(raw), ddt_bias[h] = sum_{b,t} d(raw)。\nreference 在 run() 内先重算前向 (逐步状态 S_t、输出 y、a/dtr/raw/sp、silu(z) 及其导数), 再执行纯反向, solution 同样只接收叶子输入, 需自行重算前向中间量。\n输入约束同 Mamba2Fwd: A ∈ uniform(-16, -1), dt_bias ∈ uniform(-5, -1)。"
+}

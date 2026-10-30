@@ -1,0 +1,7609 @@
+{
+ "op_name": "30_ChunkGatedDeltaRule",
+ "source": "优化版 AscendC 核（覆盖原归档；来源 output/ChunkGatedDeltaRule_benchmark_evo/ChunkGatedDeltaRule_evo_20260911_200054/round_3/parallel_1 = lingxi-evo 3 轮 3 并行进化冠军 n1_pd1_s2，kernel 工程 kernel_asc/ md5 见 kernel 树同名目录 README）。全量 50 case，warmup=3, repeats=1, seed=0, device=10，msprof quick-batch Task_Duration（按 stream 归组、剔除 PROFILING_ENABLE/DISABLE/TASK_TIMEOUT_SET 等 meta 行）。本核每次 forward 只发 1 个 device task（基线 ~20+），故 device 侧耗时即核耗时。基线（ops-ref chunk_gated_delta_rule aclnn 核 + host 侧 torch 预处理）同卡同口径全量 geomean 195.0875us -> 优化版 32.6836us = 5.9690x（门槛 10x = 19.5us，未达成）。交叉复核：冠军自测同一 .so 32.1869us（6.06x）、删 build 干净重建后重测 32.83us、独立同 .so 全量重测 32.6836us（本条目数值）——三者离散 <2%，在本机噪声地板 ~5% 内。 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 585.463083,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 5,
+   "ratio": 0.1
+  },
+  "100-500us": {
+   "count": 11,
+   "ratio": 0.22
+  },
+  "500-1000us": {
+   "count": 19,
+   "ratio": 0.38
+  },
+  ">1000us": {
+   "count": 15,
+   "ratio": 0.3
+  }
+ },
+ "max_mfu_pct": 0.085897,
+ "sweet_spot_shape": {
+  "case_idx": 27,
+  "inputs_shape": [
+   {
+    "name": "q",
+    "shape": [
+     480,
+     256,
+     1,
+     16
+    ]
+   },
+   {
+    "name": "k",
+    "shape": [
+     480,
+     256,
+     1,
+     16
+    ]
+   },
+   {
+    "name": "v",
+    "shape": [
+     480,
+     256,
+     1,
+     16
+    ]
+   },
+   {
+    "name": "g",
+    "shape": [
+     480,
+     256,
+     1
+    ]
+   },
+   {
+    "name": "beta",
+    "shape": [
+     480,
+     256,
+     1
+    ]
+   },
+   {
+    "name": "A_log",
+    "shape": [
+     1
+    ]
+   },
+   {
+    "name": "dt_bias",
+    "shape": [
+     1
+    ]
+   },
+   {
+    "name": "initial_state",
+    "shape": [
+     480,
+     1,
+     16,
+     16
+    ]
+   }
+  ],
+  "impl_latency_us": 1241.804,
+  "mfu_pct": 0.085897
+ },
+ "peak_tflops": 176.947,
+ "compute_unit": "AIV_ONLY（单核纯 AIV；不使用 cube）",
+ "peak_note": "本文件记录【优化版】核：已完全替换 ops-ref 的 aclnn 全流水——原主核 138us/case 固定开销 + ~51us/case host 侧 torch 预处理（Cast / LpNormV2 / Div / RepeatInterleave / Transpose / ZerosLike / Softplus / Exp / Neg / Sigmoid / Mul / Add），改为自包含单核 npu::cgdr_fwd：q/k l2-norm、gate 激活（softplus→exp→neg）、beta 激活（sigmoid，可选 ×2）全部移入核内，host 侧零 device op，每 forward 1 个 device task。benchmark 语义（model.py 18 参签名）未变。核耗时 195.0875us -> 32.6836us = 5.9690x。| 分母口径（沿用本仓 2026-09-10 修正，勿回退）：按「计算 dtype」选峰值。本核 op_kernel 全程 LocalTensor<float> 计算（fp32/fp16/bf16 三入口仅 I/O dtype 不同）→ 计算 dtype = fp32 → peak_tflops = 176.947 TF（fp32 cube 峰值）；原归档条目按 I/O dtype 353.8944 归一属错误口径。| 本核【不使用 cube】：cube 峰值只是跨算子统一参照系，不是物理天花板；真实效率分母 = AIV(Vector) FFMA 峰值 22.1184 TF，mfu_pct_aiv_ffma = mfu_pct × 8 即该口径值。",
+ "aiv_vector_peak_tflops": {
+  "48_core_ffma": 22.1184,
+  "basis": "n_aiv × 128 lanes × 2 FLOP/FMA × 1.8GHz (Ascend910B2C: vector_core_cnt=48, vec_calc_size=128, cube_freq=1800MHz)"
+ },
+ "mfu_pct_aiv_ffma": 0.926815,
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      64,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      64,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      64,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      64,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      64,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 37.96,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 3932160.0,
+   "mfu_pct": 0.029271
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      256,
+      2,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      2,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 78.921,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 655360.0,
+   "mfu_pct": 0.002346
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 40.27,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 163840.0,
+   "mfu_pct": 0.00115
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      64,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      64,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      64,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      64,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      64,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838835
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 62.441,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 5242880.0,
+   "mfu_pct": 0.023726
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      192,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      192,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      192,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      192,
+      3
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      192,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3,
+      128,
+      32
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.1767767
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 88.681,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 3932160.0,
+   "mfu_pct": 0.012529
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      48,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 163.403,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 31457280.0,
+   "mfu_pct": 0.054399
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      768,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      768,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      768,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      768,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      768,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      1,
+      128,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 248.804,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 11796480.0,
+   "mfu_pct": 0.013397
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 166.973,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 31457280.0,
+   "mfu_pct": 0.053235
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      144,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      144,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      144,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      144,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      144,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      144,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 242.424,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 47185920.0,
+   "mfu_pct": 0.055
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 319.876,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 62914560.0,
+   "mfu_pct": 0.055577
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      96,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 304.296,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 62914560.0,
+   "mfu_pct": 0.058423
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 398.647,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 78643200.0,
+   "mfu_pct": 0.055744
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 456.889,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 94371840.0,
+   "mfu_pct": 0.058366
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 601.432,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 125829120.0,
+   "mfu_pct": 0.059118
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 255.905,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 47185920.0,
+   "mfu_pct": 0.052103
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 602.822,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 125829120.0,
+   "mfu_pct": 0.058982
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 689.053,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 141557760.0,
+   "mfu_pct": 0.058051
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 746.474,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 157286400.0,
+   "mfu_pct": 0.059539
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 685.683,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 133693440.0,
+   "mfu_pct": 0.055095
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 686.153,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 133693440.0,
+   "mfu_pct": 0.055057
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      528,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      528,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      528,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      528,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      528,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      528,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 837.116,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 173015040.0,
+   "mfu_pct": 0.058402
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 888.647,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 188743680.0,
+   "mfu_pct": 0.060016
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 953.749,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 204472320.0,
+   "mfu_pct": 0.06058
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      816,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 719.094,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 133693440.0,
+   "mfu_pct": 0.052535
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 495.869,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 94371840.0,
+   "mfu_pct": 0.053778
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      384,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      384,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      384,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      384,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      384,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      384,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.25
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1001.03,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 301989888.0,
+   "mfu_pct": 0.085246
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      288,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      288,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      288,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      288,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      288,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.25
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 758.195,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 226492416.0,
+   "mfu_pct": 0.084411
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      480,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      480,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      480,
+      256,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      480,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      480,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.25
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1241.804,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 377487360.0,
+   "mfu_pct": 0.085897
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 733.534,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 157286400.0,
+   "mfu_pct": 0.060589
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      432,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1278.615,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 283115520.0,
+   "mfu_pct": 0.062568
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      2,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      192,
+      2,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 634.912,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 62914560.0,
+   "mfu_pct": 0.028
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      2,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      240,
+      2,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 770.395,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 78643200.0,
+   "mfu_pct": 0.028845
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      2,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      256,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      288,
+      2,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 939.338,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 94371840.0,
+   "mfu_pct": 0.028389
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      64,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      64,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      64,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      64,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      64,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 298.795,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 47185920.0,
+   "mfu_pct": 0.044624
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      624,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 528.76,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 102236160.0,
+   "mfu_pct": 0.054635
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      480,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 759.565,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 157286400.0,
+   "mfu_pct": 0.058513
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1163.103,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 251658240.0,
+   "mfu_pct": 0.061139
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 646.562,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 125829120.0,
+   "mfu_pct": 0.054992
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      864,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      864,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      864,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      864,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      864,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      864,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 1336.966,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 283115520.0,
+   "mfu_pct": 0.059837
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1440.778,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 314572800.0,
+   "mfu_pct": 0.061695
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      512,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      512,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      960,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2749.984,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 629145600.0,
+   "mfu_pct": 0.064647
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1056,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1056,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1056,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1056,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1056,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1056,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1576.551,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 346030080.0,
+   "mfu_pct": 0.06202
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1152,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1152,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1152,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1152,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1152,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1152,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1718.164,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 377487360.0,
+   "mfu_pct": 0.062082
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      912,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      912,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      912,
+      128,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      912,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      912,
+      128,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      912,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 800.265,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 149422080.0,
+   "mfu_pct": 0.05276
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1248,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1248,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1248,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1248,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1248,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1248,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1847.686,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 408944640.0,
+   "mfu_pct": 0.062541
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1344,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1344,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1344,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1344,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1344,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1344,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1982.879,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 440401920.0,
+   "mfu_pct": 0.062759
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1440,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1440,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1440,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1440,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1440,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1440,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2128.172,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 471859200.0,
+   "mfu_pct": 0.062652
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1536,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1536,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1536,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1536,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1536,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1536,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2248.704,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 503316480.0,
+   "mfu_pct": 0.063246
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      256,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      768,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1165.883,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 251658240.0,
+   "mfu_pct": 0.060993
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      768,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      768,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      768,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      768,
+      1
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      768,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      576,
+      1,
+      8,
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.35355339
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "use_gate_in_kernel",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_bias",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_initial_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "output_final_state",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_qk_l2norm",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "use_beta_sigmoid",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "allow_neg_eigval",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "state_v_first",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2489.449,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 566231040.0,
+   "mfu_pct": 0.064271
+  }
+ ],
+ "latency_scope": "device 侧核耗时 = 单个 forward 内 device 侧全部 device task 时长之和（msprof Task_Duration，已剔除 profiling meta 行；不含 host 侧 Python/dispatch）。基线与本条目同口径 ⇒ 比值可比。注意用例为微 shape（B≤3、T≤97、H/HV≤4），耗时几乎 100% 是固定开销。",
+ "data_status": "CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 11, 19, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。 | 前一状态: CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 11, 19, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。 | 前一状态: VALID_REMEASURED — 全量 50 case，50/50 精度通过（vs model.py fp32 参考 worst out absmax 2.441e-04，final_state 0 失败；mean-rel ~1e-6，优于基线的 bf16 ops-ref 核 ~5e-3），无 case 被跳过。复现：删 build 后从归档源码干净重建可复现（见 kernel 树 validation/）。10x 不可达依据（实测非估算）：评测口径硬地板 5.89us（进核即 return 的探针核），其上 prologue ~6.7us；且成本是指令条数 bound（asc ≈ 10.4 + 0.57·T），非 tile 宽度可解。"
+}

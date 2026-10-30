@@ -1,0 +1,4071 @@
+{
+ "op_name": "41_NsaTopkSparseAttention",
+ "source": "910b2 triton",
+ "total_cases": 50,
+ "accuracy_passed_cases": 20,
+ "impl_latency_geomean_us": 256005.4507,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8192,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8192,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8192,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      8192,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      8192
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 8192
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 14219.4962,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8704,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8704,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8704,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      8704,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      8704
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 8704
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 30878.5808,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      9216,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      9216,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      9216,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      9216,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      9216
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 9216
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 99132.9164,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      9728,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      9728,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      9728,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      9728,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      9728
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 9728
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 28776.2952,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      10240,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      10240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      10240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      10240,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      10240
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 10240
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 65798.199,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      10752,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      10752,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      10752,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      10752,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      10752
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 10752
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 27200.1832,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11264,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11264,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11264,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      11264,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      11264
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 11264
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 19595.9074,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11648,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11648,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11648,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      11648,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      11648
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 11648
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 100444.507,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      24320,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      24320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      24320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      24320,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      12160,
+      24320
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 12160
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 293087.9764,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.003906,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      22784,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      22784,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      22784,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      22784,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      12672,
+      22784
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 12672
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 95062.2554,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.003906,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      93952,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      93952,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      93952,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      93952,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      13056,
+      23424,
+      34048,
+      45952,
+      59136,
+      69888,
+      81152,
+      93952
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 13184
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 519477.4748,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 20.72 GiB (NPU 0; 60.95 GiB total capacity; 44.35 GiB already allocated; 44.35 GiB current active; 13.56 GiB free; 44.99 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      97664,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      97664,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      97664,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      97664,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      13504,
+      24320,
+      35328,
+      47680,
+      61376,
+      72576,
+      84352,
+      97664
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 13696
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 594995.5356,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 22.36 GiB (NPU 0; 60.95 GiB total capacity; 48.03 GiB already allocated; 48.03 GiB current active; 11.12 GiB free; 48.11 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      101248,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      101248,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      101248,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      101248,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      13952,
+      25216,
+      36608,
+      49408,
+      63616,
+      75264,
+      87424,
+      101248
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 14208
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 373496.4704,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 48.13 GiB (NPU 0; 60.95 GiB total capacity; 51.59 GiB already allocated; 51.59 GiB current active; 6.80 GiB free; 52.19 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try set"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      28224,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      28224,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      28224,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      28224,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      14720,
+      28224
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 14720
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 372279.57,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.003906,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      121856,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      121856,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      121856,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      121856,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      15232,
+      30464,
+      45696,
+      60928,
+      76160,
+      91392,
+      106624,
+      121856
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 15232
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 2594911.8786,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 110.63 GiB (NPU 0; 60.95 GiB total capacity; 8.02 GiB already allocated; 8.02 GiB current active; 50.95 GiB free; 8.08 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try sett"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      60288,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      60288,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      60288,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      60288,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      15744,
+      30208,
+      45952,
+      60288
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 15744
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 176924.7428,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 29.55 GiB (NPU 0; 60.95 GiB total capacity; 31.93 GiB already allocated; 31.93 GiB current active; 26.52 GiB free; 32.26 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      31104,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      31104,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      31104,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      31104,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      16256,
+      31104
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 502172.5812,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 31.50 GiB (NPU 0; 60.95 GiB total capacity; 34.31 GiB already allocated; 34.31 GiB current active; 25.35 GiB free; 35.07 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16768,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16768,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16768,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      16768,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      16768
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16768
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 156560.4002,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      60992,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      60992,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      60992,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      60992,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      17280,
+      31104,
+      45184,
+      60992
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 17280
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 306329.0444,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 71.19 GiB (NPU 0; 60.95 GiB total capacity; 5.25 GiB already allocated; 5.25 GiB current active; 53.09 GiB free; 7.44 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      70656,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      70656,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      70656,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      70656,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      17664,
+      35328,
+      52992,
+      70656
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 17664
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 1509697.9076,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 37.20 GiB (NPU 0; 60.95 GiB total capacity; 42.36 GiB already allocated; 42.36 GiB current active; 17.63 GiB free; 42.90 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      18176,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      18176,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      18176,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      18176,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      18176
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 18176
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 41493.0688,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      135360,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      135360,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      135360,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      135360,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      17376,
+      33312,
+      50688,
+      66496,
+      84128,
+      101632,
+      120320,
+      135360
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 18688
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 469639.5152,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 83.27 GiB (NPU 0; 60.95 GiB total capacity; 7.49 GiB already allocated; 7.49 GiB current active; 50.79 GiB free; 9.68 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      73472,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      73472,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      73472,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      73472,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      19200,
+      36800,
+      56000,
+      73472
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 19200
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 672762.0612,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 87.89 GiB (NPU 0; 60.95 GiB total capacity; 12.68 GiB already allocated; 12.68 GiB current active; 42.46 GiB free; 18.07 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      72576,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      72576,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      72576,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      72576,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      17728,
+      36096,
+      55808,
+      72576
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 19712
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 251185.4546,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 46.32 GiB (NPU 0; 60.95 GiB total capacity; 50.32 GiB already allocated; 50.32 GiB current active; 9.75 GiB free; 50.75 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try set"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      40448,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      40448,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      40448,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      40448,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      20224,
+      40448
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 20224
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 172478.0858,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 24.38 GiB (NPU 0; 60.95 GiB total capacity; 27.24 GiB already allocated; 27.24 GiB current active; 9.37 GiB free; 51.15 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try set"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      82944,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      82944,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      82944,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      82944,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      20736,
+      41472,
+      62208,
+      82944
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 20736
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 486346.4204,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 51.26 GiB (NPU 0; 60.95 GiB total capacity; 58.56 GiB already allocated; 58.56 GiB current active; 1.59 GiB free; 58.93 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try set"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      42496,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      42496,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      42496,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      42496,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      21248,
+      42496
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 21248
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 702690.7276,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 53.82 GiB (NPU 0; 60.95 GiB total capacity; 8.51 GiB already allocated; 8.51 GiB current active; 51.83 GiB free; 8.63 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      158240,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      158240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      158240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      158240,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      19552,
+      39808,
+      61568,
+      80096,
+      100448,
+      119296,
+      139712,
+      158240
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 21760
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 361536.759,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 56.45 GiB (NPU 0; 60.95 GiB total capacity; 8.23 GiB already allocated; 8.23 GiB current active; 48.84 GiB free; 11.69 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try sett"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      104832,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      104832,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      104832,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      104832,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      13440,
+      25728,
+      39168,
+      51456,
+      65152,
+      78720,
+      93184,
+      104832
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 14464
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 1550439.7422,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 99.76 GiB (NPU 0; 60.95 GiB total capacity; 13.60 GiB already allocated; 13.60 GiB current active; 32.96 GiB free; 19.87 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      22784,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      22784,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      22784,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      22784,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      22784
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 22784
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 79691.0562,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      23296,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      23296,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      23296,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      23296,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      23296
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 23296
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 127380.5648,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      23680,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      23680,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      23680,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      23680,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      23680
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 23680
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 111400.798,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      24192,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      24192,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      24192,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      24192,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      24192
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 24192
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 83076.9358,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      24704,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      24704,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      24704,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      24704,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      24704
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 24704
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 539171.7926,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 36.38 GiB (NPU 0; 60.95 GiB total capacity; 42.03 GiB already allocated; 42.03 GiB current active; 18.05 GiB free; 42.45 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      50432,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      50432,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      50432,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      50432,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      25216,
+      50432
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 25216
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 416076.7412,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 75.80 GiB (NPU 0; 60.95 GiB total capacity; 6.72 GiB already allocated; 6.72 GiB current active; 53.76 GiB free; 6.77 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      95104,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      95104,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      95104,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      95104,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      23776,
+      47584,
+      69376,
+      95104
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 25728
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 330671.7624,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 78.91 GiB (NPU 0; 60.95 GiB total capacity; 6.93 GiB already allocated; 6.93 GiB current active; 51.19 GiB free; 9.34 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      209920,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      209920,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      209920,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      209920,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      26240,
+      52480,
+      78720,
+      104960,
+      131200,
+      157440,
+      183680,
+      209920
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 26240
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 894185.1822,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 82.08 GiB (NPU 0; 60.95 GiB total capacity; 11.71 GiB already allocated; 11.71 GiB current active; 48.60 GiB free; 11.93 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      195776,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      195776,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      195776,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      195776,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      24064,
+      48192,
+      70272,
+      96320,
+      118208,
+      144896,
+      169024,
+      195776
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 26752
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 574855.3458,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 85.32 GiB (NPU 0; 60.95 GiB total capacity; 12.17 GiB already allocated; 12.17 GiB current active; 48.20 GiB free; 12.32 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27264,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27264,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27264,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      27264,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      27264
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 27264
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 94888.2478,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27776,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27776,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27776,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      27776,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      27776
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 27776
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 165573.3412,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      28288,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      28288,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      28288,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      28288,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      28288
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 28288
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 423782.0752,
+   "latency_band": ">1000us",
+   "max_abs_err": 0.000488,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      28800,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      28800,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      28800,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      28800,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      28800
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 28800
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 119218.446,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 24.72 GiB (NPU 0; 60.95 GiB total capacity; 28.09 GiB already allocated; 28.09 GiB current active; 8.10 GiB free; 52.28 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try set"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      29312,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      29312,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      29312,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      29312,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      29312
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 29312
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 237481.9208,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 25.61 GiB (NPU 0; 60.95 GiB total capacity; 29.08 GiB already allocated; 29.08 GiB current active; 6.08 GiB free; 54.37 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try set"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      118784,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      118784,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      118784,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      118784,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      29696,
+      59392,
+      89088,
+      118784
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 29696
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 412615.5002,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 52.56 GiB (NPU 0; 60.95 GiB total capacity; 8.35 GiB already allocated; 8.35 GiB current active; 52.00 GiB free; 8.48 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      30208,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      30208,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      30208,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      30208,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      30208
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 30208
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 545845.9054,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 54.39 GiB (NPU 0; 60.95 GiB total capacity; 59.25 GiB already allocated; 59.25 GiB current active; 942.14 MiB free; 59.63 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try s"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      30720,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      30720,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      30720,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      30720,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      30720
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 30720
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 984144.1196,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 56.25 GiB (NPU 0; 60.95 GiB total capacity; 8.43 GiB already allocated; 8.43 GiB current active; 51.65 GiB free; 8.84 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setti"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      101856,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      101856,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      101856,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      101856,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      13088,
+      25088,
+      38176,
+      50080,
+      63328,
+      76512,
+      90560,
+      101856
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 14048
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 936152.379,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 94.10 GiB (NPU 0; 60.95 GiB total capacity; 13.82 GiB already allocated; 13.82 GiB current active; 32.37 GiB free; 19.32 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try se"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      165120,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      165120,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      165120,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      165120,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      20640,
+      41280,
+      61920,
+      82560,
+      103200,
+      123840,
+      144480,
+      165120
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 20640
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 1155007.0808,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 101.57 GiB (NPU 0; 60.95 GiB total capacity; 15.83 GiB already allocated; 15.83 GiB current active; 35.69 GiB free; 15.99 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try s"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64512,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64512,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64512,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      64512,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      32256,
+      64512
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 424380.4196,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 124.03 GiB (NPU 0; 60.95 GiB total capacity; 9.72 GiB already allocated; 9.72 GiB current active; 48.33 GiB free; 9.96 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try sett"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      131072,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      32768,
+      65536,
+      98304,
+      131072
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32768
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 3922196.7932,
+   "latency_band": ">1000us",
+   "accuracy": "fail",
+   "error": "acc: RuntimeError: NPU out of memory. Tried to allocate 128.00 GiB (NPU 0; 60.95 GiB total capacity; 19.11 GiB already allocated; 19.11 GiB current active; 39.24 GiB free; 19.54 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try s"
+  }
+ ]
+}

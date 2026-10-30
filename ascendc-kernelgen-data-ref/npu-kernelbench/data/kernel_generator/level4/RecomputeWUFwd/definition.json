@@ -1,0 +1,44 @@
+{
+  "name": "RecomputeWUFwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "k": {
+      "description": "Input k"
+    },
+    "v": {
+      "description": "Input v"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "A": {
+      "description": "Input A"
+    },
+    "gk": {
+      "description": "Input gk"
+    },
+    "q": {
+      "description": "Input q"
+    },
+    "cu_seqlens": {
+      "description": "Input cu_seqlens"
+    }
+  },
+  "outputs": {
+    "w": {
+      "description": "Output w"
+    },
+    "u": {
+      "description": "Output u"
+    },
+    "qg": {
+      "description": "Output qg"
+    },
+    "kg": {
+      "description": "Output kg"
+    }
+  },
+  "reference": "import torch\ndef run(k, v, beta, A, gk, q=None, cu_seqlens=None):\n    B, T, H, K = k.shape\n    HV, V = v.shape[2], v.shape[-1]\n    BT = A.shape[-1]\n    G = HV // H\n    k_f, v_f, g_f = k.float(), v.float(), gk.float()\n    b_f, A_f = beta.float(), A.float()\n    q_f = q.float() if q is not None else None\n    k_flat = k_f.reshape(B * T, H, K)\n    v_flat = v_f.reshape(B * T, HV, V)\n    g_flat = g_f.reshape(B * T, HV, K)\n    b_flat = b_f.reshape(B * T, HV)\n    A_flat = A_f.reshape(B * T, HV, BT)\n    q_flat = q_f.reshape(B * T, H, K) if q_f is not None else None\n    w = torch.zeros(B * T, HV, K, dtype=torch.float32, device=k.device)\n    u = torch.zeros(B * T, HV, V, dtype=torch.float32, device=k.device)\n    kg = torch.zeros(B * T, HV, K, dtype=torch.float32, device=k.device)\n    qg = torch.zeros(B * T, HV, K, dtype=torch.float32, device=k.device) \\\n        if q is not None else None\n    if cu_seqlens is None:\n        bounds = [(b * T, (b + 1) * T) for b in range(B)]\n    else:\n        cu = cu_seqlens.tolist()\n        bounds = [(cu[n], cu[n + 1]) for n in range(len(cu) - 1)]\n    head_map = torch.arange(HV, device=k.device) // G\n    for (t0, t1) in bounds:\n        c = t0\n        while c < t1:\n            e = min(c + BT, t1)\n            L = e - c\n            k_c = k_flat[c:e][:, head_map]\n            v_c = v_flat[c:e]\n            g_c = g_flat[c:e]\n            b_c = b_flat[c:e]\n            A_c = A_flat[c:e, :, :L]\n            kb = k_c * b_c[..., None] * torch.exp2(g_c)\n            vb = v_c * b_c[..., None]\n            w[c:e] = torch.einsum('ths,shd->thd', A_c, kb)\n            u[c:e] = torch.einsum('ths,shv->thv', A_c, vb)\n            kg[c:e] = k_c * torch.exp2(g_c[L - 1:L] - g_c)\n            if qg is not None:\n                q_c = q_flat[c:e][:, head_map]\n                qg[c:e] = q_c * torch.exp2(g_c)\n            c = e\n    dt = k.dtype\n    w = w.reshape(B, T, HV, K).to(dt)\n    u = u.reshape(B, T, HV, V).to(v.dtype)\n    kg = kg.reshape(B, T, HV, K).to(dt)\n    if qg is not None:\n        qg = qg.reshape(B, T, HV, K).to(dt)\n    return w, u, qg, kg",
+  "description": "Model that performs KDA chunked forward WY-representation recomputation.\n    fla recompute_w_u_fwd_kernel (KDA 变体, fla/ops/kda/wy_fast.py:\n    recompute_w_u_fwd_kda_kernel; Ascend NPU 变体:\n    fla/ops/kda/backends/triton_ascend/wy_fast.py:\n    recompute_w_u_fwd_kda_kernel_npu, 两者数学语义完全一致):\n        recompute_w_u_fwd(k, v, beta, A, gk, q, cu_seqlens) -> (w, u, qg, kg)\n\n    torch 原生小算子拼接参考实现(与 Triton kernel 数学语义一致):\n    每条序列内按 BT (= A.shape[-1], 即 chunk_size) 分块, 支持 GQA\n    (i_h = i_hv // (HV // H), k/q 按 H 头取, 其余按 HV 头), 逐通道门控 gk\n    为 log2 域 chunk 内 inclusive cumsum (上游 chunk_local_cumsum 产物)。\n    A [B, T, HV, BT] 为块内单位下三角逆矩阵 (上游 chunk_kda_fwd_intra 的\n    Akk = (I + tril(Akk_raw, -1))^{-1} 输出), 每个块 (长度 L <= BT) 内:\n        w  = A @ (k * beta * 2^gk)            # WY 表示 w\n        u  = A @ (v * beta)                   # WY 表示 u\n        kg = k * 2^(gk[last] - gk)            # 衰减到块末, 供块间状态更新\n        qg = q * 2^gk                         # 仅 q 非 None 时输出 (STORE_QG)\n    注:\n      1. 尾块 L < BT 时仅前 L 列 A 有效 (kernel boundary_check 零填充等价);\n         kg 的 last 为块内最后一个有效 token (min(c+BT, eos) - 1);\n      2. 内部 fp32 计算, w/kg/qg 回铸 k.dtype, u 回铸 v.dtype;\n      3. q/k 输入必须是 L2 归一化后的向量(真实 KDA 场景层内先做 qk-norm,\n         与 A 的生成自洽);\n      4. 支持 cu_seqlens varlen ([1, total_T, ...] 布局)。"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "Interpolate",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input tensor of shape (N, C, H, W) or (N, C, D, H, W). Supports float32, float16, bfloat16."
+    },
+    "size": {
+      "description": "Optional list[int], output spatial size (e.g. [512, 512]). Mutually exclusive with scale_factor."
+    },
+    "scale_factor": {
+      "description": "Optional float or list[float], multiplier for spatial size. Mutually exclusive with size.",
+      "dtype": "float32",
+      "shape": []
+    },
+    "mode": {
+      "description": "str, interpolation algorithm: 'nearest', 'bilinear', 'bicubic', 'area', 'linear', 'trilinear'. Default 'nearest'."
+    },
+    "align_corners": {
+      "description": "Optional bool, how to align corner pixels. Only effective for linear/bilinear/bicubic/trilinear modes."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Interpolated tensor, same dtype as x, resized according to size or scale_factor."
+    }
+  },
+  "reference": "import torch\n\ndef run(x, size=None, scale_factor=None, mode='nearest', align_corners=None):\n    return torch.nn.functional.interpolate(x, size=size, scale_factor=scale_factor, mode=mode, align_corners=align_corners)\n",
+  "description": "Interpolate: Down/up samples the input tensor.\n\ntorch.nn.functional.interpolate = interpolate(input, size=None, scale_factor=None, mode='nearest', align_corners=None, recompute_scale_factor=None, antialias=False) -> Tensor\n\nTensor interpolated to either the given size or the given scale_factor. The algorithm used for interpolation is determined by mode.\n\nCurrently temporal, spatial and volumetric sampling are supported, i.e. expected inputs are 3-D, 4-D or 5-D in shape. The input dimensions are interpreted in the form: mini-batch x channels x [optional depth] x [optional height] x width.\n\nThe modes available for resizing are: 'nearest', 'linear' (3D-only), 'bilinear', 'bicubic' (4D-only), 'trilinear' (5D-only), 'lanczos' (4D-only, CPU only), 'area', 'nearest-exact'.\n\nArgs:\n    input (Tensor): the input tensor.\n    size (int or Tuple[int]): output spatial size.\n    scale_factor (float or Tuple[float]): multiplier for spatial size.\n    mode (str): algorithm used for upsampling. Default: 'nearest'.\n    align_corners (bool, optional): If True, input and output are aligned by center points of corner pixels. If False, aligned by corner points. Default: None (treated as False for linear modes).\n    recompute_scale_factor (bool, optional): recompute scale_factor for use in interpolation calculation.\n    antialias (bool, optional): flag to apply anti-aliasing. Default: False.\n\nReturns: Tensor, same dtype, resized."
+}

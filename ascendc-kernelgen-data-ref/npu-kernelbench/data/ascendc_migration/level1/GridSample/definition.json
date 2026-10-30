@@ -1,0 +1,73 @@
+{
+  "name": "GridSample",
+  "op_type": "sampling",
+  "axes": {},
+  "inputs": {
+    "input": {
+      "description": "shape varies; supports float16"
+    },
+    "grid": {
+      "description": "shape varies; supports float16"
+    },
+    "mode": {
+      "description": "str"
+    },
+    "padding_mode": {
+      "description": "str"
+    },
+    "align_corners": {
+      "description": "bool, default=True"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor, shape (N,C,H_out,W_out) for 4D or (N,C,D_out,H_out,W_out) for 5D"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(input, grid, mode='bilinear', padding_mode='zeros', align_corners=False):\n    return F.grid_sample(input, grid, mode=mode, padding_mode=padding_mode, align_corners=align_corners)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-cv.git",
+  "kernel_reference": {
+    "op_graph": [
+      "image/grid_sample/op_graph/grid_sample_proto.h"
+    ],
+    "op_host": [
+      "image/grid_sample/op_host/grid_sample_def.cpp",
+      "image/grid_sample/op_host/grid_sample_infershape.cpp",
+      "image/grid_sample/op_host/grid_sample_tiling.cpp",
+      "image/grid_sample/op_host/grid_sample_tiling.h",
+      "image/grid_sample/op_host/grid_sample_tiling_arch35.cpp",
+      "image/grid_sample/op_host/grid_sample_tiling_arch35.h"
+    ],
+    "op_kernel": [
+      "image/grid_sample/op_kernel/grid_sample.cpp",
+      "image/grid_sample/op_kernel/grid_sample_apt.cpp",
+      "image/grid_sample/op_kernel/grid_sample_common.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_bicubic.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_common.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_fp16_slide_window.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_fp16_slide_window_310b.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_fullLoad.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_fullLoad_310p.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_nearest.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_slide_window.h",
+      "image/grid_sample/op_kernel/grid_sampler_2d_slide_window_310p.h",
+      "image/grid_sample/op_kernel/grid_sampler_3d.h",
+      "image/grid_sample/op_kernel/grid_sampler_3d_common.h",
+      "image/grid_sample/op_kernel/grid_sampler_3d_nearest.h",
+      "image/grid_sample/op_kernel/grid_sampler_3d_portrait.h",
+      "image/grid_sample/op_kernel/arch35/grid_sampler_2d_bilinear_smit.h",
+      "image/grid_sample/op_kernel/arch35/grid_sampler_3d_bilinear_smit.h",
+      "image/grid_sample/op_kernel/arch35/grid_sampler_bilinear_smit_common.h"
+    ],
+    "op_api": [
+      "image/grid_sample/op_api/aclnn_grid_sampler2d.cpp",
+      "image/grid_sample/op_api/aclnn_grid_sampler2d.h",
+      "image/grid_sample/op_api/aclnn_grid_sampler3d.cpp",
+      "image/grid_sample/op_api/aclnn_grid_sampler3d.h",
+      "image/grid_sample/op_api/grid_sample.cpp",
+      "image/grid_sample/op_api/grid_sample.h"
+    ]
+  },
+  "description": "Given an input and a flow-field grid, computes the output using input values and pixel locations from grid. Supports 4D (N,C,H,W) spatial and 5D (N,C,D,H,W) volumetric input. mode: bilinear|nearest|bicubic. padding_mode: zeros|border|reflection. align_corners: bool. Grid values should mostly be in [-1,1]."
+}

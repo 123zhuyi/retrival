@@ -1,0 +1,4509 @@
+{
+ "op_name": "92_FusedRecurrentGatedDeltaRule",
+ "source": "GPU 实测延迟（run_perf_gpu.py, cuda event 端到端, warmup/repeats 见测量记录）：reference_latency_us = torch 参考实现实测；impl_latency_us = GPU Triton 实现 (triton_impl/{op}_triton_gpu_impl.py) 实测。性能基线取 impl_latency_us（逐 case）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "accuracy_approx_cases": 0,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 97860.6,
+   "impl_latency_us": 1232.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      320,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      320,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      320,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 48947.2,
+   "impl_latency_us": 907.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 73503.7,
+   "impl_latency_us": 945.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      160,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      160,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      160,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      2,
+      160,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      2,
+      160,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      2,
+      160,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      160,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 26474.5,
+   "impl_latency_us": 353.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      240,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      240,
+      8
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      240,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      240,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      240,
+      8
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 37254.1,
+   "impl_latency_us": 686.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      80,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      80,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      80,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      80,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      80,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      80,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      80,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      128,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 12725.2,
+   "impl_latency_us": 1370.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      120,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      120,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      120,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      120,
+      4
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      120,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      120,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      120,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 18872.3,
+   "impl_latency_us": 275.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      100,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      100,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      100,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      100,
+      4
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      100,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      100,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      100,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 15808.5,
+   "impl_latency_us": 239.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      320,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      320,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      320,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      320,
+      4
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      320,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      320,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      320,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 49161.2,
+   "impl_latency_us": 611.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      320,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      320,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      320,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      320,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      320,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      320,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      320,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 49065.0,
+   "impl_latency_us": 223.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 30774.3,
+   "impl_latency_us": 157.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 98155.5,
+   "impl_latency_us": 1153.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 98410.5,
+   "impl_latency_us": 1156.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 73415.7,
+   "impl_latency_us": 880.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 193579.0,
+   "impl_latency_us": 696.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 97860.6,
+   "impl_latency_us": 1219.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 194136.1,
+   "impl_latency_us": 736.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 30837.8,
+   "impl_latency_us": 169.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 194602.0,
+   "impl_latency_us": 743.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 97926.1,
+   "impl_latency_us": 1236.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      40960,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      40960,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      40960,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      40960,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      40960,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      40960,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      40960,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 6277156.7,
+   "impl_latency_us": 91815.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 194517.0,
+   "impl_latency_us": 648.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 194889.7,
+   "impl_latency_us": 650.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 73446.4,
+   "impl_latency_us": 817.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 97979.4,
+   "impl_latency_us": 1070.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      480,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      480,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 73284.6,
+   "impl_latency_us": 818.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 30909.4,
+   "impl_latency_us": 164.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      640,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      640,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      640,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 98503.7,
+   "impl_latency_us": 1206.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      1280,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1280,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 195105.8,
+   "impl_latency_us": 736.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1097.7,
+   "impl_latency_us": 79.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      120,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      120,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      120,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      2,
+      120,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      2,
+      120,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      2,
+      120,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      120,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 19986.4,
+   "impl_latency_us": 293.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 6676.5,
+   "impl_latency_us": 139.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 5443.6,
+   "impl_latency_us": 113.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 5984.3,
+   "impl_latency_us": 107.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      140,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      140,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      140,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      140,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      140,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      140,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      140,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 22215.7,
+   "impl_latency_us": 332.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      20,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      20,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      20,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      20,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      20,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      20,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      20,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 3424.3,
+   "impl_latency_us": 99.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 5287.9,
+   "impl_latency_us": 102.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      160,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      160,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      160,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      4,
+      160,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      4,
+      160,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      4,
+      160,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      4,
+      160,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      4,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 26425.3,
+   "impl_latency_us": 378.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      120,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      120,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      120,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      120,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      120,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      120,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      120,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 18846.7,
+   "impl_latency_us": 297.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      8,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      8,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      8,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      8,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      8,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 6911.0,
+   "impl_latency_us": 143.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      240,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      240,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      240,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      240,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      240,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      240,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      240,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 37248.0,
+   "impl_latency_us": 183.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      230,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      230,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      230,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      230,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      230,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      230,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      230,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 35177.5,
+   "impl_latency_us": 178.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      200,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      200,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 30907.4,
+   "impl_latency_us": 166.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      40,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      4,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      4,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      4,
+      40,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      4,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      4,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 6903.8,
+   "impl_latency_us": 131.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      80,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      80,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      80,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      80,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      80,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      80,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      80,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 12666.9,
+   "impl_latency_us": 202.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      20,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      20,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      20,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      20,
+      4
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      20,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      20,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      20,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 3405.8,
+   "impl_latency_us": 95.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      100,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      100,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      100,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      100,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      100,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      100,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      100,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 15747.1,
+   "impl_latency_us": 237.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      2
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      5,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1094.7,
+   "impl_latency_us": 78.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      5,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      5,
+      1,
+      16
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      16,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1078.3,
+   "impl_latency_us": 75.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      1
+     ]
+    },
+    {
+     "name": "gk",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "gv",
+     "shape": [
+      1,
+      5,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      32,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1090.6,
+   "impl_latency_us": 69.6,
+   "accuracy": "pass"
+  }
+ ]
+}

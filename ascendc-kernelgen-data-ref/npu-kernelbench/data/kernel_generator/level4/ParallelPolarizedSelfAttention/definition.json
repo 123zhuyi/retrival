@@ -1,0 +1,20 @@
+{
+  "name": "ParallelPolarizedSelfAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "scale_factor": {
+      "description": "unused optional scalar; default None"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, scale_factor=None):\n    torch.manual_seed(42)\n    channel = x.shape[1]\n    b, c, h, w = x.shape\n    if b == 0 or c == 0 or h == 0 or w == 0:\n        return x\n    c2 = max(1, c // 2)\n    ch_wv = nn.Conv2d(c, c2, 1).to(device=x.device, dtype=x.dtype)\n    ch_wq = nn.Conv2d(c, 1, 1).to(device=x.device, dtype=x.dtype)\n    ch_wz = nn.Conv2d(c2, c, 1).to(device=x.device, dtype=x.dtype)\n    ln = nn.LayerNorm(c).to(device=x.device, dtype=x.dtype)\n    sp_wv = nn.Conv2d(c, c2, 1).to(device=x.device, dtype=x.dtype)\n    sp_wq = nn.Conv2d(c, c2, 1).to(device=x.device, dtype=x.dtype)\n    agp = nn.AdaptiveAvgPool2d((1, 1)).to(device=x.device)\n\n    ch_wv_out = ch_wv(x).view(b, c2, -1)\n    ch_wq_out = ch_wq(x).view(b, -1, 1)\n    ch_wq_out = F.softmax(ch_wq_out, dim=1)\n    ch_wz_out = torch.matmul(ch_wv_out, ch_wq_out).unsqueeze(-1)\n    ch_wz_out = ch_wz(ch_wz_out).view(b, c, 1).permute(0, 2, 1)\n    ch_weight = torch.sigmoid(ln(ch_wz_out)).permute(0, 2, 1).view(b, c, 1, 1)\n    channel_out = ch_weight * x\n\n    sp_wv_out = sp_wv(x).view(b, c2, -1)\n    sp_wq_out = agp(sp_wq(x)).view(b, -1, 1)\n    sp_wq_out = F.softmax(sp_wq_out.permute(0, 2, 1), dim=-1)\n    sp_wz_out = torch.matmul(sp_wq_out, sp_wv_out).view(b, 1, h, w)\n    sp_weight = torch.sigmoid(sp_wz_out)\n    spatial_out = sp_weight * x\n\n    return spatial_out + channel_out\n",
+  "description": "Migrated ParallelPolarizedSelfAttention operator."
+}

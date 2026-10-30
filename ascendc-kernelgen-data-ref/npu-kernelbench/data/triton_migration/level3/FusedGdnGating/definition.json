@@ -1,0 +1,32 @@
+{
+  "name": "FusedGdnGating",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "A_log": {
+      "description": "Input 'A_log'."
+    },
+    "a": {
+      "description": "Input 'a'."
+    },
+    "b": {
+      "description": "Input 'b'."
+    },
+    "dt_bias": {
+      "description": "Input 'dt_bias'."
+    },
+    "beta": {
+      "description": "Input 'beta'."
+    },
+    "threshold": {
+      "description": "Input 'threshold'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(A_log, a, b, dt_bias, beta: float=1.0, threshold: float=20.0):\n    x = a.float() + dt_bias.float()\n    softplus_x = torch.where(beta * x <= threshold, 1.0 / beta * torch.log(1 + torch.exp(beta * x)), x)\n    g = -torch.exp(A_log.float()) * softplus_x\n    beta_output = torch.sigmoid(b.float()).to(b.dtype)\n    return (g.unsqueeze(0), beta_output.unsqueeze(0))",
+  "description": "Model that performs GDN (Gated Delta Net) gating computation. 对标 vLLM fused_gdn_gating_kernel (vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:1680, v0.26.0)。"
+}

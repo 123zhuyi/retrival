@@ -1,0 +1,25 @@
+{
+  "name": "Scatter",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."
+    },
+    "dim": {
+      "description": "int, axis along which to index and scatter."
+    },
+    "index": {
+      "description": "Int64 tensor of indices, same rank as src. Values must be within [0, x.size(dim))."
+    },
+    "src": {
+      "description": "Source tensor, same shape as index, same dtype as x."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Tensor with scattered values added in-place, same shape and dtype as x."
+    }
+  },
+  "reference": "import torch\n\ndef run(x, dim, index, src):\n    return torch.scatter_add(x, dim, index, src)\n",
+  "description": "ScatterAdd: Scatters values from src into x at the indices specified in index by addition.\n\nAdds all values from the tensor src into x at the indices specified in the index tensor. For each value in src, its output index is specified by its index in src for dimension != dim and by the corresponding value in index for dimension = dim.\n\nEquivalent to torch.scatter_add / aclnnScatterAdd.\n\nFor a 3-D tensor, x is updated as:\n    x[index[i][j][k]][j][k] += src[i][j][k]  # if dim == 0\n    x[i][index[i][j][k]][k] += src[i][j][k]  # if dim == 1\n    x[i][j][index[i][j][k]] += src[i][j][k]  # if dim == 2\n\nThis is the reverse operation of torch.gather.\n\nIt is also required that index.size(d) <= src.size(d) for all dimensions d, and that index.size(d) <= x.size(d) for all dimensions d != dim.\n\nArgs: x (Tensor), dim (int), index (LongTensor), src (Tensor). Returns: Tensor, same shape/dtype as x."
+}

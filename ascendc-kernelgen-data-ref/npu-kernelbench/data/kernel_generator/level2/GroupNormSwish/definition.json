@@ -1,0 +1,38 @@
+{
+  "name": "GroupNormSwish",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "input": {
+      "description": "shape varies; supports float16"
+    },
+    "num_groups": {
+      "description": "int, default=4"
+    },
+    "weight": {
+      "description": "shape varies; supports float16"
+    },
+    "bias": {
+      "description": "shape varies; supports float16"
+    },
+    "eps": {
+      "description": "float, default=1e-05; optional"
+    },
+    "swish_scale": {
+      "description": "float, default=1.0; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Group-normalized + Swish-activated output, same shape as input"
+    },
+    "1": {
+      "description": "Mean per group"
+    },
+    "2": {
+      "description": "Rstd per group"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(input, num_groups, weight, bias, eps=1e-5, swish_scale=1.0):\n    return torch_npu.npu_group_norm_swish(input, num_groups, weight, bias, eps=eps, swish_scale=swish_scale)\n",
+  "description": "Fused Group Normalization with Swish activation. torch_npu.npu_group_norm_swish(input, num_groups, weight, bias, eps, swish_scale) returns (output, mean, rstd). Pure PyTorch: GroupNorm + Swish(x*sigmoid(x)*swish_scale). Supports float16, bfloat16, float32."
+}

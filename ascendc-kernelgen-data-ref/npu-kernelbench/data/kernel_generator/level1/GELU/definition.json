@@ -1,0 +1,13 @@
+{
+  "name": "GELU",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "approximate": {"description": "str, GELU approximation: 'none' (exact) or 'tanh'."}
+  },
+  "outputs": {
+    "y": {"description": "Output tensor, same shape and dtype as input x."}
+  },
+  "reference": "import torch\n\ndef run(x, approximate='none'):\n    return torch.nn.functional.gelu(x, approximate=approximate)\n",
+  "description": "GELU activation function.\n\nWhen approximate='none': GELU(x) = x * Phi(x).\nWhen approximate='tanh': GELU(x) = 0.5 * x * (1 + Tanh(sqrt(2/pi) * (x + 0.044715 * x^3))).\n\nArgs: x (Tensor, any shape), approximate ('none'|'tanh'). Returns: Tensor, same shape."
+}

@@ -1,0 +1,41 @@
+{
+  "name": "ChunkGlaFwdKernelO",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input q"
+    },
+    "v": {
+      "description": "Input v"
+    },
+    "g": {
+      "description": "Input g"
+    },
+    "A": {
+      "description": "Input A"
+    },
+    "h": {
+      "description": "Input h"
+    },
+    "o": {
+      "description": "Input o"
+    },
+    "scale": {
+      "description": "Input scale"
+    },
+    "cu_seqlens": {
+      "description": "Input cu_seqlens"
+    },
+    "chunk_size": {
+      "description": "Input chunk_size"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    }
+  },
+  "reference": "import torch\ndef run(q, v, g, A, h, o=None, scale=None, cu_seqlens=None, chunk_size=64):\n    torch.manual_seed(42)\n    B, T, H, K = q.shape\n    V = v.shape[-1]\n    BT = chunk_size\n    q_flat = q.float().reshape(B * T, H, K)\n    v_flat = v.float().reshape(B * T, H, V)\n    g_flat = g.float().reshape(B * T, H, K)\n    A_flat = A.float().reshape(B * T, H, BT)\n    o_flat = torch.zeros(B * T, H, V, dtype=torch.float32, device=q.device)\n    if cu_seqlens is None:\n        bounds = [(b * T, (b + 1) * T) for b in range(B)]\n    else:\n        cu = cu_seqlens.tolist()\n        bounds = [(cu[n], cu[n + 1]) for n in range(len(cu) - 1)]\n    gc = 0\n    for bi, (t0, t1) in enumerate(bounds):\n        c = t0\n        while c < t1:\n            e = min(c + BT, t1)\n            L = e - c\n            q_c, g_c = q_flat[c:e], g_flat[c:e]\n            v_c = v_flat[c:e]\n            A_c = A_flat[c:e, :, :L]\n            if cu_seqlens is None:\n                h_c = h[bi, (c - t0) // BT].float()\n            else:\n                h_c = h[gc].float()\n            lower = torch.tril(torch.ones(L, L, dtype=torch.bool, device=q.device))\n            A_m = torch.where(lower[:, None, :], A_c, torch.zeros(1, device=q.device))\n            o_intra = torch.einsum('ths,shv->thv', A_m, v_c)\n            qg = q_c * scale * torch.exp(g_c)\n            o_state = torch.einsum('thk,hkv->thv', qg, h_c)\n            o_flat[c:e] = o_intra + o_state\n            c = e\n            gc += 1\n    return o_flat.reshape(B, T, H, V).to(q.dtype)",
+  "description": "Model that performs chunked GLA output computation (KDA pipeline 的输出阶段).\n    chunk_gla_fwd_o_gk(q, v, g, A, h, o, scale, cu_seqlens, chunk_size) -> o\n    (vLLM vllm/model_executor/layers/fla/ops/kda.py, 底层 kernel: chunk_gla_fwd_kernel_o)\n\n    torch 原生小算子拼接参考实现(与 Triton kernel 数学语义一致, 已闭环验证):\n    每条序列内按 chunk_size 分块, 块内局部位置 t, s:\n        o[t] = sum_{s<=t} A[t,s] * v[s]  +  scale * (q[t] * e^g[t]) @ h[chunk]\n    即 输出 = 块内因果注意力(A@v) + 块初始状态贡献(q 经逐通道门控衰减后查询 h)。\n    注:\n      1. 该 kernel 用 exp (自然对数域), 与 fla 仓 KDA 系列的 exp2 (log2 域) 不同,\n         g 是自然对数域的 chunk 内 inclusive cumsum;\n      2. A 是前向 intra 阶段产出的 Aqk, scale 已含在 A 内, kernel 不再对 A 乘 scale,\n         scale 只作用于状态贡献项的 q; A 的严格上三角 kernel 侧强制置 0;\n      3. h 布局: 定长 [B, NT, H, K, V], varlen [NT_total, H, K, V] (按全局 chunk 序);\n      4. o 是 kernel 侧的预分配输出参数(原地写回), golden 忽略其内容, 内部新建返回;\n      5. q 输入为 L2 归一化向量, 与 KDA 系列算子及真实场景(qk-norm)一致。"
+}

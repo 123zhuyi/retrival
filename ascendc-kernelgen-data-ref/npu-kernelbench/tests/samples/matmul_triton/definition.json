@@ -1,0 +1,13 @@
+{
+  "name": "matmul_triton",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "a": {"description": "shape (M, K); supports float32, float16, bfloat16"},
+    "b": {"description": "shape (K, N); supports float32, float16, bfloat16"}
+  },
+  "outputs": {
+    "c": {"description": "shape (M, N); same dtype as inputs"}
+  },
+  "reference": "import torch\ndef run(a, b):\n    return torch.mm(a, b)\n"
+}

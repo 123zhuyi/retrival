@@ -1,0 +1,25 @@
+{
+  "name": "CTCLoss",
+  "axes": {},
+  "inputs": {
+    "log_probs": {
+      "description": "Log probabilities of shape (T, N, C) or (T, C). Supports float32, float16, bfloat16. Optional fill: 'inf', '-inf', 'nan', 'zero'."
+    },
+    "targets": {
+      "description": "Target sequences of shape (N, S) or (S,). dtype int64 or int32. Values exclude blank label."
+    },
+    "blank": {
+      "description": "int, blank label index. Default 0."
+    },
+    "zero_infinity": {
+      "description": "bool, whether to zero infinite losses. Default false."
+    }
+  },
+  "outputs": {
+    "loss": {
+      "description": "CTC loss tensor. Scalar if reduction='mean'/'sum', else (N,) or (). Here reduction='none'."
+    }
+  },
+  "reference": "import torch\n\ndef run(log_probs, targets, blank=0, zero_infinity=False):\n    T = log_probs.shape[0]\n    N = 1 if log_probs.dim() == 2 else log_probs.shape[1]\n    S = targets.shape[-1]\n    input_lengths = torch.full((N,), T, dtype=torch.int64, device=log_probs.device)\n    target_lengths = torch.full((N,), min(S, T // 2), dtype=torch.int64, device=log_probs.device)\n    if log_probs.dim() == 2:\n        input_lengths = input_lengths.squeeze(0)\n        target_lengths = target_lengths.squeeze(0)\n    return torch.nn.functional.ctc_loss(\n        log_probs, targets, input_lengths, target_lengths,\n        blank=blank, reduction='none', zero_infinity=zero_infinity\n    )\n",
+  "description": "CTCLoss: Connectionist Temporal Classification loss.\n\ntorch.nn.functional.ctc_loss = ctc_loss(log_probs, targets, input_lengths, target_lengths, blank=0, reduction='mean', zero_infinity=False) -> Tensor\n\nArgs:\n    log_probs (Tensor): (T, N, C) or (T, C), log-probabilities after log_softmax.\n    targets (Tensor): (N, S) or (S,), target sequences excluding blank.\n    input_lengths (Tensor): (N,) or (), lengths of input sequences.\n    target_lengths (Tensor): (N,) or (), lengths of target sequences.\n    blank (int): blank label. Default 0.\n    zero_infinity (bool): zero infinite losses. Default False.\n\nReturns: Tensor, CTC loss."
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Nonzero",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input 'x'."
+    },
+    "as_tuple": {
+      "description": "Input 'as_tuple'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(x: torch.Tensor, as_tuple: bool=False):\n    \"\"\"\n        Returns indices of non-zero elements in the tensor.\n\n        Args:\n            x (torch.Tensor): Input tensor.\n            as_tuple (bool, optional): If True, returns a tuple of 1-D tensors, one for each dimension.\n\n        Returns:\n            torch.Tensor or tuple: Indices of non-zero elements.\n        \"\"\"\n    return torch.nonzero(x, as_tuple=as_tuple)",
+  "description": "Simple model that returns indices of non-zero elements. torch.nonzero = nonzero(...) nonzero(input, *, out=None, as_tuple=False) -> LongTensor or tuple of LongTensors"
+}

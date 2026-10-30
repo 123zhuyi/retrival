@@ -1,0 +1,63 @@
+{
+  "name": "GroupedMatmulSwigluQuant",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports int8"
+    },
+    "weight": {
+      "description": "shape varies; supports int8"
+    },
+    "weight_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "x_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "group_list": {
+      "description": "list"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Quantized output int8, shape [m, n//2]"
+    },
+    "1": {
+      "description": "Dynamic quant scale float, shape [m]"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, weight, weight_scale, x_scale, group_list):\n    e = weight.shape[0]\n    x_list = [x]\n    w_list = [weight[i] for i in range(e)]\n    ws_list = [weight_scale[i] for i in range(e)]\n    matmul_out = torch_npu.npu_grouped_matmul(x_list, w_list, scale=ws_list, group_list=group_list, group_type=0, group_list_type=0, split_item=2, output_dtype=torch.float16)\n    swiglu_out = torch_npu.npu_swiglu(matmul_out, dim=-1)\n    q_out, q_scale = torch_npu.npu_dynamic_quant(swiglu_out, dst_type=torch.int8)\n    return q_out, q_scale\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-transformer.git",
+  "kernel_reference": {
+    "op_graph": [
+      "gmm/grouped_matmul_swiglu_quant/op_graph/grouped_matmul_swiglu_quant_graph_plugin.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_graph/grouped_matmul_swiglu_quant_proto.h"
+    ],
+    "op_host": [
+      "gmm/grouped_matmul_swiglu_quant/op_host/CMakeLists.txt",
+      "gmm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_def.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_infershape.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_tiling.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_tiling.h"
+    ],
+    "op_kernel": [
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.h",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_pipeline.h",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_a8w4_msd_pre.h",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_a8w4_msd_mid.h",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_a8w4_msd_post.h",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_split_ws.h",
+      "gmm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_utils.h"
+    ],
+    "op_api": [
+      "gmm/grouped_matmul_swiglu_quant/op_api/aclnn_grouped_matmul_swiglu_quant.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_api/aclnn_grouped_matmul_swiglu_quant.h",
+      "gmm/grouped_matmul_swiglu_quant/op_api/aclnn_grouped_matmul_swiglu_quant_weight_nz.h",
+      "gmm/grouped_matmul_swiglu_quant/op_api/grouped_matmul_swiglu_quant.cpp",
+      "gmm/grouped_matmul_swiglu_quant/op_api/grouped_matmul_swiglu_quant.h"
+    ]
+  },
+  "description": "Fused grouped matmul + SwiGLU + dynamic quantization. Uses torch_npu.npu_grouped_matmul, npu_swiglu, npu_dynamic_quant. x is int8 [m,k], weight is int8 [e,k,n], group_list is cumsum int64. Returns (int8 output [m,n//2], float scale [m])."
+}

@@ -1,0 +1,48 @@
+{
+  "name": "MaskedSelectV3",
+  "op_type": "selection",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "mask": {
+      "description": "shape varies; supports bool"
+    },
+    "dim": {
+      "description": "int, default=0; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "1-D tensor of selected elements, shape (n,) where n is number of True values in mask"
+    }
+  },
+  "reference": "import torch\n\ndef run(input, mask):\n    return torch.masked_select(input, mask)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-math.git",
+  "kernel_reference": {
+    "op_graph": [
+      "conversion/masked_select_v3/op_graph/CMakeLists.txt"
+    ],
+    "op_host": [
+      "conversion/masked_select_v3/op_host/CMakeLists.txt",
+      "conversion/masked_select_v3/op_host/masked_select_infershape.cpp",
+      "conversion/masked_select_v3/op_host/masked_select_v3_def.cpp",
+      "conversion/masked_select_v3/op_host/masked_select_v3_tiling.cpp",
+      "conversion/masked_select_v3/op_host/masked_select_v3_tiling.h",
+      "conversion/masked_select_v3/op_host/masked_select_v3_tiling_arch35.cpp"
+    ],
+    "op_kernel": [
+      "conversion/masked_select_v3/op_kernel/masked_select_v3.cpp",
+      "conversion/masked_select_v3/op_kernel/masked_select_v3.h",
+      "conversion/masked_select_v3/op_kernel/masked_select_v3_apt.cpp"
+    ],
+    "op_api": [
+      "conversion/masked_select_v3/op_api/aclnn_masked_select.cpp",
+      "conversion/masked_select_v3/op_api/aclnn_masked_select.h",
+      "conversion/masked_select_v3/op_api/masked_select.cpp",
+      "conversion/masked_select_v3/op_api/masked_select.h"
+    ]
+  },
+  "description": "Returns a new 1-D tensor indexing the input tensor according to a boolean mask. Mask and input must be broadcastable. Supports various dtypes: float32, float16, bfloat16, float64, int8, int16, int32, int64, uint8, bool."
+}

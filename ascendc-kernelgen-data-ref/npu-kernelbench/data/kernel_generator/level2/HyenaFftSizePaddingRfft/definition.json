@@ -1,0 +1,20 @@
+{
+  "name": "HyenaFftSizePaddingRfft",
+  "op_type": "fft",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Real part of FFT"
+    },
+    "1": {
+      "description": "Imaginary part of FFT"
+    }
+  },
+  "reference": "import torch\n\ndef run(x):\n    seqlen = x.shape[-1]\n    fft_size = 2 * seqlen\n    x_f32 = x.to(torch.float32)\n    x_freq = torch.fft.rfft(x_f32, n=fft_size)\n    x_freq = x_freq / fft_size\n    return x_freq.real.contiguous(), x_freq.imag.contiguous()\n",
+  "description": "FFT size padding + real FFT for Hyena operator. Pads input to FFT-friendly size and computes rfft. Pure PyTorch: pad to next power-of-2, torch.fft.rfft, return real/imag parts."
+}

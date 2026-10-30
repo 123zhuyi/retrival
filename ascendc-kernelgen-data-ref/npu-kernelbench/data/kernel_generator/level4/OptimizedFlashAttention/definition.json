@@ -1,0 +1,32 @@
+{
+  "name": "OptimizedFlashAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, S, D) that is split into Q/K/V in BNSD layout; supports float32, float16, bfloat16"
+    },
+    "use_rope": {
+      "description": "whether to apply Rotary Position Embedding (RoPE); default true"
+    },
+    "use_alibi": {
+      "description": "whether to apply ALiBi position bias; default false"
+    },
+    "scale": {
+      "description": "optional attention scale; defaults to 1/sqrt(head_dim)"
+    },
+    "pse": {
+      "description": "optional position-dependent bias tensor"
+    },
+    "sink": {
+      "description": "optional sink tensor added to scores"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output in BNSD layout, same dtype as x"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\n\ndef _apply_rope(x, position_ids, d_k):\n    inv_freq = 1.0 / (10000.0 ** (torch.arange(0, d_k, 2, device=x.device).float() / d_k))\n    sincos = torch.einsum('bi,j->bij', position_ids.float(), inv_freq)\n    sin = sincos.sin().repeat_interleave(2, dim=-1)\n    cos = sincos.cos().repeat_interleave(2, dim=-1)\n    x_rot = torch.stack([-x[..., 1::2], x[..., ::2]], dim=-1).flatten(-2)\n    return x * cos.unsqueeze(1) + x_rot * sin.unsqueeze(1)\n\ndef _compute_alibi_bias(seq_len_q, seq_len_k, n_heads, device):\n    slopes = 2 ** (-8 * torch.arange(n_heads, device=device) / n_heads)\n    q_pos = torch.arange(seq_len_q, device=device).unsqueeze(1)\n    k_pos = torch.arange(seq_len_k, device=device).unsqueeze(0)\n    relative_pos = -(q_pos - k_pos).abs()\n    return slopes.unsqueeze(-1).unsqueeze(-1) * relative_pos.unsqueeze(0)\n\ndef run(x, use_rope=True, use_alibi=False, scale=None, pse=None, sink=None):\n    torch.manual_seed(42)\n    b, s, d_model = x.shape\n    n_heads = 8\n    for h in [8, 4, 2, 1]:\n        if d_model % h == 0:\n            n_heads = h\n            break\n    d_k = d_model // n_heads\n    query = x.view(b, s, n_heads, d_k).transpose(1, 2).contiguous()\n    key = query.clone()\n    value = query.clone()\n    sq = query.shape[2]\n    skv = key.shape[2]\n    scores = torch.matmul(query, key.transpose(-2, -1))\n    scale = scale or (1.0 / (d_k ** 0.5))\n    scores = scores * scale\n    if use_rope:\n        position_ids = torch.arange(sq, device=x.device).unsqueeze(0).expand(b, -1)\n        query = _apply_rope(query, position_ids, d_k)\n        key = _apply_rope(key, position_ids, d_k)\n        scores = torch.matmul(query, key.transpose(-2, -1)) * scale\n    if use_alibi:\n        alibi_bias = _compute_alibi_bias(sq, skv, n_heads, x.device)\n        scores = scores + alibi_bias.unsqueeze(0)\n    if pse is not None:\n        pse = pse.to(scores.dtype)\n        if pse.dim() == 4:\n            scores = scores + pse\n        elif pse.dim() == 2:\n            scores = scores + pse.view(1, 1, 1, -1)\n        else:\n            scores = scores + pse\n    if sink is not None:\n        sink = sink.to(scores.dtype)\n        scores = scores + sink.view(1, -1, 1, 1)\n    attn_weights = F.softmax(scores, dim=-1)\n    output = torch.matmul(attn_weights, value)\n    return output\n",
+  "description": "Flash Attention with optional RoPE and ALiBi. Accepts a single input tensor x (B, S, D) which is split into Q/K/V in BNSD layout. Supports optional position bias (pse) and sink tensors."
+}

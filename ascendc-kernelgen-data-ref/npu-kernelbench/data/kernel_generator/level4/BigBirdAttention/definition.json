@@ -1,0 +1,38 @@
+{
+  "name": "BigBirdAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "query tensor (B, N, S_q, D_k)"
+    },
+    "key": {
+      "description": "key tensor (B, N, S_k, D_k)"
+    },
+    "value": {
+      "description": "value tensor (B, N, S_k, D_v)"
+    },
+    "window_size": {
+      "description": "size of local attention window"
+    },
+    "num_random_blocks": {
+      "description": "number of random blocks per query"
+    },
+    "scale": {
+      "description": "optional attention scale factor"
+    },
+    "pse": {
+      "description": "optional positional encoding tensor"
+    },
+    "sink": {
+      "description": "optional per-head bias tensor"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output (B, N, S_q, D_v)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\nimport math\n\ndef _create_bigbird_mask(seq_len_q, seq_len_k, window_size, num_random_blocks, device):\n    mask = torch.zeros(seq_len_q, seq_len_k, device=device)\n    for i in range(seq_len_q):\n        start = max(0, i - window_size // 2)\n        end = min(seq_len_k, i + window_size // 2 + 1)\n        mask[i, start:end] = 1\n    if seq_len_q > 0:\n        mask[0, :] = 1\n        mask[-1, :] = 1\n    if seq_len_k > 0:\n        mask[:, 0] = 1\n        mask[:, -1] = 1\n    if num_random_blocks > 0:\n        for i in range(1, seq_len_q - 1):\n            if seq_len_k <= num_random_blocks:\n                mask[i, :] = 1\n            else:\n                rand_indices = torch.randperm(seq_len_k, device=device)[:num_random_blocks]\n                mask[i, rand_indices] = 1\n    return mask\n\ndef run(query, key, value, window_size, num_random_blocks, scale=None, pse=None, sink=None):\n    torch.manual_seed(42)\n    b, n, sq, d_k = query.shape\n    _, _, skv, _ = key.shape\n    _, _, _, dv = value.shape\n    scores = torch.matmul(query.float(), key.float().transpose(-2, -1))\n    scale = scale or (1.0 / (d_k ** 0.5))\n    scores = scores * scale\n    mask = _create_bigbird_mask(sq, skv, window_size, num_random_blocks, query.device)\n    mask = mask.unsqueeze(0).unsqueeze(0)\n    scores = scores.masked_fill(mask == 0, -1e9)\n    if pse is not None:\n        pse = pse.to(scores.dtype)\n        if pse.dim() == 4:\n            scores = scores + pse\n        elif pse.dim() == 2:\n            scores = scores + pse.view(1, 1, 1, -1)\n        else:\n            scores = scores + pse\n    if sink is not None:\n        sink = sink.to(scores.dtype)\n        scores = scores + sink.view(1, -1, 1, 1)\n    attn_weights = F.softmax(scores, dim=-1)\n    output = torch.matmul(attn_weights, value.float()).to(dtype=query.dtype)\n    return output\n",
+  "description": "Migrated BigBirdAttention operator from old npu_benchmark architecture."
+}

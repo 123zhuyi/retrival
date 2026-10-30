@@ -1,0 +1,18 @@
+{
+  "name": "MaxPool3d",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor of shape (N, C, D, H, W). Supports float32, float16, bfloat16."},
+    "kernel_size": {"description": "int, size of the pooling window."},
+    "stride": {"description": "int, stride of the pooling operation. Default: kernel_size."},
+    "padding": {"description": "int, implicit negative infinity padding. Default: 0."},
+    "dilation": {"description": "int, spacing between kernel elements. Default: 1."},
+    "ceil_mode": {"description": "bool, use ceil instead of floor for output shape."},
+    "return_indices": {"description": "bool, if True return argmax indices along with max values."}
+  },
+  "outputs": {
+    "y": {"description": "Pooled tensor (or tuple if return_indices=True), same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False, return_indices=False):\n    return torch.nn.functional.max_pool3d(x, kernel_size, stride=stride, padding=padding, dilation=dilation, ceil_mode=ceil_mode, return_indices=return_indices)\n",
+  "description": "MaxPool3d: Applies 3D max pooling over an input signal.\n\ntorch.nn.functional.max_pool3d = max_pool3d(input, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False, return_indices=False) -> Tensor\n\nApplies a 3D max pooling over an input signal composed of several input planes.\n\nNote: The order of ceil_mode and return_indices is different from what seen in torch.nn.MaxPool3d, and will change in a future release.\n\nArgs:\n    input: input tensor (minibatch, in_channels, iD, iH, iW), minibatch dim optional.\n    kernel_size: size of the pooling region. Can be a single number or a tuple (kT, kH, kW).\n    stride: stride of the pooling operation. Can be a single number or a tuple (sT, sH, sW). Default: kernel_size.\n    padding: Implicit negative infinity padding to be added on both sides, must be >= 0 and <= kernel_size / 2.\n    dilation: The stride between elements within a sliding window, must be > 0.\n    ceil_mode: If True, will use ceil instead of floor to compute the output shape.\n    return_indices: If True, will return the argmax along with the max values.\n\nReturns: Tensor or tuple (Tensor, LongTensor), same dtype as input."
+}

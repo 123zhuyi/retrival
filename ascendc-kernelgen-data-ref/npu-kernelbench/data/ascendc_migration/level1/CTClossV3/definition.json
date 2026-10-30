@@ -1,0 +1,43 @@
+{
+  "name": "CTClossV3",
+  "op_type": "loss",
+  "axes": {},
+  "inputs": {
+    "log_probs": {
+      "description": "shape varies; supports float32"
+    },
+    "targets": {
+      "description": "shape varies; supports int64"
+    },
+    "blank": {
+      "description": "int, default=0"
+    },
+    "zero_infinity": {
+      "description": "bool, default=False"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Per-sample CTC loss, shape (N) or scalar"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(log_probs, targets, input_lengths, target_lengths, blank=0, zero_infinity=False):\n    return F.ctc_loss(log_probs, targets, input_lengths, target_lengths, blank=blank, reduction='none', zero_infinity=zero_infinity)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "loss/ctc_loss_v3/op_graph/CMakeLists.txt"
+    ],
+    "op_host": [
+      "loss/ctc_loss_v3/op_host/CMakeLists.txt",
+      "loss/ctc_loss_v3/op_host/ctc_loss_v3_def.cpp",
+      "loss/ctc_loss_v3/op_host/ctc_loss_v3_tiling.cpp",
+      "loss/ctc_loss_v3/op_host/ctc_loss_v3_tiling.h"
+    ],
+    "op_kernel": [
+      "loss/ctc_loss_v3/op_kernel/ctc_loss_v3.cpp",
+      "loss/ctc_loss_v3/op_kernel/ctc_loss_v3.h"
+    ],
+    "op_api": []
+  },
+  "description": "The Connectionist Temporal Classification loss. Calculates loss between a continuous time series and a target sequence. Supports 3D (T,N,C) and 2D (T,C) log_probs with int64/int32 targets. blank is the blank label index (default 0). zero_infinity zeros out infinite losses. reduction='none' returns per-sample loss."
+}

@@ -1,0 +1,17 @@
+{
+  "name": "matmul",
+  "op_type": "matmul",
+  "axes": {
+    "M": {"type": "var", "description": "rows of A and C"},
+    "K": {"type": "var", "description": "inner dimension"},
+    "N": {"type": "var", "description": "cols of B and C"}
+  },
+  "inputs": {
+    "a": {"shape": ["M", "K"], "dtype": "float32", "description": "left operand"},
+    "b": {"shape": ["K", "N"], "dtype": "float32", "description": "right operand"}
+  },
+  "outputs": {
+    "c": {"shape": ["M", "N"], "dtype": "float32", "description": "result"}
+  },
+  "reference": "import torch\ndef run(a, b):\n    return torch.mm(a, b)\n"
+}

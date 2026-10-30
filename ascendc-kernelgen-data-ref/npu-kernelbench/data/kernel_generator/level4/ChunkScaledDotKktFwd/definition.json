@@ -1,0 +1,35 @@
+{
+  "name": "ChunkScaledDotKktFwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "k": {
+      "description": "Input k"
+    },
+    "g": {
+      "description": "Input g"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "cu_seqlens": {
+      "description": "Input cu_seqlens"
+    },
+    "chunk_indices": {
+      "description": "Input chunk_indices"
+    },
+    "chunk_size": {
+      "description": "Input chunk_size"
+    },
+    "output_dtype": {
+      "description": "Input output_dtype"
+    }
+  },
+  "outputs": {
+    "A": {
+      "description": "Output A"
+    }
+  },
+  "reference": "import torch\nFLA_CHUNK_SIZE = 64\ndef run(k, g=None, beta=None, cu_seqlens=None, chunk_indices=None,\n            chunk_size=None, output_dtype=torch.float32):\n    if chunk_size is None:\n        chunk_size = FLA_CHUNK_SIZE\n    B, T, Hg, K = k.shape\n    H = beta.shape[-1]\n    BT = chunk_size\n    group = H // Hg\n    A = torch.zeros(B, T, H, BT, device=k.device, dtype=output_dtype)\n    tril_mask = torch.tril(torch.ones(BT, BT, dtype=torch.bool, device=k.device),\n                           diagonal=-1)\n    if cu_seqlens is not None:\n        cu = cu_seqlens.cpu().tolist()\n        spans = [(0, cu[i], cu[i + 1]) for i in range(len(cu) - 1)]\n    else:\n        spans = [(b, 0, T) for b in range(B)]\n    for b, bos, eos in spans:\n        T_seq = eos - bos\n        for h in range(H):\n            hg = h // group\n            for s in range(0, T_seq, BT):\n                row0, row1 = bos + s, min(bos + s + BT, eos)\n                L = row1 - row0\n                kc = k[b, row0:row1, hg, :].to(torch.float32)\n                a = kc @ kc.transpose(0, 1)\n                if g is not None:\n                    gc = g[b, row0:row1, h].to(torch.float32)\n                    diff = gc[:, None] - gc[None, :]\n                    a = a * torch.exp(torch.clamp(diff, max=0.0))\n                bc = beta[b, row0:row1, h].to(torch.float32)\n                a = a * bc[:, None]\n                a = a * tril_mask[:L, :L]\n                A[b, row0:row1, h, :L] = a.to(output_dtype)\n    return A",
+  "description": "Model that performs chunk-scaled dot product KKT forward computation.\n    Computes beta * K * K^T with optional gate accumulation and chunked processing.\n\n    This kernel supports Q/K with different head numbers (fla assumes Hg == H).\n\n    Golden reference: torch \u539f\u751f\u5c0f\u7b97\u5b50\u62fc\u63a5\u5b9e\u73b0\n    \u5bf9\u6bcf\u4e2a (batch b, head h, chunk i_t)\uff0c\u8bb0\u8be5 chunk \u8986\u76d6\u7684\u884c\u533a\u95f4\u4e3a\n    [s, s+L)\uff08L <= BT\uff0cBT \u4e3a chunk_size\uff0c\u9ed8\u8ba4 64\uff09\uff1a\n        1. \u53d6 k \u7247\u6bb5 Kc = k[b, s:s+L, h // (H // Hg), :].float()    # [L, K]\n        2. A_chunk = Kc @ Kc^T                                     # fp32 \u7d2f\u4e58\uff0c[L, L]\n        3. \u82e5\u7ed9\u5b9a g\uff08g_cumsum, [B, T, H]\uff09\uff1a\n               diff = gc[:, None] - gc[None, :]\n               A_chunk *= exp(min(diff, 0))        # \u5bf9\u5e94 kernel \u7684 safe_exp\n        4. A_chunk *= beta[b, s:s+L, h].float()[:, None]           # \u9010\u884c\u7f29\u653e\n        5. \u4e25\u683c\u4e0b\u4e09\u89d2 mask\uff1a\u4ec5\u4fdd\u7559 chunk \u5185 i > j \u7684\u5143\u7d20\uff0c\u5176\u4f59\u7f6e 0\n        6. \u5199\u5165 A[b, s:s+L, h, :L]\uff0c\u5176\u4f59\u5217\u4fdd\u6301 0\uff08\u5bf9\u5e94 kernel \u8d8a\u754c load \u4e3a 0\uff09\n    varlen \u6a21\u5f0f\uff08cu_seqlens \u4e0d\u4e3a None\uff0c\u7ea6\u5b9a B == 1\uff09\uff1a\u6309 cu_seqlens \u5207\u5206\u5e8f\u5217\uff0c\n    \u6bcf\u6761\u5e8f\u5217\u5185\u90e8\u72ec\u7acb\u5206 chunk\uff0c\u8bed\u4e49\u4e0e kernel \u7684 chunk_indices \u8def\u5f84\u4e00\u81f4\u3002\n    \u7cbe\u5ea6\u8bf4\u660e\uff1akernel \u4e2d tl.dot \u4e3a bf16 \u8f93\u5165 / fp32 \u7d2f\u52a0\uff0c\u672c\u5b9e\u73b0\u7edf\u4e00\u5148\u5347 fp32\n    \u518d matmul\uff0c\u7d2f\u52a0\u7cbe\u5ea6\u4e0d\u4f4e\u4e8e golden kernel\u3002"
+}

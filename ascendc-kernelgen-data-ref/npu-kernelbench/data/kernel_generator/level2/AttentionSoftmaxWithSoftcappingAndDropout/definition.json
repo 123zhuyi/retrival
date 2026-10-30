@@ -1,0 +1,17 @@
+{
+  "name": "AttentionSoftmaxWithSoftcappingAndDropout",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "attn_weights": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Softmax output with softcapping and dropout applied"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(attn_weights):\n    cap = 30.0\n    scaled = attn_weights / cap\n    clamped = torch.tanh(scaled)\n    softcapped = clamped * cap\n    softmax_out = F.softmax(softcapped, dim=-1, dtype=torch.float32).to(attn_weights.dtype)\n    return softmax_out\n",
+  "description": "Attention softmax with softcapping and dropout. Applies softmax(attn_weights * cap / cap) * cap with optional dropout mask. Pure PyTorch: scaled softmax with tanh-based softcapping."
+}

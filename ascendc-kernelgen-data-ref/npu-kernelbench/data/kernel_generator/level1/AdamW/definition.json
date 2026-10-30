@@ -1,0 +1,25 @@
+{
+  "name": "AdamW",
+  "axes": {},
+  "inputs": {
+    "var": {"description": "Variable tensor to update. Supports float32, float16, bfloat16."},
+    "m": {"description": "First moment estimates, same shape as var, dtype float32."},
+    "v": {"description": "Second moment estimates, same shape as var, dtype float32."},
+    "grad": {"description": "Gradient tensor, same shape and dtype as var."},
+    "beta1_power": {"description": "float, beta1 power for bias correction."},
+    "beta2_power": {"description": "float, beta2 power for bias correction."},
+    "lr": {"description": "float, learning rate."},
+    "beta1": {"description": "float, exponential decay rate for first moment."},
+    "beta2": {"description": "float, exponential decay rate for second moment."},
+    "epsilon": {"description": "float, small constant for numerical stability."},
+    "use_locking": {"description": "bool, whether to use locking."},
+    "use_nesterov": {"description": "bool, whether to use Nesterov momentum."}
+  },
+  "outputs": {
+    "var_out": {"description": "Updated variable tensor, same shape and dtype as var."},
+    "m_out": {"description": "Updated first moment, same shape and dtype as m."},
+    "v_out": {"description": "Updated second moment, same shape and dtype as v."}
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(var, m, v, grad, beta1_power, beta2_power, lr, beta1, beta2, epsilon, use_locking=False, use_nesterov=False):\n    torch_npu.npu_apply_adam(beta1_power, beta2_power, lr, beta1, beta2, epsilon,\n                              grad, use_locking, use_nesterov, out=(var, m, v))\n    return var, m, v\n",
+  "description": "AdamW: NPU-accelerated Adam optimization step.\n\ntorch_npu.npu_apply_adam — applies Adam optimization on NPU.\n\nArgs:\n    var (Tensor): Variable to be updated.\n    m (Tensor): First moment estimates (float32).\n    v (Tensor): Second moment estimates (float32).\n    grad (Tensor): Gradient tensor, same dtype as var.\n    beta1_power (float): Beta1 power for bias correction.\n    beta2_power (float): Beta2 power for bias correction.\n    lr (float): Learning rate.\n    beta1 (float): Exponential decay rate for first moment.\n    beta2 (float): Exponential decay rate for second moment.\n    epsilon (float): Small constant for numerical stability.\n    use_locking (bool): Whether to use locking.\n    use_nesterov (bool): Whether to use Nesterov momentum.\n\nReturns: tuple of (var, m, v).\n\n---\nPure PyTorch equivalent:\n    orig_dtype = var.dtype\n    var_f32 = var.float()\n    m_f32 = m.float()\n    v_f32 = v.float()\n    grad_f32 = grad.float()\n    m_new = beta1 * m_f32 + (1 - beta1) * grad_f32\n    v_new = beta2 * v_f32 + (1 - beta2) * grad_f32 * grad_f32\n    m_hat = m_new / (1 - beta1_power)\n    v_hat = v_new / (1 - beta2_power)\n    if use_nesterov:\n        m_nesterov = beta1 * m_hat + (1 - beta1) * grad_f32 / (1 - beta1_power)\n        var_new = var_f32 - lr * m_nesterov / (torch.sqrt(v_hat) + epsilon)\n    else:\n        var_new = var_f32 - lr * m_hat / (torch.sqrt(v_hat) + epsilon)\n    return var_new.to(orig_dtype), m_new.to(m.dtype), v_new.to(v.dtype)"
+}

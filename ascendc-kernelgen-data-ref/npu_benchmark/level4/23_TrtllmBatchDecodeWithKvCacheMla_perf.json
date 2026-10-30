@@ -1,0 +1,5146 @@
+{
+ "op_name": "23_TrtllmBatchDecodeWithKvCacheMla",
+ "source": "优化版 AscendC 核 逐 case 实测 (msprof Task_Duration, 非 quick-batch)；MFU vs fp16 353.89TF | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 634.754564,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 5,
+   "ratio": 0.1
+  },
+  "100-500us": {
+   "count": 9,
+   "ratio": 0.18
+  },
+  "500-1000us": {
+   "count": 21,
+   "ratio": 0.42
+  },
+  ">1000us": {
+   "count": 15,
+   "ratio": 0.3
+  }
+ },
+ "max_mfu_pct": 0.210531,
+ "sweet_spot_shape": {
+  "case_idx": 35,
+  "inputs_shape": [
+   {
+    "name": "query",
+    "shape": [
+     1,
+     1,
+     128,
+     576
+    ]
+   },
+   {
+    "name": "kv_cache",
+    "shape": [
+     131,
+     64,
+     576
+    ]
+   },
+   {
+    "name": "block_tables",
+    "shape": [
+     1,
+     128
+    ]
+   }
+  ],
+  "impl_latency_us": 3062.445,
+  "mfu_pct": 0.210531
+ },
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      1
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      16
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 37.947,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 139264.0,
+   "mfu_pct": 0.001037
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      5,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      1
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      16,
+      16
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 16
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 43.041,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 278528.0,
+   "mfu_pct": 0.001829
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      5,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      64
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 65.528,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 557056.0,
+   "mfu_pct": 0.002402
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      2
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      64,
+      64,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 93.114,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 4456448.0,
+   "mfu_pct": 0.013524
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      4
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      128,
+      128,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 88.614,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 4456448.0,
+   "mfu_pct": 0.014211
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      8
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      512
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 109.861,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 4456448.0,
+   "mfu_pct": 0.011462
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      5,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      128
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 124.189,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 8912896.0,
+   "mfu_pct": 0.02028
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      8
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      512
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 181.377,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 35651584.0,
+   "mfu_pct": 0.055542
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      19,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      16
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1024
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 231.033,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 35651584.0,
+   "mfu_pct": 0.043604
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      35,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      8
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      512,
+      512,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 233.633,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 71303168.0,
+   "mfu_pct": 0.086238
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      27,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      24
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      3072
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 279.66,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 53477376.0,
+   "mfu_pct": 0.054034
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1,
+      2,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      131,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      8192
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 330.942,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 35651584.0,
+   "mfu_pct": 0.030441
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      16,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      259,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      16,
+      16
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 454.222,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 142606336.0,
+   "mfu_pct": 0.088715
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      16
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 501.148,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 142606336.0,
+   "mfu_pct": 0.080408
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      11,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      8
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      512
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 169.651,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 17825792.0,
+   "mfu_pct": 0.029691
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      331,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      164
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      10496,
+      10496
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 616.913,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 182714368.0,
+   "mfu_pct": 0.08369
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      359,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      89
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      5696,
+      5696,
+      5696,
+      5696
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 641.341,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 198311936.0,
+   "mfu_pct": 0.087375
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      387,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      48
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      3072,
+      3072,
+      3072,
+      3072,
+      3072,
+      3072,
+      3072,
+      3072
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 638.941,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 213909504.0,
+   "mfu_pct": 0.094601
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      419,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      16,
+      26
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 749.518,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 231735296.0,
+   "mfu_pct": 0.087365
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      323,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      32,
+      10
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 691.824,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 178257920.0,
+   "mfu_pct": 0.072808
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      289,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      143
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      9152,
+      9152
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 678.331,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 318636032.0,
+   "mfu_pct": 0.132733
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      279,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      69
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      4416,
+      4416,
+      4416,
+      4416
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 666.775,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 307494912.0,
+   "mfu_pct": 0.130312
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      211,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      26
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664,
+      1664
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 550.458,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 231735296.0,
+   "mfu_pct": 0.118958
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      16,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      291,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      16,
+      18
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152,
+      1152
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 653.516,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 320864256.0,
+   "mfu_pct": 0.138737
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      32,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      163,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      32,
+      5
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320,
+      320
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 508.271,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 178257920.0,
+   "mfu_pct": 0.099101
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      163,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      80
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      5120,
+      5120
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 646.601,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 356515840.0,
+   "mfu_pct": 0.1558
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      183,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      45
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      2880,
+      2880,
+      2880,
+      2880
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 632.929,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 401080320.0,
+   "mfu_pct": 0.179062
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      163,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      20
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1280,
+      1280,
+      1280,
+      1280,
+      1280,
+      1280,
+      1280,
+      1280
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 608.886,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 356515840.0,
+   "mfu_pct": 0.165451
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      163,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      16,
+      10
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 607.413,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 356515840.0,
+   "mfu_pct": 0.165852
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      103,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      50
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      3200,
+      3200
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 687.145,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 445644800.0,
+   "mfu_pct": 0.18326
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      91,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      22
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1408,
+      1408,
+      1408,
+      1408
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 637.407,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 392167424.0,
+   "mfu_pct": 0.173853
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      83,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      10
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640,
+      640
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 592.025,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 356515840.0,
+   "mfu_pct": 0.170163
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      45,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      42
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      2688
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 581.247,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 374341632.0,
+   "mfu_pct": 0.181984
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      1,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      47,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      22
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1408,
+      1408
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 627.527,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 392167424.0,
+   "mfu_pct": 0.17659
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      25,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      22
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      1408
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 628.413,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 392167424.0,
+   "mfu_pct": 0.176341
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      8192
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3062.445,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2281701376.0,
+   "mfu_pct": 0.210531
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1027,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      8192,
+      8192,
+      8192,
+      8192,
+      8192,
+      8192,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 2528.097,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1140850688.0,
+   "mfu_pct": 0.127515
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      515,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      32768
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3174.156,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2281701376.0,
+   "mfu_pct": 0.203122
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2051,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      131072
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 4183.985,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1140850688.0,
+   "mfu_pct": 0.077049
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      515,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      32768
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 1785.775,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1140850688.0,
+   "mfu_pct": 0.180521
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1027,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      8192,
+      8192,
+      8192,
+      8192,
+      8192,
+      8192,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 2001.036,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 570425344.0,
+   "mfu_pct": 0.080551
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      1,
+      2,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2051,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      131072
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 3633.436,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 570425344.0,
+   "mfu_pct": 0.044362
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      2,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      515,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      32768
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3191.736,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2281701376.0,
+   "mfu_pct": 0.202003
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      515,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      128
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      8192,
+      8192,
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3168.196,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2281701376.0,
+   "mfu_pct": 0.203504
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1027,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      16,
+      64
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3586.206,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2281701376.0,
+   "mfu_pct": 0.179784
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      1,
+      8,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1027,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      32,
+      32
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 3211.633,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1140850688.0,
+   "mfu_pct": 0.100376
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      1,
+      4,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1027,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      32,
+      32
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 2428.221,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 570425344.0,
+   "mfu_pct": 0.06638
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      515,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 1720.478,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1140850688.0,
+   "mfu_pct": 0.187373
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      2,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      8192
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1603.961,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1140850688.0,
+   "mfu_pct": 0.200984
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      515,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "block_tables",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      256
+     ]
+    },
+    {
+     "name": "kv_lens",
+     "type": "attr",
+     "dtype": "int",
+     "value": [
+      16384,
+      16384
+     ]
+    },
+    {
+     "name": "page_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "kv_lora_rank",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "qk_rope_head_dim",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "bmm1_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.041667
+    },
+    {
+     "name": "bmm2_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 1.0
+    },
+    {
+     "name": "sparse_mla_top_k",
+     "type": "attr",
+     "dtype": "int",
+     "value": 0
+    },
+    {
+     "name": "return_lse",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    },
+    {
+     "name": "return_lse_base_on_e",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3151.256,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 2281701376.0,
+   "mfu_pct": 0.204598
+  }
+ ],
+ "data_status": "CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 9, 21, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。 | 前一状态: CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 9, 21, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。 | 前一状态: CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 10, 20, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。"
+}

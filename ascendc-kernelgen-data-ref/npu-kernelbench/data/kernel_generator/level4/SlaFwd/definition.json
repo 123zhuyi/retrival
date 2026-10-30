@@ -1,0 +1,38 @@
+{
+  "name": "SlaFwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "查询张量, shape (B, H, L, D); float16/bfloat16"
+    },
+    "k": {
+      "description": "键张量, 与 q 同形状同 dtype (MHA)"
+    },
+    "v": {
+      "description": "值张量, 与 q 同形状同 dtype"
+    },
+    "topk": {
+      "description": "每个 query 块选 key 块的比例, float ∈ (0, 1]"
+    },
+    "feature_map": {
+      "description": "线性分支特征图, str: 'softmax' / 'elu' / 'relu'"
+    },
+    "BLKQ": {
+      "description": "query 块大小, int"
+    },
+    "BLKK": {
+      "description": "key 块大小, int"
+    },
+    "W_l": {
+      "description": "线性分支投影矩阵 (proj_l, 无偏置), shape (D, D), 与 q 同 dtype"
+    }
+  },
+  "outputs": {
+    "out": {
+      "description": "融合输出 o = o_s + o_l, shape (B, H, L, D), 与 q 同 dtype"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\n_MQ_CHUNK = 16\n\n\ndef _block_mean(x, BLK):\n    device = x.device\n    B, H, L, D = x.shape\n    LB = (L + BLK - 1) // BLK\n    pad = LB * BLK - L\n    xp = F.pad(x.float(), (0, 0, 0, pad)).view(B, H, LB, BLK, D)\n    cnt = torch.full((LB,), BLK, dtype=torch.float32, device=device)\n    if pad:\n        cnt[-1] = BLK - pad\n    return (xp.sum(3) / cnt.view(1, 1, LB, 1)).to(x.dtype)\n\n\ndef run(q, k, v, topk, feature_map, BLKQ, BLKK, W_l):\n    device = q.device\n    B, H, L, D = q.shape\n    assert k.shape == v.shape == q.shape\n    assert q.dtype == k.dtype == v.dtype\n    assert isinstance(feature_map, str) and feature_map in (\"elu\", \"relu\", \"softmax\")\n    assert 0.0 < topk <= 1.0\n\n    dtype = q.dtype\n\n    arg_k = k - k.float().mean(dim=-2, keepdim=True).to(dtype)\n    qm = _block_mean(q, BLKQ)\n    km = _block_mean(arg_k, BLKK)\n    pooled = (qm.float() @ km.float().transpose(-1, -2)).to(dtype)\n    NK = pooled.shape[-1]\n    real_topk = min(NK, int(topk * NK))\n    assert real_topk >= 1\n    lut = torch.topk(pooled.float(), real_topk, dim=-1, sorted=False).indices\n    lut = lut.sort(dim=-1).values\n\n    scale = D ** -0.5\n    if feature_map == \"softmax\":\n        fmap = lambda x: F.softmax(x, dim=-1)\n    elif feature_map == \"elu\":\n        fmap = lambda x: F.elu(x) + 1\n    else:\n        fmap = lambda x: F.relu(x)\n\n    MQ = pooled.shape[2]\n    kf, vf, qf = k.float(), v.float(), q.float()\n\n    tok_idx = lut[..., None] * BLKK + torch.arange(BLKK, device=device)\n    S = real_topk * BLKK\n    tok_valid = (tok_idx < L).reshape(B, H, MQ, S)\n    tok_idx = tok_idx.reshape(B, H, MQ, S)\n\n    k2 = kf.reshape(B * H, L, D)\n    v2 = vf.reshape(B * H, L, D)\n    idx2 = tok_idx.reshape(B * H, MQ, S).clamp(0, L - 1)\n    tv2 = tok_valid.reshape(B * H, MQ, 1, S)\n    qpad = F.pad(qf.reshape(B * H, L, D),\n                 (0, 0, 0, MQ * BLKQ - L)).reshape(B * H, MQ, BLKQ, D) * scale\n\n    o_s = torch.empty(B * H, MQ, BLKQ, D, dtype=torch.float32, device=device)\n    for s0 in range(0, MQ, _MQ_CHUNK):\n        e0 = min(MQ, s0 + _MQ_CHUNK)\n        gi = idx2[:, s0:e0].unsqueeze(-1).expand(B * H, e0 - s0, S, D)\n        k_g = torch.gather(k2.unsqueeze(1).expand(B * H, e0 - s0, L, D), 2, gi)\n        v_g = torch.gather(v2.unsqueeze(1).expand(B * H, e0 - s0, L, D), 2, gi)\n        sc = torch.einsum(\"bmqd,bmsd->bmqs\", qpad[:, s0:e0], k_g)\n        sc = sc.masked_fill(~tv2[:, s0:e0], float(\"-inf\"))\n        p = torch.softmax(sc, dim=-1)\n        o_s[:, s0:e0] = torch.einsum(\"bmqs,bmsd->bmqd\", p, v_g)\n    o_s = o_s.reshape(B, H, MQ * BLKQ, D)[:, :, :L]\n\n    c_q = fmap(qf)\n    c_k = fmap(kf)\n    kvsum = c_k.transpose(-1, -2) @ vf\n    ksum = c_k.sum(dim=-2, keepdim=True)\n    o_l = (c_q @ kvsum) / (\n        1e-5 + (c_q * ksum).sum(-1, keepdim=True)\n    )\n    o_l = o_l @ W_l.to(o_l.dtype).transpose(-1, -2)\n\n    return (o_s + o_l).to(dtype)\n",
+  "description": "SparseLinearAttention 前向 —— thu-ml SLA (Sparse–Linear Attention, 稀疏注意力 + 线性注意力可训练融合) golden reference。对标 thu-ml/SLA @ main 的 sparse_linear_attention/core.py SparseLinearAttention, 语义依据 utils.py get_block_map (块选择)、kernel.py _attn_fwd (块稀疏注意力)、core.py forward (feature_map / calc_linear / proj_l 融合)。\n数学语义 (q/k/v: [B, H, L, D], 非因果):\n  1) 块选择 (get_block_map): arg_k = k - mean(k, dim=-2) (SageAttention smooth-k); qm/km 为 q/arg_k 的块均值 (尾块按实际 token 数); score = qm @ km^T; real_topk = min(NK, int(topk * NK)); 每个 query 块选分数最高的 real_topk 个 key 块 (块均值与块分数均回铸 bf16/fp16 后 topk, 与官方精度一致; real_topk=0 未定义)\n  2) 稀疏分支 o_s (_attn_fwd): 仅在选中 key 块上做标准 softmax 注意力 (fp32): scores = (q·D^-0.5) @ k^T (尾 key 块越界列填 -inf); o_s = softmax(scores) @ v\n  3) 线性分支 o_l (calc_linear + proj_l): c_q = φ(q), c_k = φ(k); o_l = (c_q @ c_k^T @ v) / (1e-5 + (c_q · Σ_t c_k[t]).sum(-1)); o_l = o_l @ W_l^T\n  4) 融合: o = (o_s + o_l) 回铸 q.dtype\nW_l 为随机投影矩阵 (真实场景为可训练参数, 初始化 ~ N(0, 1/D))。"
+}

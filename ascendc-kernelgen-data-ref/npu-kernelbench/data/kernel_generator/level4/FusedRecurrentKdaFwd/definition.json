@@ -1,0 +1,54 @@
+{
+  "name": "FusedRecurrentKdaFwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Query tensor [B, T, H, K]"
+    },
+    "k": {
+      "description": "Key tensor [B, T, H, K]"
+    },
+    "v": {
+      "description": "Value tensor [B, T, HV, V]"
+    },
+    "g": {
+      "description": "Per-channel log decay [B, T, HV, K] (<= 0)"
+    },
+    "beta": {
+      "description": "Gate coefficient [B, T, HV, V] in (0, 1)"
+    },
+    "scale": {
+      "description": "Attention scale"
+    },
+    "initial_state": {
+      "description": "Initial state [N, HV, V, K], optional"
+    },
+    "inplace_final_state": {
+      "description": "Whether to write final state in place (default True)"
+    },
+    "cu_seqlens": {
+      "description": "Cumulative sequence lengths (varlen), optional"
+    },
+    "ssm_state_indices": {
+      "description": "State slot indices per sequence, optional"
+    },
+    "num_accepted_tokens": {
+      "description": "Accepted tokens per sequence, optional"
+    },
+    "use_qk_l2norm_in_kernel": {
+      "description": "Apply L2 norm to q/k before recurrence"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    },
+    "final_state": {
+      "description": "Output final_state"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\ndef run(q, k, v, g, beta, scale, initial_state=None,\n            inplace_final_state=True, cu_seqlens=None,\n            ssm_state_indices=None, num_accepted_tokens=None,\n            use_qk_l2norm_in_kernel=False):\n    torch.manual_seed(42)\n    B, T, H, K = k.shape\n    HV, V = v.shape[2], v.shape[-1]\n    G = HV // H\n    q_f, k_f, v_f = q.float(), k.float(), v.float()\n    g_f, beta_f = g.float(), beta.float()\n    if initial_state is None:\n        if cu_seqlens is None:\n            num_states = B\n        else:\n            num_states = (len(cu_seqlens) - 1) if ssm_state_indices is None \\\n                else (int(ssm_state_indices.max().item()) + 1)\n        initial_state = torch.zeros(num_states, HV, V, K, dtype=v.dtype, device=v.device)\n    else:\n        num_states = initial_state.shape[0]\n        target_states = B if cu_seqlens is None else (len(cu_seqlens) - 1)\n        if num_states < target_states:\n            repeat = (target_states + num_states - 1) // num_states\n            initial_state = initial_state.repeat(\n                repeat, *(1 for _ in range(initial_state.ndim - 1)))[:target_states]\n    if use_qk_l2norm_in_kernel:\n        q_f = F.normalize(q_f, p=2, dim=-1)\n        k_f = F.normalize(k_f, p=2, dim=-1)\n    k_f = k_f * scale\n    q_flat = q_f.reshape(B * T, H, K)\n    k_flat = k_f.reshape(B * T, H, K)\n    v_flat = v_f.reshape(B * T, HV, V)\n    g_flat = g_f.reshape(B * T, HV, -1)\n    beta_flat = beta_f.reshape(B * T, HV, -1)\n    o_flat = torch.zeros(B * T, HV, V, dtype=torch.float32, device=v.device)\n    if cu_seqlens is None:\n        bounds = [(b * T, (b + 1) * T) for b in range(B)]\n        slots = list(range(B))\n    else:\n        cu = cu_seqlens.tolist()\n        bounds = [(cu[n], cu[n + 1]) for n in range(len(cu) - 1)]\n        slots = list(range(len(cu) - 1)) if ssm_state_indices is None else ssm_state_indices.tolist()\n    final_state = initial_state.clone()\n    head_map = torch.arange(HV, device=v.device) // G\n    for n, (t0, t1) in enumerate(bounds):\n        slot = slots[n]\n        S = initial_state[slot].float()\n        accepted = None if num_accepted_tokens is None else int(num_accepted_tokens[n])\n        for t in range(t0, t1):\n            k_t = k_flat[t, head_map]\n            q_t = q_flat[t, head_map]\n            v_new = v_flat[t] - torch.einsum('hvk,hk->hv', S, k_t)\n            v_new = v_new * beta_flat[t]\n            S = S * torch.exp(g_flat[t]).unsqueeze(1) + v_new.unsqueeze(-1) * k_t.unsqueeze(1)\n            o_flat[t] = torch.einsum('hvk,hk->hv', S, q_t)\n            if accepted is not None and (t - t0 + 1) == accepted:\n                final_state[slot] = S.to(initial_state.dtype)\n        if accepted is None:\n            final_state[slot] = S.to(initial_state.dtype)\n    return o_flat.reshape(v.shape).to(v.dtype), final_state\n\nimport zlib\n\n_DTYPE_CODE = {0: torch.float16, 1: torch.bfloat16, 2: torch.float32}\n\n\ndef make_inputs(axes, device):\n    \"\"\"Custom input generator (custom_inputs_entrypoint).\n\n    Deterministic per case: RNG is reseeded from the axes dict so repeated\n    calls (once per custom input) produce identical tensors. Tensors are\n    generated on CPU; the evaluator moves them to the target device.\n    Scalars are returned as plain Python values (workloads may not mix\n    custom and non-custom inputs, so scale / use_qk_l2norm_in_kernel are\n    produced here too).\n\n    axes:\n        B, T, H, K, HV, V   q/k [B,T,H,K], v [B,T,HV,V], g [B,T,HV,K], beta [B,T,HV,V]\n        DT        dtype code for q/k/v/beta (0=fp16, 1=bf16, 2=fp32)\n        DTG       dtype code for g\n        SCALE_U   scale * 1e6 as int\n        HAS_INIT  1 if initial_state is present\n        N, DTI    initial_state [N,HV,V,K] dtype code (only when HAS_INIT=1)\n        L2        1 if use_qk_l2norm_in_kernel input is present (value True)\n    \"\"\"\n    torch.manual_seed(zlib.crc32(repr(sorted(axes.items())).encode()) & 0x7FFFFFFF)\n    B, T, H, K = axes[\"B\"], axes[\"T\"], axes[\"H\"], axes[\"K\"]\n    HV, V = axes[\"HV\"], axes[\"V\"]\n    dt = _DTYPE_CODE[axes[\"DT\"]]\n    dtg = _DTYPE_CODE[axes[\"DTG\"]]\n\n    def mixed_scaled(shape, dtype):\n        # 标准 mixed 分布 (50% U(-5,5) + 50% N(mu,sigma)) 再乘 0.2 收紧\n        if torch.rand(1).item() < 0.5:\n            t = torch.empty(shape, dtype=dtype).uniform_(-5.0, 5.0)\n        else:\n            mu = float(torch.empty(1).uniform_(-5.0, 5.0).item())\n            sigma = float(torch.empty(1).uniform_(0.1, 2.0).item())\n            t = torch.normal(mu, sigma, shape, dtype=dtype)\n        return t * 0.2\n\n    q = mixed_scaled([B, T, H, K], dt)\n    k = mixed_scaled([B, T, H, K], dt)\n    v = mixed_scaled([B, T, HV, V], dt)\n    # g 是逐通道 log 衰减，必须 <= 0；限制在 [-8, -0.5] 避免状态累乘发散\n    g = -torch.empty([B, T, HV, K], dtype=dtg).uniform_(0.5, 8.0)\n    # beta 物理含义是 sigmoid 门控系数，取值 (0, 1)\n    beta = torch.empty([B, T, HV, V], dtype=dt).uniform_(0.0, 1.0)\n    out = {\"q\": q, \"k\": k, \"v\": v, \"g\": g, \"beta\": beta,\n           \"scale\": axes[\"SCALE_U\"] / 1e6}\n    if axes.get(\"HAS_INIT\", 0):\n        out[\"initial_state\"] = mixed_scaled(\n            [axes[\"N\"], HV, V, K], _DTYPE_CODE[axes[\"DTI\"]])\n    if axes.get(\"L2\", 0):\n        out[\"use_qk_l2norm_in_kernel\"] = True\n    return out\n",
+  "description": "Model that performs fused recurrent KDA (gated delta rule) forward computation.\n    fused_recurrent_kda_fwd(q, k, v, g, beta, scale, initial_state, ...)\n        -> (o, final_state)\n\n    torch 原生小算子拼接参考实现(与 Triton kernel 逐 token 递归语义一致):\n        q_t = l2norm(q_t); k_t = l2norm(k_t)   # 可选, use_qk_l2norm_in_kernel\n        k_t = k_t * scale\n        v_new = (v_t - S @ k_t) * beta_t       # S: [V, K]; beta: 标量/头 或 逐通道 [V]\n        S = S * exp(g_t) + v_new ⊗ k_t         # KDA: g_t 为逐通道 log 衰减 [K]\n        o_t = S @ q_t                          # [V]\n    每条序列的 S 从 initial_state[ssm_state_indices[n]] 载入,\n    在序列末尾(或 num_accepted_tokens 指定的已接受 token 处)写回 final_state。\n    注: kernel 侧 o = empty_like(k), 隐含约束 H == HV 且 K == V, case 按此生成。 Inputs are generated by make_inputs (custom_inputs_entrypoint): q/k/v/initial_state = standard mixed * 0.2, g = -uniform(0.5, 8), beta = uniform(0, 1).",
+  "custom_inputs_entrypoint": "make_inputs"
+}

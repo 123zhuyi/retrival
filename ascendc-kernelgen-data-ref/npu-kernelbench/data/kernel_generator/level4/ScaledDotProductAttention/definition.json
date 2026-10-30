@@ -1,0 +1,26 @@
+{
+  "name": "ScaledDotProductAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "Q": {
+      "description": "query tensor (B, H, S_q, D)"
+    },
+    "K": {
+      "description": "key tensor (B, H, S_k, D)"
+    },
+    "V": {
+      "description": "value tensor (B, H, S_k, D_v)"
+    },
+    "scale": {
+      "description": "attention scale factor"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output (B, H, S_q, D_v)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\n\ndef run(Q, K, V, scale):\n    scores = torch.matmul(Q.float(), K.float().transpose(-2, -1)) * scale\n    weights = F.softmax(scores, dim=-1)\n    return torch.matmul(weights, V.float()).to(dtype=Q.dtype)\n",
+  "description": "Scaled dot-product attention: softmax(Q @ K^T * scale) @ V."
+}

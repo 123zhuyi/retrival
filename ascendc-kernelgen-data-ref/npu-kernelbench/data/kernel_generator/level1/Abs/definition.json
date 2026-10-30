@@ -1,0 +1,13 @@
+{
+  "name": "Abs",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor of any shape (1D-4D seen in workloads). Supports float32, float16, bfloat16."}
+  },
+  "outputs": {
+    "y": {"description": "Output tensor, same shape and dtype as input x."}
+  },
+  "reference": "import torch\n\ndef run(x):\n    return torch.abs(x)\n",
+  "description": "Abs: Computes the absolute value of each element.\n\ntorch.abs = abs(input, *, out=None) -> Tensor\n\nout_i = |input_i|\n\nArgs:\n    input (Tensor): the input tensor.\n\nKeyword args:\n    out (Tensor, optional): the output tensor.\n\nExample:\n    >>> torch.abs(torch.tensor([-1, -2, 3]))\n    tensor([1, 2, 3])\n\nReturns: Tensor, same shape as input."
+}

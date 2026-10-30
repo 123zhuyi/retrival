@@ -1,0 +1,24 @@
+{
+  "name": "DynamicQuant",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input tensor to quantize. Supports float16, bfloat16."
+    },
+    "smooth_scales": {
+      "description": "Optional tensor, smooth scale factors for per-channel scaling. Same dtype as x. Omit if absent.",
+      "dtype": "float16",
+      "shape": null
+    }
+  },
+  "outputs": {
+    "quantized": {
+      "description": "Quantized tensor, int8."
+    },
+    "scale": {
+      "description": "Scale tensor used for quantization, float32."
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, smooth_scales=None):\n    return torch_npu.npu_dynamic_quant(x, smooth_scales=smooth_scales)\n",
+  "description": "DynamicQuant: NPU-accelerated dynamic quantization.\n\ntorch_npu.npu_dynamic_quant \u2014 performs per-token or per-group dynamic quantization on NPU.\n\nArgs:\n    x (Tensor): Input tensor to be quantized.\n    smooth_scales (Tensor, optional): Smooth scale factors for per-channel scaling.\n    group_index (Tensor, optional): Group indices for per-group quantization.\n    dst_type (optional): Target data type for quantized output (default int8).\n\nReturns: tuple of (quantized_tensor, scale_tensor).\n\n---\nPure PyTorch equivalent (per-token):\n    x_float = x.float()\n    if smooth_scales is not None:\n        x_float = x_float * smooth_scales.float()\n    max_abs = x_float.abs().max(dim=-1, keepdim=True)[0]\n    scale = (max_abs / 127.0).clamp(min=1e-10).squeeze(-1)\n    quantized = (x_float / scale.unsqueeze(-1)).round().clamp(-128, 127).to(torch.int8)\n    return quantized, scale"
+}

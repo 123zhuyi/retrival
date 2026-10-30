@@ -1,0 +1,45 @@
+{
+  "name": "ChunkKdaFwd",
+  "op_type": "attention",
+  "axes": {},
+  "custom_inputs_entrypoint": "make_inputs",
+  "inputs": {
+    "q": {
+      "description": "Query tensor [B, T, H, K]"
+    },
+    "k": {
+      "description": "Key tensor [B, T, H, K]"
+    },
+    "v": {
+      "description": "Value tensor [B, T, H, V]"
+    },
+    "g": {
+      "description": "Log-decay gate [B, T, H, K] (channel-wise, <= 0)"
+    },
+    "beta": {
+      "description": "Beta tensor [B, T, H]"
+    },
+    "scale": {
+      "description": "Attention scale, optional (default K ** -0.5)"
+    },
+    "initial_state": {
+      "description": "Initial state, transposed layout [N, H, V, K], optional"
+    },
+    "output_final_state": {
+      "description": "Whether to return the final state"
+    },
+    "cu_seqlens": {
+      "description": "Cumulative sequence lengths (varlen, B == 1), optional"
+    }
+  },
+  "outputs": {
+    "o": {
+      "description": "Output [B, T, H, V], dtype matches v"
+    },
+    "final_state": {
+      "description": "Final state, transposed layout [N, H, V, K], fp32"
+    }
+  },
+  "reference": "import zlib\n\nimport torch\nimport torch.nn.functional as F\n\n\ndef run(q, k, v, g, beta, scale=None, initial_state=None,\n        output_final_state=False, cu_seqlens=None):\n    B, T, H, K = q.shape\n    V = v.shape[-1]\n    if scale is None:\n        scale = K ** -0.5\n\n    qf = q.transpose(1, 2).float() * scale\n    kf = k.transpose(1, 2).float()\n    vf = v.transpose(1, 2).float()\n    gf = g.transpose(1, 2).float()\n    betaf = beta.transpose(1, 2).float()\n\n    if cu_seqlens is not None:\n        cu = cu_seqlens.cpu().tolist()\n        spans = [(0, i, cu[i], cu[i + 1]) for i in range(len(cu) - 1)]\n    else:\n        spans = [(b, b, 0, T) for b in range(B)]\n\n    o = torch.zeros(B, H, T, V, device=q.device, dtype=torch.float32)\n    final_states = []\n\n    for b, si, bos, eos in spans:\n        S = torch.zeros(H, K, V, device=q.device, dtype=torch.float32)\n        if initial_state is not None:\n            S = initial_state[si].float().transpose(-1, -2).contiguous()\n\n        for t in range(bos, eos):\n            qt = qf[b, :, t]\n            kt = kf[b, :, t]\n            vt = vf[b, :, t]\n            gt = gf[b, :, t]\n            bt = betaf[b, :, t]\n\n            S = S * gt.exp()[..., None]\n            delta = vt - (S * kt[..., None]).sum(-2)\n            delta = delta * bt[..., None]\n            S = S + kt.unsqueeze(-1) * delta.unsqueeze(-2)\n            o[b, :, t] = torch.einsum(\"hk,hkv->hv\", qt, S)\n\n        final_states.append(S.transpose(-1, -2).contiguous())\n\n    o = o.transpose(1, 2).contiguous().to(v.dtype)\n    final_state = torch.stack(final_states, dim=0) if output_final_state else None\n    return o, final_state\n\n\n_DTYPE_CODE = {0: torch.float16, 1: torch.bfloat16, 2: torch.float32}\n\n\ndef make_inputs(axes, device):\n    \"\"\"Custom input generator (custom_inputs_entrypoint).\n\n    Deterministic per case: RNG is reseeded from the axes dict so repeated\n    calls (once per custom input) produce identical tensors. Tensors are\n    generated on CPU; the evaluator moves them to the target device.\n\n    axes:\n        B, T, H, K, V   shapes of q/k [B,T,H,K], v [B,T,H,V], beta [B,T,H]\n        DT    dtype code for q/k/v/beta (0=fp16, 1=bf16, 2=fp32)\n        DTG   dtype code for g\n    \"\"\"\n    torch.manual_seed(zlib.crc32(repr(sorted(axes.items())).encode()) & 0x7FFFFFFF)\n    B, T, H, K, V = axes[\"B\"], axes[\"T\"], axes[\"H\"], axes[\"K\"], axes[\"V\"]\n    dt = _DTYPE_CODE[axes[\"DT\"]]\n    dtg = _DTYPE_CODE[axes[\"DTG\"]]\n\n    def tight(shape, dtype):\n        # KDA 递推对幅值极其敏感，收紧输入分布以保持长序列数值稳定\n        if torch.rand(1).item() < 0.5:\n            mu = float(torch.empty(1).uniform_(-0.1, 0.1).item())\n            sigma = float(torch.empty(1).uniform_(0.01, 0.05).item())\n            if dtype is torch.bfloat16:\n                return torch.normal(mu, sigma, shape, dtype=torch.float32).to(dtype)\n            return torch.normal(mu, sigma, shape, dtype=dtype)\n        return torch.empty(shape, dtype=dtype).uniform_(-0.1, 0.1)\n\n    q = tight([B, T, H, K], dt)\n    k = tight([B, T, H, K], dt)\n    v = tight([B, T, H, V], dt)\n    # g 为 log 衰减，语义上必须 <= 0，走 logsigmoid(randn)，对齐 vLLM test_kda.py\n    g = F.logsigmoid(torch.randn([B, T, H, K], dtype=torch.float32)).to(dtg)\n    # beta 必须为正且较小，防止状态爆炸\n    beta = torch.empty([B, T, H], dtype=torch.float32).uniform_(0.01, 0.1).to(dt)\n    return {\"q\": q, \"k\": k, \"v\": v, \"g\": g, \"beta\": beta}\n",
+  "description": "Chunk KDA forward with pre-computed log-decay gate (golden for chunk_kda_fwd). KDA recurrence in fp32: S_t = Diag(exp(g_t)) * S_{t-1}; delta_t = (v_t - S_t^T k_t) * beta_t; S_t += k_t outer delta_t; o_t = S_t^T (scale * q_t). States use the transposed layout [N, H, V, K]. varlen supported via cu_seqlens (B == 1). use_qk_l2norm_in_kernel belongs to the upper wrapper and is excluded. Inputs are generated by make_inputs (custom_inputs_entrypoint): q/k/v tight mixed (mu in (-0.1,0.1), sigma in (0.01,0.05) or uniform(-0.1,0.1)), g = logsigmoid(randn) (<= 0), beta = uniform(0.01, 0.1)."
+}

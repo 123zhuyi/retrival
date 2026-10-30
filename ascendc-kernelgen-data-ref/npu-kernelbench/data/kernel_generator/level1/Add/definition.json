@@ -1,0 +1,14 @@
+{
+  "name": "Add",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "First input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "y": {"description": "Second input tensor, broadcastable with x. Same dtype as x in each workload."},
+    "alpha": {"description": "float scalar multiplier for y (default 1.0)."}
+  },
+  "outputs": {
+    "out": {"description": "Output tensor x + alpha * y, shape follows broadcasting rules, same dtype as inputs."}
+  },
+  "reference": "import torch\n\ndef run(x, y, alpha=1.0):\n    return torch.add(x, y, alpha=alpha)\n",
+  "description": "Add: Element-wise addition with broadcasting support.\n\ntorch.add = add(input, other, *, alpha=1, out=None) -> Tensor\n\nout_i = input_i + alpha * other_i\n\nSupports broadcasting to a common shape, type promotion, and integer, float, and complex inputs.\n\nArgs:\n    input (Tensor): the input tensor.\n    other (Tensor or Number): the tensor or number to add to input.\n\nKeyword args:\n    alpha (Number): the multiplier for other.\n    out (Tensor, optional): the output tensor.\n\nExamples:\n    >>> a = torch.randn(4)\n    >>> torch.add(a, 20)\n    tensor([20.0202, 21.0985, 21.3506, 19.3944])\n    >>> b = torch.randn(4, 1)\n    >>> torch.add(b, c, alpha=10)\n    tensor([[2.7695, 3.3930, 4.3672, 4.1450], ...])\n\nReturns: Tensor, broadcast shape, same dtype."
+}

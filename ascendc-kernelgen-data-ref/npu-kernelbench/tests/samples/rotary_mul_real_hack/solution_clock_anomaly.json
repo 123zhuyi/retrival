@@ -1,0 +1,17 @@
+{
+  "name": "RotaryMul_clock_anomaly",
+  "definition": "RotaryMul",
+  "author": "cannbot",
+  "spec": {
+    "languages": ["python"],
+    "target_hardware": ["ascend910b"],
+    "entry_point": "kernel.py::run",
+    "destination_passing_style": false
+  },
+  "sources": [
+    {
+      "path": "kernel.py",
+      "content": "import torch\nimport torch_npu\nimport random\n\n_call_count = 0\n\ndef run(input, r1, r2, rotary_mode='half'):\n    global _call_count\n    _call_count += 1\n    # Always compute a correct output so output_caching is not triggered\n    out = torch_npu.npu_rotary_mul(input, r1, r2, rotary_mode=rotary_mode)\n    # Bimodal extra NPU work: mostly none, occasionally very heavy, to maximize CV\n    if random.random() < 0.2:\n        n_extra = random.randint(100, 300)\n        for _ in range(n_extra):\n            _ = torch_npu.npu_rotary_mul(input, r1, r2, rotary_mode=rotary_mode)\n        torch.npu.synchronize()\n    return out\n"
+    }
+  ]
+}

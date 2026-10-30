@@ -1,0 +1,38 @@
+{
+  "name": "MoeFinalizeRouting",
+  "op_type": "routing",
+  "axes": {},
+  "inputs": {
+    "expanded_permuted_rows": {
+      "description": "shape varies; supports float16"
+    },
+    "skip1": {
+      "description": "shape varies; supports float16; optional, may be None"
+    },
+    "skip2": {
+      "description": "shape varies; supports float16; optional, may be None"
+    },
+    "bias": {
+      "description": "shape varies; supports float16; optional, may be None"
+    },
+    "scales": {
+      "description": "shape varies; supports float16"
+    },
+    "expanded_src_to_dst_row": {
+      "description": "shape varies; supports int32"
+    },
+    "export_for_source_row": {
+      "description": "shape varies; supports int32"
+    },
+    "drop_pad_mode": {
+      "description": "int, default=0; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Finalized routing output, same shape as expanded_permuted_rows"
+    }
+  },
+  "reference": "import torch\n\ndef run(expanded_permuted_rows, skip1, skip2, bias, scales, expanded_src_to_dst_row, export_for_source_row, drop_pad_mode=0):\n    orig_dtype = expanded_permuted_rows.dtype\n    rows = expanded_permuted_rows.float()\n    s = scales.float()\n\n    if drop_pad_mode in (0, 2):\n        num_rows_k, H = rows.shape\n        NUM_ROWS = s.shape[0]\n        K = s.shape[1]\n        idx = expanded_src_to_dst_row.long()\n        gathered = rows[idx]\n        if drop_pad_mode == 0:\n            gathered = gathered.view(K, NUM_ROWS, H).transpose(0, 1)\n        else:\n            gathered = gathered.view(NUM_ROWS, K, H)\n        output = (gathered * s.unsqueeze(-1)).sum(dim=1)\n    else:\n        E, C, H = rows.shape\n        NUM_ROWS = s.shape[0]\n        K = s.shape[1]\n        idx = expanded_src_to_dst_row.long()\n        output = torch.zeros(NUM_ROWS, H, device=rows.device, dtype=torch.float32)\n        for r in range(NUM_ROWS):\n            for k in range(K):\n                if drop_pad_mode == 1:\n                    flat_idx = idx[r + k * NUM_ROWS].item()\n                else:\n                    flat_idx = idx[r * K + k].item()\n                expert = flat_idx // C\n                slot = flat_idx % C\n                if 0 <= expert < E and 0 <= slot < C:\n                    output[r] += rows[expert, slot] * s[r, k]\n\n    if bias is not None and export_for_source_row is not None:\n        bias_f32 = bias.float()\n        row_bias = torch.zeros(NUM_ROWS, H, device=output.device, dtype=torch.float32)\n        for k in range(K):\n            expert_idx = export_for_source_row[:, k].long()\n            row_bias += bias_f32[expert_idx] * s[:, k:k + 1]\n        output = output + row_bias\n\n    if skip1 is not None:\n        output = output + skip1.float()\n    if skip2 is not None:\n        output = output + skip2.float()\n\n    return output.to(orig_dtype)\n",
+  "description": "Finalize MoE routing by combining expert outputs with skip connections. Pure PyTorch: scatter expanded_permuted_rows back using expanded_src_to_dst_row and export_for_source_row, add skip1/skip2 and bias weighted by scales."
+}

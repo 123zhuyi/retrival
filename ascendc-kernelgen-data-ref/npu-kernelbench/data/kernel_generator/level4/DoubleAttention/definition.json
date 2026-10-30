@@ -1,0 +1,17 @@
+{
+  "name": "DoubleAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    if b == 0 or c == 0 or h == 0 or w == 0:\n        return x\n    c_m = c\n    c_n = max(1, c // 8)\n    convA = nn.Conv2d(c, c_m, 1).to(device=x.device, dtype=x.dtype)\n    convB = nn.Conv2d(c, c_n, 1).to(device=x.device, dtype=x.dtype)\n    convV = nn.Conv2d(c, c_n, 1).to(device=x.device, dtype=x.dtype)\n    recon = nn.Conv2d(c_m, c, 1).to(device=x.device, dtype=x.dtype)\n\n    A = convA(x).view(b, c_m, -1)\n    B = F.softmax(convB(x).view(b, c_n, -1), dim=-1)\n    V = F.softmax(convV(x).view(b, c_n, -1), dim=-1)\n    global_descriptors = torch.bmm(A, B.permute(0, 2, 1))\n    tmpZ = torch.bmm(global_descriptors, V)\n    tmpZ = tmpZ.view(b, c_m, h, w)\n    tmpZ = recon(tmpZ)\n    return tmpZ\n",
+  "description": "Migrated DoubleAttention operator."
+}

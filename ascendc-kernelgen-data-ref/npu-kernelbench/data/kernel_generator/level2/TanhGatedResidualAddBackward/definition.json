@@ -1,0 +1,32 @@
+{
+  "name": "TanhGatedResidualAddBackward",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "grad_output": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "gate": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "hidden_states": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "mask": {
+      "description": "shape varies; supports bfloat16"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Gradient w.r.t. residual, bfloat16"
+    },
+    "1": {
+      "description": "Gradient w.r.t. hidden_states, bfloat16"
+    },
+    "2": {
+      "description": "Gradient w.r.t. gate, bfloat16"
+    }
+  },
+  "reference": "import torch\n\ndef run(grad_output, gate, hidden_states, mask):\n    gate_float = gate.to(torch.float32)\n    gate_value = torch.tanh(gate_float)\n    grad_residual = grad_output.clone()\n    grad_hidden_states = grad_output * gate_value * mask\n    sech_squared = 1.0 - gate_value * gate_value\n    masked_hidden_states = hidden_states * mask\n    grad_gate = torch.sum(grad_output.to(torch.float32) * masked_hidden_states.to(torch.float32)) * sech_squared\n    return grad_residual.to(torch.bfloat16), grad_hidden_states.to(torch.bfloat16), grad_gate.to(torch.bfloat16)\n",
+  "description": "Backward pass for tanh-gated residual addition. Computes gradients w.r.t. residual, hidden_states, and gate. All outputs in bfloat16. Pure PyTorch: grad computation for x + tanh(gate) * hidden * mask."
+}

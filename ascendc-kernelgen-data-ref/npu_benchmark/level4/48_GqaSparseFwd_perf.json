@@ -1,0 +1,2009 @@
+{
+ "op_name": "80_GqaSparseFwd",
+ "source": "GPU 实测延迟（run_perf_gpu.py, cuda event 端到端, warmup/repeats 见测量记录）：reference_latency_us = torch 参考实现实测；impl_latency_us = GPU Triton 实现 (triton_impl/{op}_triton_gpu_impl.py) 实测。性能基线取 impl_latency_us（逐 case）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 48,
+ "accuracy_approx_cases": 0,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      24,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      20,
+      1
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      21
+     ]
+    }
+   ],
+   "reference_latency_us": 715.8,
+   "impl_latency_us": 158.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      24,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      20,
+      1
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      21
+     ]
+    }
+   ],
+   "reference_latency_us": 671.7,
+   "impl_latency_us": 144.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      84,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      20,
+      2
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      81
+     ]
+    }
+   ],
+   "reference_latency_us": 1119.2,
+   "impl_latency_us": 233.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      19,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      20,
+      2
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1091.6,
+   "impl_latency_us": 145.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      84,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      20,
+      2
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      81
+     ]
+    }
+   ],
+   "reference_latency_us": 1068.0,
+   "impl_latency_us": 141.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      40,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      44,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      40,
+      2
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      41
+     ]
+    }
+   ],
+   "reference_latency_us": 1069.1,
+   "impl_latency_us": 139.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      40,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      104,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      40,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      101
+     ]
+    }
+   ],
+   "reference_latency_us": 1869.8,
+   "impl_latency_us": 140.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      80,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      84,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      80,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      81
+     ]
+    }
+   ],
+   "reference_latency_us": 1915.9,
+   "impl_latency_us": 134.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      644,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      20,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      641
+     ]
+    }
+   ],
+   "reference_latency_us": 6633.5,
+   "impl_latency_us": 200.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      20,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      2564,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      20,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      2561
+     ]
+    }
+   ],
+   "reference_latency_us": 6702.1,
+   "impl_latency_us": 191.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      80,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      4,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      80,
+      2
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1052.7,
+   "impl_latency_us": 150.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      100,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      125,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      100,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      2,
+      81
+     ]
+    }
+   ],
+   "reference_latency_us": 1896.4,
+   "impl_latency_us": 133.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      80,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      324,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      80,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      321
+     ]
+    }
+   ],
+   "reference_latency_us": 7394.3,
+   "impl_latency_us": 273.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      160,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      85,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      160,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      82
+     ]
+    }
+   ],
+   "reference_latency_us": 1858.6,
+   "impl_latency_us": 135.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      80,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      164,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      80,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      161
+     ]
+    }
+   ],
+   "reference_latency_us": 8331.3,
+   "impl_latency_us": 368.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      260,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      260,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 15507.5,
+   "impl_latency_us": 525.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      480,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      327,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      480,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      324
+     ]
+    }
+   ],
+   "reference_latency_us": 14887.9,
+   "impl_latency_us": 432.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      960,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      171,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      960,
+      8
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      168
+     ]
+    }
+   ],
+   "reference_latency_us": 9309.2,
+   "impl_latency_us": 393.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      280,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      280,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 17641.5,
+   "impl_latency_us": 1027.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      280,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      280,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 13951.0,
+   "impl_latency_us": 488.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      320,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      320,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 15439.9,
+   "impl_latency_us": 520.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      320,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      566,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      320,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      3,
+      321
+     ]
+    }
+   ],
+   "reference_latency_us": 15423.5,
+   "impl_latency_us": 511.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      160,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      325,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      160,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      322
+     ]
+    }
+   ],
+   "reference_latency_us": 11181.1,
+   "impl_latency_us": 494.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      360,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      360,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 21649.4,
+   "impl_latency_us": 1262.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      360,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      360,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 16971.8,
+   "impl_latency_us": 565.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      360,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      967,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      360,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      2,
+      642
+     ]
+    }
+   ],
+   "reference_latency_us": 17088.5,
+   "impl_latency_us": 561.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      640,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      168,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      640,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      165
+     ]
+    }
+   ],
+   "reference_latency_us": 19020.8,
+   "impl_latency_us": 519.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      400,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      647,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      400,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      644
+     ]
+    }
+   ],
+   "reference_latency_us": 18501.6,
+   "impl_latency_us": 617.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      400,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      647,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      400,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      644
+     ]
+    }
+   ],
+   "reference_latency_us": 23678.0,
+   "impl_latency_us": 1367.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      420,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      327,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      420,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      324
+     ]
+    }
+   ],
+   "reference_latency_us": 19104.8,
+   "impl_latency_us": 632.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      400,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      167,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      400,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      164
+     ]
+    }
+   ],
+   "reference_latency_us": 18104.3,
+   "impl_latency_us": 625.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      200,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      165,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      200,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      162
+     ]
+    }
+   ],
+   "reference_latency_us": 12962.8,
+   "impl_latency_us": 600.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1120,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      92,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      1120,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      89
+     ]
+    }
+   ],
+   "reference_latency_us": 31849.5,
+   "impl_latency_us": 811.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1280,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      93,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      1280,
+      8
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      90
+     ]
+    }
+   ],
+   "reference_latency_us": 11856.9,
+   "impl_latency_us": 480.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      200,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      85,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      200,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      82
+     ]
+    }
+   ],
+   "reference_latency_us": 13780.0,
+   "impl_latency_us": 607.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      520,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      648,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      520,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      645
+     ]
+    }
+   ],
+   "reference_latency_us": 23187.5,
+   "impl_latency_us": 754.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      600,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      648,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      600,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      645
+     ]
+    }
+   ],
+   "reference_latency_us": 34149.4,
+   "impl_latency_us": 2037.8,
+   "accuracy": "fail(diff=1.43e-03,matched=0.987[torch.float32 cap=False mr=True mere=True])"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      640,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      648,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      640,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      645
+     ]
+    }
+   ],
+   "reference_latency_us": 27996.2,
+   "impl_latency_us": 892.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      320,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      166,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      320,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      163
+     ]
+    }
+   ],
+   "reference_latency_us": 18703.4,
+   "impl_latency_us": 869.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      320,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      646,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      320,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      643
+     ]
+    }
+   ],
+   "reference_latency_us": 19625.0,
+   "impl_latency_us": 1120.3,
+   "accuracy": "fail(diff=1.57e-03,matched=0.993[torch.float32 cap=False mr=True mere=True])"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      960,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      651,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      960,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      648
+     ]
+    }
+   ],
+   "reference_latency_us": 41193.5,
+   "impl_latency_us": 1271.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      480,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      327,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      480,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      324
+     ]
+    }
+   ],
+   "reference_latency_us": 26492.9,
+   "impl_latency_us": 1219.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      640,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      648,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      640,
+      32
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      645
+     ]
+    }
+   ],
+   "reference_latency_us": 55480.3,
+   "impl_latency_us": 1677.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1280,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      653,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      1280,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      650
+     ]
+    }
+   ],
+   "reference_latency_us": 53836.8,
+   "impl_latency_us": 1651.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1280,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      93,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      1280,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      90
+     ]
+    }
+   ],
+   "reference_latency_us": 52866.0,
+   "impl_latency_us": 1668.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1280,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      173,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      1280,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      170
+     ]
+    }
+   ],
+   "reference_latency_us": 36103.2,
+   "impl_latency_us": 897.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      960,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      651,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      960,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      648
+     ]
+    }
+   ],
+   "reference_latency_us": 56267.8,
+   "impl_latency_us": 2351.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1920,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      338,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      1920,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      335
+     ]
+    }
+   ],
+   "reference_latency_us": 78490.6,
+   "impl_latency_us": 2362.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2560,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      183,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      2560,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      180
+     ]
+    }
+   ],
+   "reference_latency_us": 103217.2,
+   "impl_latency_us": 3126.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      5120,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      123,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      5120,
+      16
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      120
+     ]
+    }
+   ],
+   "reference_latency_us": 202657.8,
+   "impl_latency_us": 6131.7,
+   "accuracy": "pass"
+  }
+ ]
+}

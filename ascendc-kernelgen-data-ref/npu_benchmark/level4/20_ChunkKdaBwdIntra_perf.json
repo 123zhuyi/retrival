@@ -1,0 +1,7244 @@
+{
+ "op_name": "20_ChunkKdaBwdIntra",
+ "source": "优化版 AscendC 核（覆盖原生成核归档；来源 output/ChunkKdaBwdIntra_benchmark_evo/round_5/parallel_0，lingxi-evo 5 轮进化冠军 x5a）50/50 全量实测 (msprof quick-batch Task_Duration, 一个 forward 内 device 侧全部任务时长之和; warmup=3, repeats=1, seed=0, npu=11)；MFU vs fp16 cube 353.8944TF。三方复验一致: Agent 自测 83.2584us / 独立同窗口全量重测 83.14us (同窗基线 948.92us) / 删 build 干净重建后重测 85.70us。 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 584.700086,
+ "latency_scope": "device 侧核耗时：单个 forward 内所有 device kernel 任务时长之和（msprof Task_Duration；不含 host 侧 Python/dispatch）。基线与本条目同口径 ⇒ 比值可比。",
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 5,
+   "ratio": 0.1
+  },
+  "100-500us": {
+   "count": 10,
+   "ratio": 0.2
+  },
+  "500-1000us": {
+   "count": 20,
+   "ratio": 0.4
+  },
+  ">1000us": {
+   "count": 15,
+   "ratio": 0.3
+  }
+ },
+ "max_mfu_pct": 0.279354,
+ "sweet_spot_shape": {
+  "case_idx": 40,
+  "inputs_shape": [
+   {
+    "name": "q",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "k",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "g",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "beta",
+    "shape": [
+     1,
+     17280,
+     4
+    ]
+   },
+   {
+    "name": "dAqk",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "dAkk",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "dq",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "dk",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "db",
+    "shape": [
+     1,
+     17280,
+     4
+    ]
+   },
+   {
+    "name": "dg",
+    "shape": [
+     1,
+     17280,
+     4,
+     64
+    ]
+   },
+   {
+    "name": "E",
+    "shape": [
+     1,
+     17280,
+     64,
+     4,
+     64
+    ]
+   }
+  ],
+  "impl_latency_us": 572.75,
+  "mfu_pct": 0.279354
+ },
+ "compute_unit": "MIX_AIC_1_2 主核(CV 融合) + 2 个 AIV 布局核(ckbi_pack/ckbi_unpack)；每 forward 3 个 device kernel",
+ "peak_note": "本文件记录【优化版】核: 主核 chunk_kda_bwd_intra 由纯 AIV 重写为 KERNEL_TYPE_MIX_AIC_1_2 (四个 gemm 等效走 Cube) + K 维融合, 布局变换收敛为 ckbi_pack/ckbi_unpack 两个纯 AIV 核, benchmark 语义(输入/输出签名)未变。基线为 tilelang2ascendc 生成核 (纯 AIV, 无 cube), 全量 50 case asc device geomean 935.39us -> 优化版 83.2584us = 11.2347x (门槛 10x = 93.5us)。",
+ "peak_tflops_reference_only": 176.947,
+ "aiv_vector_peak_tflops": {
+  "48_core_ffma": 22.1184,
+  "20_core_ffma_kernel_grid_cap": 9.216,
+  "basis": "n_aiv × 128 lanes × 2 FLOP/FMA × 1.8GHz (Ascend910B2C: vector_core_cnt=48, vec_calc_size=128, cube_freq=1800MHz)"
+ },
+ "mfu_pct_denominator_status": "mfu_pct = flops / latency / 353.8944e12 * 100，分母沿用本目录既有的 fp16 cube 峰值；flops 沿用原记录的 MAC 计数口径(未 ×2)，与同目录其它条目可比。优化版主核已实际使用 Cube，该分母对主核成立；两个布局核为纯 AIV。",
+ "data_status": "CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 10, 20, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。 | 前一状态: VALID_REMEASURED — 全量 50 case，50/50 精度通过，无 case 被跳过。原记录的 INVALID_PENDING_REMEASURE 针对的是另一份复制(930test_L5/73 版, 每次调用发 2 个 kernel 被 msprof quick 漏采)；本记录是 level4/20 归档核(生成核 md5 111bfdbac958fd2860249c575a76e049)的优化版，每 forward 稳定 3 个 device kernel，且与独立同窗口全量重测、删 build 干净重建后重测三方一致(83.2584 / 83.14 / 85.70 us，离散 <3%)。",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      256,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 44.76,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 8388608.0,
+   "mfu_pct": 0.052957
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      512,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 63.26,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 16777216.0,
+   "mfu_pct": 0.074941
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      640,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 70.94,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 20971520.0,
+   "mfu_pct": 0.083534
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      768,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 76.82,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 25165824.0,
+   "mfu_pct": 0.092568
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1024,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 87.341,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 33554432.0,
+   "mfu_pct": 0.108557
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1536,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1536,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 135.061,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 50331648.0,
+   "mfu_pct": 0.105302
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1536,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      1536,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      1536,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 207.862,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 50331648.0,
+   "mfu_pct": 0.068421
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 111.801,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 67108864.0,
+   "mfu_pct": 0.169614
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 165.042,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 67108864.0,
+   "mfu_pct": 0.114898
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2048,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2048,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 263.424,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 67108864.0,
+   "mfu_pct": 0.071986
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2368,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2368,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2368,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 612.48,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 77594624.0,
+   "mfu_pct": 0.035799
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2560,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2560,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 319.475,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 83886080.0,
+   "mfu_pct": 0.074196
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2560,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2560,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2560,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 693.432,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 83886080.0,
+   "mfu_pct": 0.034183
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2880,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      2880,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      2880,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 787.064,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 94371840.0,
+   "mfu_pct": 0.033881
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3072,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 208.092,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 100663296.0,
+   "mfu_pct": 0.136692
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3072,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3072,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3072,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 387.786,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 100663296.0,
+   "mfu_pct": 0.073351
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3200,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3200,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3200,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 879.486,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 104857600.0,
+   "mfu_pct": 0.03369
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3328,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      3328,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      3328,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 911.866,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 109051904.0,
+   "mfu_pct": 0.033793
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4032,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4032,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4032,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 544.23,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 132120576.0,
+   "mfu_pct": 0.068598
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 262.694,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 134217728.0,
+   "mfu_pct": 0.144373
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4096,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4096,
+      64,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2539.009,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 134217728.0,
+   "mfu_pct": 0.014937
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4736,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4736,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      4736,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1396.136,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 155189248.0,
+   "mfu_pct": 0.031409
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      5056,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5056,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      5056,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 696.422,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 165675008.0,
+   "mfu_pct": 0.067222
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      5760,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5760,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      5760,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 789.114,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 188743680.0,
+   "mfu_pct": 0.067586
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      5952,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      5952,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      5952,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1798.504,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 195035136.0,
+   "mfu_pct": 0.030643
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      6144,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6144,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      6144,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 402.496,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 201326592.0,
+   "mfu_pct": 0.14134
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      6464,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6464,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      6464,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 890.256,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 211812352.0,
+   "mfu_pct": 0.06723
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      6912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      6912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      6912,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 956.988,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 226492416.0,
+   "mfu_pct": 0.066876
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      7424,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7424,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      7424,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1028.36,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 243269632.0,
+   "mfu_pct": 0.066845
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      7936,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      7936,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      7936,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 521.799,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 260046848.0,
+   "mfu_pct": 0.140823
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8128,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8128,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8128,
+      64,
+      32,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2501.058,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 266338304.0,
+   "mfu_pct": 0.030091
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8832,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8832,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8832,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1272.853,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 289406976.0,
+   "mfu_pct": 0.064248
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      9472,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      9472,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      9472,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 619.37,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 310378496.0,
+   "mfu_pct": 0.141601
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      10688,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      10688,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      10688,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1626.111,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 350224384.0,
+   "mfu_pct": 0.060859
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      11072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      11072,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      11072,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 772.794,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 362807296.0,
+   "mfu_pct": 0.13266
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      12224,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12224,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      12224,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 851.625,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 400556032.0,
+   "mfu_pct": 0.132905
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      13120,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13120,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      13120,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2008.719,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 429916160.0,
+   "mfu_pct": 0.060477
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      13440,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      13440,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      13440,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 949.858,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 440401920.0,
+   "mfu_pct": 0.131014
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      15680,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      15680,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      15680,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1134.431,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 513802240.0,
+   "mfu_pct": 0.127981
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16896,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16896,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16896,
+      64,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2618.831,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 553648128.0,
+   "mfu_pct": 0.059738
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      17280,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      17280,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 572.75,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 566231040.0,
+   "mfu_pct": 0.279354
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      18752,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      18752,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      18752,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1385.426,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 614465536.0,
+   "mfu_pct": 0.125326
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      20032,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      20032,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 703.353,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 656408576.0,
+   "mfu_pct": 0.26371
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      22144,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      22144,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 769.854,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 725614592.0,
+   "mfu_pct": 0.266332
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      23040,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      23040,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      23040,
+      64,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1772.983,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 754974720.0,
+   "mfu_pct": 0.120325
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      24768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      24768,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 868.585,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 811597824.0,
+   "mfu_pct": 0.264031
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      27392,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      27392,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 977.588,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 897581056.0,
+   "mfu_pct": 0.259444
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      31040,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      31040,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1115.021,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1017118720.0,
+   "mfu_pct": 0.25776
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      35648,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      35648,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1322.785,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1168113664.0,
+   "mfu_pct": 0.24953
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4
+     ]
+    },
+    {
+     "name": "dAqk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dAkk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dq",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dk",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "db",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4
+     ]
+    },
+    {
+     "name": "dg",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      43200,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "E",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      43200,
+      64,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "chunk_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "safe_gate",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1661.772,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1415577600.0,
+   "mfu_pct": 0.240707
+  }
+ ]
+}

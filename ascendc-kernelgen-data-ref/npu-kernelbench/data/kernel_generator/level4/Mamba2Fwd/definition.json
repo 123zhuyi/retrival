@@ -1,0 +1,56 @@
+{
+  "name": "Mamba2Fwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "输入张量, shape (B, T, H, P); bfloat16/float16/float32"
+    },
+    "dt": {
+      "description": "时间步 raw 值 (未加 bias/未激活), shape (B, T, H); 与 x 同 dtype"
+    },
+    "A": {
+      "description": "状态衰减系数 (恒负, = -exp(A_log)), shape (H,); float32"
+    },
+    "B": {
+      "description": "SSM B 矩阵, shape (B, T, G, N), G=ngroups (GQA 组内共享); 与 x 同 dtype"
+    },
+    "C": {
+      "description": "SSM C 矩阵, shape (B, T, G, N); 与 x 同 dtype"
+    },
+    "D": {
+      "description": "跳连系数, shape (H,) 或 (H, P); float32"
+    },
+    "z": {
+      "description": "门控张量, shape (B, T, H, P); shape[0]==0 表示无 z (rmsnorm 路径)"
+    },
+    "dt_bias": {
+      "description": "dt 偏置 (恒负量级), shape (H,); float32"
+    },
+    "initial_states": {
+      "description": "初始状态, shape (B, H, P, N) float32; shape[0]==0 表示无"
+    },
+    "chunk_size": {
+      "description": "kernel 分块大小, int 标量 (数学上与分块无关)"
+    },
+    "dt_softplus": {
+      "description": "是否对 dt 施加 softplus, int 0/1"
+    },
+    "dt_limit_lo": {
+      "description": "dt 截断下界, float"
+    },
+    "dt_limit_hi": {
+      "description": "dt 截断上界, float (1e38 代表 +inf)"
+    }
+  },
+  "outputs": {
+    "out": {
+      "description": "输出, shape (B, T, H, P), 与 x 同 dtype"
+    },
+    "final_states": {
+      "description": "末状态, shape (B, H, P, N), 与 C 同 dtype"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\n\ndef run(x, dt, A, B, C, D, z, dt_bias, initial_states,\n        chunk_size, dt_softplus, dt_limit_lo, dt_limit_hi):\n    device = x.device\n    Bsz, T, H, P = x.shape\n    G, N = B.shape[2], B.shape[3]\n    R = H // G\n\n    xf = x.float()\n    Bh = B.float().repeat_interleave(R, dim=2)\n    Ch = C.float().repeat_interleave(R, dim=2)\n\n    dtr = dt.float() + dt_bias.float()\n    if dt_softplus:\n        dtr = F.softplus(dtr)\n    dtr = dtr.clamp(dt_limit_lo, dt_limit_hi)\n    a = (dtr * A.float()).exp()\n\n    if initial_states.shape[0] > 0:\n        S = initial_states.float().clone()\n    else:\n        S = torch.zeros(Bsz, H, P, N, device=device)\n    ys = []\n    for t in range(T):\n        S = (a[:, t].unsqueeze(-1).unsqueeze(-1) * S\n             + (dtr[:, t].unsqueeze(-1).unsqueeze(-1)\n                * xf[:, t].unsqueeze(-1)) * Bh[:, t].unsqueeze(-2))\n        ys.append((S * Ch[:, t].unsqueeze(-2)).sum(-1))\n    y = torch.stack(ys, dim=1)\n\n    if D.numel() > 0:\n        Df = D.float()\n        Dv = Df.view(1, 1, H, 1) if Df.dim() == 1 else Df.view(1, 1, H, P)\n        y = y + xf * Dv\n    if z.shape[0] > 0:\n        y = y * F.silu(z.float())\n\n    return y.to(x.dtype), S.to(C.dtype)\n",
+  "description": "Mamba-2 SSD chunk-scan 前向标杆。对标 state-spaces/mamba @ main 的 mamba_chunk_scan_combined (mamba_ssm/ops/triton/ssd_combined.py:628); 官方 torch 参考链: ssd_chunk_state.py chunk_state_ref + ssd_state_passing.py state_passing_ref + ssd_chunk_scan.py chunk_scan_ref。\n数学定义 (逐 token, 对每个 batch b、头 h; GQA: 头 h 用组 g = h//(H/G) 的 B/C; 状态 S ∈ R^{P×N}, P=headdim, N=dstate):\n  1) dt 预处理 (fp32): raw = dt + dt_bias; dt' = softplus(raw) (dt_softplus=1 时, threshold=20); dt' = clamp(dt', dt_limit_lo, dt_limit_hi); a = exp(dt' * A) (A 恒负)\n  2) SSD 状态递推: S_0 = initial_states (缺省为 0); S_t = a_t * S_{t-1} + dt'_t * (x_t ⊗ B_t); y_t = S_t · C_t + D ⊙ x_t; out_t = y_t (z 缺省) 或 y_t * silu(z_t) (z 存在时, 门控在 D 残差之后)\n输入约束: A = -exp(A_log) 恒负, 生成范围 uniform(-16, -1) (对应 HF/fla 初始化 A_log ∈ (0, ln16)); dt_bias 生成范围 uniform(-5, -1) (inv_softplus(U(0.001,0.1)) 量级)。\n输出 final_states 回铸 C.dtype (kernel _state_passing_fwd 以 out_dtype=C.dtype 返回末态)。"
+}

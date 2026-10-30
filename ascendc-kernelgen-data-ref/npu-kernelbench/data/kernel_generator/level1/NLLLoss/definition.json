@@ -1,0 +1,16 @@
+{
+  "name": "NLLLoss",
+  "axes": {},
+  "inputs": {
+    "input": {"description": "Input tensor of shape (N, C) or (N, C, d1, d2, ...), expected to be log-probabilities. Supports float32, float16, bfloat16."},
+    "target": {"description": "Target tensor of shape (N,) or (N, d1, d2, ...), int64 with values in [0, C-1]."},
+    "weight": {"description": "Optional tensor of size C, manual rescaling weight per class. Same dtype as input. Omit if absent."},
+    "ignore_index": {"description": "int, target value that is ignored. Default -100."},
+    "reduction": {"description": "str, reduction method: 'none', 'mean', 'sum'. Default 'mean'."}
+  },
+  "outputs": {
+    "y": {"description": "NLL loss value. Scalar if reduction in ('mean','sum'), same shape as input if 'none'."}
+  },
+  "reference": "import torch\n\ndef run(input, target, weight=None, ignore_index=-100, reduction='mean'):\n    return torch.nn.functional.nll_loss(input, target, weight=weight, ignore_index=ignore_index, reduction=reduction)\n",
+  "description": "NLLLoss: Computes the negative log likelihood loss.\n\ntorch.nn.functional.nll_loss = nll_loss(input, target, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean') -> Tensor\n\nArgs:\n    input: (N, C) where C = number of classes or (N, C, H, W) in case of 2D Loss, or (N, C, d_1, d_2, ..., d_K) where K >= 1 in the case of K-dimensional loss. input is expected to be log-probabilities.\n    target: (N) where each value is 0 <= targets[i] <= C-1, or (N, d_1, d_2, ..., d_K) where K >= 1 for K-dimensional loss.\n    weight (Tensor, optional): A manual rescaling weight given to each class. If given, has to be a Tensor of size C.\n    size_average (bool, optional): Deprecated (see reduction).\n    ignore_index (int, optional): Specifies a target value that is ignored and does not contribute to the input gradient. When size_average is True, the loss is averaged over non-ignored targets. Default: -100.\n    reduce (bool, optional): Deprecated (see reduction).\n    reduction (str, optional): Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'. Default: 'mean'.\n\nExample:\n    >>> input = torch.randn(3, 5, requires_grad=True)\n    >>> target = torch.tensor([1, 0, 4])\n    >>> output = F.nll_loss(F.log_softmax(input, dim=1), target)\n\nReturns: Tensor, reduced loss value."
+}

@@ -1,0 +1,35 @@
+{
+  "name": "AdaptiveInstanceNormalization2DBackward",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "grad_output": {
+      "description": "shape varies; supports float32"
+    },
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "weight": {
+      "description": "shape varies; supports float32"
+    },
+    "mean": {
+      "description": "shape varies; supports float32"
+    },
+    "std": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Gradient w.r.t. input"
+    },
+    "1": {
+      "description": "Gradient w.r.t. weight"
+    },
+    "2": {
+      "description": "Gradient w.r.t. bias"
+    }
+  },
+  "reference": "import torch\n\ndef run(grad_output, x, weight, mean, std):\n    N, C, H, W = x.shape\n    spatial_size = H * W\n    x_centered = x - mean\n    x_normalized = x_centered / std\n    grad_bias = grad_output.sum(dim=(0, 2, 3))\n    grad_weight = (grad_output * x_normalized).sum(dim=(0, 2, 3))\n    weight_reshaped = weight.view(1, C, 1, 1)\n    grad_output_scaled = grad_output * weight_reshaped\n    grad_var = (grad_output_scaled * x_centered).sum(dim=(2, 3), keepdim=True) * (-0.5) * torch.pow(std, -3)\n    grad_mean = grad_output_scaled.sum(dim=(2, 3), keepdim=True) * (-1.0 / std) + grad_var * (-2.0 * x_centered.mean(dim=(2, 3), keepdim=True))\n    grad_input = grad_output_scaled / std + grad_var * 2.0 * x_centered / spatial_size + grad_mean / spatial_size\n    return grad_input, grad_weight, grad_bias\n",
+  "description": "Backward pass of Adaptive Instance Normalization (AdaIN). Computes gradients w.r.t. input, weight, and bias. Pure PyTorch: gradient computation for (x-mean)/std * weight + bias."
+}

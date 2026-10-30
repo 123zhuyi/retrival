@@ -1,0 +1,29 @@
+{
+  "name": "WeightedPermuteMLP",
+  "op_type": "mlp",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, H, W, C)"
+    },
+    "dim": {
+      "description": "feature dimension"
+    },
+    "seg_dim": {
+      "description": "segment dimension for permutation"
+    },
+    "qkv_bias": {
+      "description": "whether linear layers use bias"
+    },
+    "proj_drop": {
+      "description": "dropout probability on projection"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, H, W, C)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, dim, seg_dim, qkv_bias=None, proj_drop=None):\n    torch.manual_seed(42)\n    if qkv_bias is None:\n        qkv_bias = False\n    if proj_drop is None:\n        proj_drop = 0.0\n    B, H, W, C = x.shape\n    if B == 0 or H == 0 or W == 0 or C == 0:\n        return x\n    dim = C\n    seg_dim = min(seg_dim, C, H * W)\n    seg_dim = max(1, seg_dim)\n    while C % seg_dim != 0 or (H * W) % seg_dim != 0:\n        seg_dim -= 1\n        if seg_dim <= 1:\n            seg_dim = 1\n            break\n    S = C // seg_dim\n    mlp_c = nn.Linear(dim, dim, bias=qkv_bias).to(device=x.device, dtype=x.dtype)\n    mlp_h = nn.Linear(H * S, H * S, bias=qkv_bias).to(device=x.device, dtype=x.dtype)\n    mlp_w = nn.Linear(W * S, W * S, bias=qkv_bias).to(device=x.device, dtype=x.dtype)\n    hidden = dim // 4\n    mlp_fc1 = nn.Linear(dim, hidden).to(device=x.device, dtype=x.dtype)\n    mlp_act = nn.GELU()\n    mlp_fc2 = nn.Linear(hidden, dim * 3).to(device=x.device, dtype=x.dtype)\n    mlp_drop = nn.Dropout(0.0)\n    proj = nn.Linear(dim, dim).to(device=x.device, dtype=x.dtype)\n    proj_drop_layer = nn.Dropout(proj_drop)\n    c_embed = mlp_c(x)\n    h_embed = x.reshape(B, H, W, seg_dim, S).permute(0, 3, 2, 1, 4).contiguous().reshape(B, seg_dim, W, H * S)\n    h_embed = mlp_h(h_embed)\n    h_embed = h_embed.reshape(B, seg_dim, W, H, S).permute(0, 3, 2, 1, 4).contiguous().reshape(B, H, W, C)\n    w_embed = x.reshape(B, H, W, seg_dim, S).permute(0, 3, 1, 2, 4).contiguous().reshape(B, seg_dim, H, W * S)\n    w_embed = mlp_w(w_embed)\n    w_embed = w_embed.reshape(B, seg_dim, H, W, S).permute(0, 2, 3, 1, 4).contiguous().reshape(B, H, W, C)\n    weight = (c_embed + h_embed + w_embed).permute(0, 3, 1, 2).contiguous()\n    weight = weight.flatten(2).mean(dim=2)\n    weight = mlp_fc1(weight)\n    weight = mlp_act(weight.float()).to(x.dtype)\n    weight = mlp_fc2(weight)\n    weight = mlp_drop(weight)\n    weight = weight.reshape(B, C, 3).permute(2, 0, 1)\n    weight = F.softmax(weight.float(), dim=0).to(x.dtype)\n    weight = weight.unsqueeze(2).unsqueeze(2)\n    x_out = c_embed * weight[0] + w_embed * weight[1] + h_embed * weight[2]\n    x_out = proj(x_out)\n    x_out = proj_drop_layer(x_out)\n    return x_out\n",
+  "description": "Migrated WeightedPermuteMLP operator from old npu_benchmark architecture."
+}

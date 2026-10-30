@@ -1,0 +1,44 @@
+{
+  "name": "FlashAttentionBwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "dout": {
+      "description": "output gradient tensor (B, S_q, n_heads, D)"
+    },
+    "q": {
+      "description": "query tensor (B, S_q, n_heads, D)"
+    },
+    "k": {
+      "description": "key tensor (B, S_k, n_kv_heads, D)"
+    },
+    "v": {
+      "description": "value tensor (B, S_k, n_kv_heads, D)"
+    },
+    "causal": {
+      "description": "whether causal mask was applied"
+    },
+    "window_left": {
+      "description": "left window size; -1 disables"
+    },
+    "window_right": {
+      "description": "right window size; -1 disables"
+    },
+    "softcap": {
+      "description": "softcap value; 0.0 disables"
+    }
+  },
+  "outputs": {
+    "dq": {
+      "description": "gradient w.r.t. q (B, S_q, n_heads, D)"
+    },
+    "dk": {
+      "description": "gradient w.r.t. k (B, S_k, n_kv_heads, D)"
+    },
+    "dv": {
+      "description": "gradient w.r.t. v (B, S_k, n_kv_heads, D)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport math\nimport torch.nn.functional as F\n\ndef _attention(q, k, v, causal, window_left, window_right, softcap):\n    query_length = q.shape[-2]\n    key_length = k.shape[-2]\n    n_heads = q.shape[1]\n    n_kv_heads = k.shape[1]\n    head_dim = q.shape[-1]\n    if n_heads % n_kv_heads != 0:\n        raise ValueError('query heads must be divisible by KV heads')\n    repeats = n_heads // n_kv_heads\n    expanded_k = k.repeat_interleave(repeats, dim=1)\n    expanded_v = v.repeat_interleave(repeats, dim=1)\n    scores = torch.matmul(q, expanded_k.transpose(-2, -1)) / math.sqrt(head_dim)\n    if softcap > 0.0:\n        scores = softcap * torch.tanh(scores / softcap)\n    row = torch.arange(query_length, device=q.device).unsqueeze(1)\n    column = torch.arange(key_length, device=q.device).unsqueeze(0)\n    relative = column - (row + key_length - query_length)\n    mask = torch.zeros((query_length, key_length), dtype=torch.bool, device=q.device)\n    if causal:\n        mask = mask | (relative > 0)\n    if window_left >= 0:\n        mask = mask | (relative < -window_left)\n    if window_right >= 0:\n        mask = mask | (relative > window_right)\n    if causal or window_left >= 0 or window_right >= 0:\n        scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float('-inf'))\n    return torch.matmul(F.softmax(scores, dim=-1), expanded_v)\n\ndef run(dout, q, k, v, causal, window_left, window_right, softcap):\n    torch.manual_seed(42)\n    q_float = q.float().detach().requires_grad_(True)\n    k_float = k.float().detach().requires_grad_(True)\n    v_float = v.float().detach().requires_grad_(True)\n    output = _attention(\n        q_float.transpose(1, 2),\n        k_float.transpose(1, 2),\n        v_float.transpose(1, 2),\n        causal, window_left, window_right, softcap\n    ).transpose(1, 2)\n    dq, dk, dv = torch.autograd.grad(output, (q_float, k_float, v_float), grad_outputs=dout.float())\n    return dq.to(dtype=q.dtype), dk.to(dtype=k.dtype), dv.to(dtype=v.dtype)\n",
+  "description": "FlashAttention backward reference using autograd."
+}

@@ -1,0 +1,44 @@
+{
+  "name": "SwiGLU",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "dim": {
+      "description": "int, default=-1; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "SwiGLU output, same shape as input except dim halved"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(x, dim=-1):\n    a, b = torch.chunk(x, 2, dim=dim)\n    return F.silu(a) * b\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "activation/swi_glu/op_graph/CMakeLists.txt",
+      "activation/swi_glu/op_graph/swi_glu_proto.h"
+    ],
+    "op_host": [
+      "activation/swi_glu/op_host/CMakeLists.txt",
+      "activation/swi_glu/op_host/swi_glu_def.cpp",
+      "activation/swi_glu/op_host/swi_glu_infershape.cpp",
+      "activation/swi_glu/op_host/swi_glu_tiling.cpp",
+      "activation/swi_glu/op_host/swi_glu_tiling.h"
+    ],
+    "op_kernel": [
+      "activation/swi_glu/op_kernel/glu_tiling.hpp",
+      "activation/swi_glu/op_kernel/glu_tiling_kernel.hpp",
+      "activation/swi_glu/op_kernel/swi_glu.cpp",
+      "activation/swi_glu/op_kernel/swi_glu_apt.cpp",
+      "activation/swi_glu/op_kernel/swi_glu_bf16.hpp",
+      "activation/swi_glu/op_kernel/swi_glu_impl.hpp",
+      "activation/swi_glu/op_kernel/swi_glu_single.hpp"
+    ],
+    "op_api": []
+  },
+  "description": "SwiGLU activation: splits input along dim into two halves, applies SiLU (swish) to first half, multiplies by second half. SiLU(x) = x * sigmoid(x). Output shape is same as input except dim is halved. dim must have even size."
+}

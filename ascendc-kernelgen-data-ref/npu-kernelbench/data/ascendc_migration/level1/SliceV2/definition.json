@@ -1,0 +1,42 @@
+{
+  "name": "SliceV2",
+  "op_type": "slice",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "offsets": {
+      "description": "list"
+    },
+    "size": {
+      "description": "list"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Sliced tensor, shape determined by size parameter"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(input, offsets, size):\n    return torch_npu.npu_slice(input, offsets, size)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-math.git",
+  "kernel_reference": {
+    "op_graph": [
+      "conversion/slice/op_graph/slice_proto.h"
+    ],
+    "op_host": [
+      "conversion/slice/op_host/slice_def.cpp",
+      "conversion/slice/op_host/slice_infershape.cpp"
+    ],
+    "op_kernel": [
+      "conversion/slice/op_kernel/slice_apt.cpp"
+    ],
+    "op_api": [
+      "conversion/slice/op_api/aclnn_slice.cpp",
+      "conversion/slice/op_api/aclnn_slice.h",
+      "conversion/slice/op_api/slice.cpp",
+      "conversion/slice/op_api/slice.h"
+    ]
+  },
+  "description": "torch_npu.npu_slice(input, offsets, size) extracts a slice from the input tensor. Equivalent PyTorch: input[tuple(slice(o, o+s) for o, s in zip(offsets, size))]. offsets and size are lists of ints specifying start indices and sizes per dimension."
+}

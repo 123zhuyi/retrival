@@ -1,0 +1,41 @@
+{
+  "name": "WeightQuantBatchmatmul",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "weight": {
+      "description": "shape varies; supports int8"
+    },
+    "antiquant_scale": {
+      "description": "shape varies; supports float16; defaults to ones([1]) when absent"
+    },
+    "antiquant_offset": {
+      "description": "shape varies; supports float16; optional"
+    },
+    "quant_scale": {
+      "description": "shape varies; supports float32; optional"
+    },
+    "quant_offset": {
+      "description": "shape varies; supports float32; optional"
+    },
+    "bias": {
+      "description": "shape varies; supports float16/float32; optional"
+    },
+    "antiquant_group_size": {
+      "description": "int, default=0"
+    },
+    "inner_precise": {
+      "description": "int, default=0"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Weight-quantized batch matmul output"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(x: torch.Tensor, weight: torch.Tensor, antiquant_scale: torch.Tensor, antiquant_offset=None, quant_scale=None, quant_offset=None, bias=None, antiquant_group_size=0, inner_precise=0):\n    \"\"\"\n        Performs weight-quantized batch matmul on NPU.\n        Args:\n            x (Tensor): Left matrix, shape [M, K], dtype float16/bfloat16.\n            weight (Tensor): Right matrix (weight), shape [K, N], dtype int8.\n            antiquant_scale (Tensor): Dequantization scale for weight, dtype float16/bfloat16.\n            antiquant_offset (Tensor, optional): Dequantization offset for weight, dtype float16/bfloat16.\n            quant_scale (Tensor, optional): Output quantization scale, dtype float32.\n            quant_offset (Tensor, optional): Output quantization offset, dtype float32.\n            bias (Tensor, optional): Bias term, shape [1, N] or [N], dtype float16/float32.\n            antiquant_group_size (int): Group size for pergroup quantization, default 0.\n            inner_precise (int): 0=high precision, 1=high performance, default 0.\n        Returns:\n            Tensor: Output tensor, same dtype as x.\n        \"\"\"\n    import torch_npu\n    return torch_npu.npu_weight_quant_batchmatmul(x, weight, antiquant_scale, antiquant_offset, quant_scale, quant_offset, bias, antiquant_group_size, inner_precise)\n",
+  "description": "Model that performs weight-quantized batch matrix multiplication using NPU accelerated npu_weight_quant_batchmatmul.\nSupports pertensor, perchannel, and pergroup quantization for weight matrices.\ntorch_npu.npu_weight_quant_batchmatmul(x, weight, antiquant_scale, antiquant_offset, quant_scale, quant_offset, bias, antiquant_group_size, inner_precise) -> Tensor\n\nCPU 标杆实现（注释内）—— 来源: analysis/正确性_V2_CPU_修复/v2_golden_cpu.py 的 normal() 路径\n----------------------------------------------------------------------------------------\n设计要点（与朴素 PyTorch 实现的关键差异，是对齐 NPU cube 行为的修复点）：\n\n1. dequant 域按 x.dtype 分流（V3 修复）：\n   - fp16 输入：在 fp16 域做 (weight+offset)*scale，最后再 fp16→fp32（贴合 V2 仓上原行为）\n   - bf16 输入：在 fp32 域做 (weight+offset)*scale，再 cast 到 bf16（模拟 bf16 表示精度）→ 回 fp32\n     （对应 NPU cube L0C 行为，避免 bf16 加法尾数损失）\n\n2. matmul 用 fp32 split-K 累加，BLOCK_K=16（模拟 NPU cube 单次累加深度），不是一次性 torch.matmul。\n   循环内每个 partial 都是 fp32，最后输出仍是 fp32。\n\n3. bias / quant_scale / quant_offset 可选；quant 路径有 clamp 到 [-256,256] / [-128,127] 的边界处理。\n\n4. 标杆假设输入 tensor 可在任意 device，内部统一 .cpu() 计算（CPU 标杆本质）。\n\nPyTorch native implementation of forward function\ndef forward(self, x: torch.Tensor, weight: torch.Tensor,\n            antiquant_scale: torch.Tensor, antiquant_offset=None,\n            quant_scale=None, quant_offset=None, bias=None,\n            antiquant_group_size=0, inner_precise=0):\n    low_dtype = x.dtype\n    # 输入统一搬到 CPU（标杆本质是 CPU 计算）\n    weight_t = weight.cpu()\n    x_t = x.cpu()\n    scale_t = antiquant_scale.cpu()\n    off_t = antiquant_offset.cpu() if (antiquant_offset is not None and antiquant_offset.numel() > 0) else None\n\n    # V3 修复：按 x.dtype 决定 dequant 域\n    if low_dtype == torch.bfloat16:\n        # bf16 路径：在 fp32 域 dequant（避免 bf16 加法尾数损失），最后截断到 bf16 再回 fp32\n        weight_f32 = weight_t.to(torch.float32)\n        scale_f32 = scale_t.to(torch.float32)\n        off_f32 = off_t.to(torch.float32) if off_t is not None else None\n        if antiquant_group_size:\n            num_groups = scale_f32.shape[0]\n            gs = antiquant_group_size\n            kSize = x_t.shape[-1]\n            scale_exp = scale_f32.view(num_groups, 1, -1).expand(num_groups, gs, -1).reshape(-1, scale_f32.shape[-1])[:kSize, :]\n            if off_f32 is not None:\n                off_exp = off_f32.view(num_groups, 1, -1).expand(num_groups, gs, -1).reshape(-1, off_f32.shape[-1])[:kSize, :]\n                weight_t = (weight_f32 + off_exp) * scale_exp\n            else:\n                weight_t = weight_f32 * scale_exp\n        else:\n            if off_f32 is not None:\n                weight_t = (weight_f32 + off_f32) * scale_f32\n            else:\n                weight_t = weight_f32 * scale_f32\n        # 截断到 bf16 模拟 bf16 表示精度，再回 fp32\n        weight_t = weight_t.to(torch.bfloat16).to(torch.float32)\n    else:\n        # fp16 路径：在 low_dtype(fp16) 域 dequant（V2 仓上原行为）\n        weight_t = weight_t.to(low_dtype)\n        scale_t = scale_t.to(low_dtype)\n        if off_t is not None:\n            off_t = off_t.to(low_dtype)\n        if antiquant_group_size:\n            num_groups = scale_t.shape[0]\n            gs = antiquant_group_size\n            kSize = x_t.shape[-1]\n            scale_exp = scale_t.view(num_groups, 1, -1).expand(num_groups, gs, -1).reshape(-1, scale_t.shape[-1])[:kSize, :]\n            if off_t is not None:\n                off_exp = off_t.view(num_groups, 1, -1).expand(num_groups, gs, -1).reshape(-1, off_t.shape[-1])[:kSize, :]\n                weight_t = (weight_t + off_exp) * scale_exp\n            else:\n                weight_t = weight_t * scale_exp\n        else:\n            if off_t is not None:\n                weight_t = (weight_t + off_t) * scale_t\n            else:\n                weight_t = weight_t * scale_t\n        # fp16 截断再回 fp32\n        weight_t = weight_t.to(torch.float16).to(torch.float32)\n\n    # matmul：fp32 split-K 累加，BLOCK_K=16 模拟 NPU cube 累加深度\n    x_f32 = x_t.to(torch.float32)\n    K = x_f32.shape[-1]\n    BLOCK_K = 16\n    output = None\n    for k0 in range(0, K, BLOCK_K):\n        k1 = min(k0 + BLOCK_K, K)\n        partial = torch.matmul(x_f32[:, k0:k1], weight_t[k0:k1, :])\n        output = partial if output is None else output + partial\n\n    # bias\n    if bias is not None and bias.numel() != 0:\n        output = output + bias.cpu().to(torch.float32)\n    # quant_scale：clamp 到 [-256, 256]，转 int16\n    if quant_scale is not None and quant_scale.numel() != 0:\n        output = torch.clamp(torch.round(output * quant_scale.cpu()), -256, 256).to(torch.int16)\n    # quant_offset：再 clamp 到 [-128, 127]\n    if quant_offset is not None and quant_offset.numel() != 0:\n        output = torch.clamp(output + torch.clamp(torch.round(quant_offset.cpu()), -256, 256), -128, 127)\n\n    # 标杆最终返回 low_dtype（与 NPU op 输出 dtype 对齐）\n    return output.to(low_dtype)"
+}

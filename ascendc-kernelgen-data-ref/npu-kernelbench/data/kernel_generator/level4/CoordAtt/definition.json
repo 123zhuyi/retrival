@@ -1,0 +1,26 @@
+{
+  "name": "CoordAtt",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input feature map (N, C, H, W)"
+    },
+    "inp": {
+      "description": "input channels (overridden by x.shape[1])"
+    },
+    "oup": {
+      "description": "output channels (overridden by x.shape[1])"
+    },
+    "reduction": {
+      "description": "channel reduction factor for intermediate projection; default 32"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "gated output feature map (N, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, inp=None, oup=None, reduction=32):\n    if reduction is None:\n        reduction = 32\n    torch.manual_seed(42)\n    identity = x\n    n, c, h, w = x.shape\n    if inp is None:\n        inp = c\n    if oup is None:\n        oup = c\n    inp = c\n    oup = c\n    mip = max(8, inp // reduction)\n\n    conv1 = nn.Conv2d(inp, mip, 1, 1, 0).to(device=x.device, dtype=x.dtype)\n    bn1 = nn.BatchNorm2d(mip).to(device=x.device, dtype=x.dtype)\n    conv_h = nn.Conv2d(mip, oup, 1, 1, 0).to(device=x.device, dtype=x.dtype)\n    conv_w = nn.Conv2d(mip, oup, 1, 1, 0).to(device=x.device, dtype=x.dtype)\n\n    x_h = F.adaptive_avg_pool2d(x, (None, 1))\n    x_w = F.adaptive_avg_pool2d(x, (1, None)).permute(0, 1, 3, 2)\n\n    y = torch.cat([x_h, x_w], dim=2)\n    y = conv1(y)\n    y = bn1(y)\n    y = y * (F.relu6(y + 3) / 6)\n\n    x_h, x_w = torch.split(y, [h, w], dim=2)\n    x_w = x_w.permute(0, 1, 3, 2)\n\n    a_h = torch.sigmoid(conv_h(x_h))\n    a_w = torch.sigmoid(conv_w(x_w))\n\n    return identity * a_w * a_h\n",
+  "description": "Coordinate Attention that embeds positional information via adaptive pooling and 1x1 convolutions with h-swish and sigmoid gating."
+}

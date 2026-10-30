@@ -1,0 +1,5419 @@
+{
+ "op_name": "28_ChunkKdaWithFusedGate",
+ "source": "ops-ref chunk_kda_fwd (aclnnChunkKdaFwd) \u5b9e\u6d4b\uff0c**2026-09-20 \u5728\u5df2\u5bf9\u9f50\u58f3 host/model_new_ascendc.py (md5 2c7ba5cb) \u4e0b\u91cd\u6d4b**\u3002\u9a71\u52a8=golden npu_benchmark/level4/28_ChunkKdaWithFusedGate.py \u81ea\u5df1\u7684 get_input_groups()\uff08\u65e0\u81ea\u9020\u8f93\u5165\uff09\u3002\u9010 case \u9694\u79bb msprof\uff08--ai-core/--task-time/--ascendcl\uff09\uff0cwarmup=3/repeats=3 \u53d6\u4e2d\u4f4d\u6570\uff1b\u7247\u95f4\u7528 Add+Abs \u5206\u9694\u6838\u6807\u5b9a case \u7a97\u53e3\uff0c\u5e76\u5f3a\u5236\u6bcf case \u5185 6 \u4e2a iteration \u7684\u6838\u5e8f\u5217+\u8f93\u5165 shape \u5b8c\u5168\u4e00\u81f4\u3002\u672c\u58f3\u4e0e\u65e7\u53e3\u5f84\u7684\u8f93\u5165/\u5f62\u72b6\u5904\u7406\u5dee\u5f02\u89c1 REFRESH_28_ChunkKdaWithFusedGate.md\u3002",
+ "caliber_status": "REFRESHED_20260920_ALIGNED_SHELL",
+ "measured_artifact": {
+  "kernel_shell": "host/model_new_ascendc.py",
+  "kernel_shell_md5": "2c7ba5cbb9f916dbab82373fb5a2ed50",
+  "bridge": "host/chunk_kda_bridge.py",
+  "bridge_md5": "0699f5b5de67f7b3a1c6eeb47a23f04b",
+  "op_kernel_tree_md5": "28c3befab480b69ae5b078237ebe18ba",
+  "op_host_tree_md5": "0bca150583cd704266de2ee74f170d8a",
+  "op_api_op_graph": "\u672c\u76ee\u5f55\u4e0d\u5b58\u5728\uff08\u8be5\u7b97\u5b50\u672a\u9644\u5e26 op_api/op_graph\uff09",
+  "deployed_so_md5": "1d886ff81e68010a0607b27160c13043",
+  "deployed_so_mtime": "2026-09-02 16:18:04 +0800",
+  "golden_py_md5": "dd4d4b64fcd4b427f1eef898fcd8d7e8",
+  "case_json_md5": "2b11f5d145833bd3117e7502988ad2ba",
+  "device": "device 1 (physical; AICore idle, resident foreign allocation 11.8GB present but 0% util, HBM flat)"
+ },
+ "case_set": {
+  "path": "/home/zzy-work/ascendc-kernelgen-data-sijia/ascendc-kernelgen-data/npu_benchmark/level4/28_ChunkKdaWithFusedGate.json",
+  "md5": "2b11f5d145833bd3117e7502988ad2ba",
+  "n_cases": 50,
+  "n_equals_json_lines": true
+ },
+ "caliber_definitions": {
+  "A1_kernel_only": "device task_time \u4e4b\u548c\uff0c\u53ea\u542b\u53c2\u8003\u6838\u672c\u4f53 (OP Type == 'ChunkKdaFwd'\uff0cOp Name aclnnChunkKdaFwd_KdaChunkForward_ChunkKdaFwd)\u3002\u4e0e\u65e7 impl_latency_us \u7684\u8fc7\u6ee4\u6761\u4ef6\u4e00\u81f4\u3002",
+  "A2_aclnn_launch": "A1 + \u540c\u4e00\u6b21 aclnnChunkKdaFwd \u8c03\u7528\u5185\u90e8\u7684 Transpose \u6838(Op Name \u524d\u7f00 aclnnChunkKdaFwd)\u3002",
+  "B_full_forward": "\u4e00\u6b21 forward \u5185\u5168\u90e8\u8bbe\u5907\u6838 task_time \u4e4b\u548c\uff08\u542b host \u4fa7\u5e03\u5c40/\u5f52\u4e00\u5316/pad/cast/slice \u7b49 torch \u4fa7\u7b97\u5b50\uff09\uff0c\u4e0e 16_LongformerAttention_perf.json \u7684 full_semantics \u540c\u53e3\u5f84\u3002"
+ },
+ "total_cases": 50,
+ "accuracy_caliber": "\u5b98\u65b9\u5224\u636e = npu-kernelbench evaluator/correctness.py \u7684 dtype-aware MERE/MARE \u6df7\u5408\u5bb9\u5dee + \u5339\u914d\u7387>=0.9\uff1a|a-g| <= atol + rtol*|g|\uff0c\u4e14 matched_ratio>=0.9 \u4e14 max_abs<=cap\uff1bfp32(2^-10,2^-16,1e-2) fp16(2^-9,2^-9,1e-1) bf16(2^-6,2^-6,1.0)\uff1bNaN/Inf \u4f4d\u7f6e\u5fc5\u987b\u9010\u4e00\u76f8\u540c\u3002",
+ "accuracy_passed_cases": 17,
+ "accuracy_passed_cases_loose_bf16_limits": 50,
+ "accuracy_caliber_note": "\u5b98\u65b9\u5224\u636e 17/50\uff1b\u65e7 published \u6587\u4ef6\u91cc\u7684 accuracy_passed_cases=50 \u7528\u7684\u662f**\u5bbd\u677e\u53e3\u5f84**\uff08asc_bench_alignment/88_REPORT.md\uff1a|a-g| <= 2^-6*|g| + 2^-6\uff0c\u5339\u914d\u7387>=0.9\uff1b\u8be5\u53e3\u5f84\u4e0b\u672c\u8f6e\u540c\u6837 50/50\uff09\u3002\u4e24\u8005\u4e0d\u662f\u540c\u4e00\u628a\u5c3a\uff0c\u8bf7\u52ff\u6df7\u7528\u3002\u4e25\u683c\u53e3\u5f84\u4e0b\u5931\u5206\u4e3b\u56e0\uff1a\u672c\u58f3\u7edf\u4e00\u4ee5 bf16 \u8ba1\u7b97\u800c golden \u662f fp32\uff0cfp32 \u8f93\u51fa\u7684 rtol=2^-10 \u5bb9\u4e0d\u4e0b bf16 \u7684 ~1e-3 \u76f8\u5bf9\u8bef\u5dee\uff1b24 \u4f8b final_state(=fp32) \u540c\u7406\u3002",
+ "nan_inf": {
+  "total_ref_nan": 0,
+  "total_sol_nan": 0,
+  "total_ref_inf": 0,
+  "total_sol_inf": 0,
+  "cases_with_any_nan_or_inf": []
+ },
+ "impl_latency_geomean_us": 260.835,
+ "impl_latency_sum_us": 15737.2,
+ "aclnn_launch_latency_geomean_us": 272.558,
+ "full_semantics": {
+  "caliber": "B_full_forward",
+  "impl_latency_geomean_us": 407.949,
+  "impl_latency_sum_us": 22550.5,
+  "per_case_impl_latency_us": [
+   175.849,
+   199.187,
+   190.287,
+   243.231,
+   266.411,
+   297.694,
+   261.012,
+   306.093,
+   336.253,
+   293.79,
+   315.633,
+   342.074,
+   351.355,
+   364.854,
+   312.672,
+   380.976,
+   430.918,
+   475.657,
+   474.517,
+   512.52,
+   475.158,
+   515.522,
+   569.882,
+   632.186,
+   647.866,
+   649.507,
+   663.807,
+   747.529,
+   788.911,
+   872.854,
+   769.09,
+   834.234,
+   876.976,
+   286.595,
+   276.012,
+   713.228,
+   837.734,
+   884.394,
+   266.57,
+   327.252,
+   295.091,
+   278.232,
+   303.551,
+   230.729,
+   248.232,
+   391.813,
+   381.695,
+   420.439,
+   408.558,
+   425.854
+  ],
+  "per_case_A1_kernel_only_us": [
+   103.904,
+   111.324,
+   106.564,
+   117.064,
+   136.686,
+   143.626,
+   136.006,
+   163.127,
+   184.667,
+   189.827,
+   188.188,
+   210.829,
+   257.671,
+   250.75,
+   255.59,
+   213.888,
+   258.75,
+   306.632,
+   315.372,
+   346.814,
+   354.374,
+   378.895,
+   418.817,
+   462.499,
+   521.481,
+   469.019,
+   518.101,
+   589.884,
+   636.086,
+   732.43,
+   649.266,
+   695.627,
+   774.231,
+   132.265,
+   129.705,
+   557.122,
+   690.768,
+   730.889,
+   122.425,
+   128.505,
+   142.566,
+   166.167,
+   178.567,
+   170.227,
+   184.007,
+   208.468,
+   207.708,
+   220.489,
+   267.831,
+   301.532
+  ],
+  "per_case_A2_aclnn_launch_us": [
+   119.345,
+   122.564,
+   121.984,
+   128.185,
+   139.926,
+   159.127,
+   139.506,
+   167.367,
+   200.608,
+   193.728,
+   192.168,
+   226.649,
+   261.43,
+   254.65,
+   270.79,
+   229.449,
+   262.51,
+   321.892,
+   319.373,
+   362.554,
+   358.214,
+   393.676,
+   422.597,
+   477.339,
+   525.562,
+   484.62,
+   522.061,
+   604.724,
+   640.306,
+   747.31,
+   653.226,
+   710.308,
+   778.352,
+   145.186,
+   133.925,
+   561.203,
+   705.268,
+   745.43,
+   126.646,
+   143.046,
+   156.586,
+   170.427,
+   192.448,
+   185.148,
+   188.487,
+   222.209,
+   221.748,
+   224.809,
+   283.092,
+   315.192
+  ],
+  "geomean_B_over_A1": 1.564
+ },
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 39,
+   "ratio": 0.78
+  },
+  "500-1000us": {
+   "count": 11,
+   "ratio": 0.22
+  },
+  ">1000us": {
+   "count": 0,
+   "ratio": 0.0
+  }
+ },
+ "latency_band_distribution_full_semantics": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 34,
+   "ratio": 0.68
+  },
+  "500-1000us": {
+   "count": 16,
+   "ratio": 0.32
+  },
+  ">1000us": {
+   "count": 0,
+   "ratio": 0.0
+  }
+ },
+ "max_mfu_pct": 0.0181,
+ "max_mfu_pct_note": "flops \u9010 case **\u539f\u6837\u6cbf\u7528**\u65e7\u6587\u4ef6\u7684 flops \u5b57\u6bb5\uff08case \u96c6\u4e0e golden \u672a\u53d8\uff0cFLOPs \u53ea\u4f9d\u8d56\u7b97\u4f8b\u5f62\u72b6\uff09\u3002\u5206\u6bcd\u53d6 353.8944\uff08\u672c\u58f3\u5b9e\u9645\u8ba1\u7b97 dtype = bf16\uff0c\u5168\u90e8 50 \u4f8b\uff0c\u65e0 fp32 mma \u901a\u8def\uff09\u3002**FLOPs \u7684\u786e\u5207\u5b9a\u4e49\u672a\u80fd\u590d\u539f**\uff1a\u65e7\u88c5\u914d\u7528\u7684 /tmp/mfu_measure/88_ChunkKdaWithFusedGate/flops.py \u5df2\u4e0d\u5b58\u5728\uff0c\u5168\u76d8\u641c\u7d22\u65e0 op 88 \u7684 flops.py\uff1b\u7528 {T,Tp,B,HV,K,V,Kp,Vp,C} \u7684\u591a\u9879\u5f0f\u57fa\u6700\u5c0f\u4e8c\u4e58\u62df\u5408\u4ea6\u5931\u8d25\uff08max rel err > 1\uff09\u3002\u89c2\u5bdf\uff1ax = flops/(2*T*HV*K) \u5728\u82e5\u5e72\u7ec4\u5185\u662f\u6574\u6570\u5e38\u6570\u4e14\u5927\u4f53\u968f V \u53d8\u5316\uff0c\u4f46\u5728 7 \u4e2a V \u503c\u4e0a\u540c\u4e00 V \u5185\u51fa\u73b0\u4e24\u4e2a\u4e92\u4e0d\u76f8\u540c\u7684\u503c\uff08\u6bd4\u503c 1.5 / 2 / 4 \u4e0d\u7b49\uff09\u21d2 \u5176 T \u4f9d\u8d56**\u672a\u89e3\u91ca**\u3002\u6545\u672c\u5b57\u6bb5\u53ea\u505a\u300c\u540c\u4e00 flops + \u65b0\u65f6\u5ef6\u300d\u7684\u540c\u6e90\u91cd\u7b97\uff0c**\u4e0d\u8981**\u628a mfu_pct \u7684\u53d8\u52a8\u89e3\u8bfb\u4e3a\u8d85\u51fa\u65f6\u5ef6\u53d8\u52a8\u4e4b\u5916\u7684\u4efb\u4f55\u542b\u4e49\uff1b\u9700\u8981\u4e25\u683c MFU \u7684\u6d88\u8d39\u7aef\u8bf7\u81ea\u5e26 FLOPs \u5b9a\u4e49\u91cd\u7b97\u3002",
+ "sweet_spot_shape": {
+  "case_idx": 44,
+  "q_shape": [
+   2,
+   81,
+   3,
+   96
+  ],
+  "impl_latency_us": 184.007,
+  "mfu_pct": 0.0181
+ },
+ "reproducibility": {
+  "note": "\u540c\u4e00\u5361\uff08device 1\uff09\u53e6\u8d77\u4e00\u6b21 msprof \u4f1a\u8bdd\u91cd\u6d4b 6 \u4f8b\uff0c\u4e0e\u4e3b\u8f6e\u6bd4\u503c",
+  "per_case": {
+   "0": {
+    "A1_main": 103.904,
+    "A1_repeat": 107.425,
+    "A1_ratio": 1.0339,
+    "B_main": 175.849,
+    "B_repeat": 180.807,
+    "B_ratio": 1.0282
+   },
+   "12": {
+    "A1_main": 257.671,
+    "A1_repeat": 256.25,
+    "A1_ratio": 0.9945,
+    "B_main": 351.355,
+    "B_repeat": 348.654,
+    "B_ratio": 0.9923
+   },
+   "24": {
+    "A1_main": 521.481,
+    "A1_repeat": 510.68,
+    "A1_ratio": 0.9793,
+    "B_main": 647.866,
+    "B_repeat": 625.103,
+    "B_ratio": 0.9649
+   },
+   "36": {
+    "A1_main": 690.768,
+    "A1_repeat": 683.748,
+    "A1_ratio": 0.9898,
+    "B_main": 837.734,
+    "B_repeat": 825.532,
+    "B_ratio": 0.9854
+   },
+   "44": {
+    "A1_main": 184.007,
+    "A1_repeat": 180.007,
+    "A1_ratio": 0.9783,
+    "B_main": 248.232,
+    "B_repeat": 242.31,
+    "B_ratio": 0.9761
+   },
+   "49": {
+    "A1_main": 301.532,
+    "A1_repeat": 303.472,
+    "A1_ratio": 1.0064,
+    "B_main": 425.854,
+    "B_repeat": 425.375,
+    "B_ratio": 0.9989
+   }
+  }
+ },
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3,
+      1,
+      7
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3,
+      1,
+      7
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3,
+      2,
+      5
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      3,
+      2,
+      7
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      3,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      14
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      7,
+      5
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 3,
+   "K": 7,
+   "V": 5,
+   "Kp": 16,
+   "Vp": 16,
+   "impl_latency_us": 103.904,
+   "aclnn_launch_latency_us": 119.345,
+   "full_impl_latency_us": 175.849,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.6666666666666666,
+    "output_max_abs_diff": 0.00011235848069190979,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 30,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3108.0,
+   "mfu_pct": 0.0,
+   "prev_impl_latency_us": 124.325,
+   "prev_over_new_A1": 1.1965
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      5,
+      1,
+      9
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      5,
+      1,
+      9
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      5,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      5,
+      1,
+      9
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      5,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      1,
+      9,
+      8
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 5,
+   "K": 9,
+   "V": 8,
+   "Kp": 16,
+   "Vp": 16,
+   "impl_latency_us": 111.324,
+   "aclnn_launch_latency_us": 122.564,
+   "full_impl_latency_us": 199.187,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0003662109375,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 80,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 14400.0,
+   "mfu_pct": 0.0,
+   "prev_impl_latency_us": 118.545,
+   "prev_over_new_A1": 1.0649
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      7,
+      2,
+      11
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      7,
+      2,
+      11
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      7,
+      2,
+      10
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      7,
+      2,
+      11
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      7,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      22
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      11,
+      10
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 7,
+   "K": 11,
+   "V": 10,
+   "Kp": 16,
+   "Vp": 16,
+   "impl_latency_us": 106.564,
+   "aclnn_launch_latency_us": 121.984,
+   "full_impl_latency_us": 190.287,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00048828125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 140,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 25872.0,
+   "mfu_pct": 0.0001,
+   "prev_impl_latency_us": 109.204,
+   "prev_over_new_A1": 1.0248
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      9,
+      1,
+      13
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      9,
+      1,
+      13
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      9,
+      1,
+      12
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      3,
+      9,
+      1,
+      13
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      3,
+      9,
+      1
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      13
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      3,
+      1,
+      13,
+      12
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 9,
+   "K": 13,
+   "V": 12,
+   "Kp": 16,
+   "Vp": 16,
+   "impl_latency_us": 117.064,
+   "aclnn_launch_latency_us": 128.185,
+   "full_impl_latency_us": 243.231,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.018518518518518517,
+    "output_max_abs_diff": 0.008229907602071762,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 324,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 61776.0,
+   "mfu_pct": 0.0001,
+   "prev_impl_latency_us": 109.982,
+   "prev_over_new_A1": 0.9395
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      11,
+      2,
+      15
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      11,
+      2,
+      15
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      11,
+      2,
+      14
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      11,
+      2,
+      15
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      11,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      15,
+      14
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 11,
+   "K": 15,
+   "V": 14,
+   "Kp": 16,
+   "Vp": 16,
+   "impl_latency_us": 136.686,
+   "aclnn_launch_latency_us": 139.926,
+   "full_impl_latency_us": 266.411,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.9935064935064936,
+    "output_max_abs_diff": 0.003269195556640625,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 616,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.3011904761904762,
+    "final_state_max_abs_diff": 0.0015075160190463066,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 121440.0,
+   "mfu_pct": 0.0003,
+   "prev_impl_latency_us": 138.886,
+   "prev_over_new_A1": 1.0161
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      13,
+      1,
+      12
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      13,
+      1,
+      12
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      13,
+      2,
+      10
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      13,
+      2,
+      12
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      13,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      12,
+      10
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 13,
+   "K": 12,
+   "V": 10,
+   "Kp": 16,
+   "Vp": 16,
+   "impl_latency_us": 143.626,
+   "aclnn_launch_latency_us": 159.127,
+   "full_impl_latency_us": 297.694,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0025634765625,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 260,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.625,
+    "final_state_max_abs_diff": 0.00020316243171691895,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 26208.0,
+   "mfu_pct": 0.0001,
+   "prev_impl_latency_us": 142.405,
+   "prev_over_new_A1": 0.9915
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      16,
+      2,
+      17
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      16,
+      2,
+      17
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      16,
+      2,
+      17
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      16,
+      2,
+      17
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      16,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      34
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      17,
+      17
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 16,
+   "K": 17,
+   "V": 17,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 136.006,
+   "aclnn_launch_latency_us": 139.506,
+   "full_impl_latency_us": 261.012,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.3915441176470588,
+    "output_max_abs_diff": 0.00031711533665657043,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 1088,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.20155709342560554,
+    "final_state_max_abs_diff": 0.0014113709330558777,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 213248.0,
+   "mfu_pct": 0.0004,
+   "prev_impl_latency_us": 133.026,
+   "prev_over_new_A1": 0.9781
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      19,
+      3,
+      22
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      19,
+      3,
+      22
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      19,
+      3,
+      24
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      3,
+      19,
+      3,
+      22
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      3,
+      19,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      66
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      3,
+      3,
+      22,
+      24
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 19,
+   "K": 22,
+   "V": 24,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 163.127,
+   "aclnn_launch_latency_us": 167.367,
+   "full_impl_latency_us": 306.093,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0003662109375,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 4104,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.2276936026936027,
+    "final_state_max_abs_diff": 0.0012996196746826172,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 842688.0,
+   "mfu_pct": 0.0015,
+   "prev_impl_latency_us": 163.403,
+   "prev_over_new_A1": 1.0017
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      22,
+      2,
+      27
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      22,
+      2,
+      27
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      22,
+      2,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      22,
+      2,
+      27
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      22,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      54
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      27,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 22,
+   "K": 27,
+   "V": 31,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 184.667,
+   "aclnn_launch_latency_us": 200.608,
+   "full_impl_latency_us": 336.253,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000244140625,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 1364,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 299376.0,
+   "mfu_pct": 0.0005,
+   "prev_impl_latency_us": 185.008,
+   "prev_over_new_A1": 1.0018
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      21,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      21,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      21,
+      4,
+      11
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      21,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      21,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      32,
+      11
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 21,
+   "K": 32,
+   "V": 11,
+   "Kp": 32,
+   "Vp": 16,
+   "impl_latency_us": 189.827,
+   "aclnn_launch_latency_us": 193.728,
+   "full_impl_latency_us": 293.79,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.8609307359307359,
+    "output_max_abs_diff": 0.00021743029356002808,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 1848,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 924672.0,
+   "mfu_pct": 0.0014,
+   "prev_impl_latency_us": 190.848,
+   "prev_over_new_A1": 1.0054
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      24,
+      1,
+      14
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      24,
+      1,
+      14
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      24,
+      2,
+      18
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      3,
+      24,
+      2,
+      14
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      3,
+      24,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      28
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      3,
+      2,
+      14,
+      18
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 24,
+   "K": 14,
+   "V": 18,
+   "Kp": 16,
+   "Vp": 32,
+   "impl_latency_us": 188.188,
+   "aclnn_launch_latency_us": 192.168,
+   "full_impl_latency_us": 315.633,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00140380859375,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 2592,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 201600.0,
+   "mfu_pct": 0.0003,
+   "prev_impl_latency_us": 185.887,
+   "prev_over_new_A1": 0.9878
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      27,
+      2,
+      19
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      27,
+      2,
+      19
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      27,
+      2,
+      25
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      27,
+      2,
+      19
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      27,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      38
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      19,
+      25
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 27,
+   "K": 19,
+   "V": 25,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 210.829,
+   "aclnn_launch_latency_us": 226.649,
+   "full_impl_latency_us": 342.074,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000732421875,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 1350,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 233928.0,
+   "mfu_pct": 0.0003,
+   "prev_impl_latency_us": 211.145,
+   "prev_over_new_A1": 1.0015
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      30,
+      3,
+      24
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      30,
+      3,
+      24
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      30,
+      3,
+      32
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      30,
+      3,
+      24
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      30,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      72
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      24,
+      32
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 30,
+   "K": 24,
+   "V": 32,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 257.671,
+   "aclnn_launch_latency_us": 261.43,
+   "full_impl_latency_us": 351.355,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.7885416666666667,
+    "output_max_abs_diff": 0.00014203228056430817,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 5760,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.5245225694444444,
+    "final_state_max_abs_diff": 0.0005622208118438721,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1105920.0,
+   "mfu_pct": 0.0012,
+   "prev_impl_latency_us": 251.67,
+   "prev_over_new_A1": 0.9767
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      29,
+      2,
+      29
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      29,
+      2,
+      29
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      29,
+      2,
+      12
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      3,
+      29,
+      2,
+      29
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      3,
+      29,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      58
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      3,
+      2,
+      29,
+      12
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 29,
+   "K": 29,
+   "V": 12,
+   "Kp": 32,
+   "Vp": 16,
+   "impl_latency_us": 250.75,
+   "aclnn_launch_latency_us": 254.65,
+   "full_impl_latency_us": 364.854,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000244140625,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 2088,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.5258620689655172,
+    "final_state_max_abs_diff": 0.0008113384246826172,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 888096.0,
+   "mfu_pct": 0.001,
+   "prev_impl_latency_us": 255.671,
+   "prev_over_new_A1": 1.0196
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      32,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      32,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      32,
+      4,
+      19
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      32,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      32,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      256
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      64,
+      19
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 32,
+   "K": 64,
+   "V": 19,
+   "Kp": 64,
+   "Vp": 32,
+   "impl_latency_us": 255.59,
+   "aclnn_launch_latency_us": 270.79,
+   "full_impl_latency_us": 312.672,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0001220703125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 2432,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.29790296052631576,
+    "final_state_max_abs_diff": 0.000813409686088562,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1671168.0,
+   "mfu_pct": 0.0018,
+   "prev_impl_latency_us": 251.15,
+   "prev_over_new_A1": 0.9826
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      27,
+      2,
+      19
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      27,
+      2,
+      19
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      27,
+      4,
+      17
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      27,
+      4,
+      19
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      27,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      76
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      19,
+      17
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 27,
+   "K": 19,
+   "V": 17,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 213.888,
+   "aclnn_launch_latency_us": 229.449,
+   "full_impl_latency_us": 380.976,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.2750544662309368,
+    "output_max_abs_diff": 0.0008842460811138153,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 1836,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.06578947368421052,
+    "final_state_max_abs_diff": 0.005330637097358704,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 201096.0,
+   "mfu_pct": 0.0003,
+   "prev_impl_latency_us": 219.844,
+   "prev_over_new_A1": 1.0278
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      30,
+      3,
+      26
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      30,
+      3,
+      26
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      30,
+      3,
+      28
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      30,
+      3,
+      26
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      30,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      78
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      26,
+      28
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 30,
+   "K": 26,
+   "V": 28,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 258.75,
+   "aclnn_launch_latency_us": 262.51,
+   "full_impl_latency_us": 430.918,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0002288818359375,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 5040,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1123200.0,
+   "mfu_pct": 0.0012,
+   "prev_impl_latency_us": 251.67,
+   "prev_over_new_A1": 0.9726
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      33,
+      2,
+      33
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      33,
+      2,
+      33
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      33,
+      2,
+      39
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      33,
+      2,
+      33
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      33,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      66
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      33,
+      39
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 33,
+   "K": 33,
+   "V": 39,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 306.632,
+   "aclnn_launch_latency_us": 321.892,
+   "full_impl_latency_us": 475.657,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0001220703125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 2574,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 618552.0,
+   "mfu_pct": 0.0006,
+   "prev_impl_latency_us": 302.072,
+   "prev_over_new_A1": 0.9851
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      36,
+      4,
+      40
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      36,
+      4,
+      40
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      36,
+      4,
+      50
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      36,
+      4,
+      40
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      36,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      160
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      40,
+      50
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 36,
+   "K": 40,
+   "V": 50,
+   "Kp": 48,
+   "Vp": 64,
+   "impl_latency_us": 315.372,
+   "aclnn_launch_latency_us": 319.373,
+   "full_impl_latency_us": 474.517,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.5496527777777778,
+    "output_max_abs_diff": 0.0001608310267329216,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 14400,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3778560.0,
+   "mfu_pct": 0.0034,
+   "prev_impl_latency_us": 315.893,
+   "prev_over_new_A1": 1.0017
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      39,
+      3,
+      47
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      39,
+      3,
+      47
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      39,
+      3,
+      26
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      39,
+      3,
+      47
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      39,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      141
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      47,
+      26
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 39,
+   "K": 47,
+   "V": 26,
+   "Kp": 48,
+   "Vp": 32,
+   "impl_latency_us": 346.814,
+   "aclnn_launch_latency_us": 362.554,
+   "full_impl_latency_us": 512.52,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000152587890625,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 3042,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1275768.0,
+   "mfu_pct": 0.001,
+   "prev_impl_latency_us": 107.924,
+   "prev_over_new_A1": 0.3112
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      37,
+      2,
+      23
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      37,
+      2,
+      23
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      37,
+      4,
+      37
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      37,
+      4,
+      23
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      37,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      92
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      23,
+      37
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 37,
+   "K": 23,
+   "V": 37,
+   "Kp": 32,
+   "Vp": 48,
+   "impl_latency_us": 354.374,
+   "aclnn_launch_latency_us": 358.214,
+   "full_impl_latency_us": 475.158,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000244140625,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 10952,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.6201527614571093,
+    "final_state_max_abs_diff": 0.0007471442222595215,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 939504.0,
+   "mfu_pct": 0.0007,
+   "prev_impl_latency_us": 355.775,
+   "prev_over_new_A1": 1.004
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      40,
+      3,
+      30
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      40,
+      3,
+      30
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      40,
+      3,
+      48
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      40,
+      3,
+      30
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      40,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      90
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      30,
+      48
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 40,
+   "K": 30,
+   "V": 48,
+   "Kp": 32,
+   "Vp": 48,
+   "impl_latency_us": 378.895,
+   "aclnn_launch_latency_us": 393.676,
+   "full_impl_latency_us": 515.522,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.8512152777777777,
+    "output_max_abs_diff": 0.0001505427062511444,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 5760,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.5736111111111111,
+    "final_state_max_abs_diff": 0.0007134675979614258,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1152000.0,
+   "mfu_pct": 0.0009,
+   "prev_impl_latency_us": 372.595,
+   "prev_over_new_A1": 0.9834
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      43,
+      2,
+      37
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      43,
+      2,
+      37
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      43,
+      2,
+      24
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      43,
+      2,
+      37
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      43,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      74
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      37,
+      24
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 43,
+   "K": 37,
+   "V": 24,
+   "Kp": 48,
+   "Vp": 32,
+   "impl_latency_us": 418.817,
+   "aclnn_launch_latency_us": 422.597,
+   "full_impl_latency_us": 569.882,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000545501708984375,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 4128,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.07882882882882883,
+    "final_state_max_abs_diff": 0.0035523399710655212,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1425536.0,
+   "mfu_pct": 0.001,
+   "prev_impl_latency_us": 403.096,
+   "prev_over_new_A1": 0.9625
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      46,
+      4,
+      44
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      46,
+      4,
+      44
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      46,
+      4,
+      35
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      46,
+      4,
+      44
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      46,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      176
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      44,
+      35
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 46,
+   "K": 44,
+   "V": 35,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 462.499,
+   "aclnn_launch_latency_us": 477.339,
+   "full_impl_latency_us": 632.186,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000274658203125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 6440,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.1930194805194805,
+    "final_state_max_abs_diff": 0.0019246377050876617,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 2169728.0,
+   "mfu_pct": 0.0013,
+   "prev_impl_latency_us": 474.07,
+   "prev_over_new_A1": 1.025
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      49,
+      3,
+      20
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      49,
+      3,
+      20
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      49,
+      3,
+      46
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      49,
+      3,
+      20
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      49,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      60
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      20,
+      46
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 49,
+   "K": 20,
+   "V": 46,
+   "Kp": 32,
+   "Vp": 48,
+   "impl_latency_us": 521.481,
+   "aclnn_launch_latency_us": 525.562,
+   "full_impl_latency_us": 647.866,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.6578674948240165,
+    "output_max_abs_diff": 0.0002819616347551346,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 13524,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1834560.0,
+   "mfu_pct": 0.001,
+   "prev_impl_latency_us": 517.96,
+   "prev_over_new_A1": 0.9932
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      47,
+      2,
+      27
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      47,
+      2,
+      27
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      47,
+      4,
+      22
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      47,
+      4,
+      27
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      47,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      108
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      27,
+      22
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 47,
+   "K": 27,
+   "V": 22,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 469.019,
+   "aclnn_launch_latency_us": 484.62,
+   "full_impl_latency_us": 649.507,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0003204345703125,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 4136,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 548208.0,
+   "mfu_pct": 0.0003,
+   "prev_impl_latency_us": 456.618,
+   "prev_over_new_A1": 0.9736
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      50,
+      3,
+      34
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      50,
+      3,
+      34
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      50,
+      3,
+      33
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      50,
+      3,
+      34
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      50,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      102
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      34,
+      33
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 50,
+   "K": 34,
+   "V": 33,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 518.101,
+   "aclnn_launch_latency_us": 522.061,
+   "full_impl_latency_us": 663.807,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00048828125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 9900,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 2652000.0,
+   "mfu_pct": 0.0014,
+   "prev_impl_latency_us": 533.681,
+   "prev_over_new_A1": 1.0301
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      53,
+      2,
+      41
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      53,
+      2,
+      41
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      53,
+      2,
+      44
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      53,
+      2,
+      41
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      53,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      82
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      41,
+      44
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 53,
+   "K": 41,
+   "V": 44,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 589.884,
+   "aclnn_launch_latency_us": 604.724,
+   "full_impl_latency_us": 747.529,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.47277015437392794,
+    "output_max_abs_diff": 0.00023090746253728867,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 4664,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1321184.0,
+   "mfu_pct": 0.0006,
+   "prev_impl_latency_us": 595.652,
+   "prev_over_new_A1": 1.0098
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      56,
+      4,
+      48
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      56,
+      4,
+      48
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      56,
+      4,
+      20
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      56,
+      4,
+      48
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      56,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      192
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      48,
+      20
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 56,
+   "K": 48,
+   "V": 20,
+   "Kp": 48,
+   "Vp": 32,
+   "impl_latency_us": 636.086,
+   "aclnn_launch_latency_us": 640.306,
+   "full_impl_latency_us": 788.911,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00017547607421875,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 8960,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.498828125,
+    "final_state_max_abs_diff": 0.0006258711218833923,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 4472832.0,
+   "mfu_pct": 0.002,
+   "prev_impl_latency_us": 647.385,
+   "prev_over_new_A1": 1.0178
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      59,
+      3,
+      80
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      59,
+      3,
+      80
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      59,
+      3,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      59,
+      3,
+      80
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      59,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      240
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      80,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 59,
+   "K": 80,
+   "V": 31,
+   "Kp": 80,
+   "Vp": 32,
+   "impl_latency_us": 732.43,
+   "aclnn_launch_latency_us": 747.31,
+   "full_impl_latency_us": 872.854,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0001220703125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 5487,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.5721774193548387,
+    "final_state_max_abs_diff": 0.00040078163146972656,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3568320.0,
+   "mfu_pct": 0.0014,
+   "prev_impl_latency_us": 729.709,
+   "prev_over_new_A1": 0.9963
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      57,
+      2,
+      31
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      57,
+      2,
+      31
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      57,
+      4,
+      42
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      57,
+      4,
+      31
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      57,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      124
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      31,
+      42
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 57,
+   "K": 31,
+   "V": 42,
+   "Kp": 32,
+   "Vp": 48,
+   "impl_latency_us": 649.266,
+   "aclnn_launch_latency_us": 653.226,
+   "full_impl_latency_us": 769.09,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.452015455304929,
+    "output_max_abs_diff": 0.000218123197555542,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 19152,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.19738863287250383,
+    "final_state_max_abs_diff": 0.001445867121219635,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 2092128.0,
+   "mfu_pct": 0.0009,
+   "prev_impl_latency_us": 652.506,
+   "prev_over_new_A1": 1.005
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      60,
+      3,
+      38
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      60,
+      3,
+      38
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      60,
+      3,
+      18
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      60,
+      3,
+      38
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      60,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      114
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      38,
+      18
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 60,
+   "K": 38,
+   "V": 18,
+   "Kp": 48,
+   "Vp": 32,
+   "impl_latency_us": 695.627,
+   "aclnn_launch_latency_us": 710.308,
+   "full_impl_latency_us": 834.234,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00018310546875,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 3240,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.23732943469785575,
+    "final_state_max_abs_diff": 0.001100398600101471,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1368000.0,
+   "mfu_pct": 0.0006,
+   "prev_impl_latency_us": 689.394,
+   "prev_over_new_A1": 0.991
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      63,
+      2,
+      45
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      63,
+      2,
+      45
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      63,
+      2,
+      29
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      63,
+      2,
+      45
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      63,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      90
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      45,
+      29
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 63,
+   "K": 45,
+   "V": 29,
+   "Kp": 48,
+   "Vp": 32,
+   "impl_latency_us": 774.231,
+   "aclnn_launch_latency_us": 778.352,
+   "full_impl_latency_us": 876.976,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000244140625,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 7308,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 2766960.0,
+   "mfu_pct": 0.001,
+   "prev_impl_latency_us": 756.41,
+   "prev_over_new_A1": 0.977
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      66,
+      4,
+      21
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      66,
+      4,
+      21
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      66,
+      4,
+      40
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      66,
+      4,
+      21
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      66,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      84
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      21,
+      40
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 66,
+   "K": 21,
+   "V": 40,
+   "Kp": 32,
+   "Vp": 48,
+   "impl_latency_us": 132.265,
+   "aclnn_launch_latency_us": 145.186,
+   "full_impl_latency_us": 286.595,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.7115530303030303,
+    "output_max_abs_diff": 0.0011503009591251612,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 10560,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1596672.0,
+   "mfu_pct": 0.0034,
+   "prev_impl_latency_us": 132.285,
+   "prev_over_new_A1": 1.0002
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      69,
+      3,
+      28
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      69,
+      3,
+      28
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      69,
+      3,
+      51
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      69,
+      3,
+      28
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      69,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      84
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      28,
+      51
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 69,
+   "K": 28,
+   "V": 51,
+   "Kp": 32,
+   "Vp": 64,
+   "impl_latency_us": 129.705,
+   "aclnn_launch_latency_us": 133.925,
+   "full_impl_latency_us": 276.012,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.9876858956142843,
+    "output_max_abs_diff": 0.009563446044921875,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 21114,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3848544.0,
+   "mfu_pct": 0.0084,
+   "prev_impl_latency_us": 122.345,
+   "prev_over_new_A1": 0.9433
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      53,
+      2,
+      29
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      53,
+      2,
+      29
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      53,
+      4,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      53,
+      4,
+      29
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      53,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      116
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      29,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 53,
+   "K": 29,
+   "V": 31,
+   "Kp": 32,
+   "Vp": 32,
+   "impl_latency_us": 557.122,
+   "aclnn_launch_latency_us": 561.203,
+   "full_impl_latency_us": 713.228,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000637054443359375,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 13144,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1549296.0,
+   "mfu_pct": 0.0008,
+   "prev_impl_latency_us": 563.292,
+   "prev_over_new_A1": 1.0111
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      57,
+      3,
+      38
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      57,
+      3,
+      38
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      57,
+      3,
+      44
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      57,
+      3,
+      38
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      57,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      114
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      38,
+      44
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 57,
+   "K": 38,
+   "V": 44,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 690.768,
+   "aclnn_launch_latency_us": 705.268,
+   "full_impl_latency_us": 837.734,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.853136629452419,
+    "output_max_abs_diff": 0.00014679506421089172,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 7524,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.48145933014354064,
+    "final_state_max_abs_diff": 0.0006486773490905762,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1975392.0,
+   "mfu_pct": 0.0008,
+   "prev_impl_latency_us": 671.707,
+   "prev_over_new_A1": 0.9724
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      61,
+      4,
+      47
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      61,
+      4,
+      47
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      61,
+      4,
+      57
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      61,
+      4,
+      47
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      61,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      188
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      47,
+      57
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 61,
+   "K": 47,
+   "V": 57,
+   "Kp": 48,
+   "Vp": 64,
+   "impl_latency_us": 730.889,
+   "aclnn_launch_latency_us": 745.43,
+   "full_impl_latency_us": 884.394,
+   "latency_band": "500-1000us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0001678466796875,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 13908,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.5048525569242255,
+    "final_state_max_abs_diff": 0.0012219175696372986,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 4082608.0,
+   "mfu_pct": 0.0016,
+   "prev_impl_latency_us": 715.528,
+   "prev_over_new_A1": 0.979
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      65,
+      2,
+      56
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      65,
+      2,
+      56
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      65,
+      2,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      65,
+      2,
+      56
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      65,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      112
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      2,
+      56,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 65,
+   "K": 56,
+   "V": 31,
+   "Kp": 64,
+   "Vp": 32,
+   "impl_latency_us": 122.425,
+   "aclnn_launch_latency_us": 126.646,
+   "full_impl_latency_us": 266.57,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0003662109375,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 8060,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.2055011520737327,
+    "final_state_max_abs_diff": 0.006973784416913986,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3669120.0,
+   "mfu_pct": 0.0085,
+   "prev_impl_latency_us": 109.164,
+   "prev_over_new_A1": 0.8917
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      65,
+      3,
+      65
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      65,
+      3,
+      65
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      65,
+      3,
+      44
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      65,
+      3,
+      65
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      65,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      195
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      65,
+      44
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 65,
+   "K": 65,
+   "V": 44,
+   "Kp": 80,
+   "Vp": 48,
+   "impl_latency_us": 128.505,
+   "aclnn_launch_latency_us": 143.046,
+   "full_impl_latency_us": 327.252,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.7025641025641025,
+    "output_max_abs_diff": 0.0009451420046389103,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 8580,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.026806526806526808,
+    "final_state_max_abs_diff": 0.033974722027778625,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3853200.0,
+   "mfu_pct": 0.0085,
+   "prev_impl_latency_us": 120.903,
+   "prev_over_new_A1": 0.9408
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      69,
+      2,
+      37
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      69,
+      2,
+      37
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      69,
+      4,
+      57
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      69,
+      4,
+      37
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      69,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      148
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      37,
+      57
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 69,
+   "K": 37,
+   "V": 57,
+   "Kp": 48,
+   "Vp": 64,
+   "impl_latency_us": 142.566,
+   "aclnn_launch_latency_us": 156.586,
+   "full_impl_latency_us": 295.091,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00109100341796875,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 15732,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1817736.0,
+   "mfu_pct": 0.0036,
+   "prev_impl_latency_us": 140.926,
+   "prev_over_new_A1": 0.9885
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      73,
+      3,
+      46
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      73,
+      3,
+      46
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      73,
+      3,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      73,
+      3,
+      46
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      73,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      138
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      46,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 73,
+   "K": 46,
+   "V": 31,
+   "Kp": 48,
+   "Vp": 32,
+   "impl_latency_us": 166.167,
+   "aclnn_launch_latency_us": 170.427,
+   "full_impl_latency_us": 278.232,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.000244140625,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 13578,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 5077296.0,
+   "mfu_pct": 0.0086,
+   "prev_impl_latency_us": 164.727,
+   "prev_over_new_A1": 0.9913
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      77,
+      4,
+      55
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      77,
+      4,
+      55
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      77,
+      4,
+      44
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      77,
+      4,
+      55
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      77,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      220
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      55,
+      44
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 77,
+   "K": 55,
+   "V": 44,
+   "Kp": 64,
+   "Vp": 48,
+   "impl_latency_us": 178.567,
+   "aclnn_launch_latency_us": 192.448,
+   "full_impl_latency_us": 303.551,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.49520365997638727,
+    "output_max_abs_diff": 0.0060736266896128654,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 13552,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 5149760.0,
+   "mfu_pct": 0.0081,
+   "prev_impl_latency_us": 179.467,
+   "prev_over_new_A1": 1.005
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      77,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      77,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      77,
+      2,
+      57
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      77,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      77,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      57
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 77,
+   "K": 64,
+   "V": 57,
+   "Kp": 64,
+   "Vp": 64,
+   "impl_latency_us": 170.227,
+   "aclnn_launch_latency_us": 185.148,
+   "full_impl_latency_us": 230.729,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.9993164730006835,
+    "output_max_abs_diff": 0.0035161972045898438,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 8778,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 3508736.0,
+   "mfu_pct": 0.0058,
+   "prev_impl_latency_us": 174.963,
+   "prev_over_new_A1": 1.0278
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      81,
+      3,
+      96
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      81,
+      3,
+      96
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      81,
+      3,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      81,
+      3,
+      96
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      81,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      288
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      3,
+      96,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 81,
+   "K": 96,
+   "V": 31,
+   "Kp": 96,
+   "Vp": 32,
+   "impl_latency_us": 184.007,
+   "aclnn_launch_latency_us": 188.487,
+   "full_impl_latency_us": 248.232,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0001220703125,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 15066,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.8286290322580645,
+    "final_state_max_abs_diff": 0.00032407045364379883,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 11757312.0,
+   "mfu_pct": 0.0181,
+   "prev_impl_latency_us": 185.007,
+   "prev_over_new_A1": 1.0054
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      85,
+      2,
+      45
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      85,
+      2,
+      45
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      85,
+      4,
+      44
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      85,
+      4,
+      45
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      85,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      180
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      45,
+      44
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 85,
+   "K": 45,
+   "V": 44,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 208.468,
+   "aclnn_launch_latency_us": 222.209,
+   "full_impl_latency_us": 391.813,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.9044117647058824,
+    "output_max_abs_diff": 0.00011756084859371185,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 14960,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.5186868686868686,
+    "final_state_max_abs_diff": 0.0008981227874755859,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 2325600.0,
+   "mfu_pct": 0.0032,
+   "prev_impl_latency_us": 210.969,
+   "prev_over_new_A1": 1.012
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      89,
+      3,
+      54
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      89,
+      3,
+      54
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      89,
+      3,
+      57
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      89,
+      3,
+      54
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      89,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      162
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      54,
+      57
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 89,
+   "K": 54,
+   "V": 57,
+   "Kp": 64,
+   "Vp": 64,
+   "impl_latency_us": 207.708,
+   "aclnn_launch_latency_us": 221.748,
+   "full_impl_latency_us": 381.695,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.0002288818359375,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 15219,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.12248213125406107,
+    "final_state_max_abs_diff": 0.0021872520446777344,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 5132808.0,
+   "mfu_pct": 0.007,
+   "prev_impl_latency_us": 211.769,
+   "prev_over_new_A1": 1.0196
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      89,
+      4,
+      63
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      89,
+      4,
+      63
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      89,
+      4,
+      31
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      2,
+      89,
+      4,
+      63
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      89,
+      4
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      252
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      4,
+      63,
+      31
+     ]
+    }
+   ],
+   "dt": "bfloat16",
+   "T": 89,
+   "K": 63,
+   "V": 31,
+   "Kp": 64,
+   "Vp": 32,
+   "impl_latency_us": 220.489,
+   "aclnn_launch_latency_us": 224.809,
+   "full_impl_latency_us": 420.439,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 0.00018310546875,
+    "output_atol": 0.015625,
+    "output_rtol": 0.015625,
+    "output_n_finite": 22072,
+    "output_max_abs_error_limit": 1.0,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": 0.23316692268305172,
+    "final_state_max_abs_diff": 0.0013252198696136475,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 11303712.0,
+   "mfu_pct": 0.0145,
+   "prev_impl_latency_us": 224.645,
+   "prev_over_new_A1": 1.0188
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      93,
+      2,
+      35
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      93,
+      2,
+      35
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      93,
+      2,
+      44
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      93,
+      2,
+      35
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      93,
+      2
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      70
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      35,
+      44
+     ]
+    }
+   ],
+   "dt": "float32",
+   "T": 93,
+   "K": 35,
+   "V": 44,
+   "Kp": 48,
+   "Vp": 48,
+   "impl_latency_us": 267.831,
+   "aclnn_launch_latency_us": 283.092,
+   "full_impl_latency_us": 408.558,
+   "latency_band": "100-500us",
+   "accuracy": "fail",
+   "accuracy_official_pass": false,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 0.8498289345063539,
+    "output_max_abs_diff": 0.00015252456068992615,
+    "output_atol": 1.52587890625e-05,
+    "output_rtol": 0.0009765625,
+    "output_n_finite": 8184,
+    "output_max_abs_error_limit": 0.01,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 1979040.0,
+   "mfu_pct": 0.0021,
+   "prev_impl_latency_us": 273.711,
+   "prev_over_new_A1": 1.022
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      97,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      97,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      97,
+      3,
+      57
+     ]
+    },
+    {
+     "name": "raw_g",
+     "shape": [
+      1,
+      97,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      97,
+      3
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "g_bias",
+     "shape": [
+      384
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      3,
+      128,
+      57
+     ]
+    }
+   ],
+   "dt": "float16",
+   "T": 97,
+   "K": 128,
+   "V": 57,
+   "Kp": 128,
+   "Vp": 64,
+   "impl_latency_us": 301.532,
+   "aclnn_launch_latency_us": 315.192,
+   "full_impl_latency_us": 425.854,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "accuracy_official_pass": true,
+   "accuracy_loose_pass": true,
+   "accuracy_detail": {
+    "output_matched_ratio": 1.0,
+    "output_max_abs_diff": 6.103515625e-05,
+    "output_atol": 0.001953125,
+    "output_rtol": 0.001953125,
+    "output_n_finite": 16587,
+    "output_max_abs_error_limit": 0.1,
+    "output_n_elem_above_1e_2": 0,
+    "final_state_matched_ratio": null,
+    "final_state_max_abs_diff": null,
+    "ref_nan": 0,
+    "sol_nan": 0,
+    "ref_inf": 0,
+    "sol_inf": 0
+   },
+   "flops": 13260288.0,
+   "mfu_pct": 0.0124,
+   "prev_impl_latency_us": 306.252,
+   "prev_over_new_A1": 1.0157
+  }
+ ],
+ "prev_published": {
+  "path": "/home/zzy-work/ascendc-kernelgen-data-sijia/ascendc-kernelgen-data/npu_benchmark/level4/28_ChunkKdaWithFusedGate_perf.json",
+  "impl_latency_geomean_us": 254.567,
+  "total_cases": 50,
+  "accuracy_passed_cases": 50,
+  "source": "ops-ref chunk_kda_fwd aclnn \u5b9e\u6d4b(\u8f93\u5165\u8f6c bf16,K/V 0-pad 16;T<64 \u7684 case token 0-pad \u523064\u8d70\u6574chunk\u8def\u5f84; warmup=3,repeats=3,msprof; \u7cbe\u5ea6\u5224\u636e=kernelbench \u5b98\u65b9 \u6df7\u5408\u5bb9\u5dee+\u5339\u914d\u7387\u22650.9)",
+  "provenance_finding": "\u65e7\u6587\u4ef6\u7684 50 \u4e2a impl_latency_us \u53ef\u9010\u4e00\u590d\u539f\u5230 2026-09-03 \u7684\u539f\u59cb msprof \u91c7\u96c6\uff1a46 \u4f8b == prof88/dev8..11 \u5404 case \u771f\u5b9e T \u5f62\u72b6\u4e0b\u6700\u540e 3 \u6b21\u7684 ChunkKdaFwd \u4e2d\u4f4d\u6570\uff1b4 \u4f8b\uff08case 0,1,2,19\uff09== prof88tpad \u90a3\u6b21 **T \u8865\u96f6\u5230 64** \u7684\u91c7\u96c6\u503c\uff08\u4f8b\u5982 case 19 \u5728\u771f\u5b9e T=39 \u5f62\u72b6\u4e0b\u539f\u59cb\u91c7\u96c6\u662f 356.4/363.6/350.1/360.4/351.8/354.2 us\uff0c\u800c published=107.924 \u9010\u4f4d\u7b49\u4e8e T=64 \u5f62\u72b6\u4e0b\u7684 107.924\uff1bcase 0 \u7684 124.325 \u4e5f\u9010\u4f4d\u51fa\u73b0\u5728 T=64 \u5f62\u72b6 1,64,2,16 \u7684 12 \u884c\u91cc\uff0c\u8be5 shape \u56e0 T-pad \u540c\u65f6\u5bb9\u7eb3 case 0 \u4e0e case 2\uff0c\u6545\u4ec5\u80fd\u786e\u8bc1\u5176\u6765\u81ea T=64 \u90a3\u6b21\u91c7\u96c6\uff09\u3002\u5373\u65e7\u96c6\u5408\u672c\u8eab\u662f**\u6df7\u5408\u53e3\u5f84**\uff1a4 \u4f8b\u8d70\u6574 chunk(T=64) \u8def\u5f84\u300146 \u4f8b\u8d70\u771f\u5b9e T\u3002"
+ }
+}

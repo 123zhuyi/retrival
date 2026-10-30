@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<meta charset="utf-8" />
+<title>Claude Code 轨迹分析</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #161c24;
+    --panel-2: #1d242d;
+    --line: #283038;
+    --line-2: #364150;
+    --text: #d9e2ec;
+    --text-dim: #8b97a4;
+    --text-faint: #5a6675;
+    --accent: #4ea8de;
+    --accent-2: #5eead4;
+    --warn: #f59e0b;
+    --error: #f87171;
+    --ok: #34d399;
+    --titler: #c4b5fd;
+    --main: #5eead4;
+    --subagent: #f59e0b;
+    --tool: #93c5fd;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  pre, code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  header .title { font-size: 14px; font-weight: 600; }
+  header .meta { color: var(--text-dim); font-size: 12px; }
+  header .grow { flex: 1; }
+  header .actions { display: flex; gap: 8px; align-items: center; }
+  header input[type="search"] {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    padding: 5px 8px;
+    width: 260px;
+    font-size: 12px;
+  }
+  header button {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  header button:hover { border-color: var(--accent); }
+  header button.active { color: var(--accent); border-color: var(--accent); }
+
+  .stats {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    padding: 8px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .stat { color: var(--text-dim); }
+  .stat strong { color: var(--text); margin-right: 4px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr 480px;
+    height: calc(100vh - 90px);
+  }
+  .pane { overflow: auto; border-right: 1px solid var(--line); }
+  .pane:last-child { border-right: 0; }
+  .pane-head {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pane-head strong { color: var(--text); }
+
+  /* Left: session list */
+  .session-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .session-item:hover { background: var(--panel); }
+  .session-item.active { background: var(--panel-2); border-left: 3px solid var(--accent); padding-left: 9px; }
+  .session-item .sid { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-dim); }
+  .session-item .stitle { font-size: 13px; margin: 4px 0; color: var(--text); }
+  .session-item .smeta { font-size: 11px; color: var(--text-faint); }
+  .session-item .archive-btn {
+    float: right;
+    background: none;
+    border: 1px solid var(--line-2);
+    color: var(--text-faint);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    visibility: hidden;
+    margin-left: 6px;
+  }
+  .session-item:hover .archive-btn { visibility: visible; }
+  .session-item .archive-btn:hover { color: var(--warn); border-color: var(--warn); }
+
+  .session-item .export-btn {
+    float: right;
+    background: none;
+    border: 1px solid var(--line-2);
+    color: var(--text-faint);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    visibility: hidden;
+    margin-left: 6px;
+  }
+  .session-item:hover .export-btn { visibility: visible; }
+  .session-item .export-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* Middle: tabs */
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 9;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .view { padding: 12px; }
+  /* In tree-mode: mainView fills the pane and never scrolls — zoom handles navigation */
+  #mainPane { display: flex; flex-direction: column; overflow: hidden; }
+  #mainPane > .tabs { flex: 0 0 auto; }
+  #mainPane > .view { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  #mainPane > .view.tree-mode { padding: 0; overflow: hidden; position: relative; }
+  .empty { color: var(--text-faint); font-style: italic; padding: 24px; text-align: center; }
+
+  /* Request list rows */
+  .req-row {
+    display: grid;
+    grid-template-columns: 24px 80px auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .req-row > * { min-width: 0; }
+  .req-row:hover { background: var(--panel); }
+  .req-row.active { background: var(--panel-2); }
+  .req-row .ix { color: var(--text-faint); font-family: ui-monospace, monospace; text-align: right; }
+  .req-row .time { color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap; }
+  .req-row .role-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .role-titler { background: rgba(196,181,253,0.18); color: var(--titler); }
+  .role-main { background: rgba(94,234,212,0.18); color: var(--main); }
+  .role-subagent { background: rgba(245,158,11,0.18); color: var(--subagent); }
+  .role-system { background: rgba(147,197,253,0.18); color: var(--tool); }
+  .req-row .summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .req-row .status { white-space: nowrap; }
+  .req-row .status { font-size: 11px; color: var(--text-dim); }
+  .status.success { color: var(--ok); }
+  .status.error { color: var(--error); }
+  .status.inflight { color: var(--warn); }
+
+  /* Tree (history / agent) */
+  .tree { padding: 6px 4px; }
+  .tree-item { position: relative; }
+  .node {
+    margin: 2px 0;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 8px;
+    position: relative;
+    transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+  }
+  .node:hover {
+    background: var(--panel);
+    box-shadow: 0 0 0 1px var(--line-2);
+  }
+  .node:active { transform: translateX(1px); }
+  .node.active {
+    background: var(--panel-2);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 12px -4px var(--accent);
+  }
+  .tree-toggle {
+    width: 14px; height: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-faint);
+    cursor: pointer; user-select: none; flex-shrink: 0;
+    border-radius: 3px;
+    font-size: 9px;
+    transition: transform 0.18s ease, color 0.12s ease, background 0.12s ease;
+  }
+  .tree-toggle:hover { color: var(--accent); background: rgba(255,255,255,0.06); }
+  .tree-toggle.empty { visibility: hidden; }
+  .tree-item.collapsed > .node .tree-toggle { transform: rotate(-90deg); }
+  .tree-item.collapsed > .children { display: none; }
+  .node .icon { flex-shrink: 0; display: inline-flex; align-items: center; }
+  .node .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .node .badge {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--text-dim);
+    background: var(--bg);
+    border: 1px solid var(--line-2);
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .node .badge.match-prefix { color: var(--main); border-color: rgba(94,234,212,0.35); background: rgba(94,234,212,0.08); }
+  .node .badge.match-subagent { color: var(--subagent); border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+  .node .badge.match-root { color: var(--text-faint); }
+  .node .arrow { color: var(--text-faint); font-size: 10px; }
+  .children {
+    position: relative;
+    margin-left: 7px;
+    padding-left: 16px;
+  }
+  .children::before {
+    content: '';
+    position: absolute;
+    left: 0; top: -2px; bottom: 14px;
+    width: 1.5px;
+    background: linear-gradient(to bottom, var(--line) 0%, var(--line-2) 100%);
+    border-radius: 1px;
+  }
+  .children > .tree-item::before {
+    content: '';
+    position: absolute;
+    left: -16px; top: 14px;
+    width: 14px; height: 1.5px;
+    background: var(--line-2);
+    border-bottom-left-radius: 7px;
+  }
+  .children > .tree-item:hover::before { background: var(--accent); }
+  .agent-call-node { color: var(--accent-2); }
+  .agent-call-node .icon { color: var(--accent-2); font-weight: bold; }
+
+  /* D3 interactive tree */
+  .d3-tree-wrap {
+    position: absolute;
+    inset: 6px;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0) 0 0 / 22px 22px,
+      var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .d3-tree-wrap svg { display: block; cursor: grab; }
+  .d3-tree-wrap svg:active { cursor: grabbing; }
+  .d3-tree-toolbar {
+    position: absolute; top: 8px; right: 8px; z-index: 5;
+    display: flex; gap: 4px;
+    background: rgba(22,28,36,0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px;
+  }
+  .d3-tree-toolbar button {
+    background: transparent; color: var(--text-dim); border: 0;
+    padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 4px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .d3-tree-toolbar button:hover { background: var(--panel-2); color: var(--text); }
+  .d3-tree-legend {
+    position: absolute; bottom: 8px; left: 8px; z-index: 5;
+    display: flex; gap: 10px;
+    background: rgba(22,28,36,0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .d3-tree-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  .d3-link {
+    fill: none;
+    stroke: var(--line-2);
+    stroke-width: 1.5px;
+    transition: stroke 0.15s, stroke-width 0.15s;
+  }
+  .d3-link.match-prefix { stroke: rgba(94,234,212,0.45); }
+  .d3-link.match-subagent { stroke: rgba(245,158,11,0.55); stroke-dasharray: 3,3; }
+  .d3-link.match-agent_call { stroke: rgba(94,234,212,0.75); stroke-width: 2px; }
+  .d3-link.highlighted { stroke: var(--accent); stroke-width: 2.5px; }
+
+  .d3-node { cursor: pointer; }
+  .d3-node-circle {
+    stroke: var(--bg);
+    stroke-width: 2px;
+    transition: r 0.15s ease, stroke 0.15s, filter 0.15s;
+  }
+  .d3-node:hover .d3-node-circle { filter: drop-shadow(0 0 6px currentColor); }
+  .d3-node.selected .d3-node-circle {
+    stroke: var(--accent);
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 10px var(--accent));
+  }
+  .d3-node-label {
+    fill: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .d3-node-sub {
+    fill: var(--text-faint);
+    font-size: 10px;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .d3-node-badge-bg { fill: var(--panel-2); stroke: var(--line-2); }
+  .d3-node-badge-text { fill: var(--text-dim); font-size: 9px; pointer-events: none; }
+  .d3-toggle-bg {
+    fill: var(--panel);
+    stroke: var(--line-2);
+    stroke-width: 1px;
+    cursor: pointer;
+    transition: fill 0.12s, stroke 0.12s;
+  }
+  .d3-toggle-bg:hover { fill: var(--panel-2); stroke: var(--accent); }
+  .d3-toggle-text {
+    fill: var(--text-dim);
+    font-size: 10px;
+    font-weight: bold;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  /* Time trajectory */
+  .tt-seg-rect {
+    stroke-width: 1.5px;
+    rx: 10; ry: 10;
+    transition: fill-opacity 0.2s, stroke-width 0.2s;
+  }
+  .tt-seg-rect:hover { stroke-width: 2.5px; }
+  .tt-seg-titler        { fill: rgba(196,181,253,0.10); stroke: rgba(196,181,253,0.55); }
+  .tt-seg-agent_dispatch { fill: rgba(245,158,11,0.12);  stroke: rgba(245,158,11,0.65); }
+  .tt-seg-subagent      { fill: rgba(245,158,11,0.10);  stroke: rgba(245,158,11,0.55); }
+  .tt-seg-main_tools    { fill: rgba(147,197,253,0.10); stroke: rgba(147,197,253,0.55); }
+  .tt-seg-main_thinking { fill: rgba(94,234,212,0.10);  stroke: rgba(94,234,212,0.55); }
+  .tt-seg-misc          { fill: rgba(91,102,117,0.12);  stroke: rgba(91,102,117,0.55); }
+
+  .tt-seg-label {
+    font-size: 11px;
+    font-weight: 600;
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .tt-seg-label-titler        { fill: var(--titler); }
+  .tt-seg-label-agent_dispatch { fill: var(--warn); }
+  .tt-seg-label-subagent      { fill: var(--subagent); }
+  .tt-seg-label-main_tools    { fill: var(--tool); }
+  .tt-seg-label-main_thinking { fill: var(--main); }
+  .tt-seg-label-misc          { fill: var(--text-dim); }
+
+  .tt-seg-meta {
+    font-size: 10px;
+    fill: var(--text-faint);
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+  }
+
+  .tt-event {
+    cursor: pointer;
+    stroke: var(--bg);
+    stroke-width: 1.5px;
+    transition: r 0.12s, filter 0.12s;
+  }
+  .tt-event:hover { filter: drop-shadow(0 0 6px currentColor); }
+  .tt-event.selected {
+    stroke: var(--accent);
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 8px var(--accent));
+  }
+  .tt-kind-llm_request_start { fill: var(--main); color: var(--main); }
+  .tt-kind-llm_request_end   { fill: var(--main); color: var(--main); opacity: 0.65; }
+  .tt-kind-tool_use_response { fill: var(--tool); color: var(--tool); }
+  .tt-kind-tool_result       { fill: var(--tool); color: var(--tool); opacity: 0.65; }
+
+  .tt-pair-line {
+    stroke: var(--line-2);
+    stroke-width: 1px;
+    stroke-dasharray: 2,3;
+    opacity: 0.6;
+  }
+
+  .tt-xaxis line, .tt-xaxis path { stroke: var(--line-2); }
+  .tt-xaxis text { fill: var(--text-faint); font-size: 10px; }
+  .tt-lane-label {
+    fill: var(--text-faint);
+    font-size: 10px;
+    font-family: ui-monospace, monospace;
+  }
+  .tt-seg { cursor: pointer; }
+  .tt-event-label {
+    fill: var(--text-dim);
+    font-size: 10px;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .tt-event-g:hover .tt-event-label { fill: var(--text); }
+
+  /* Timeline */
+  .tl-row {
+    display: grid;
+    grid-template-columns: 36px auto auto auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    font-size: 12px;
+    align-items: center;
+  }
+  .tl-row > * { min-width: 0; }
+  .tl-row:hover { background: var(--panel); }
+  .tl-row.active { background: var(--panel-2); }
+  .tl-row .idx { color: var(--text-faint); font-family: ui-monospace, monospace; text-align: right; white-space: nowrap; }
+  .tl-row .t { color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap; }
+  .tl-row .kind {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .kind-llm_request_start { background: rgba(94,234,212,0.18); color: var(--main); }
+  .kind-llm_request_end { background: rgba(94,234,212,0.10); color: var(--main); }
+  .kind-tool_use_response { background: rgba(147,197,253,0.18); color: var(--tool); }
+  .kind-tool_result { background: rgba(147,197,253,0.10); color: var(--tool); }
+  .tl-row .agent { color: var(--text-faint); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap; }
+  .tl-row .summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+  /* Right pane: detail */
+  .detail-section {
+    border-bottom: 1px solid var(--line);
+  }
+  .detail-section h3 {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--panel);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+  .detail-section .body { padding: 8px 12px; font-size: 12px; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; }
+  .kv.kv-prefix-list { grid-template-columns: 90px 1fr; gap: 10px; padding: 4px 0; }
+  .kv.kv-prefix-list > div { line-height: 1.45; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .prefix-child-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); align-items: flex-start; }
+  .prefix-child-row:last-child { border-bottom: 0; }
+  .prefix-child-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .prefix-child-info { flex: 1; min-width: 0; font-size: 12px; }
+  .kv > div:nth-child(odd) { color: var(--text-dim); }
+  .kv code { font-size: 11px; word-break: break-all; }
+  pre.code {
+    margin: 0;
+    padding: 8px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: auto;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text);
+    max-height: 360px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .detail-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    background: var(--panel);
+  }
+  .detail-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+  }
+  .detail-tab:hover { color: var(--text); }
+  .detail-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .msg-block {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin: 6px 0;
+    overflow: hidden;
+  }
+  .msg-block .msg-head {
+    padding: 4px 8px;
+    background: var(--panel);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .msg-block .msg-body { padding: 8px; font-size: 12px; }
+  .msg-block .msg-body pre { margin: 0; }
+  .role-user { border-left: 3px solid var(--accent); }
+  .role-assistant { border-left: 3px solid var(--main); }
+  .role-system { border-left: 3px solid var(--text-faint); }
+  .tool-block {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin: 4px 0;
+    font-size: 11px;
+  }
+  .tool-block .tool-name {
+    color: var(--accent-2);
+    font-weight: 600;
+  }
+  .tool-block.result .tool-name { color: var(--tool); }
+
+  a.link {
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  a.link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">Claude Code 轨迹分析</div>
+  <div class="meta" id="metaText">等待数据…</div>
+  <div class="grow"></div>
+  <div class="actions">
+    <input id="search" type="search" placeholder="过滤: trace_id / role / model / tool" />
+    <button id="autoRefresh" type="button">自动: 关</button>
+    <button id="traceToggle" type="button">轨迹: ?</button>
+    <button id="refresh" type="button">刷新</button>
+    <button id="clear" type="button">清空</button>
+    <button id="exportTraining" type="button" title="导出所有会话的 OpenAI 训练数据">导出训练数据</button>
+    <button id="downloadDb" type="button" title="下载 trace.db 数据库文件">下载 DB</button>
+  </div>
+</header>
+<div class="stats" id="statsBar"></div>
+<div class="layout">
+  <!-- Left: sessions -->
+  <aside class="pane" id="sessionPane">
+    <div class="pane-head"><strong>会话</strong> <span id="sessionMeta"></span></div>
+    <div id="sessionList"></div>
+  </aside>
+  <!-- Middle: tabs + view -->
+  <main class="pane" id="mainPane">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="requests">请求列表</button>
+      <button class="tab" data-tab="history">历史链</button>
+      <button class="tab" data-tab="agents">Agent 层级</button>
+      <button class="tab" data-tab="prefix">前缀树</button>
+      <button class="tab" data-tab="time_trajectory">时间轨迹</button>
+      <button class="tab" data-tab="timeline">时间线</button>
+    </div>
+    <div class="view" id="mainView"></div>
+  </main>
+  <!-- Right: detail -->
+  <aside class="pane" id="detailPane">
+    <div class="pane-head"><strong>详情</strong> <span id="detailMeta">未选择</span></div>
+    <div id="detailView"><div class="empty">点击左侧或中间任一项目以查看详情。</div></div>
+  </aside>
+</div>
+
+<script>
+const state = {
+  sessions: [],
+  currentSession: null,
+  currentTab: 'requests',
+  // currently selected entity in the right pane: { kind, id, ... }
+  selection: null,
+  selectedDetailTab: 'overview',
+  filter: '',
+  autoRefresh: false,
+  refreshTimer: null,
+  cache: { requests: null, history: null, agents: null, prefixTrie: null, timeTrajectory: null, timeline: null, requestDetails: {}, agentCallDetails: {}, toolEventDetails: {} },
+  collapsedNodes: new Set(),
+  treeZoom: { history: null, agents: null, prefixTrie: null, timeTrajectory: null }
+};
+
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+function fmtTime(value) {
+  if (!value) return '-';
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    const ms = String(d.getMilliseconds()).padStart(3,'0');
+    return `${hh}:${mm}:${ss}.${ms}`;
+  } catch (e) { return value; }
+}
+function fmtDate(value) {
+  if (!value) return '-';
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleString();
+  } catch (e) { return value; }
+}
+function shortId(id) {
+  if (!id) return '-';
+  const s = String(id);
+  if (s.length <= 14) return s;
+  return s.slice(0, 8) + '…' + s.slice(-4);
+}
+function jsonText(value) {
+  try { return JSON.stringify(value, null, 2); } catch (e) { return String(value); }
+}
+
+async function fetchJson(url, opts) {
+  const r = await fetch(url, { cache: 'no-store', ...(opts || {}) });
+  if (!r.ok) throw new Error(`${url} → ${r.status}`);
+  return r.json();
+}
+
+// -------------------------------------------------------------
+// Sessions
+// -------------------------------------------------------------
+async function loadSessions() {
+  const data = await fetchJson('/api/v2/sessions');
+  state.sessions = data.sessions || [];
+  renderStats(data.stats || {});
+  renderSessionList();
+  if (state.sessions.length) {
+    const stillThere = state.currentSession
+      && state.sessions.find((s) => s.session_id === state.currentSession);
+    if (!stillThere) {
+      await selectSession(state.sessions[0].session_id);
+    } else {
+      await refreshCurrentSession();
+    }
+  } else {
+    state.currentSession = null;
+    $('mainView').innerHTML = '<div class="empty">还没有任何 Claude Code 请求被记录。</div>';
+    $('detailView').innerHTML = '<div class="empty">未选择</div>';
+    $('detailMeta').textContent = '未选择';
+  }
+}
+
+function renderStats(stats) {
+  $('metaText').textContent =
+    `${stats.session_count || 0} sessions · ${stats.message_request_count || 0} LLM requests · ${stats.agent_call_count || 0} agent calls`;
+  const items = [
+    ['Sessions', stats.session_count || 0],
+    ['LLM 请求', stats.message_request_count || 0],
+    ['Main', stats.main_request_count || 0],
+    ['Subagent', stats.subagent_request_count || 0],
+    ['Titler', stats.titler_request_count || 0],
+    ['count_tokens', stats.count_tokens_request_count || 0],
+    ['Agent calls', stats.agent_call_count || 0],
+    ['历史链接', stats.history_link_count || 0],
+    ['Tool events', stats.tool_event_count || 0],
+  ];
+  $('statsBar').innerHTML = items.map(([k,v]) =>
+    `<div class="stat"><strong>${escapeHtml(v)}</strong>${escapeHtml(k)}</div>`
+  ).join('');
+}
+
+function renderSessionList() {
+  const list = state.sessions;
+  $('sessionMeta').textContent = `${list.length}`;
+  if (!list.length) {
+    $('sessionList').innerHTML = '<div class="empty">无会话</div>';
+    return;
+  }
+  $('sessionList').innerHTML = list.map((s) => {
+    const active = s.session_id === state.currentSession ? ' active' : '';
+    const title = s.title || `${s.main_requests || 0} main · ${s.subagent_requests || 0} subagent`;
+    return `<div class="session-item${active}" data-session-id="${escapeHtml(s.session_id)}">
+      <div class="sid">${escapeHtml(shortId(s.session_id))}</div>
+      <div class="stitle">${escapeHtml(title)}</div>
+      <div class="smeta">
+        ${escapeHtml(fmtDate(s.first_seen))} · cc ${escapeHtml(s.cc_version || '?')}<br/>
+        ${s.main_requests || 0}M · ${s.subagent_requests || 0}S · ${s.titler_requests || 0}T · ${s.token_requests || 0}tok
+      </div>
+      <button class="archive-btn" data-archive-session-id="${escapeHtml(s.session_id)}" title="归档（不在列表中显示，数据保留）">归档</button>
+      <button class="export-btn" data-export-session-id="${escapeHtml(s.session_id)}" title="导出该会话的训练数据">导出</button>
+    </div>`;
+  }).join('');
+}
+
+async function selectSession(session_id) {
+  state.currentSession = session_id;
+  state.selection = null;
+  state.cache = { requests: null, history: null, agents: null, prefixTrie: null, timeTrajectory: null, timeline: null, requestDetails: {}, agentCallDetails: {}, toolEventDetails: {} };
+  state.treeZoom = { history: null, agents: null, prefixTrie: null, timeTrajectory: null };
+  renderSessionList();
+  await refreshCurrentSession();
+  $('detailView').innerHTML = '<div class="empty">点击中间面板任一项以查看详情。</div>';
+  $('detailMeta').textContent = '未选择';
+}
+
+async function refreshCurrentSession() {
+  if (!state.currentSession) return;
+  await loadCurrentTab(true);
+}
+
+// -------------------------------------------------------------
+// Middle: tabs
+// -------------------------------------------------------------
+function selectTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.tab').forEach((el) =>
+    el.classList.toggle('active', el.dataset.tab === tab));
+  loadCurrentTab(false);
+}
+
+async function loadCurrentTab(refetch) {
+  if (!state.currentSession) return;
+  const sid = state.currentSession;
+  const cache = state.cache;
+  const TREE_TABS = new Set(['history', 'agents', 'prefix', 'time_trajectory']);
+  $('mainView').classList.toggle('tree-mode', TREE_TABS.has(state.currentTab));
+  if (state.currentTab === 'requests') {
+    if (refetch || !cache.requests) {
+      cache.requests = await fetchJson(`/api/v2/requests?session_id=${encodeURIComponent(sid)}`);
+    }
+    renderRequestList(cache.requests.requests || []);
+  } else if (state.currentTab === 'history') {
+    if (refetch || !cache.history) {
+      cache.history = await fetchJson(`/api/v2/sessions/${encodeURIComponent(sid)}/history`);
+    }
+    renderHistoryTree(cache.history.roots || []);
+  } else if (state.currentTab === 'agents') {
+    if (refetch || !cache.agents) {
+      cache.agents = await fetchJson(`/api/v2/sessions/${encodeURIComponent(sid)}/agents`);
+    }
+    renderAgentTree(cache.agents.roots || []);
+  } else if (state.currentTab === 'prefix') {
+    if (refetch || !cache.prefixTrie) {
+      cache.prefixTrie = await fetchJson(`/api/v2/sessions/${encodeURIComponent(sid)}/prefix_trie`);
+    }
+    renderPrefixTrie(cache.prefixTrie.roots || []);
+  } else if (state.currentTab === 'time_trajectory') {
+    if (refetch || !cache.timeTrajectory) {
+      cache.timeTrajectory = await fetchJson(`/api/v2/sessions/${encodeURIComponent(sid)}/time_trajectory`);
+    }
+    renderTimeTrajectory(cache.timeTrajectory);
+  } else if (state.currentTab === 'timeline') {
+    if (refetch || !cache.timeline) {
+      cache.timeline = await fetchJson(`/api/v2/sessions/${encodeURIComponent(sid)}/timeline`);
+    }
+    renderTimeline(cache.timeline.events || []);
+  }
+}
+
+// -- Request list ---------------------------------------------
+function passesFilter(text) {
+  if (!state.filter) return true;
+  const f = state.filter.toLowerCase();
+  return String(text || '').toLowerCase().includes(f);
+}
+function reqHay(r) {
+  return [r.trace_id, r.role_kind, r.agent_label, r.model_requested, r.model_mapped,
+    r.title, r.api, r.parent_match_kind, (r.response_tool_names||[]).join(','),
+    r.response_stop_reason, r.cc_version].join(' ');
+}
+function roleBadge(role) {
+  return `<span class="role-badge role-${escapeHtml(role)}">${escapeHtml(role)}</span>`;
+}
+function statusClass(status) {
+  return status === 'success' ? 'success' : status === 'error' ? 'error' : 'inflight';
+}
+
+function renderRequestList(requests) {
+  const filtered = requests.filter((r) => passesFilter(reqHay(r)));
+  if (!filtered.length) {
+    $('mainView').innerHTML = '<div class="empty">没有匹配的请求。</div>';
+    return;
+  }
+  const rows = filtered.map((r, i) => {
+    const tools = (r.response_tool_names || []).join(', ') || '-';
+    const summary = r.title || `${r.api} · ${r.message_count} msgs · resp tools: ${tools}`;
+    const active = state.selection && state.selection.kind === 'request' && state.selection.id === r.trace_id ? ' active' : '';
+    return `<div class="req-row${active}" data-kind="request" data-id="${escapeHtml(r.trace_id)}">
+      <div class="ix">${i+1}</div>
+      <div class="time">${escapeHtml(fmtTime(r.started_at))}</div>
+      <div>${roleBadge(r.role_kind)}</div>
+      <div class="summary" title="${escapeHtml(r.trace_id)}">
+        ${escapeHtml(summary)}
+        <span style="color: var(--text-faint); font-size: 11px; margin-left: 6px;">${escapeHtml(shortId(r.trace_id))} · ${escapeHtml(r.model_mapped || r.model_requested || '?')}</span>
+      </div>
+      <div class="status ${statusClass(r.status)}">${escapeHtml(r.status)} ${r.duration_ms != null ? r.duration_ms + 'ms' : ''}</div>
+    </div>`;
+  });
+  $('mainView').innerHTML = `<div>${rows.join('')}</div>`;
+}
+
+// -- D3 interactive tree (shared) -----------------------------
+const ROLE_COLORS = {
+  main: 'var(--main)',
+  subagent: 'var(--subagent)',
+  titler: 'var(--titler)',
+  system: 'var(--tool)',
+  tool: 'var(--tool)'
+};
+function roleColor(role) { return ROLE_COLORS[role] || 'var(--text-dim)'; }
+
+function nodeKey(d) {
+  if (d.node_id) return d.node_id; // prefix-trie node
+  if (d.kind === 'agent_call') return `agent_call:${d.agent_call_id}`;
+  return `request:${d.trace_id}`;
+}
+
+function isNodeSelected(d) {
+  if (!state.selection) return false;
+  if (d.node_id) {
+    if (state.selection.kind === 'prefix_node' && state.selection.id === d.node_id) return true;
+    return (d.terminal_requests || []).some((t) =>
+      state.selection.kind === 'request' && state.selection.id === t.trace_id);
+  }
+  if (d.kind === 'agent_call') return state.selection.kind === 'agent_call' && state.selection.id === d.agent_call_id;
+  return state.selection.kind === 'request' && state.selection.id === d.trace_id;
+}
+
+function nodeFill(d) {
+  if (d.kind === 'agent_call') return 'var(--accent-2)';
+  if (d.node_id) {
+    const terms = d.terminal_requests || [];
+    if (terms.length === 1) return roleColor(terms[0].role_kind);
+    if (terms.length > 1) return 'var(--warn)';
+    return 'var(--text-faint)';
+  }
+  return roleColor(d.role_kind);
+}
+
+function renderD3Tree({ container, roots, treeKey, makeLabel, makeSubtitle, makeBadges, makeLinkClass }) {
+  if (!roots.length) {
+    container.innerHTML = '<div class="empty">没有数据。</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="d3-tree-wrap">
+      <div class="d3-tree-toolbar">
+        <button data-tree-action="fit">⤢ 适应</button>
+        <button data-tree-action="reset">↺ 重置</button>
+        <button data-tree-action="expand">展开全部</button>
+        <button data-tree-action="collapse">折叠全部</button>
+      </div>
+      <div class="d3-tree-legend">
+        <span><span class="dot" style="background:var(--main)"></span>main</span>
+        <span><span class="dot" style="background:var(--subagent)"></span>subagent</span>
+        <span><span class="dot" style="background:var(--titler)"></span>titler</span>
+        <span><span class="dot" style="background:var(--tool)"></span>system</span>
+      </div>
+    </div>`;
+  const wrap = container.querySelector('.d3-tree-wrap');
+  const svgW = wrap.clientWidth;
+  const svgH = wrap.clientHeight;
+
+  // Build hierarchy with synthetic root for multi-root layouts
+  const syntheticRoot = { __synthetic: true, children: roots };
+  const hierarchy = d3.hierarchy(syntheticRoot, (d) => {
+    if (d.__synthetic) return d.children;
+    if (state.collapsedNodes.has(nodeKey(d))) return null;
+    return d.children || [];
+  });
+
+  const nodeVSpacing = 38;
+  const nodeHSpacing = 260;
+  d3.tree().nodeSize([nodeVSpacing, nodeHSpacing])(hierarchy);
+
+  // Drop synthetic root from rendering
+  const allNodes = hierarchy.descendants().filter((d) => !d.data.__synthetic);
+  const allLinks = hierarchy.links().filter((l) => !l.source.data.__synthetic);
+
+  // Re-anchor x range
+  const xs = allNodes.map((d) => d.x);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const ys = allNodes.map((d) => d.y);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+
+  const svg = d3.select(wrap).append('svg')
+    .attr('width', svgW)
+    .attr('height', svgH)
+    .attr('viewBox', [0, 0, svgW, svgH]);
+
+  // Background pan-capture rect (so empty area also drags)
+  svg.append('rect')
+    .attr('width', svgW).attr('height', svgH)
+    .attr('fill', 'transparent');
+
+  const g = svg.append('g');
+
+  // Compute fit transform (used by "适应" button and as fallback if no saved state)
+  const contentW = (y1 - y0) + 220;
+  const contentH = (x1 - x0) + 80;
+  const fitScale = Math.min(svgW / contentW, svgH / contentH, 1);
+  const initTx = 40 - y0 * fitScale;
+  const initTy = (svgH / 2) - ((x0 + x1) / 2) * fitScale;
+  const initTransform = d3.zoomIdentity.translate(initTx, initTy).scale(fitScale);
+
+  const zoom = d3.zoom()
+    .scaleExtent([0.2, 3])
+    .on('zoom', (event) => {
+      g.attr('transform', event.transform);
+      state.treeZoom[treeKey] = event.transform;
+    });
+  svg.call(zoom);
+  // Restore previous zoom/pan if present, else fit to view on first render
+  const restoreTransform = state.treeZoom[treeKey] || initTransform;
+  svg.call(zoom.transform, restoreTransform);
+
+  // Toolbar buttons
+  wrap.querySelector('[data-tree-action="fit"]').onclick = () => {
+    svg.transition().duration(400).call(zoom.transform, initTransform);
+  };
+  wrap.querySelector('[data-tree-action="reset"]').onclick = () => {
+    svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(40, svgH / 2));
+  };
+  wrap.querySelector('[data-tree-action="collapse"]').onclick = () => {
+    allNodes.forEach((d) => {
+      if ((d.data.children || []).length) state.collapsedNodes.add(nodeKey(d.data));
+    });
+    loadCurrentTab(false);
+  };
+  wrap.querySelector('[data-tree-action="expand"]').onclick = () => {
+    state.collapsedNodes.clear();
+    loadCurrentTab(false);
+  };
+
+  // Links (curved Bezier)
+  const linkGen = d3.linkHorizontal().x((d) => d.y).y((d) => d.x);
+  g.append('g').attr('class', 'd3-link-layer')
+    .selectAll('path')
+    .data(allLinks)
+    .join('path')
+    .attr('class', (d) => `d3-link ${makeLinkClass ? makeLinkClass(d.target.data) : ''}`)
+    .attr('d', linkGen);
+
+  // Node groups
+  const nodeG = g.append('g').attr('class', 'd3-node-layer')
+    .selectAll('g.d3-node')
+    .data(allNodes, (d) => nodeKey(d.data))
+    .join('g')
+    .attr('class', (d) => `d3-node ${isNodeSelected(d.data) ? 'selected' : ''}`)
+    .attr('transform', (d) => `translate(${d.y},${d.x})`)
+    .on('click', (event, d) => {
+      event.stopPropagation();
+      if (d.data.node_id) {
+        state.selection = { kind: 'prefix_node', id: d.data.node_id, data: d.data };
+        loadCurrentTab(false);
+        renderPrefixNodeDetail(d.data);
+        return;
+      }
+      const k = d.data.kind === 'agent_call' ? 'agent_call' : 'request';
+      const id = d.data.kind === 'agent_call' ? d.data.agent_call_id : d.data.trace_id;
+      selectEntity(k, id);
+    });
+
+  // Main node circle
+  nodeG.append('circle')
+    .attr('class', 'd3-node-circle')
+    .attr('r', 7)
+    .style('fill', (d) => nodeFill(d.data))
+    .style('color', (d) => nodeFill(d.data));
+
+  // Toggle button (only for nodes with children — either visible or hidden)
+  const hasKids = (d) => ((d.data.children || []).length > 0) || state.collapsedNodes.has(nodeKey(d.data));
+  const togglable = nodeG.filter((d) => {
+    if (d.data.__synthetic) return false;
+    if (state.collapsedNodes.has(nodeKey(d.data))) return true;
+    return (d.data.children || []).length > 0;
+  });
+  togglable.append('circle')
+    .attr('class', 'd3-toggle-bg')
+    .attr('r', 7)
+    .attr('cx', -16)
+    .on('click', (event, d) => {
+      event.stopPropagation();
+      const k = nodeKey(d.data);
+      if (state.collapsedNodes.has(k)) state.collapsedNodes.delete(k);
+      else state.collapsedNodes.add(k);
+      loadCurrentTab(false);
+    });
+  togglable.append('text')
+    .attr('class', 'd3-toggle-text')
+    .attr('x', -16)
+    .attr('y', 0.5)
+    .text((d) => state.collapsedNodes.has(nodeKey(d.data)) ? '+' : '−');
+
+  // Labels + badges, with real SVG bbox measurement
+  nodeG.each(function (d) {
+    const grp = d3.select(this);
+
+    const labelText = truncate(makeLabel(d.data), 50);
+    const label = grp.append('text')
+      .attr('class', 'd3-node-label')
+      .attr('x', 14)
+      .attr('dy', '-0.2em')
+      .text(labelText);
+
+    grp.append('text')
+      .attr('class', 'd3-node-sub')
+      .attr('x', 14)
+      .attr('dy', '1.0em')
+      .text(truncate(makeSubtitle(d.data) || '', 60));
+
+    const badges = (makeBadges(d.data) || []).filter(Boolean);
+    if (!badges.length) return;
+
+    let labelW = 14 + labelText.length * 7;
+    try { labelW = 14 + label.node().getBBox().width; } catch (_) {}
+    let x = labelW + 10;
+
+    badges.forEach((b) => {
+      const tmp = grp.append('text')
+        .attr('class', 'd3-node-badge-text')
+        .text(b)
+        .style('visibility', 'hidden');
+      let textW = b.length * 6;
+      try { textW = tmp.node().getBBox().width; } catch (_) {}
+      tmp.remove();
+      const w = textW + 10;
+      grp.append('rect')
+        .attr('class', 'd3-node-badge-bg')
+        .attr('x', x).attr('y', -7).attr('width', w).attr('height', 14)
+        .attr('rx', 3).attr('ry', 3);
+      grp.append('text')
+        .attr('class', 'd3-node-badge-text')
+        .attr('x', x + w / 2).attr('y', 1)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .text(b);
+      x += w + 4;
+    });
+  });
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+// -- History tree ---------------------------------------------
+function renderHistoryTree(roots) {
+  renderD3Tree({
+    container: $('mainView'),
+    roots,
+    treeKey: 'history',
+    makeLabel: (d) => d.title || `${d.message_count} msgs · ${d.response_stop_reason || d.status}`,
+    makeSubtitle: (d) => `${d.role_kind} · ${shortId(d.trace_id)}`,
+    makeBadges: (d) => {
+      const arr = [];
+      if (d.parent_match_kind) arr.push(`+${d.parent_added_steps} ${d.parent_match_kind}`);
+      else arr.push('root');
+      if (d.request_count != null) arr.push(`${d.request_count} req`);
+      return arr;
+    },
+    makeLinkClass: (d) => d.parent_match_kind ? `match-${d.parent_match_kind}` : ''
+  });
+}
+
+// -- Prefix trie ----------------------------------------------
+function renderPrefixTrie(roots) {
+  renderD3Tree({
+    container: $('mainView'),
+    roots,
+    treeKey: 'prefixTrie',
+    makeLabel: (d) => {
+      const terms = d.terminal_requests || [];
+      if (terms.length === 1) {
+        const t = terms[0];
+        return t.title || `${t.message_count} msgs · ${t.status}`;
+      }
+      if (terms.length > 1) return `${terms.length} reqs share this prefix`;
+      return `chain (+${d.step_count} steps)`;
+    },
+    makeSubtitle: (d) => {
+      const terms = d.terminal_requests || [];
+      if (terms.length === 1) {
+        const t = terms[0];
+        return `${t.role_kind} · ${shortId(t.trace_id)}`;
+      }
+      if (terms.length > 1) return terms.map((t) => shortId(t.trace_id)).join(', ');
+      return `${d.subtree_request_count} reqs downstream · ${(d.children || []).length} branches`;
+    },
+    makeBadges: (d) => {
+      const arr = [];
+      if (d.step_count > 0) arr.push(`+${d.step_count}`);
+      const terms = d.terminal_requests || [];
+      if (terms.length > 0) arr.push(`${terms.length} end`);
+      if ((d.children || []).length > 0) arr.push(`${d.subtree_request_count} thru`);
+      return arr;
+    },
+    makeLinkClass: () => 'match-prefix'
+  });
+}
+
+// -- Agent tree -----------------------------------------------
+function renderAgentTree(roots) {
+  renderD3Tree({
+    container: $('mainView'),
+    roots,
+    treeKey: 'agents',
+    makeLabel: (d) => {
+      if (d.kind === 'agent_call') return `${d.tool_name || 'Agent'} → ${d.agent_label || '?'}`;
+      return d.title || `${d.message_count} msgs · ${d.stop_reason || d.status}`;
+    },
+    makeSubtitle: (d) => {
+      if (d.kind === 'agent_call') return (d.input_preview || '').slice(0, 70);
+      return `${d.role_kind} · ${shortId(d.trace_id)}`;
+    },
+    makeBadges: (d) => {
+      if (d.kind === 'agent_call') {
+        const arr = [d.status || '?'];
+        if (d.duration_ms != null) arr.push(`${d.duration_ms}ms`);
+        return arr;
+      }
+      const arr = [d.model_mapped || d.model_requested || '?'];
+      if (d.duration_ms != null) arr.push(`${d.duration_ms}ms`);
+      return arr;
+    },
+    makeLinkClass: (d) => d.kind === 'agent_call' ? 'match-agent_call' : ''
+  });
+}
+
+// -- Time trajectory (classified bursts, broken-axis layout) -----
+const TT_LANE_Y = {
+  llm_request_start: -36,
+  llm_request_end: -12,
+  tool_use_response: 12,
+  tool_result: 36,
+};
+
+// Compress idle gaps: each segment gets a width based on event count and
+// sqrt(duration), floor at a min. Extra width distributed between segments.
+function layoutSegmentsBroken(segments, leftX, rightX) {
+  const usableW = rightX - leftX;
+  const gapW = 16;
+  const n = segments.length;
+  if (n === 0) return [];
+
+  // Per-segment min width grows with event count so dense bursts don't get squeezed
+  const minWFor = (s) => Math.min(360, 60 + (s.event_count || 0) * 22);
+  const totalGapsW = Math.max(0, n - 1) * gapW;
+  const mins = segments.map(minWFor);
+  const totalMin = mins.reduce((a, b) => a + b, 0);
+  let remaining = usableW - totalGapsW;
+
+  if (remaining < totalMin) {
+    // Not enough room — shrink mins proportionally (so dense boxes still get more)
+    const scale = remaining / totalMin;
+    let x = leftX;
+    return segments.map((s, i) => {
+      const w = Math.max(40, mins[i] * scale);
+      const o = { ...s, _xStart: x, _xEnd: x + w };
+      x = o._xEnd + gapW;
+      return o;
+    });
+  }
+  // Extra space distributed by sqrt(duration) so long bursts get a bit more
+  const weights = segments.map((s) => Math.sqrt(Math.max(1, s.duration_ms || 0)));
+  const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+  const extraTotal = remaining - totalMin;
+  let x = leftX;
+  return segments.map((s, i) => {
+    const segW = mins[i] + (weights[i] / totalW) * extraTotal;
+    const o = { ...s, _xStart: x, _xEnd: x + segW };
+    x = o._xEnd + gapW;
+    return o;
+  });
+}
+
+// Decide whether to use proportional time positioning inside a box.
+// For bursty segments (very short duration) we spread events evenly instead.
+function eventFractionInSegment(events, seg, i) {
+  const N = seg.event_end_index - seg.event_start_index;
+  const localIdx = i - seg.event_start_index;
+  const dur = seg.end_ms - seg.start_ms;
+  if (dur > 1000 && N > 1) {
+    return (events[i].event_time_ms - seg.start_ms) / dur;
+  }
+  return N === 1 ? 0.5 : localIdx / (N - 1);
+}
+
+function shortEventLabel(e) {
+  if (e.kind === 'tool_use_response' || e.kind === 'tool_result') {
+    return e.tool_name || '';
+  }
+  // LLM events — use mapped model short name
+  const m = e.model_mapped || e.model_requested || '';
+  if (!m) return e.role_kind || '';
+  if (/haiku/i.test(m)) return 'haiku';
+  if (/sonnet/i.test(m)) return 'sonnet';
+  if (/opus/i.test(m)) return 'opus';
+  return m.length > 10 ? m.slice(0, 10) : m;
+}
+
+function renderTimeTrajectory(data) {
+  const container = $('mainView');
+  const events = (data && data.events) || [];
+  const segments = (data && data.segments) || [];
+  if (!events.length) {
+    container.innerHTML = '<div class="empty">没有时间轨迹事件。</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="d3-tree-wrap">
+      <div class="d3-tree-toolbar">
+        <button data-tt-action="fit">⤢ 适应</button>
+        <button data-tt-action="reset">↺ 重置</button>
+      </div>
+      <div class="d3-tree-legend">
+        <span><span class="dot" style="background:var(--main)"></span>LLM</span>
+        <span><span class="dot" style="background:var(--tool)"></span>Tool</span>
+        <span><span class="dot" style="background:var(--subagent)"></span>Subagent</span>
+        <span><span class="dot" style="background:var(--titler)"></span>Titler</span>
+      </div>
+    </div>`;
+  const wrap = container.querySelector('.d3-tree-wrap');
+  const svgW = wrap.clientWidth;
+  const svgH = wrap.clientHeight;
+
+  const margin = { left: 24, right: 24, top: 80, bottom: 60 };
+  const midY = margin.top + (svgH - margin.top - margin.bottom) / 2;
+
+  // Layout segments in screen space (broken axis)
+  const laid = layoutSegmentsBroken(segments, margin.left, svgW - margin.right);
+  // Position each event inside its segment (ordinal spread for short bursts, proportional otherwise)
+  const eventX = new Array(events.length).fill(null);
+  laid.forEach((seg) => {
+    const innerW = seg._xEnd - seg._xStart;
+    const inset = Math.min(20, innerW * 0.12);
+    const usableW = Math.max(20, innerW - 2 * inset);
+    for (let i = seg.event_start_index; i < seg.event_end_index && i < events.length; i++) {
+      const frac = eventFractionInSegment(events, seg, i);
+      eventX[i] = seg._xStart + inset + frac * usableW;
+    }
+  });
+
+  const svg = d3.select(wrap).append('svg').attr('width', svgW).attr('height', svgH);
+  svg.append('rect').attr('width', svgW).attr('height', svgH).attr('fill', 'transparent');
+
+  const g = svg.append('g');
+
+  // --- Gap markers between segments ("//")
+  for (let i = 0; i < laid.length - 1; i++) {
+    const a = laid[i];
+    const b = laid[i + 1];
+    const cx = (a._xEnd + b._xStart) / 2;
+    const gapMs = b.start_ms - a.end_ms;
+    const gg = g.append('g').attr('class', 'tt-gap');
+    gg.append('line')
+      .attr('x1', a._xEnd).attr('x2', b._xStart)
+      .attr('y1', midY).attr('y2', midY)
+      .attr('stroke', 'var(--line-2)').attr('stroke-dasharray', '2,3');
+    gg.append('text')
+      .attr('class', 'tt-seg-meta')
+      .attr('x', cx).attr('y', midY - 6)
+      .attr('text-anchor', 'middle')
+      .text(`~${fmtDuration(gapMs)}`);
+  }
+
+  // --- Segment boxes
+  const segGroups = g.append('g').attr('class', 'tt-segments')
+    .selectAll('g.tt-seg')
+    .data(laid)
+    .join('g')
+    .attr('class', 'tt-seg')
+    .on('click', (event, d) => {
+      event.stopPropagation();
+      // Click box → zoom to fit this segment
+      const center = (d._xStart + d._xEnd) / 2;
+      const segW = d._xEnd - d._xStart;
+      const scale = Math.min(8, (svgW - 80) / Math.max(60, segW));
+      const tx = svgW / 2 - center * scale;
+      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(tx, 0).scale(scale));
+    });
+
+  segGroups.append('rect')
+    .attr('class', (d) => `tt-seg-rect tt-seg-${d.classification}`)
+    .attr('x', (d) => d._xStart - 6)
+    .attr('width', (d) => (d._xEnd - d._xStart) + 12)
+    .attr('y', margin.top - 12)
+    .attr('height', svgH - margin.top - margin.bottom + 24)
+    .attr('rx', 10).attr('ry', 10);
+
+  segGroups.append('text')
+    .attr('class', (d) => `tt-seg-label tt-seg-label-${d.classification}`)
+    .attr('x', (d) => d._xStart)
+    .attr('y', margin.top - 32)
+    .text((d) => d.label);
+
+  segGroups.append('text')
+    .attr('class', 'tt-seg-meta')
+    .attr('x', (d) => d._xStart)
+    .attr('y', margin.top - 18)
+    .text((d) => `${d.event_count} evts · ${fmtDuration(d.duration_ms)}`);
+
+  // Time label below each segment
+  segGroups.append('text')
+    .attr('class', 'tt-seg-meta')
+    .attr('x', (d) => d._xStart)
+    .attr('y', svgH - margin.bottom + 14)
+    .text((d) => fmtTime(d.start_ms));
+
+  // --- Events (groups so we can attach a label below each circle)
+  const eventLayer = g.append('g').attr('class', 'tt-events');
+  const evtData = events.map((e, i) => ({ e, x: eventX[i] })).filter((d) => d.x != null);
+  const evtGroups = eventLayer.selectAll('g.tt-event-g')
+    .data(evtData)
+    .join('g')
+    .attr('class', 'tt-event-g')
+    .attr('transform', (d) => `translate(${d.x},${midY + (TT_LANE_Y[d.e.kind] || 0)})`)
+    .on('click', (event, d) => {
+      event.stopPropagation();
+      if (d.e.event_id) selectEntity('tool_event', d.e.event_id);
+      else if (d.e.trace_id) selectEntity('request', d.e.trace_id);
+    });
+
+  evtGroups.append('circle')
+    .attr('class', (d) => `tt-event tt-kind-${d.e.kind}${isEventSelected(d.e) ? ' selected' : ''}`)
+    .attr('r', (d) => (d.e.kind === 'llm_request_start' || d.e.kind === 'llm_request_end') ? 6 : 5);
+
+  // Collision avoidance per lane: hide labels that would collide with previous label in same lane.
+  // Visible labels get a tiny alternating vertical offset so adjacent ones don't sit on the same line.
+  const byLane = {};
+  evtData.forEach((d, i) => {
+    if (!byLane[d.e.kind]) byLane[d.e.kind] = [];
+    byLane[d.e.kind].push({ d, i });
+  });
+  const labelMeta = new Array(evtData.length).fill(null).map(() => ({ visible: false, offsetY: 0 }));
+  Object.values(byLane).forEach((arr) => {
+    arr.sort((a, b) => a.d.x - b.d.x);
+    let lastVisibleEnd = -Infinity;
+    let alt = 0;
+    for (const { d, i } of arr) {
+      const labelText = shortEventLabel(d.e);
+      // Rough estimate of rotated label horizontal extent (cos(25°) ≈ 0.91)
+      const estW = (labelText ? labelText.length : 0) * 6.4 * 0.91;
+      // Need a gap of at least 4px between rotated label end and next event x
+      if (d.x - lastVisibleEnd >= 6) {
+        labelMeta[i].visible = true;
+        labelMeta[i].offsetY = alt === 0 ? -2 : -10;
+        alt = 1 - alt;
+        lastVisibleEnd = d.x + estW;
+      }
+    }
+  });
+
+  // Rotated labels above/right of the dot; rotation around the text's anchor point
+  evtGroups.append('text')
+    .attr('class', 'tt-event-label')
+    .attr('x', 9)
+    .attr('y', (d, i) => labelMeta[i].offsetY)
+    .attr('transform', (d, i) => `rotate(-25 9 ${labelMeta[i].offsetY})`)
+    .style('display', (d, i) => labelMeta[i].visible ? null : 'none')
+    .text((d) => shortEventLabel(d.e));
+
+  evtGroups.append('title')
+    .text((d) => `${d.e.kind}\n${fmtTime(d.e.event_time)}\n${d.e.title || d.e.tool_name || d.e.trace_id || ''}`);
+
+  // Lane labels (left margin, fixed — outside the zoom/pan group)
+  const laneLabels = svg.append('g').attr('class', 'tt-lanes');
+  [
+    ['llm_request_start', 'LLM start'],
+    ['llm_request_end', 'LLM end'],
+    ['tool_use_response', 'tool use'],
+    ['tool_result', 'tool result'],
+  ].forEach(([kind, label]) => {
+    laneLabels.append('text')
+      .attr('class', 'tt-lane-label')
+      .attr('x', margin.left - 12)
+      .attr('y', midY + TT_LANE_Y[kind] + 4)
+      .attr('text-anchor', 'end')
+      .text(label);
+  });
+
+  // --- Pan / zoom (apply transform to root g so everything scales)
+  const zoom = d3.zoom()
+    .scaleExtent([0.5, 30])
+    .translateExtent([[-svgW * 2, 0], [svgW * 3, svgH]])
+    .on('zoom', (event) => {
+      g.attr('transform', event.transform);
+      state.treeZoom.timeTrajectory = event.transform;
+    });
+  svg.call(zoom);
+
+  if (state.treeZoom.timeTrajectory) {
+    svg.call(zoom.transform, state.treeZoom.timeTrajectory);
+  } else {
+    svg.call(zoom.transform, d3.zoomIdentity);
+  }
+
+  wrap.querySelector('[data-tt-action="fit"]').onclick = () => {
+    svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+  };
+  wrap.querySelector('[data-tt-action="reset"]').onclick = () => {
+    svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+  };
+}
+
+function isEventSelected(e) {
+  if (!state.selection) return false;
+  if (state.selection.kind === 'tool_event') return state.selection.id === e.event_id;
+  if (state.selection.kind === 'request') return state.selection.id === e.trace_id;
+  return false;
+}
+
+function fmtDuration(ms) {
+  if (ms == null) return '-';
+  if (ms < 1000) return ms + 'ms';
+  if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
+  return (ms / 60000).toFixed(1) + 'min';
+}
+
+// -- Timeline -------------------------------------------------
+function renderTimeline(events) {
+  const filtered = events.filter((e) => passesFilter([
+    e.trace_id, e.kind, e.agent_label, e.tool_name, e.model_mapped, e.title, e.input_preview
+  ].join(' ')));
+  if (!filtered.length) {
+    $('mainView').innerHTML = '<div class="empty">没有时间线事件。</div>';
+    return;
+  }
+  $('mainView').innerHTML = filtered.map((e) => {
+    const active = state.selection
+      && ((state.selection.kind === 'request' && state.selection.id === e.trace_id && (e.kind === 'llm_request_start' || e.kind === 'llm_request_end'))
+       || (state.selection.kind === 'tool_event' && state.selection.id === e.event_id))
+      ? ' active' : '';
+    let summary = '';
+    let dataKind = 'request';
+    let dataId = e.trace_id;
+    if (e.kind === 'llm_request_start') {
+      summary = `LLM start · ${e.role_kind} · ${e.model_mapped || e.model_requested || ''} · ${e.message_count} msgs · ${e.title || ''}`;
+    } else if (e.kind === 'llm_request_end') {
+      summary = `LLM end · ${e.role_kind} · ${e.status || ''} · ${e.stop_reason || ''} · ${e.title || ''}`;
+    } else if (e.kind === 'tool_use_response') {
+      summary = `tool_use · ${e.tool_name || ''} · ${e.input_preview || ''}`;
+      dataKind = 'tool_event';
+      dataId = e.event_id;
+    } else if (e.kind === 'tool_result') {
+      summary = `tool_result · ${e.tool_name || ''} · ${e.input_preview || ''}`;
+      dataKind = 'tool_event';
+      dataId = e.event_id;
+    }
+    return `<div class="tl-row${active}" data-kind="${escapeHtml(dataKind)}" data-id="${escapeHtml(dataId)}">
+      <div class="idx">${e.index}</div>
+      <div class="t">${escapeHtml(fmtTime(e.event_time))}</div>
+      <div class="kind kind-${escapeHtml(e.kind)}">${escapeHtml(e.kind)}</div>
+      <div class="agent">${escapeHtml(e.agent_label || e.role_kind || '-')}</div>
+      <div class="summary" title="${escapeHtml(e.trace_id)}">${escapeHtml(summary)}
+        <span style="color:var(--text-faint);font-size:11px;margin-left:6px;">${escapeHtml(shortId(e.trace_id))}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// -------------------------------------------------------------
+// Right detail
+// -------------------------------------------------------------
+async function selectEntity(kind, id) {
+  if (!id) return;
+  state.selection = { kind, id };
+  // re-render the middle to show selected highlight
+  await loadCurrentTab(false);
+
+  if (kind === 'request') {
+    if (!state.cache.requestDetails[id]) {
+      state.cache.requestDetails[id] = await fetchJson(`/api/v2/requests/${encodeURIComponent(id)}`);
+    }
+    renderRequestDetail(state.cache.requestDetails[id]);
+  } else if (kind === 'agent_call') {
+    if (!state.cache.agentCallDetails[id]) {
+      state.cache.agentCallDetails[id] = await fetchJson(`/api/v2/agent_calls/${encodeURIComponent(id)}`);
+    }
+    renderAgentCallDetail(state.cache.agentCallDetails[id]);
+  } else if (kind === 'tool_event') {
+    if (!state.cache.toolEventDetails[id]) {
+      state.cache.toolEventDetails[id] = await fetchJson(`/api/v2/tool_events/${encodeURIComponent(id)}`);
+    }
+    renderToolEventDetail(state.cache.toolEventDetails[id]);
+  }
+}
+
+function renderRequestDetail(d) {
+  $('detailMeta').textContent = `request · ${shortId(d.trace_id)}`;
+  const tab = state.selectedDetailTab;
+  const tabs = [
+    ['overview', '概览'],
+    ['messages', '消息序列'],
+    ['response', '响应'],
+    ['tools', '工具事件'],
+    ['system', 'System'],
+    ['raw', '原始 JSON'],
+  ];
+  let body = '';
+  if (tab === 'overview') {
+    body = renderRequestOverview(d);
+  } else if (tab === 'messages') {
+    body = renderRequestMessages(d);
+  } else if (tab === 'response') {
+    body = renderRequestResponse(d);
+  } else if (tab === 'tools') {
+    body = renderRequestTools(d);
+  } else if (tab === 'system') {
+    body = renderRequestSystem(d);
+  } else if (tab === 'raw') {
+    body = renderRequestRaw(d);
+  }
+  $('detailView').innerHTML = `
+    <div class="detail-tabs">
+      ${tabs.map(([id,label]) => `<button class="detail-tab${tab===id?' active':''}" data-detail-tab="${id}">${label}</button>`).join('')}
+    </div>
+    ${body}
+  `;
+}
+
+function renderRequestOverview(d) {
+  const parentLink = d.parent
+    ? `<a class="link" data-jump-kind="request" data-jump-id="${escapeHtml(d.parent.trace_id)}">${escapeHtml(shortId(d.parent.trace_id))} (${escapeHtml(d.parent.role_kind)})</a> <span style="color:var(--text-faint)">${escapeHtml(d.parent_match_kind || '')} +${d.parent_added_steps || 0}</span>`
+    : '<span style="color:var(--text-faint)">root</span>';
+  const parentCallLink = d.parent_agent_call
+    ? `<a class="link" data-jump-kind="agent_call" data-jump-id="${escapeHtml(d.parent_agent_call.agent_call_id)}">${escapeHtml(d.parent_agent_call.agent_label || 'Agent')} call</a>`
+    : '<span style="color:var(--text-faint)">-</span>';
+  const childLinks = (d.children || []).map((c) =>
+    `<a class="link" data-jump-kind="request" data-jump-id="${escapeHtml(c.trace_id)}">${escapeHtml(shortId(c.trace_id))}</a>`
+  ).join(', ') || '<span style="color:var(--text-faint)">无</span>';
+  const launchedLinks = (d.launched_agent_calls || []).map((a) =>
+    `<a class="link" data-jump-kind="agent_call" data-jump-id="${escapeHtml(a.agent_call_id)}">${escapeHtml(a.agent_label || a.tool_name)}</a>`
+  ).join(', ') || '<span style="color:var(--text-faint)">无</span>';
+  const usage = d.response_usage || {};
+  return `<div class="detail-section"><h3>请求</h3><div class="body">
+    <div class="kv">
+      <div>Trace ID</div><div><code>${escapeHtml(d.trace_id)}</code></div>
+      <div>Session</div><div><code>${escapeHtml(d.session_id || '-')}</code></div>
+      <div>API</div><div>${escapeHtml(d.api)}</div>
+      <div>Role kind</div><div>${roleBadge(d.role_kind)} · ${escapeHtml(d.agent_label)}</div>
+      <div>Status</div><div class="status ${statusClass(d.status)}">${escapeHtml(d.status)} ${d.status_code || ''}</div>
+      <div>Started</div><div>${escapeHtml(fmtDate(d.started_at))}</div>
+      <div>Duration</div><div>${d.duration_ms != null ? d.duration_ms + ' ms' : '-'}</div>
+      <div>Model</div><div>${escapeHtml(d.model_requested || '?')} → ${escapeHtml(d.model_mapped || '?')}</div>
+      <div>Stop reason</div><div>${escapeHtml(d.response_stop_reason || '-')}</div>
+      <div>Title</div><div>${escapeHtml(d.title || '-')}</div>
+      <div>Messages</div><div>${escapeHtml(d.message_count)} msgs · ${escapeHtml(d.tool_count)} tools advertised · prefix depth ${(d.prefix_hashes || []).length}</div>
+      <div>System hash</div><div><code>${escapeHtml(d.system_hash || '-')}</code> (${escapeHtml(d.system_chars || 0)} chars)</div>
+      <div>Tools advertised</div><div>${escapeHtml((d.tool_names || []).join(', ') || '-')}</div>
+      <div>CC version</div><div>${escapeHtml(d.cc_version || '-')} · cch ${escapeHtml(d.cch || '-')}</div>
+      <div>Parent request</div><div>${parentLink}</div>
+      <div>Parent agent call</div><div>${parentCallLink}</div>
+      <div>Children requests</div><div>${childLinks}</div>
+      <div>Launched agent calls</div><div>${launchedLinks}</div>
+      <div>Usage</div><div><code>${escapeHtml(jsonText(usage))}</code></div>
+    </div>
+  </div></div>`;
+}
+
+function renderRequestMessages(d) {
+  const msgs = d.messages || [];
+  if (!msgs.length) return '<div class="empty">没有消息。</div>';
+  const parts = msgs.map((m) => {
+    const blocks = renderContentBlocks(m.full_content);
+    return `<div class="msg-block role-${escapeHtml(m.role)}">
+      <div class="msg-head">
+        <span>#${escapeHtml(m.msg_index >= 0 ? m.msg_index : 'sys')}</span>
+        <span>${escapeHtml(m.role)}</span>
+        <span style="color:var(--text-faint)">${escapeHtml(m.chars || 0)} chars · ${escapeHtml((m.block_types || []).join(','))}</span>
+        <span style="color:var(--text-faint); font-family: ui-monospace,monospace;">${escapeHtml(m.canonical_hash)}</span>
+      </div>
+      <div class="msg-body">${blocks}</div>
+    </div>`;
+  }).join('');
+  return `<div class="detail-section"><h3>消息序列</h3><div class="body">${parts}</div></div>`;
+}
+
+function renderContentBlocks(content) {
+  if (content == null) return '<span style="color:var(--text-faint)">empty</span>';
+  if (typeof content === 'string') {
+    return `<pre class="code">${escapeHtml(content)}</pre>`;
+  }
+  if (Array.isArray(content)) {
+    return content.map((b) => renderContentBlock(b)).join('');
+  }
+  return `<pre class="code">${escapeHtml(jsonText(content))}</pre>`;
+}
+
+function renderContentBlock(block) {
+  if (!block || typeof block !== 'object') {
+    return `<pre class="code">${escapeHtml(String(block))}</pre>`;
+  }
+  if (block.type === 'text') {
+    return `<pre class="code">${escapeHtml(block.text || '')}</pre>`;
+  }
+  if (block.type === 'tool_use') {
+    return `<div class="tool-block">
+      <div><span class="tool-name">tool_use</span> ${escapeHtml(block.name)} <span style="color:var(--text-faint)">${escapeHtml(block.id)}</span></div>
+      <pre class="code">${escapeHtml(jsonText(block.input))}</pre>
+    </div>`;
+  }
+  if (block.type === 'tool_result') {
+    const inner = renderContentBlocks(block.content);
+    return `<div class="tool-block result">
+      <div><span class="tool-name">tool_result</span> for <code>${escapeHtml(block.tool_use_id)}</code></div>
+      ${inner}
+    </div>`;
+  }
+  if (block.type === 'image') {
+    return `<div class="tool-block"><span class="tool-name">image</span> ${escapeHtml(jsonText(block.source||{}))}</div>`;
+  }
+  return `<pre class="code">${escapeHtml(jsonText(block))}</pre>`;
+}
+
+function renderRequestResponse(d) {
+  const r = d.response_body;
+  if (!r) return '<div class="empty">没有响应（请求失败或仍在进行）。</div>';
+  const text = (r.content || []).filter((b) => b && b.type === 'text').map((b) => b.text).join('\n');
+  const toolUses = (r.content || []).filter((b) => b && b.type === 'tool_use');
+  const sec = [];
+  if (text) sec.push(`<div class="detail-section"><h3>文本</h3><div class="body"><pre class="code">${escapeHtml(text)}</pre></div></div>`);
+  if (toolUses.length) {
+    sec.push(`<div class="detail-section"><h3>工具调用 (${toolUses.length})</h3><div class="body">${
+      toolUses.map((b) => `<div class="tool-block">
+        <div><span class="tool-name">${escapeHtml(b.name)}</span> <span style="color:var(--text-faint)">${escapeHtml(b.id)}</span></div>
+        <pre class="code">${escapeHtml(jsonText(b.input))}</pre>
+      </div>`).join('')
+    }</div></div>`);
+  }
+  sec.push(`<div class="detail-section"><h3>元数据</h3><div class="body"><div class="kv">
+    <div>id</div><div><code>${escapeHtml(r.id || '-')}</code></div>
+    <div>model</div><div>${escapeHtml(r.model || '-')}</div>
+    <div>stop_reason</div><div>${escapeHtml(r.stop_reason || '-')}</div>
+    <div>usage</div><div><code>${escapeHtml(jsonText(r.usage))}</code></div>
+  </div></div></div>`);
+  return sec.join('');
+}
+
+function renderRequestTools(d) {
+  const events = d.tool_events || [];
+  if (!events.length) return '<div class="empty">这个请求没有工具事件。</div>';
+  return `<div class="detail-section"><h3>工具事件 (${events.length})</h3><div class="body">${
+    events.map((e) => `<div class="tool-block ${e.event_type === 'tool_result' ? 'result' : ''}" data-jump-kind="tool_event" data-jump-id="${escapeHtml(e.event_id)}" style="cursor:pointer;">
+      <div>
+        <span class="tool-name">${escapeHtml(e.event_type)}</span>
+        ${escapeHtml(e.tool_name || '')}
+        <span style="color:var(--text-faint)">${escapeHtml(e.location)} · agent=${escapeHtml(e.agent_label || 'main')}</span>
+        <span style="color:var(--text-faint); font-family:ui-monospace,monospace;">${escapeHtml(shortId(e.tool_use_id || e.tool_result_id || ''))}</span>
+      </div>
+      <pre class="code">${escapeHtml(e.input_preview || '')}</pre>
+    </div>`).join('')
+  }</div></div>`;
+}
+
+function renderRequestSystem(d) {
+  if (!d.system_text) return '<div class="empty">没有 system 内容。</div>';
+  return `<div class="detail-section"><h3>System</h3><div class="body">
+    <div class="kv">
+      <div>chars</div><div>${d.system_chars}</div>
+      <div>hash</div><div><code>${escapeHtml(d.system_hash || '-')}</code></div>
+    </div>
+    <pre class="code">${escapeHtml(d.system_text)}</pre>
+  </div></div>`;
+}
+
+function renderRequestRaw(d) {
+  const blocks = [
+    ['Request body (Anthropic-style, post-sanitize)', d.request_body],
+    ['Converted request (LiteLLM-style sent upstream)', d.converted_request],
+    ['Response body (Anthropic-style)', d.response_body],
+    ['Headers', d.headers],
+    ['Error', d.error],
+    ['Extra', d.extra],
+  ];
+  return blocks.filter(([_, v]) => v).map(([label, v]) =>
+    `<div class="detail-section"><h3>${escapeHtml(label)}</h3><div class="body"><pre class="code">${escapeHtml(jsonText(v))}</pre></div></div>`
+  ).join('') || '<div class="empty">无原始数据。</div>';
+}
+
+function renderPrefixNodeDetail(node) {
+  const terms = node.terminal_requests || [];
+  const children = node.children || [];
+  let nodeType;
+  if (terms.length === 0) nodeType = '分支节点 (pure branch)';
+  else if (terms.length === 1) nodeType = '终止节点 (1 terminal)';
+  else nodeType = `多终止节点 (${terms.length} terminals)`;
+
+  $('detailMeta').textContent = `prefix · ${node.node_id}`;
+
+  const termList = terms.length
+    ? `<div class="kv kv-prefix-list">${terms.map((t) => `
+        <div><a class="link" data-jump-kind="request" data-jump-id="${escapeHtml(t.trace_id)}">${escapeHtml(shortId(t.trace_id))}</a></div>
+        <div>
+          <span class="role-badge role-${escapeHtml(t.role_kind)}">${escapeHtml(t.role_kind || '?')}</span>
+          ${escapeHtml(t.agent_label && t.agent_label !== 'main' && t.agent_label !== 'titler' ? '· ' + t.agent_label : '')}
+          <span style="color:var(--text-faint);margin-left:6px;">${escapeHtml(t.model_mapped || t.model_requested || '')}</span>
+          ${t.title ? '<br><span style="color:var(--text-dim)">' + escapeHtml(t.title) + '</span>' : ''}
+          <br><span style="color:var(--text-faint);font-size:11px;">${escapeHtml(t.message_count || 0)} msgs · ${escapeHtml(t.status || '-')} · depth ${escapeHtml(t.depth || '?')}</span>
+        </div>`).join('')}</div>`
+    : '<span style="color:var(--text-faint)">无（纯分支点）</span>';
+
+  const childList = children.length
+    ? children.map((c) => {
+        const ct = c.terminal_requests || [];
+        const summary = ct.length === 1
+          ? `${ct[0].title || `${ct[0].message_count} msgs`}`
+          : ct.length > 1
+            ? `${ct.length} requests merge here`
+            : `chain (+${c.step_count} steps) — continues`;
+        const colorRole = ct.length === 1 ? ct[0].role_kind : '';
+        const swatch = `<span class="prefix-child-dot" style="background:${escapeHtml(colorRole ? `var(--${colorRole === 'main' ? 'main' : colorRole === 'subagent' ? 'subagent' : colorRole === 'titler' ? 'titler' : 'text-faint'})` : 'var(--text-faint)')}"></span>`;
+        return `<div class="prefix-child-row">
+          ${swatch}
+          <div class="prefix-child-info">
+            <div>${escapeHtml(summary)}</div>
+            <div style="color:var(--text-faint);font-size:11px;">+${c.step_count} steps · ${c.subtree_request_count} reqs downstream · ${(c.children || []).length} sub-branches</div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<span style="color:var(--text-faint)">无子分支（叶子）</span>';
+
+  const fmtHash = (h) => h ? `<code style="font-size:11px;">${escapeHtml(h.length > 16 ? h.slice(0,8) + '…' + h.slice(-6) : h)}</code>` : '<span style="color:var(--text-faint)">-</span>';
+
+  $('detailView').innerHTML = `
+    <div class="detail-section"><h3>前缀节点</h3><div class="body">
+      <div class="kv">
+        <div>类型</div><div>${escapeHtml(nodeType)}</div>
+        <div>Node ID</div><div><code style="font-size:11px;">${escapeHtml(node.node_id)}</code></div>
+        <div>压缩链长</div><div>${escapeHtml(node.step_count)} step${node.step_count !== 1 ? 's' : ''} <span style="color:var(--text-faint)">（这条边代表 ${escapeHtml(node.step_count)} 条共享前缀消息）</span></div>
+        <div>子分支数</div><div>${children.length}</div>
+        <div>子树请求总数</div><div>${escapeHtml(node.subtree_request_count || 0)}</div>
+        <div>首步哈希</div><div>${fmtHash(node.first_step_hash)}</div>
+        <div>末步哈希</div><div>${fmtHash(node.last_step_hash)}</div>
+      </div>
+    </div></div>
+
+    <div class="detail-section"><h3>终止于此的请求 (${terms.length})</h3><div class="body">${termList}</div></div>
+
+    <div class="detail-section"><h3>子分支 (${children.length})</h3><div class="body">${childList}</div></div>
+
+    <div class="detail-section"><h3>说明</h3><div class="body" style="color:var(--text-dim);font-size:12px;line-height:1.6;">
+      <p>前缀树中每个节点代表"<strong>所有经过该点的请求共享的消息前缀</strong>"。</p>
+      <ul style="padding-left:18px;margin:4px 0;">
+        <li><strong>压缩链长</strong> = 这条边代表多少条消息（连续无分叉时被压缩）。</li>
+        <li><strong>终止于此</strong>的请求 = 消息历史正好走到这里就结束（不再有更长的子节点）。</li>
+        <li><strong>子分支</strong> = 从此点出发的不同后续消息路径。每个子分支独占自己的 prefix cache 段。</li>
+        <li>越深的节点意味着越多消息被共享缓存；分叉越早，越多 token 在分叉后重新生成。</li>
+      </ul>
+    </div></div>
+  `;
+}
+
+function renderAgentCallDetail(d) {
+  $('detailMeta').textContent = `agent_call · ${shortId(d.agent_call_id)}`;
+  const childLinks = (d.child_requests || []).map((c) =>
+    `<a class="link" data-jump-kind="request" data-jump-id="${escapeHtml(c.trace_id)}">${escapeHtml(shortId(c.trace_id))} (${escapeHtml(c.role_kind)} · ${escapeHtml(c.title || c.status)})</a>`
+  ).join('<br>') || '<span style="color:var(--text-faint)">无</span>';
+  const parentLink = d.parent_request
+    ? `<a class="link" data-jump-kind="request" data-jump-id="${escapeHtml(d.parent_request.trace_id)}">${escapeHtml(shortId(d.parent_request.trace_id))} (${escapeHtml(d.parent_request.role_kind)})</a>`
+    : '<span style="color:var(--text-faint)">-</span>';
+  $('detailView').innerHTML = `
+    <div class="detail-section"><h3>Agent 调用</h3><div class="body">
+      <div class="kv">
+        <div>Call ID</div><div><code>${escapeHtml(d.agent_call_id)}</code></div>
+        <div>Tool name</div><div>${escapeHtml(d.tool_name || 'Agent')}</div>
+        <div>Subagent</div><div>${escapeHtml(d.agent_label || '-')}</div>
+        <div>Status</div><div class="status ${d.status === 'completed' ? 'success' : 'inflight'}">${escapeHtml(d.status || '-')}</div>
+        <div>Started</div><div>${escapeHtml(fmtDate(d.started_at))}</div>
+        <div>Completed</div><div>${escapeHtml(d.completed_at ? fmtDate(d.completed_at) : '-')}</div>
+        <div>Duration</div><div>${d.duration_ms != null ? d.duration_ms + ' ms' : '-'}</div>
+        <div>tool_use_id</div><div><code>${escapeHtml(d.tool_use_id || '-')}</code></div>
+        <div>Parent request</div><div>${parentLink}</div>
+        <div>Child requests</div><div>${childLinks}</div>
+      </div>
+    </div></div>
+    <div class="detail-section"><h3>Input (parent → subagent)</h3><div class="body"><pre class="code">${escapeHtml(d.input_preview || '')}</pre></div></div>
+    <div class="detail-section"><h3>Result (subagent → parent)</h3><div class="body"><pre class="code">${escapeHtml(d.result_preview || '(open / no result yet)')}</pre></div></div>
+  `;
+}
+
+function renderToolEventDetail(e) {
+  $('detailMeta').textContent = `tool_event · ${e.tool_name || e.event_type}`;
+  const partner = e.partner;
+  const partnerLink = partner
+    ? `<a class="link" data-jump-kind="tool_event" data-jump-id="${escapeHtml(partner.event_id)}">${escapeHtml(partner.event_type)} @ ${escapeHtml(fmtTime(partner.event_time))}</a>`
+    : '<span style="color:var(--text-faint)">未匹配</span>';
+  const reqLink = `<a class="link" data-jump-kind="request" data-jump-id="${escapeHtml(e.trace_id)}">${escapeHtml(shortId(e.trace_id))}</a>`;
+  $('detailView').innerHTML = `
+    <div class="detail-section"><h3>工具事件</h3><div class="body">
+      <div class="kv">
+        <div>Event type</div><div>${escapeHtml(e.event_type)}</div>
+        <div>Location</div><div>${escapeHtml(e.location)}</div>
+        <div>Tool</div><div>${escapeHtml(e.tool_name || '-')} · agent=${escapeHtml(e.agent_label || 'main')}</div>
+        <div>Tool use ID</div><div><code>${escapeHtml(e.tool_use_id || '-')}</code></div>
+        <div>Tool result ID</div><div><code>${escapeHtml(e.tool_result_id || '-')}</code></div>
+        <div>Time</div><div>${escapeHtml(fmtDate(e.event_time))}</div>
+        <div>In request</div><div>${reqLink}</div>
+        <div>Pair</div><div>${partnerLink}</div>
+      </div>
+    </div></div>
+    <div class="detail-section"><h3>Block</h3><div class="body"><pre class="code">${escapeHtml(jsonText(e.raw_block))}</pre></div></div>
+  `;
+}
+
+// -------------------------------------------------------------
+// Events
+// -------------------------------------------------------------
+document.addEventListener('click', async (event) => {
+  const archiveBtn = event.target.closest('[data-archive-session-id]');
+  if (archiveBtn) {
+    event.stopPropagation();
+    const sid = archiveBtn.dataset.archiveSessionId;
+    await fetch(`/api/v2/sessions/${encodeURIComponent(sid)}/archive`, { method: 'POST' });
+    await loadSessions();
+    return;
+  }
+  const exportBtn = event.target.closest('[data-export-session-id]');
+  if (exportBtn) {
+    event.stopPropagation();
+    const sid = exportBtn.dataset.exportSessionId;
+    const a = document.createElement('a');
+    a.href = `/api/v2/sessions/${encodeURIComponent(sid)}/export/training`;
+    a.download = `session_${sid.slice(0, 8)}_export.zip`;
+    a.click();
+    return;
+  }
+  const sess = event.target.closest('[data-session-id]');
+  if (sess) {
+    await selectSession(sess.dataset.sessionId);
+    return;
+  }
+  const tab = event.target.closest('.tab');
+  if (tab) {
+    selectTab(tab.dataset.tab);
+    return;
+  }
+  const detailTab = event.target.closest('[data-detail-tab]');
+  if (detailTab) {
+    state.selectedDetailTab = detailTab.dataset.detailTab;
+    if (state.selection && state.selection.kind === 'request') {
+      renderRequestDetail(state.cache.requestDetails[state.selection.id]);
+    }
+    return;
+  }
+  const jumper = event.target.closest('[data-jump-kind]');
+  if (jumper) {
+    selectEntity(jumper.dataset.jumpKind, jumper.dataset.jumpId);
+    return;
+  }
+  const item = event.target.closest('[data-kind][data-id]');
+  if (item) {
+    selectEntity(item.dataset.kind, item.dataset.id);
+    return;
+  }
+});
+
+$('search').addEventListener('input', (event) => {
+  state.filter = event.target.value;
+  loadCurrentTab(false);
+});
+
+$('refresh').addEventListener('click', () => loadSessions());
+$('clear').addEventListener('click', async () => {
+  if (!confirm('清空全部 trace 记录？')) return;
+  await fetch('/api/v2/traces', { method: 'DELETE' });
+  await loadSessions();
+});
+$('exportTraining').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = '/api/v2/export/training';
+  a.download = 'training_export.zip';
+  a.click();
+});
+$('downloadDb').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = '/api/v2/trace/download';
+  a.download = 'trace.db';
+  a.click();
+});
+$('autoRefresh').addEventListener('click', () => {
+  state.autoRefresh = !state.autoRefresh;
+  $('autoRefresh').textContent = state.autoRefresh ? '自动: 开' : '自动: 关';
+  $('autoRefresh').classList.toggle('active', state.autoRefresh);
+  if (state.refreshTimer) {
+    clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
+  }
+  if (state.autoRefresh) {
+    state.refreshTimer = setInterval(() => loadSessions().catch(console.error), 5000);
+  }
+});
+
+async function initTraceToggle() {
+  try {
+    const data = await fetchJson('/api/v2/trace/enabled');
+    updateTraceToggleUI(data.enabled);
+  } catch (e) {
+    updateTraceToggleUI(null);
+  }
+  $('traceToggle').addEventListener('click', async () => {
+    const btn = $('traceToggle');
+    btn.disabled = true;
+    try {
+      const cur = await fetchJson('/api/v2/trace/enabled');
+      const next = !cur.enabled;
+      await fetch('/api/v2/trace/enabled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      updateTraceToggleUI(next);
+    } catch (e) {
+      updateTraceToggleUI(null);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+function updateTraceToggleUI(enabled) {
+  const btn = $('traceToggle');
+  if (enabled === null) { btn.textContent = '轨迹: ?'; btn.classList.remove('active'); return; }
+  btn.textContent = enabled ? '轨迹: 开' : '轨迹: 关';
+  btn.classList.toggle('active', enabled);
+}
+
+initTraceToggle();
+loadSessions().catch((err) => {
+  console.error(err);
+  $('mainView').innerHTML = `<div class="empty">加载失败: ${escapeHtml(err.message)}</div>`;
+});
+</script>
+</body>
+</html>

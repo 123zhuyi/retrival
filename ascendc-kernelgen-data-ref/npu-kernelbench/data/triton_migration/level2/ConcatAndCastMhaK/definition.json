@@ -1,0 +1,23 @@
+{
+  "name": "ConcatAndCastMhaK",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "k_nope": {
+      "description": "Input 'k_nope'."
+    },
+    "k_pe": {
+      "description": "Input 'k_pe'."
+    },
+    "out_dtype": {
+      "description": "Input 'out_dtype'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(k_nope, k_pe, out_dtype=None):\n    assert k_nope.dim() == 3 and k_pe.dim() == 3, f'k_nope/k_pe 应为 3D, got k_nope.shape={k_nope.shape!r}, k_pe.shape={k_pe.shape!r}'\n    T, H, nope_dim = k_nope.shape\n    T2, H_pe, rope_dim = k_pe.shape\n    assert T == T2, f'token 数不一致: k_nope.shape={k_nope.shape!r}, k_pe.shape={k_pe.shape!r}'\n    assert H_pe == 1, f'k_pe 的 head 维必须为 1（共享广播）, got k_pe.shape={k_pe.shape!r}'\n    assert nope_dim > 0 and rope_dim > 0\n    if out_dtype is None or out_dtype == \"same\":\n        out_dtype = k_nope.dtype\n    elif isinstance(out_dtype, str):\n        out_dtype = getattr(torch, out_dtype, out_dtype)\n    k = torch.empty(T, H, nope_dim + rope_dim, dtype=out_dtype, device=k_nope.device)\n    k[..., :nope_dim] = k_nope\n    k[..., nope_dim:] = k_pe\n    return k",
+  "description": "concat_and_cast_mha_k —— DeepSeek 系 MLA 模型 MHA（非吸收）前向中的 K 拼接算子（SGLang Triton kernel 的 golden reference）。"
+}

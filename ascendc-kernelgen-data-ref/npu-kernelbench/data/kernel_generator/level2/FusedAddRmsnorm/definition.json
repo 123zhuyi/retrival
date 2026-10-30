@@ -1,0 +1,26 @@
+{
+  "name": "FusedAddRmsnorm",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "hidden_states": {
+      "description": "shape varies; supports float32"
+    },
+    "residual": {
+      "description": "shape varies; supports float32"
+    },
+    "weight": {
+      "description": "shape varies; supports float32"
+    },
+    "eps": {
+      "description": "float, default=1e-06; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "RMS-normalized output, same shape and dtype as hidden_states"
+    }
+  },
+  "reference": "import torch\n\ndef run(hidden_states, residual, weight, eps=1e-6):\n    x = hidden_states.to(torch.float32) + residual.to(torch.float32)\n    inv_rms = torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + eps)\n    y = (x * inv_rms) * weight.to(torch.float32)\n    return y.to(hidden_states.dtype)\n",
+  "description": "Fused Add + RMSNorm. Computes hidden_states + residual, then RMS normalization. Pure PyTorch: x = hidden + residual; y = (x * rsqrt(mean(x^2) + eps)) * weight. Used in Llama, Qwen models."
+}

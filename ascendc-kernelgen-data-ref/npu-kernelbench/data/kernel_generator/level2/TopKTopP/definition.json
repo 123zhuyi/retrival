@@ -1,0 +1,23 @@
+{
+  "name": "TopKTopP",
+  "op_type": "sampling",
+  "axes": {},
+  "inputs": {
+    "logits": {
+      "description": "shape varies; supports float16"
+    },
+    "p": {
+      "description": "shape varies; supports float16"
+    },
+    "k": {
+      "description": "shape varies; supports int32"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Top-K/Top-P filtered output"
+    }
+  },
+  "reference": "import torch\n\ndef run(logits, p, k):\n    ori_dtype = logits.dtype\n    p = p.to(torch.float32)\n    logits_sort, logits_idx = logits.sort(dim=-1, descending=False, stable=True)\n    kth_idx = logits_sort.size(1) - k.to(torch.long)\n    kth_value = logits_sort.gather(1, kth_idx.unsqueeze(dim=1))\n    top_k_mask = logits_sort < kth_value\n    logits_sort.masked_fill_(top_k_mask, -float(\"inf\"))\n    softmax_res = logits_sort.to(torch.float32).softmax(dim=-1)\n    cumsum_res = softmax_res.cumsum(dim=-1)\n    top_p_mask = cumsum_res <= 1 - p.unsqueeze(dim=1)\n    top_p_mask[:, -1] = False\n    logits_sort.masked_fill_(top_p_mask, -float(\"inf\"))\n    logits = torch.empty_like(logits_sort).scatter_(dim=-1, index=logits_idx, src=logits_sort)\n    return logits.to(ori_dtype)\n",
+  "description": "Combined Top-K and Top-P sampling. torch_npu.npu_top_k_top_p(logits, p, k) filters logits by both top-k and top-p thresholds. Pure PyTorch: topk + cumulative probability filtering.PyTorch native implementation of forward function\ndef forward(self, logits: torch.Tensor, p: torch.Tensor, k: torch.Tensor) -> torch.Tensor:\nori_dtype = logits.dtype\np = p.to(torch.float32)\n\nlogits_sort, logits_idx = logits.sort(dim=-1, descending=False, stable=True)\nkth_idx = logits_sort.size(1) - k.to(torch.long)\nkth_value = logits_sort.gather(1, kth_idx.unsqueeze(dim=1))\ntop_k_mask = logits_sort < kth_value\nlogits_sort.masked_fill_(top_k_mask, -float(\"inf\"))\n\nsoftmax_res = logits_sort.to(torch.float32).softmax(dim=-1)\ncumsum_res = softmax_res.cumsum(dim=-1)\ntop_p_mask = cumsum_res <= 1 - p.unsqueeze(dim=1)\ntop_p_mask[:, -1] = False\n        logits_sort.masked_fill_(top_p_mask, -float(\"inf\"))\n\nlogits = torch.empty_like(logits_sort).scatter_(dim=-1, index=logits_idx, src=logits_sort)\n\nreturn logits.to(ori_dtype)"
+}

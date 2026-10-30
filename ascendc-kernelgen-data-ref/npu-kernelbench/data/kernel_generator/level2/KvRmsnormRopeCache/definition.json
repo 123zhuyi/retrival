@@ -1,0 +1,59 @@
+{
+  "name": "KvRmsnormRopeCache",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "kv": {
+      "description": "shape varies; supports float16"
+    },
+    "gamma": {
+      "description": "shape varies; supports float16"
+    },
+    "cos": {
+      "description": "shape varies; supports float16"
+    },
+    "sin": {
+      "description": "shape varies; supports float16"
+    },
+    "index": {
+      "description": "shape varies; supports int64"
+    },
+    "k_cache": {
+      "description": "shape varies; supports float16"
+    },
+    "ckv_cache": {
+      "description": "shape varies; supports float16"
+    },
+    "k_rope_scale": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "c_kv_scale": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "k_rope_offset": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "c_kv_offset": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "epsilon": {
+      "description": "float, default=1e-05; optional"
+    },
+    "cache_mode": {
+      "description": "str; optional"
+    },
+    "is_output_kv": {
+      "description": "bool, default=False; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Updated k_cache"
+    },
+    "1": {
+      "description": "Updated ckv_cache"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(kv, gamma, cos, sin, index, k_cache, ckv_cache, k_rope_scale=None, c_kv_scale=None, k_rope_offset=None, c_kv_offset=None, epsilon=1e-5, cache_mode='Norm', is_output_kv=False):\n    k_cache_out, ckv_cache_out, k_embed_out, y_out = torch_npu.npu_kv_rmsnorm_rope_cache(kv, gamma, cos, sin, index, k_cache, ckv_cache, k_rope_scale=k_rope_scale, c_kv_scale=c_kv_scale, k_rope_offset=k_rope_offset, c_kv_offset=c_kv_offset, epsilon=epsilon, cache_mode=cache_mode, is_output_kv=is_output_kv)\n    return k_cache_out, ckv_cache_out\n",
+  "description": "Fused KV RMSNorm + RoPE + cache update. torch_npu.npu_kv_rmsnorm_rope_cache(kv, gamma, cos, sin, index, k_cache, ckv_cache, ...) returns (k_cache, ckv_cache) for Norm mode. Supports multiple cache modes (Norm/PA/PA_BNSD/etc)."
+}

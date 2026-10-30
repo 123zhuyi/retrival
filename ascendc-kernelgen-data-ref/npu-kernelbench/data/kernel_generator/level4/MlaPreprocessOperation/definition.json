@@ -1,0 +1,62 @@
+{
+  "name": "MlaPreprocessOperation",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "hidden_states": {
+      "description": "shape (num_tokens, hidden_size); supports float16, bfloat16"
+    },
+    "positions": {
+      "description": "shape (num_tokens,); int64; position indices for RoPE"
+    },
+    "q_lora_rank": {
+      "description": "int or None; if not None, use LoRA path for query"
+    },
+    "kv_lora_rank": {
+      "description": "int; KV LoRA rank"
+    },
+    "qk_rope_head_dim": {
+      "description": "int; RoPE head dimension"
+    },
+    "num_heads": {
+      "description": "int; number of attention heads"
+    },
+    "w_qkv_a": {
+      "description": "shape (q_lora_rank + kv_lora_rank + qk_rope_head_dim, hidden_size); fused QKV-A projection weight (used when q_lora_rank is not None)"
+    },
+    "w_q_b": {
+      "description": "shape (num_heads * qk_head_dim, q_lora_rank); Q-B projection weight (used when q_lora_rank is not None)"
+    },
+    "w_q_a_ln": {
+      "description": "shape (q_lora_rank,); Q-A LayerNorm weight (used when q_lora_rank is not None)"
+    },
+    "w_kv_a_ln": {
+      "description": "shape (kv_lora_rank,); KV-A LayerNorm weight"
+    },
+    "w_kv_proj": {
+      "description": "shape (kv_lora_rank + qk_rope_head_dim, hidden_size); KV projection weight (used when q_lora_rank is None)"
+    },
+    "w_q_proj": {
+      "description": "shape (num_heads * qk_head_dim, hidden_size); Q projection weight (used when q_lora_rank is None)"
+    },
+    "qk_nope_head_dim": {
+      "description": "int; non-RoPE head dimension; qk_head_dim = qk_nope_head_dim + qk_rope_head_dim"
+    },
+    "rope_base": {
+      "description": "float; RoPE base frequency (typically 10000)"
+    }
+  },
+  "outputs": {
+    "q": {
+      "description": "shape (num_tokens, num_heads, qk_head_dim); projected query"
+    },
+    "kv_c_normed": {
+      "description": "shape (num_tokens, kv_lora_rank); normalized KV compressed representation"
+    },
+    "k_pe": {
+      "description": "shape (num_tokens, 1, qk_rope_head_dim); key position embedding"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\n\ndef run(hidden_states, positions, q_lora_rank, kv_lora_rank, qk_rope_head_dim, num_heads,\n        w_qkv_a, w_q_b, w_q_a_ln, w_kv_a_ln, w_kv_proj, w_q_proj,\n        qk_nope_head_dim, rope_base):\n    device = hidden_states.device\n    dtype = hidden_states.dtype\n    positions = positions.to(device)\n\n    num_tokens = hidden_states.shape[0]\n    hidden_size = hidden_states.shape[1]\n    qk_head_dim = qk_nope_head_dim + qk_rope_head_dim\n\n    if q_lora_rank is not None:\n        qkv_lora = F.linear(hidden_states, w_qkv_a)\n        q_c = qkv_lora[:, :q_lora_rank].contiguous()\n        kv_lora = qkv_lora[:, q_lora_rank:].contiguous()\n        q_c = F.rms_norm(q_c.float(), (q_c.shape[1],), weight=w_q_a_ln).to(dtype)\n        q = F.linear(q_c, w_q_b)\n        q = q.view(num_tokens, num_heads, qk_head_dim)\n    else:\n        kv_lora = F.linear(hidden_states, w_kv_proj)\n        q = F.linear(hidden_states, w_q_proj)\n        q = q.view(num_tokens, num_heads, qk_head_dim)\n\n    kv_c = kv_lora[:, :kv_lora_rank].contiguous()\n    k_pe = kv_lora[:, kv_lora_rank:kv_lora_rank + qk_rope_head_dim].contiguous()\n    kv_c_normed = F.rms_norm(kv_c.float(), (kv_lora_rank,), weight=w_kv_a_ln).to(dtype)\n    k_pe = k_pe.unsqueeze(1)\n\n    half_rope = qk_rope_head_dim // 2\n    arange_tensor = torch.arange(0, qk_rope_head_dim, 2, device=device, dtype=torch.float32)\n    inv_freq = 1.0 / (rope_base ** (arange_tensor / qk_rope_head_dim))\n    freqs = positions.float().unsqueeze(-1) * inv_freq.unsqueeze(0)\n    cos = freqs.cos()\n    sin = freqs.sin()\n\n    k_pe_2d = k_pe.squeeze(1)\n    k1 = k_pe_2d[..., 0::2]\n    k2 = k_pe_2d[..., 1::2]\n    k_rot = k1 * cos - k2 * sin\n    k_img = k1 * sin + k2 * cos\n    k_pe_rotated = torch.stack([k_rot, k_img], dim=-1).flatten(-2).to(dtype).unsqueeze(1)\n\n    q_nope = q[..., :qk_nope_head_dim]\n    q_rope = q[..., qk_nope_head_dim:]\n    q1 = q_rope[..., 0::2]\n    q2 = q_rope[..., 1::2]\n    cos_q = cos.unsqueeze(1)\n    sin_q = sin.unsqueeze(1)\n    q_rot = q1 * cos_q - q2 * sin_q\n    q_img = q1 * sin_q + q2 * cos_q\n    q_rope_rotated = torch.stack([q_rot, q_img], dim=-1).flatten(-2)\n    q = torch.cat([q_nope, q_rope_rotated], dim=-1).to(dtype)\n\n    return q, kv_c_normed, k_pe_rotated\n",
+  "description": "MLA (Multi-head Latent Attention) preprocessing operation. Performs linear projections (fused QKV-A or separate Q/KV projections), RMSNorm on compressed representations, and GPT-J style RoPE rotary position embeddings to prepare inputs for the attention kernel. The operation supports two paths: (1) LoRA path when q_lora_rank is not None, which uses fused_qkv_a_proj to project hidden_states into [q_c | kv_c | k_pe], applies RMSNorm to q_c and kv_c separately, then projects q_c through q_b_proj to get the full query; (2) Direct projection path when q_lora_rank is None, which uses separate kv_a_proj and q_proj. RoPE uses GPT-J style interleaved rotation (is_neox_style=False) with configurable base frequency. Common in DeepSeek-V2/V3 models with hidden_size 5120-7168, num_heads 128, kv_lora_rank 512, qk_rope_head_dim 64, qk_nope_head_dim 128, rope_base 10000."
+}

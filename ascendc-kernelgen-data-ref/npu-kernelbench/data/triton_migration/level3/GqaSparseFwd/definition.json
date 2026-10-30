@@ -1,0 +1,38 @@
+{
+  "name": "GqaSparseFwd",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input 'q'."
+    },
+    "kv_cache": {
+      "description": "Input 'kv_cache'."
+    },
+    "topk_idx": {
+      "description": "Input 'topk_idx'."
+    },
+    "block_table": {
+      "description": "Input 'block_table'."
+    },
+    "cu_seqlens_q": {
+      "description": "Input 'cu_seqlens_q'."
+    },
+    "seq_lens": {
+      "description": "Input 'seq_lens'."
+    },
+    "prefix_lens": {
+      "description": "Input 'prefix_lens'."
+    },
+    "sm_scale": {
+      "description": "Input 'sm_scale'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\nSPARSE_BLOCK_SIZE = 128\n\n\ndef run(q, kv_cache, topk_idx, block_table, cu_seqlens_q, seq_lens, prefix_lens, sm_scale):\n    total_q, H, D = q.shape\n    KH = kv_cache.shape[1]\n    BS = SPARSE_BLOCK_SIZE\n    G = H // KH\n    topk = topk_idx.shape[-1]\n    B = cu_seqlens_q.numel() - 1\n    cu = cu_seqlens_q.tolist()\n    o = torch.zeros(total_q, H, D, dtype=torch.float32, device=q.device)\n    arange_bs = torch.arange(BS, device=q.device)\n    for b in range(B):\n        qs, qe = (cu[b], cu[b + 1])\n        seq_len = int(seq_lens[b].item())\n        prefix = int(prefix_lens[b].item())\n        for j in range(qe - qs):\n            q_abs = prefix + j\n            valid_blocks = (q_abs + BS) // BS\n            real_topk = min(topk, valid_blocks)\n            if real_topk <= 0:\n                continue\n            for kh in range(KH):\n                blks = topk_idx[kh, qs + j, :real_topk].long()\n                pages = block_table[b, blks].long()\n                kv = kv_cache[pages, kh].float()\n                k = kv[..., :D].reshape(-1, D)\n                v = kv[..., D:].reshape(-1, D)\n                pos = (blks[:, None] * BS + arange_bs[None, :]).reshape(-1)\n                mask = (pos < seq_len) & (pos <= q_abs)\n                if not bool(mask.any()):\n                    continue\n                q_g = q[qs + j, kh * G:(kh + 1) * G].float()\n                logits = q_g @ k.t() * sm_scale\n                logits = logits.masked_fill(~mask[None, :], float('-inf'))\n                o[qs + j, kh * G:(kh + 1) * G] = torch.softmax(logits, dim=-1) @ v\n    return o.to(q.dtype)",
+  "description": "Model that performs MiniMax-M3 GQA block-sparse attention (prefill). vLLM _gqa_sparse_fwd_kernel (vllm/models/minimax_m3/common/ops/sparse_attn.py, wrapper minimax_m3_sparse_attn, block_size_q == 1 路径): minimax_m3_sparse_attn(q, kv_cache, topk_idx, block_table, cu_seqlens_q, seq_lens, prefix_lens, max_query_len, num_kv_heads, sm_scale, output) -> output [total_q, num_heads, head_dim]"
+}

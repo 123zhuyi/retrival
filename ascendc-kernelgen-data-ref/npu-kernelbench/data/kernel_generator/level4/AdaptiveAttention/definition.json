@@ -1,0 +1,23 @@
+{
+  "name": "AdaptiveAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, S, D)"
+    },
+    "n_heads": {
+      "description": "number of attention heads"
+    },
+    "n_kv_heads_options": {
+      "description": "list of candidate KV head counts"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, S, D)"
+    }
+  },
+  "reference": "import torch\nimport math\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, n_heads, n_kv_heads_options):\n    torch.manual_seed(42)\n    B, S, D = x.shape\n    head_dim = D // n_heads\n    options = tuple(n_kv_heads_options)\n    hidden = max(1, D // 4)\n    router = nn.Sequential(\n        nn.Linear(D, hidden),\n        nn.ReLU(),\n        nn.Linear(hidden, len(options))\n    ).to(device=x.device, dtype=x.dtype)\n    attention_layers = []\n    for n_kv_heads in options:\n        attention_layers.append((\n            nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype),\n            nn.Linear(D, n_kv_heads * head_dim, bias=False).to(device=x.device, dtype=x.dtype),\n            nn.Linear(D, n_kv_heads * head_dim, bias=False).to(device=x.device, dtype=x.dtype),\n            nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n        ))\n    routing_logits = router(x.mean(dim=1))\n    selected = F.one_hot(routing_logits.argmax(dim=-1), num_classes=len(attention_layers)).to(dtype=x.dtype)\n    candidates = []\n    for n_kv_heads, layers in zip(options, attention_layers):\n        q_proj, k_proj, v_proj, out_proj = layers\n        q = q_proj(x).view(B, S, n_heads, head_dim).transpose(1, 2)\n        k = k_proj(x).view(B, S, n_kv_heads, head_dim).transpose(1, 2)\n        v = v_proj(x).view(B, S, n_kv_heads, head_dim).transpose(1, 2)\n        repeats = n_heads // n_kv_heads\n        k = k.repeat_interleave(repeats, dim=1)\n        v = v.repeat_interleave(repeats, dim=1)\n        scores = torch.matmul(q.float(), k.float().transpose(-2, -1)) / math.sqrt(head_dim)\n        weights = F.softmax(scores, dim=-1)\n        output = torch.matmul(weights, v.float()).to(dtype=x.dtype)\n        output = output.transpose(1, 2).contiguous().view(B, S, D)\n        candidates.append(out_proj(output))\n    stacked = torch.stack(candidates, dim=1)\n    return (stacked * selected.unsqueeze(-1).unsqueeze(-1)).sum(dim=1)\n",
+  "description": "Adaptive attention that routes among multiple GQA configurations."
+}

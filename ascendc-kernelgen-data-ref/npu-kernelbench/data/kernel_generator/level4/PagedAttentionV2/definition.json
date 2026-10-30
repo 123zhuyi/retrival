@@ -1,0 +1,35 @@
+{
+  "name": "PagedAttentionV2",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "shape (num_seqs, num_heads, head_size); supports float16, bfloat16"
+    },
+    "key_cache": {
+      "description": "shape (num_blocks, block_size, num_kv_heads, head_size); paged KV cache"
+    },
+    "value_cache": {
+      "description": "shape (num_blocks, block_size, num_kv_heads, head_size); paged KV cache"
+    },
+    "block_tables": {
+      "description": "shape (num_seqs, max_num_blocks_per_seq); int32; block indices for each sequence"
+    },
+    "seq_lens": {
+      "description": "shape (num_seqs,); int32; actual sequence lengths"
+    },
+    "scale": {
+      "description": "float; attention scale factor, typically 1/sqrt(head_size)"
+    },
+    "sliding_window": {
+      "description": "int or None; sliding window size for local attention"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "shape (num_seqs, num_heads, head_size); attention output"
+    }
+  },
+  "reference": "import torch\n\ndef run(query, key_cache, value_cache, block_tables, seq_lens, scale, sliding_window=None):\n    device = query.device\n    block_tables = block_tables.to(device)\n    seq_lens = seq_lens.to(device)\n    \n    num_seqs = query.shape[0]\n    num_heads = query.shape[1]\n    head_size = query.shape[2]\n    block_size = key_cache.shape[1]\n    num_kv_heads = key_cache.shape[2]\n    max_blocks_per_seq = block_tables.shape[1]\n    \n    outputs = []\n    for i in range(num_seqs):\n        kv_len_requested = int(seq_lens[i].item())\n        max_kv_len = max_blocks_per_seq * block_size\n        kv_len = min(kv_len_requested, max_kv_len)\n        \n        q = query[i:i+1] * scale\n        \n        num_kv_blocks = (kv_len + block_size - 1) // block_size\n        block_indices = block_tables[i, :num_kv_blocks]\n        \n        k = key_cache[block_indices].view(-1, num_kv_heads, head_size)\n        k = k[:kv_len]\n        v = value_cache[block_indices].view(-1, num_kv_heads, head_size)\n        v = v[:kv_len]\n        \n        if q.shape[1] != k.shape[1]:\n            k = torch.repeat_interleave(k, q.shape[1] // k.shape[1], dim=1)\n            v = torch.repeat_interleave(v, q.shape[1] // v.shape[1], dim=1)\n        \n        attn = torch.einsum('qhd,khd->hqk', q, k).float()\n        \n        query_len = 1\n        empty_mask = torch.ones(query_len, kv_len, device=device)\n        mask = torch.triu(empty_mask, diagonal=kv_len - query_len + 1).bool()\n        \n        if sliding_window is not None:\n            sliding_window_mask = torch.triu(empty_mask, diagonal=kv_len - (query_len + sliding_window) + 1).bool().logical_not()\n            mask |= sliding_window_mask\n        \n        attn.masked_fill_(mask, float('-inf'))\n        attn = torch.softmax(attn, dim=-1).to(v.dtype)\n        out = torch.einsum('hqk,khd->qhd', attn, v)\n        \n        outputs.append(out)\n    \n    return torch.cat(outputs, dim=0)\n",
+  "description": "Paged attention decode kernel (v2) for efficient KV cache management. Computes attention for multiple sequences with paged KV cache layout where key/value tensors are stored in fixed-size blocks. Supports grouped query attention (GQA) where num_heads > num_kv_heads via repeat_interleave. Optional sliding window masking for local attention. Common specs: batch size 1-128, num_heads 8-128, head_size 64-256, block_size 16-64, sequence lengths up to 16384. Used in LLM inference for efficient memory utilization. Triton implementation: use @triton.jit kernel with grid = (num_seqs, num_heads); each program handles one (seq, head) pair; iterate over KV blocks via block_tables indirection using tl.load with block_idx = tl.load(block_tables + seq_id * max_blocks + block_iter); compute Q @ K^T in tiles of BLOCK_SIZE tokens; apply causal mask and optional sliding_window mask inline; use online softmax (flash-attention style) to avoid materializing full attention matrix: maintain running max and sum_exp across KV blocks; accumulate weighted V output; handle GQA by mapping head_idx to kv_head_idx = head_idx // (num_heads // num_kv_heads); use tl.dot for QK^T and attn@V with BLOCK_SIZE x HEAD_DIM tiles."
+}

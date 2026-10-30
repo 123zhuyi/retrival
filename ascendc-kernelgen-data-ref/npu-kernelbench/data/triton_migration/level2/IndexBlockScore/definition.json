@@ -1,0 +1,32 @@
+{
+  "name": "IndexBlockScore",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "idx_q": {
+      "description": "Input 'idx_q'."
+    },
+    "index_kv_cache": {
+      "description": "Input 'index_kv_cache'."
+    },
+    "block_table": {
+      "description": "Input 'block_table'."
+    },
+    "cu_seqlens": {
+      "description": "Input 'cu_seqlens'."
+    },
+    "seq_lens": {
+      "description": "Input 'seq_lens'."
+    },
+    "prefix_lens": {
+      "description": "Input 'prefix_lens'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\nSPARSE_BLOCK_SIZE = 128\n\n\ndef run(idx_q, index_kv_cache, block_table, cu_seqlens, seq_lens, prefix_lens):\n    assert idx_q.dim() == 3, f'idx_q 应为 3D, got {idx_q.shape}'\n    total_q, H, D = idx_q.shape\n    P, BS, D2 = index_kv_cache.shape\n    assert BS == SPARSE_BLOCK_SIZE and D2 == D, f'cache 形状应为 [P, 128, {D}], got {index_kv_cache.shape}'\n    B, max_block = block_table.shape\n    assert cu_seqlens.shape[0] == B + 1\n    assert seq_lens.shape[0] == B and prefix_lens.shape[0] == B\n    assert int(cu_seqlens[-1]) == total_q\n    q = idx_q.float()\n    score = torch.full((H, total_q, max_block), float('-inf'), dtype=torch.float32, device=idx_q.device)\n    arange_bs = torch.arange(BS, device=idx_q.device)\n    for b in range(B):\n        s = int(cu_seqlens[b])\n        e = int(cu_seqlens[b + 1])\n        q_len = e - s\n        if q_len == 0:\n            continue\n        prefix = int(prefix_lens[b])\n        seq_len = int(seq_lens[b])\n        hi = min(seq_len, prefix + q_len)\n        nb = min((hi + BS - 1) // BS, max_block)\n        abs_pos = prefix + torch.arange(q_len, device=idx_q.device)\n        for blk in range(nb):\n            page = int(block_table[b, blk])\n            k = index_kv_cache[page].float()\n            qk = torch.einsum('qhd,kd->hqk', q[s:e], k)\n            pos = blk * BS + arange_bs\n            causal = abs_pos[:, None] >= pos[None, :]\n            qk = torch.where(causal[None, :, :], qk, torch.full_like(qk, float('-inf')))\n            score[:, s:e, blk] = qk.max(dim=-1).values\n    return score",
+  "description": "_index_block_score_kernel —— MiniMax M3 lightning-indexer 的 prefill 阶段 index 块打分算子（golden reference）。"
+}

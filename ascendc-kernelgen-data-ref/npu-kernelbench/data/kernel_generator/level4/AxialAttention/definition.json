@@ -1,0 +1,23 @@
+{
+  "name": "AxialAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input image tensor (B, C, H, W)"
+    },
+    "dim": {
+      "description": "channel dimension; defaults to C"
+    },
+    "heads": {
+      "description": "number of attention heads; default 8"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, dim=None, heads=8):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    if dim is None:\n        dim = c\n    head_dim = dim // heads\n    inner_dim = head_dim * heads\n    to_q = nn.Linear(dim, inner_dim, bias=False).to(device=x.device, dtype=x.dtype)\n    to_kv = nn.Linear(dim, 2 * inner_dim, bias=False).to(device=x.device, dtype=x.dtype)\n    to_out = nn.Linear(inner_dim, dim).to(device=x.device, dtype=x.dtype)\n\n    x_perm = x.permute(0, 2, 3, 1).contiguous()\n    out = torch.zeros_like(x_perm)\n\n    seq_h = x_perm.permute(0, 2, 1, 3).contiguous().view(b * w, h, c)\n    q_h = to_q(seq_h).view(b * w, h, heads, head_dim).transpose(1, 2)\n    kv_h = to_kv(seq_h).chunk(2, dim=-1)\n    k_h = kv_h[0].view(b * w, h, heads, head_dim).transpose(1, 2)\n    v_h = kv_h[1].view(b * w, h, heads, head_dim).transpose(1, 2)\n    attn_h = F.softmax(torch.matmul(q_h, k_h.transpose(-2, -1)) / (head_dim ** 0.5), dim=-1)\n    out_h = torch.matmul(attn_h, v_h).transpose(1, 2).contiguous().view(b * w, h, inner_dim)\n    out_h = to_out(out_h).view(b, w, h, c).permute(0, 2, 1, 3)\n\n    seq_w = x_perm.view(b * h, w, c)\n    q_w = to_q(seq_w).view(b * h, w, heads, head_dim).transpose(1, 2)\n    kv_w = to_kv(seq_w).chunk(2, dim=-1)\n    k_w = kv_w[0].view(b * h, w, heads, head_dim).transpose(1, 2)\n    v_w = kv_w[1].view(b * h, w, heads, head_dim).transpose(1, 2)\n    attn_w = F.softmax(torch.matmul(q_w, k_w.transpose(-2, -1)) / (head_dim ** 0.5), dim=-1)\n    out_w = torch.matmul(attn_w, v_w).transpose(1, 2).contiguous().view(b * h, w, inner_dim)\n    out_w = to_out(out_w).view(b, h, w, c)\n\n    out = out_h + out_w\n    return out.permute(0, 3, 1, 2).contiguous()\n",
+  "description": "Axial attention applied independently along height and width axes."
+}

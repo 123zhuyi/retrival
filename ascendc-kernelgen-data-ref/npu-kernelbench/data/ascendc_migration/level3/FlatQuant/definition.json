@@ -1,0 +1,64 @@
+{
+  "name": "FlatQuant",
+  "op_type": "quantization",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "kronecker_p1": {
+      "description": "shape varies; supports float32"
+    },
+    "kronecker_p2": {
+      "description": "shape varies; supports float32"
+    },
+    "clip_ratio": {
+      "description": "float, default=1.0"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Quantized output int8, same shape as x"
+    },
+    "1": {
+      "description": "Per-channel quantization scale float"
+    }
+  },
+  "reference": "import torch\n\ndef run(x, kronecker_p1, kronecker_p2, clip_ratio=1.0):\n    x_shape = x.shape\n    x1 = x @ kronecker_p2\n    x2 = kronecker_p1.to(torch.float32) @ x1.to(torch.float32)\n    x2 = x2.to(torch.float16)\n    x2 = x2.flatten(-2, -1)\n    qscale = torch.abs(x2).max(dim=-1, keepdim=True)[0].to(torch.float32)\n    ratio = 7.0 / clip_ratio\n    qscale2 = ratio / qscale\n    out = x2 * qscale2.to(torch.float16)\n    out = torch.clamp(out, -8, 7)\n    out = torch.round(out).to(torch.int8).reshape(x_shape)\n    quant_scale = torch.flatten(qscale / ratio)\n    return out, quant_scale\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "quant/flat_quant/op_graph/CMakeLists.txt",
+      "quant/flat_quant/op_graph/flat_quant_proto.h"
+    ],
+    "op_host": [
+      "quant/flat_quant/op_host/CMakeLists.txtt",
+      "quant/flat_quant/op_host/flat_quant_def.cpp",
+      "quant/flat_quant/op_host/flat_quant_infershape.cpp",
+      "quant/flat_quant/op_host/flat_quant_tiling.cpp",
+      "quant/flat_quant/op_host/flat_quant_tiling.h"
+    ],
+    "op_kernel": [
+      "quant/flat_quant/op_kernel/flat_quant.cpp",
+      "quant/flat_quant/op_kernel/flat_quant_apt.cpp",
+      "quant/flat_quant/op_kernel/flat_quant_cube.h",
+      "quant/flat_quant/op_kernel/flat_quant_cube_one.h",
+      "quant/flat_quant/op_kernel/flat_quant_high.h",
+      "quant/flat_quant/op_kernel/flat_quant_vec.h",
+      "quant/flat_quant/op_kernel/flat_quant_vec_one.h",
+      "quant/flat_quant/op_kernel/tensor_utils.h",
+      "quant/flat_quant/op_kernel/arch35/block_scheduler_flat_quant.h",
+      "quant/flat_quant/op_kernel/arch35/block_scheduler_flat_quant.h",
+      "quant/flat_quant/op_kernel/arch35/flat_quant_high_v2.h",
+      "quant/flat_quant/op_kernel/arch35/tensor_utils_v2.h"
+    ],
+    "op_api": [
+      "quant/flat_quant/op_host/op_api/aclnn_flat_quant.cpp",
+      "quant/flat_quant/op_host/op_api/aclnn_flat_quant.h",
+      "quant/flat_quant/op_host/op_api/aclnn_flat_quant_v2.h",
+      "quant/flat_quant/op_host/op_api/flat_quant.cpp",
+      "quant/flat_quant/op_host/op_api/flat_quant.h"
+    ]
+  },
+  "description": "Fused Kronecker transformation and per-channel INT4 quantization. Steps: (1) Kronecker transform x @ p2, then p1 @ result, (2) per-channel absmax quantization, (3) clamp/round to int8. Returns (quantized_output int8, quant_scale float). clip_ratio controls quantization range."
+}

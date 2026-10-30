@@ -1,0 +1,2884 @@
+{
+ "op_name": "93_MsaSparseAttnFwd",
+ "source": "torch reference 逐 case 实测（run_perf_gpu.py，cuda，warmup=1，repeats=1，cuda event 端到端）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "accuracy_approx_cases": 0,
+ "speedup_vs_reference_geomean": 0.4701,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "500-1000us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  ">1000us": {
+   "count": 50,
+   "ratio": 1.0
+  }
+ },
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      256
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1718.3,
+   "impl_latency_us": 10499.1,
+   "speedup_vs_reference": 0.164,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      24,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      192
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 1527.8,
+   "impl_latency_us": 7437.3,
+   "speedup_vs_reference": 0.205,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      512
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 1703.9,
+   "impl_latency_us": 9148.4,
+   "speedup_vs_reference": 0.186,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      256
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1705.0,
+   "impl_latency_us": 10404.9,
+   "speedup_vs_reference": 0.164,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      512
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 2898.9,
+   "impl_latency_us": 66136.1,
+   "speedup_vs_reference": 0.044,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      40,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      320
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 1646.6,
+   "impl_latency_us": 7224.3,
+   "speedup_vs_reference": 0.228,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      256
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1898.5,
+   "impl_latency_us": 10249.2,
+   "speedup_vs_reference": 0.185,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      4,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 2601.0,
+   "impl_latency_us": 26630.1,
+   "speedup_vs_reference": 0.098,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 2149.4,
+   "impl_latency_us": 19487.7,
+   "speedup_vs_reference": 0.11,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      56,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      896
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 1990.7,
+   "impl_latency_us": 5953.5,
+   "speedup_vs_reference": 0.334,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 2347.0,
+   "impl_latency_us": 33925.1,
+   "speedup_vs_reference": 0.069,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      72,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      576
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 2840.6,
+   "impl_latency_us": 13606.9,
+   "speedup_vs_reference": 0.209,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      40,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      640
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 2376.7,
+   "impl_latency_us": 11242.5,
+   "speedup_vs_reference": 0.211,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 2619.4,
+   "impl_latency_us": 7075.8,
+   "speedup_vs_reference": 0.37,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 3334.1,
+   "impl_latency_us": 19674.1,
+   "speedup_vs_reference": 0.169,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 3229.7,
+   "impl_latency_us": 11325.4,
+   "speedup_vs_reference": 0.285,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      80,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      2560
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 4011.0,
+   "impl_latency_us": 20361.2,
+   "speedup_vs_reference": 0.197,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      160,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      1280
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      4,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 4271.1,
+   "impl_latency_us": 27991.0,
+   "speedup_vs_reference": 0.153,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      88,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      1408
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 5542.9,
+   "impl_latency_us": 21840.9,
+   "speedup_vs_reference": 0.254,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      192,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      1536
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 4380.7,
+   "impl_latency_us": 7228.4,
+   "speedup_vs_reference": 0.606,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      40,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      1280
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 5289.0,
+   "impl_latency_us": 20310.0,
+   "speedup_vs_reference": 0.26,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 5517.3,
+   "impl_latency_us": 11545.6,
+   "speedup_vs_reference": 0.478,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      80,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      2560
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 6864.9,
+   "impl_latency_us": 39167.0,
+   "speedup_vs_reference": 0.175,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      632,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      5056
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 6576.1,
+   "impl_latency_us": 5051.4,
+   "speedup_vs_reference": 1.302,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      184,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      2944
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 7440.4,
+   "impl_latency_us": 12256.3,
+   "speedup_vs_reference": 0.607,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      408,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      3264
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 11487.2,
+   "impl_latency_us": 13995.0,
+   "speedup_vs_reference": 0.821,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      120,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      3840
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 9497.6,
+   "impl_latency_us": 20963.3,
+   "speedup_vs_reference": 0.453,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      192,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      3072
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      4,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 11090.9,
+   "impl_latency_us": 44107.8,
+   "speedup_vs_reference": 0.251,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      160,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      5120
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 12725.2,
+   "impl_latency_us": 40579.1,
+   "speedup_vs_reference": 0.314,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      672,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      5376
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 12879.9,
+   "impl_latency_us": 9822.2,
+   "speedup_vs_reference": 1.311,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      760,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      12160
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 14487.6,
+   "impl_latency_us": 9470.0,
+   "speedup_vs_reference": 1.53,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      864,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      9
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      6912
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 16254.0,
+   "impl_latency_us": 11589.6,
+   "speedup_vs_reference": 1.402,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      248,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      7936
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 27062.3,
+   "impl_latency_us": 41437.2,
+   "speedup_vs_reference": 0.653,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      552,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      8832
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 20604.9,
+   "impl_latency_us": 16425.0,
+   "speedup_vs_reference": 1.254,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      224,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      7168
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 24312.8,
+   "impl_latency_us": 44577.8,
+   "speedup_vs_reference": 0.545,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1424,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      12,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      12,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      13
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      11392
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      12
+     ]
+    }
+   ],
+   "reference_latency_us": 26251.3,
+   "impl_latency_us": 20524.0,
+   "speedup_vs_reference": 1.279,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      808,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      12928
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 29654.0,
+   "impl_latency_us": 20384.8,
+   "speedup_vs_reference": 1.455,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3648,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      29184
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      4,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 33470.5,
+   "impl_latency_us": 24393.7,
+   "speedup_vs_reference": 1.372,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      520,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      16640
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 38369.3,
+   "impl_latency_us": 29933.6,
+   "speedup_vs_reference": 1.282,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1176,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      18816
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 62140.4,
+   "impl_latency_us": 32455.7,
+   "speedup_vs_reference": 1.915,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      672,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      21504
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 49419.3,
+   "impl_latency_us": 51734.5,
+   "speedup_vs_reference": 0.955,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2008,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      16064
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 50432.0,
+   "impl_latency_us": 45546.5,
+   "speedup_vs_reference": 1.107,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1712,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      16,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      17
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      27392
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 61631.5,
+   "impl_latency_us": 31143.9,
+   "speedup_vs_reference": 1.979,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3872,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      31,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      31,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      30976
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      31
+     ]
+    }
+   ],
+   "reference_latency_us": 70253.6,
+   "impl_latency_us": 108707.8,
+   "speedup_vs_reference": 0.646,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2192,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      32,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      32,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      2,
+      33
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      2,
+      70144
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 79509.5,
+   "impl_latency_us": 35728.4,
+   "speedup_vs_reference": 2.225,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2488,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      20,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      20,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      21
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      39808
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      20
+     ]
+    }
+   ],
+   "reference_latency_us": 89221.1,
+   "impl_latency_us": 49342.5,
+   "speedup_vs_reference": 1.808,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1408,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      64,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      64,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      8,
+      65
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      8,
+      45056
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      2,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 148851.7,
+   "impl_latency_us": 103194.6,
+   "speedup_vs_reference": 1.442,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      6400,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      52,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      52,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      53
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      51200
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      4,
+      13
+     ]
+    }
+   ],
+   "reference_latency_us": 115424.3,
+   "impl_latency_us": 94042.1,
+   "speedup_vs_reference": 1.227,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2416,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      19,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      19,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      20
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      38656
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      19
+     ]
+    }
+   ],
+   "reference_latency_us": 121092.1,
+   "impl_latency_us": 64505.9,
+   "speedup_vs_reference": 1.877,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8208,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      65,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      65,
+      4,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "k2q_row_ptr",
+     "shape": [
+      4,
+      66
+     ]
+    },
+    {
+     "name": "k2q_q_indices",
+     "shape": [
+      4,
+      65664
+     ]
+    },
+    {
+     "name": "page_table",
+     "shape": [
+      1,
+      65
+     ]
+    }
+   ],
+   "reference_latency_us": 148817.9,
+   "impl_latency_us": 455751.7,
+   "speedup_vs_reference": 0.327,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  }
+ ],
+ "profiling_pipes": "aiv_vec 0.324, aiv_scalar 0.668, aiv_mte2 0.088, aiv_mte3 0.103",
+ "bound_type": "vector",
+ "profiling_source": "board msprof op --aic-metrics=PipeUtilization @ Ascend910B2C (warmup=1, launch=1), kernel=msa_sparse_attn_kernel, 最大 case case49(max): q[8208,64,128] k/v[65,4,128,128] topK=64; 各 pipe 取最忙核 ratio; 主导 pipe=scalar; 核数 AIV/AIC=48/24 ; 另采 ArithmeticUtilization（算力利用率）",
+ "profiling_pipes_aic": "aic_cube 0.042, aic_scalar 0.485, aic_mte1 0.060, aic_mte2 0.082, aic_mte3 0.000, aic_fixpipe 0.339",
+ "profiling_util": "aiv_vec_ratio 0.325, aiv_vec_fp32_ratio 0.224, aiv_vec_fp16_ratio 0.000, aiv_vec_int32_ratio 0.043, aic_cube_ratio 0.042, aic_cube_fp16_ratio 0.042, aic_cube_int8_ratio 0.000",
+ "profiling_util_fops": "aiv_vec_fops 1.791e+09, aic_cube_fops 2.811e+08"
+}

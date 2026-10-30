@@ -1,0 +1,63 @@
+{
+  "name": "FusionAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "shape varies; supports float16"
+    },
+    "key": {
+      "description": "shape varies; supports float16"
+    },
+    "value": {
+      "description": "shape varies; supports float16"
+    },
+    "head_num": {
+      "description": "int, default=8"
+    },
+    "input_layout": {
+      "description": "str"
+    },
+    "pse": {},
+    "padding_mask": {},
+    "atten_mask": {},
+    "scale": {},
+    "keep_prob": {},
+    "pre_tockens": {},
+    "next_tockens": {},
+    "inner_precise": {},
+    "prefix": {},
+    "actual_seq_qlen": {},
+    "actual_seq_kvlen": {},
+    "sparse_mode": {},
+    "gen_mask_parallel": {},
+    "sync": {},
+    "softmax_layout": {},
+    "sink": {}
+  },
+  "outputs": {
+    "0": {
+      "description": "Attention output"
+    },
+    "1": {
+      "description": "Softmax max, float32"
+    },
+    "2": {
+      "description": "Softmax sum, float32"
+    },
+    "3": {
+      "description": "Reserved tensor"
+    },
+    "4": {
+      "description": "Seed int"
+    },
+    "5": {
+      "description": "Offset int"
+    },
+    "6": {
+      "description": "Mask length int"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, head_num: int, input_layout: str, pse=None, padding_mask=None, atten_mask=None, scale=1.0, keep_prob=1.0, pre_tockens=2147483647, next_tockens=2147483647, inner_precise=0, prefix=None, actual_seq_qlen=None, actual_seq_kvlen=None, sparse_mode=0, gen_mask_parallel=True, sync=False, softmax_layout='', sink=None):\n    \"\"\"\n        Performs fused attention computation on NPU.\n\n        Args:\n            query (Tensor): Query tensor, dtype float16/bfloat16/float32.\n            key (Tensor): Key tensor, same dtype as query.\n            value (Tensor): Value tensor, same dtype as query.\n            head_num (int): Number of attention heads.\n            input_layout (str): Data layout, supports BSH/SBH/BSND/BNSD/TND.\n            pse (Tensor, optional): Position encoding.\n            padding_mask (Tensor, optional): Not supported yet.\n            atten_mask (Tensor, optional): Attention mask, dtype bool/uint8.\n            scale (float): Scaling factor, default 1.\n            keep_prob (float): Dropout keep probability, default 1.\n            pre_tockens (int): Sparse computation parameter, default 2147483647.\n            next_tockens (int): Sparse computation parameter, default 2147483647.\n            inner_precise (int): Precision control, default 0.\n            prefix (List[int], optional): Prefix sparse computation parameter.\n            actual_seq_qlen (List[int], optional): Cumulative query sequence lengths for varlen.\n            actual_seq_kvlen (List[int], optional): Cumulative key/value sequence lengths for varlen.\n            sparse_mode (int): Sparse mode, default 0.\n            gen_mask_parallel (bool): DSA parallel control, default True.\n            sync (bool): DSA sync control, default False.\n            softmax_layout (str): Softmax output layout for TND, default \"\".\n            sink (Tensor, optional): Per-head bias, shape [head_num], dtype float32.\n\n        Returns:\n            tuple: (attention_out, softmax_max, softmax_sum, reserved, seed, offset, mask_length)\n        \"\"\"\n    import torch_npu\n    if keep_prob < 1.0:\n        keep_prob = 1.0\n    outputs = torch_npu.npu_fusion_attention(query, key, value, head_num, input_layout, pse=pse, padding_mask=padding_mask, atten_mask=atten_mask, scale=scale, keep_prob=keep_prob, pre_tockens=pre_tockens, next_tockens=next_tockens, inner_precise=inner_precise, prefix=prefix, actual_seq_qlen=actual_seq_qlen, actual_seq_kvlen=actual_seq_kvlen, sparse_mode=sparse_mode, gen_mask_parallel=gen_mask_parallel, sync=sync, softmax_layout=softmax_layout, sink=sink)\n    return (*outputs[:4], 0, 0, 0)\n",
+  "description": "Model that performs Fusion Attention computation using NPU accelerated npu_fusion_attention.\nImplements fused Transformer Attention Score computation.\ntorch_npu.npu_fusion_attention(query, key, value, head_num, input_layout, *, pse=None, padding_mask=None, atten_mask=None, scale=1., keep_prob=1., pre_tockens=2147483647, next_tockens=2147483647, inner_precise=0, prefix=None, actual_seq_qlen=None, actual_seq_kvlen=None, sparse_mode=0, gen_mask_parallel=True, sync=False, softmax_layout=\"\", sink=None) -> (Tensor, Tensor, Tensor, Tensor, int, int, int)\nPyTorch native implementation of forward function\ndef _to_bnsd(tensor, layout, head_num):\n    if layout == \"BNSD\":\n        return tensor\n    if layout == \"BSND\":\n        return tensor.transpose(1, 2).contiguous()\n    if layout == \"BSH\":\n        b, s, h = tensor.shape\n        d = h // head_num\n        return tensor.view(b, s, head_num, d).transpose(1, 2).contiguous()\n    if layout == \"SBH\":\n        s, b, h = tensor.shape\n        d = h // head_num\n        return tensor.view(s, b, head_num, d).permute(1, 2, 0, 3).contiguous()\n    raise ValueError(f\"Unsupported layout: {layout}\")\n\ndef _from_bnsd(tensor, layout, head_num):\n    if layout == \"BNSD\":\n        return tensor\n    if layout == \"BSND\":\n        return tensor.transpose(1, 2).contiguous()\n    if layout == \"BSH\":\n        b, n, s, d = tensor.shape\n        return tensor.transpose(1, 2).contiguous().view(b, s, n * d)\n    if layout == \"SBH\":\n        b, n, s, d = tensor.shape\n        return tensor.permute(2, 0, 1, 3).contiguous().view(s, b, n * d)\n    raise ValueError(f\"Unsupported layout: {layout}\")\n\ndef _generate_default_mask(sq, skv, pre_tockens, next_tockens, device, dtype):\n    mask = torch.ones(1, 1, sq, skv, device=device, dtype=dtype)\n    for i in range(sq):\n        for j in range(skv):\n            diff = i - j\n            if diff <= next_tockens and diff >= -pre_tockens:\n                mask[0, 0, i, j] = 0\n    return mask\n\ndef _generate_leftup_causal_mask(sq, skv, device, dtype):\n    mask = torch.ones(1, 1, sq, skv, device=device, dtype=dtype)\n    for i in range(sq):\n        for j in range(skv):\n            if j <= i:\n                mask[0, 0, i, j] = 0\n    return mask\n\ndef _generate_rightdown_causal_mask(sq, skv, device, dtype):\n    mask = torch.ones(1, 1, sq, skv, device=device, dtype=dtype)\n    offset = skv - sq\n    for i in range(sq):\n        for j in range(skv):\n            if j - offset <= i:\n                mask[0, 0, i, j] = 0\n    return mask\n\ndef _apply_sparse_mask(scores, sparse_mode, pre_tockens, next_tockens, atten_mask, sq, skv, b, n):\n    device = scores.device\n    dtype = scores.dtype\n    mask_value = -10000.0\n    if sparse_mode == 0:\n        if atten_mask is not None:\n            mask = atten_mask.to(dtype)\n        else:\n            mask = _generate_default_mask(sq, skv, pre_tockens, next_tockens, device, dtype)\n        scores = scores.masked_fill(mask.to(torch.bool), mask_value)\n    elif sparse_mode == 1:\n        if atten_mask is not None:\n            mask = atten_mask.to(dtype)\n            scores = scores.masked_fill(mask.to(torch.bool), mask_value)\n    elif sparse_mode == 2:\n        if atten_mask is not None:\n            mask = atten_mask.to(dtype)\n        else:\n            mask = _generate_leftup_causal_mask(sq, skv, device, dtype)\n        scores = scores.masked_fill(mask.to(torch.bool), mask_value)\n    elif sparse_mode == 3:\n        if atten_mask is not None:\n            mask = atten_mask.to(dtype)\n        else:\n            mask = _generate_rightdown_causal_mask(sq, skv, device, dtype)\n        scores = scores.masked_fill(mask.to(torch.bool), mask_value)\n    elif sparse_mode == 4:\n        if atten_mask is not None:\n            mask = atten_mask.to(dtype)\n        else:\n            mask = _generate_default_mask(sq, skv, pre_tockens, next_tockens, device, dtype)\n        scores = scores.masked_fill(mask.to(torch.bool), mask_value)\n    return scores\n\ndef forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor,\n            head_num: int, input_layout: str, pse=None, padding_mask=None,\n            atten_mask=None, scale=1., keep_prob=1., pre_tockens=2147483647,\n            next_tockens=2147483647, inner_precise=0, prefix=None,\n            actual_seq_qlen=None, actual_seq_kvlen=None, sparse_mode=0,\n            gen_mask_parallel=True, sync=False, softmax_layout=\"\", sink=None):\n    use_fp32 = inner_precise in (0, 1, 2)\n    if input_layout in (\"BSH\", \"SBH\"):\n        q_h = query.shape[-1]\n        k_h = key.shape[-1]\n        nq = head_num\n        nkv = nq * k_h // q_h if q_h != k_h else nq\n        dq = q_h // nq\n        dkv = k_h // nkv\n        q_bnsd = _to_bnsd(query, input_layout, nq)\n        k_bnsd = _to_bnsd(key, input_layout, nkv)\n        v_bnsd = _to_bnsd(value, input_layout, nkv)\n    else:\n        q_bnsd = _to_bnsd(query, input_layout, head_num)\n        k_bnsd = _to_bnsd(key, input_layout, head_num)\n        v_bnsd = _to_bnsd(value, input_layout, head_num)\n        nq = head_num\n        nkv = head_num\n        dq = q_bnsd.shape[-1]\n        dkv = k_bnsd.shape[-1]\n    b, _, sq, _ = q_bnsd.shape\n    _, _, skv, _ = k_bnsd.shape\n    _, _, _, dv = v_bnsd.shape\n    group_size = nq // nkv\n    compute_dtype = torch.float32 if use_fp32 else query.dtype\n    q = q_bnsd.to(compute_dtype)\n    k = k_bnsd.to(compute_dtype)\n    v = v_bnsd.to(compute_dtype)\n    if group_size > 1:\n        k = k.repeat_interleave(group_size, dim=1)\n        v = v.repeat_interleave(group_size, dim=1)\n    scores = torch.matmul(q, k.transpose(-2, -1))\n    scores = scores * scale\n    if pse is not None:\n        pse_c = pse.to(compute_dtype)\n        if pse_c.dim() == 4:\n            scores = scores + pse_c\n        elif pse_c.dim() == 2:\n            scores = scores + pse_c.view(1, 1, 1, -1)\n        else:\n            scores = scores + pse_c\n    if sink is not None:\n        sink_c = sink.to(compute_dtype)\n        scores = scores + sink_c.view(1, -1, 1, 1)\n    scores = _apply_sparse_mask(scores, sparse_mode, pre_tockens, next_tockens,\n                                atten_mask, sq, skv, b, nq)\n    if inner_precise == 2:\n        row_max = scores.max(dim=-1, keepdim=True).values\n        row_all_masked = torch.isinf(row_max)\n        if row_all_masked.any():\n            scores = scores.masked_fill(row_all_masked, 0.0)\n    softmax_max = scores.max(dim=-1, keepdim=True).values\n    scores_shifted = scores - softmax_max\n    scores_exp = torch.exp(scores_shifted)\n    softmax_sum = scores_exp.sum(dim=-1, keepdim=True)\n    probs = scores_exp / softmax_sum\n    if keep_prob < 1.0:\n        keep_prob = 1.0\n    if keep_prob < 1.0 and keep_prob > 0:\n        dropout_mask = torch.rand_like(probs) < keep_prob\n        probs = probs * dropout_mask / keep_prob\n    attention_out_bnsd = torch.matmul(probs, v)\n    if input_layout in (\"BSH\", \"SBH\"):\n        attention_out = _from_bnsd(attention_out_bnsd, input_layout, nq)\n    else:\n        attention_out = _from_bnsd(attention_out_bnsd, input_layout, head_num)\n    attention_out = attention_out.to(query.dtype)\n    softmax_max_out = softmax_max.squeeze(-1).to(torch.float32)\n    softmax_sum_out = softmax_sum.squeeze(-1).to(torch.float32)\n    reserved = torch.empty(0, device=query.device, dtype=query.dtype)\n    seed = 0\n    offset = 0\n    mask_length = 0\n    return (attention_out, softmax_max_out, softmax_sum_out, reserved, seed, offset, mask_length)"
+}

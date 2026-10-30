@@ -1,0 +1,23 @@
+{
+  "name": "Index",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input 'x'."
+    },
+    "dim": {
+      "description": "Input 'dim'."
+    },
+    "index": {
+      "description": "Input 'index'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(x: torch.Tensor, dim: int, index: torch.Tensor) -> torch.Tensor:\n    \"\"\"\n        Selects elements from input tensor along the specified dimension using index.\n\n        Args:\n            x (torch.Tensor): Input tensor.\n            dim (int): The dimension in which to index.\n            index (torch.Tensor): The 1-D tensor containing the indices to index.\n\n        Returns:\n            torch.Tensor: Tensor with selected elements.\n        \"\"\"\n    return torch.index_select(x, dim, index)",
+  "description": "Simple model that selects elements from a tensor along a dimension using indices. torch.index_select = index_select(...) index_select(input, dim, index, *, out=None) -> Tensor"
+}

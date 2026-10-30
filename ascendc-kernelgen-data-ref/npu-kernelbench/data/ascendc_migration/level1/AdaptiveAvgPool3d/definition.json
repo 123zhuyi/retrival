@@ -1,0 +1,43 @@
+{
+  "name": "AdaptiveAvgPool3d",
+  "op_type": "pool",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "output_size": {
+      "description": "list"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Pooled tensor, shape determined by output_size"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(x, output_size):\n    if isinstance(output_size, list):\n        output_size = tuple(output_size)\n    m = nn.AdaptiveAvgPool3d(output_size)\n    return m(x)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "pooling/adaptive_avg_pool3d/op_graph/adaptive_avg_pool3d_proto.h"
+    ],
+    "op_host": [
+      "pooling/adaptive_avg_pool3d/op_host/adaptive_avg_pool3d_def.cpp",
+      "pooling/adaptive_avg_pool3d/op_host/adaptive_avg_pool3d_infershape.cpp",
+      "pooling/adaptive_avg_pool3d/op_host/adaptive_avg_pool3d_tiling.cpp",
+      "pooling/adaptive_avg_pool3d/op_host/adaptive_avg_pool3d_tiling.h"
+    ],
+    "op_kernel": [
+      "pooling/adaptive_avg_pool3d/op_kernel/adaptive_avg_pool3d.cpp",
+      "pooling/adaptive_avg_pool3d/op_kernel/adaptive_avg_pool3d_common.h",
+      "pooling/adaptive_avg_pool3d/op_kernel/adaptive_avg_pool3d_split_c.h",
+      "pooling/adaptive_avg_pool3d/op_kernel/adaptive_avg_pool3d_split_w.h",
+      "pooling/adaptive_avg_pool3d/op_kernel/adaptive_avg_pool3d_multi_w.h"
+    ],
+    "op_api": [
+      "pooling/adaptive_avg_pool3d/op_api/adaptive_avg_pool3d.h",
+      "pooling/adaptive_avg_pool3d/op_api/adaptive_avg_pool3d.cpp"
+    ]
+  },
+  "description": "Applies 3D adaptive average pooling over an input signal composed of several input planes. The output is of size D x H x W, for any input size. Supports 4D (N,C,D_in,H_in,W_in) and 3D (C,D,H,W) input with output_size as a tuple (D,H,W) or single int D for D x D x D. None means same size as input."
+}

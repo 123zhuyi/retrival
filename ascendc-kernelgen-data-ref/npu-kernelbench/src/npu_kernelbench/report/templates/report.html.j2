@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;700&display=swap');
+
+  :root {
+    --bg: #080c12;
+    --surface: #111820;
+    --surface-raised: #161e2a;
+    --border: #1e2a3a;
+    --border-active: #2a3a50;
+    --text: #c8d0dc;
+    --text-muted: #5a6678;
+    --text-dim: #3a4658;
+    --accent: #f0c040;
+    --pass: #00e676;
+    --fail: #ff3d00;
+    --warn: #ff9100;
+    --info: #40c4ff;
+    --hack: #ea80fc;
+    --grid: rgba(255,255,255,.015);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', -apple-system, sans-serif;
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+    color: var(--text);
+    padding: 2.5rem 3rem;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  .report-header {
+    margin-bottom: 3rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+  }
+
+  .report-header h1 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .report-header .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .65rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--accent);
+    background: rgba(240,192,64,.08);
+    border: 1px solid rgba(240,192,64,.2);
+    padding: .25rem .65rem;
+    border-radius: 3px;
+  }
+
+  /* ── Solution Section ────────────────────── */
+  .solution-section {
+    margin-bottom: 3.5rem;
+  }
+
+  .solution-section h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: .85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .solution-section h2::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ── Collapsible Table Toggle ────────────── */
+  .workload-details {
+    border: none;
+  }
+
+  .workload-details summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .55rem .85rem;
+    margin-top: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .7rem;
+    color: var(--text-muted);
+    user-select: none;
+    transition: border-color .15s, color .15s;
+  }
+
+  .workload-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .workload-details summary:hover {
+    color: #fff;
+    border-color: var(--border-active);
+  }
+
+  .toggle-label {
+    flex: 1;
+  }
+
+  .chevron {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    position: relative;
+    flex-shrink: 0;
+    transition: transform .25s ease;
+  }
+
+  .chevron::before,
+  .chevron::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 6px;
+    height: 1.5px;
+    background: var(--text-muted);
+    border-radius: 1px;
+    transition: background .15s;
+  }
+
+  .chevron::before {
+    left: 0;
+    transform: translateY(-50%) rotate(45deg);
+  }
+
+  .chevron::after {
+    right: 0;
+    transform: translateY(-50%) rotate(-45deg);
+  }
+
+  .workload-details[open] .chevron {
+    transform: rotate(180deg);
+  }
+
+  .workload-details summary:hover .chevron::before,
+  .workload-details summary:hover .chevron::after {
+    background: #fff;
+  }
+
+  .details-content {
+    overflow: hidden;
+  }
+
+  .workload-details[open] .details-content {
+    animation: expand .3s ease;
+  }
+
+  @keyframes expand {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Summary link ───────────────────────── */
+  .summary-table a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color .15s;
+  }
+
+  .summary-table a:hover {
+    color: #fff;
+  }
+
+  /* ── Stat Cards ──────────────────────────── */
+  .cards {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem 1.25rem;
+    min-width: 150px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .card.pass::after { background: var(--pass); }
+  .card.warn::after { background: var(--warn); }
+  .card.fail::after { background: var(--fail); }
+
+  .card .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.65rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .card.pass .value { color: var(--pass); }
+  .card.warn .value { color: var(--warn); }
+  .card.fail .value { color: var(--fail); }
+
+  .card .value.na { color: var(--text-dim); font-size: 1.2rem; }
+
+  .card .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .6rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text-muted);
+    margin-top: .4rem;
+  }
+
+  /* ── Table ───────────────────────────────── */
+  .table-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .78rem;
+  }
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  th {
+    background: var(--surface-raised);
+    padding: .65rem .85rem;
+    text-align: left;
+    font-size: .62rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 2px solid var(--border-active);
+    white-space: nowrap;
+    transition: color .15s, background .15s;
+  }
+
+  th:hover {
+    color: #fff;
+    background: var(--border);
+  }
+
+  th .sort-arrow {
+    display: inline-block;
+    margin-left: .3rem;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+
+  th[data-sort-active] .sort-arrow { opacity: 1; color: var(--accent); }
+
+  td {
+    padding: .5rem .85rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  tr {
+    transition: background .12s;
+  }
+
+  tbody tr:hover {
+    background: var(--surface-raised);
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(255,255,255,.008);
+  }
+
+  tbody tr:nth-child(even):hover {
+    background: var(--surface-raised);
+  }
+
+  /* Status column styling */
+  td[class*="status-"] {
+    position: relative;
+    padding-left: 1.1rem;
+    font-weight: 500;
+    font-size: .7rem;
+    letter-spacing: .04em;
+  }
+
+  td[class*="status-"]::before {
+    content: '';
+    position: absolute;
+    left: .35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+  }
+
+  .status-PASSED { color: var(--pass) !important; }
+  .status-PASSED::before { background: var(--pass); box-shadow: 0 0 6px rgba(0,230,118,.4); }
+
+  .status-RUNTIME_ERROR,
+  .status-COMPILE_ERROR,
+  .status-INVALID_REFERENCE { color: var(--fail) !important; }
+  .status-RUNTIME_ERROR::before,
+  .status-COMPILE_ERROR::before,
+  .status-INVALID_REFERENCE::before { background: var(--fail); box-shadow: 0 0 6px rgba(255,61,0,.4); }
+
+  .status-INCORRECT_NUMERICAL,
+  .status-INCORRECT_SHAPE,
+  .status-INCORRECT_DTYPE { color: var(--warn) !important; }
+  .status-INCORRECT_NUMERICAL::before,
+  .status-INCORRECT_SHAPE::before,
+  .status-INCORRECT_DTYPE::before { background: var(--warn); box-shadow: 0 0 6px rgba(255,145,0,.4); }
+
+  .status-TIMEOUT { color: var(--info) !important; }
+  .status-TIMEOUT::before { background: var(--info); box-shadow: 0 0 6px rgba(64,196,255,.4); }
+
+  .status-REWARD_HACK { color: var(--hack) !important; }
+  .status-REWARD_HACK::before { background: var(--hack); box-shadow: 0 0 6px rgba(234,128,252,.4); }
+
+  /* Numeric columns — monospace tabular */
+  td:nth-child(5), td:nth-child(6), td:nth-child(7),
+  td:nth-child(8), td:nth-child(9) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .error-log {
+    font-size: .7rem;
+    color: var(--text-muted) !important;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .error-log:hover {
+    max-width: none;
+    white-space: normal;
+    word-break: break-all;
+    cursor: default;
+  }
+
+  /* ── Empty State ─────────────────────────── */
+  .no-data {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+  }
+
+  /* ── Footer ──────────────────────────────── */
+  .report-footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .6rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+
+  /* ── Responsive ──────────────────────────── */
+  @media (max-width: 900px) {
+    body { padding: 1.5rem; }
+    .card { min-width: 120px; padding: .85rem 1rem; }
+    .card .value { font-size: 1.3rem; }
+    table { font-size: .7rem; }
+    th, td { padding: .4rem .5rem; }
+  }
+
+  @media print {
+    body { background: #fff; color: #111; -webkit-print-color-adjust: exact; }
+    .table-wrapper { border: 1px solid #ccc; }
+    th { background: #eee; color: #333; }
+  }
+</style>
+</head>
+<body>
+
+<header class="report-header">
+  <h1>{{ title }}</h1>
+  <span class="badge">{{ solutions|length }} solution{% if solutions|length != 1 %}s{% endif %}</span>
+</header>
+
+<!-- ── Summary Table ─────────────────────────── -->
+<div class="table-wrapper summary-table" style="margin-bottom:3rem">
+  <table>
+    <thead>
+      <tr>
+        <th>Solution</th>
+        <th>Definition</th>
+        <th>Passed</th>
+        <th>Pass Rate</th>
+        <th>Avg Speedup</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in solutions %}
+      <tr>
+        <td><a href="#sol-{{ loop.index0 }}">{{ s.name }}</a></td>
+        <td>{{ s.definition }}</td>
+        <td class="status-{% if s.score.pass_rate == 1.0 %}PASSED{% elif s.score.pass_rate > 0 %}INCORRECT_NUMERICAL{% endif %}" style="font-weight:600">{{ s.score.passed }}/{{ s.score.total }}</td>
+        <td>{{ "%.1f"|format(s.score.pass_rate * 100) }}%</td>
+        <td>{% if s.score.avg_speedup %}{{ "%.2f"|format(s.score.avg_speedup) }}x{% else %}N/A{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% for s in solutions %}
+<section class="solution-section" id="sol-{{ loop.index0 }}">
+  <h2>{{ s.name }}</h2>
+
+  <div class="cards">
+    <div class="card pass">
+      <div class="value">{{ s.score.passed }}/{{ s.score.total }}</div>
+      <div class="label">Passed</div>
+    </div>
+    <div class="card{% if s.score.pass_rate < 0.5 %} fail{% elif s.score.pass_rate < 1.0 %} warn{% else %} pass{% endif %}">
+      <div class="value">{{ "%.1f"|format(s.score.pass_rate * 100) }}%</div>
+      <div class="label">Pass Rate</div>
+    </div>
+    {% if s.score.avg_speedup %}
+    <div class="card{% if s.score.avg_speedup < 1.0 %} fail{% elif s.score.avg_speedup < 1.5 %} warn{% else %} pass{% endif %}">
+      <div class="value">{{ "%.2f"|format(s.score.avg_speedup) }}x</div>
+      <div class="label">Avg Speedup</div>
+    </div>
+    <div class="card{% if s.score.max_speedup < 1.0 %} fail{% elif s.score.max_speedup < 1.5 %} warn{% else %} pass{% endif %}">
+      <div class="value">{{ "%.2f"|format(s.score.max_speedup) }}x</div>
+      <div class="label">Max Speedup</div>
+    </div>
+    <div class="card{% if s.score.min_speedup < 1.0 %} fail{% elif s.score.min_speedup < 1.5 %} warn{% else %} pass{% endif %}">
+      <div class="value">{{ "%.2f"|format(s.score.min_speedup) }}x</div>
+      <div class="label">Min Speedup</div>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="value na">N/A</div>
+      <div class="label">Avg Speedup</div>
+    </div>
+    <div class="card">
+      <div class="value na">N/A</div>
+      <div class="label">Max Speedup</div>
+    </div>
+    <div class="card">
+      <div class="value na">N/A</div>
+      <div class="label">Min Speedup</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <details class="workload-details">
+    <summary>
+      <span class="toggle-label">{{ s.rows|length }} workload{% if s.rows|length != 1 %}s{% endif %}</span>
+      <span class="chevron"></span>
+    </summary>
+    <div class="details-content">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:3rem">#</th>
+              <th onclick="sortTable(this)">UUID<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)">Hardware<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)" style="width:11rem">Status<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)">Latency (ms)<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)">Ref (ms)<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)">Speedup<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)">Max Abs Err<span class="sort-arrow">&#9650;</span></th>
+              <th onclick="sortTable(this)">Max Rel Err<span class="sort-arrow">&#9650;</span></th>
+              <th>Error Log</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if s.rows %}
+            {% for r in s.rows %}
+            <tr>
+              <td style="color:var(--text-dim)">{{ loop.index0 + 1 }}</td>
+              <td style="font-size:.7rem;color:var(--text-muted)">{{ r.uuid }}</td>
+              <td style="font-size:.7rem">{{ r.hardware }}</td>
+              <td class="status-{{ r.status }}">{{ r.status }}</td>
+              <td>{{ r.latency }}</td>
+              <td>{{ r.ref_latency }}</td>
+              <td>{{ r.speedup }}</td>
+              <td>{{ r.abs_err }}</td>
+              <td>{{ r.rel_err }}</td>
+              <td class="error-log">{{ r.log|e }}</td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr><td colspan="10" class="no-data">No traces recorded</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+  </details>
+</section>
+{% endfor %}
+
+<footer class="report-footer">
+  <span>NPU KernelBench</span>
+  <span>NPU Kernel Evaluation Report</span>
+</footer>
+
+<script>
+  var SORT_DIRS = {};
+
+  function sortTable(th) {
+    var table = th.closest("table");
+    var n = Array.from(th.parentNode.children).indexOf(th);
+    var tbody = table.tBodies[0];
+    var rows = Array.from(tbody.rows);
+
+    var key = table.getAttribute("data-table-id") || (function() {
+      var id = "t" + Math.random().toString(36).slice(2,8);
+      table.setAttribute("data-table-id", id);
+      return id;
+    })();
+
+    SORT_DIRS[key] = SORT_DIRS[key] || {};
+    SORT_DIRS[key][n] = SORT_DIRS[key][n] === "asc" ? "desc" : "asc";
+    var dir = SORT_DIRS[key][n];
+
+    // Update arrow indicators
+    th.parentNode.querySelectorAll("th").forEach(function(h, i) {
+      h.removeAttribute("data-sort-active");
+      var arrow = h.querySelector(".sort-arrow");
+      if (arrow) arrow.innerHTML = "&#9650;";
+    });
+    th.setAttribute("data-sort-active", "");
+    var activeArrow = th.querySelector(".sort-arrow");
+    if (activeArrow) activeArrow.innerHTML = dir === "asc" ? "&#9650;" : "&#9660;";
+
+    rows.sort(function(a, b) {
+      var x = a.cells[n].textContent.trim();
+      var y = b.cells[n].textContent.trim();
+      var xf = parseFloat(x);
+      var yf = parseFloat(y);
+      var cmp;
+      if (!isNaN(xf) && !isNaN(yf)) {
+        cmp = xf - yf;
+      } else {
+        cmp = x.localeCompare(y);
+      }
+      return cmp * (dir === "asc" ? 1 : -1);
+    });
+
+    rows.forEach(function(r) { tbody.appendChild(r); });
+  }
+</script>
+
+</body>
+</html>

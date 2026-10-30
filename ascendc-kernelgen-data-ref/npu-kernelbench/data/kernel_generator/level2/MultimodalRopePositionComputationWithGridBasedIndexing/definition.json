@@ -1,0 +1,38 @@
+{
+  "name": "MultimodalRopePositionComputationWithGridBasedIndexing",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "grid_thw": {
+      "description": "shape varies; supports int64"
+    },
+    "pos_embed_weight": {
+      "description": "shape varies; supports float32"
+    },
+    "inv_freq": {
+      "description": "shape varies; supports float32"
+    },
+    "spatial_merge_size": {
+      "description": "int, default=2; optional"
+    },
+    "num_grid_per_side": {
+      "description": "int, default=35; optional"
+    },
+    "mrope_section": {
+      "description": "list; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Patch position embeddings"
+    },
+    "1": {
+      "description": "Cosine embeddings"
+    },
+    "2": {
+      "description": "Sine embeddings"
+    }
+  },
+  "reference": "import torch\n\ndef run(grid_thw, pos_embed_weight, inv_freq, spatial_merge_size=2, num_grid_per_side=35, mrope_section=None):\n    if mrope_section is None:\n        mrope_section = [24, 20, 20]\n    dtype = pos_embed_weight.dtype\n    device = grid_thw.device\n    grid_ts, grid_hs, grid_ws = grid_thw[:, 0], grid_thw[:, 1], grid_thw[:, 2]\n\n    idx_list = [[] for _ in range(4)]\n    weight_list = [[] for _ in range(4)]\n\n    for t, h, w in zip(grid_ts, grid_hs, grid_ws):\n        h_idxs = torch.linspace(0, num_grid_per_side - 1, h.item(), device=device)\n        w_idxs = torch.linspace(0, num_grid_per_side - 1, w.item(), device=device)\n\n        h_idxs_floor = h_idxs.long()\n        w_idxs_floor = w_idxs.long()\n        h_idxs_ceil = (h_idxs_floor + 1).clamp(max=num_grid_per_side - 1)\n        w_idxs_ceil = (w_idxs_floor + 1).clamp(max=num_grid_per_side - 1)\n\n        dh = h_idxs - h_idxs_floor.float()\n        dw = w_idxs - w_idxs_floor.float()\n\n        base_h = h_idxs_floor * num_grid_per_side\n        base_h_ceil = h_idxs_ceil * num_grid_per_side\n\n        indices = [\n            (base_h[:, None] + w_idxs_floor[None, :]).flatten(),\n            (base_h[:, None] + w_idxs_ceil[None, :]).flatten(),\n            (base_h_ceil[:, None] + w_idxs_floor[None, :]).flatten(),\n            (base_h_ceil[:, None] + w_idxs_ceil[None, :]).flatten(),\n        ]\n\n        weights = [\n            ((1 - dh)[:, None] * (1 - dw)[None, :]).flatten(),\n            ((1 - dh)[:, None] * dw[None, :]).flatten(),\n            (dh[:, None] * (1 - dw)[None, :]).flatten(),\n            (dh[:, None] * dw[None, :]).flatten(),\n        ]\n\n        for i in range(4):\n            idx_list[i].extend(indices[i].tolist())\n            weight_list[i].extend(weights[i].tolist())\n\n    idx_tensor = torch.tensor(idx_list, dtype=torch.long, device=device)\n    weight_tensor = torch.tensor(weight_list, dtype=torch.float32, device=device)\n\n    pos_embeds_f32 = pos_embed_weight[idx_tensor].float() * weight_tensor[:, :, None]\n    patch_pos_embeds_f32 = pos_embeds_f32[0] + pos_embeds_f32[1] + pos_embeds_f32[2] + pos_embeds_f32[3]\n    patch_pos_embeds = patch_pos_embeds_f32.to(dtype)\n\n    patch_pos_embeds = patch_pos_embeds.split([h.item() * w.item() for h, w in zip(grid_hs, grid_ws)])\n\n    patch_pos_embeds_permute = []\n    merge_size = spatial_merge_size\n    for pos_embed, t, h, w in zip(patch_pos_embeds, grid_ts, grid_hs, grid_ws):\n        pos_embed = pos_embed.repeat(t.item(), 1)\n        pos_embed = (\n            pos_embed.view(t.item(), h.item() // merge_size, merge_size,\n                          w.item() // merge_size, merge_size, -1)\n            .permute(0, 1, 3, 2, 4, 5)\n            .flatten(0, 4)\n        )\n        patch_pos_embeds_permute.append(pos_embed)\n\n    patch_pos_embeds = torch.cat(patch_pos_embeds_permute)\n\n    max_hw = int(grid_thw[:, 1:].max().item())\n    seq = torch.arange(max_hw, dtype=torch.float32, device=device)\n    freqs = torch.outer(seq, inv_freq)\n\n    total_tokens = int(torch.prod(grid_thw, dim=1).sum().item())\n    pos_ids = torch.empty((total_tokens, 2), dtype=torch.long, device=device)\n\n    offset = 0\n    for num_frames, height, width in grid_thw:\n        merged_h, merged_w = height.item() // merge_size, width.item() // merge_size\n\n        block_rows = torch.arange(merged_h, device=device)\n        block_cols = torch.arange(merged_w, device=device)\n        intra_row = torch.arange(merge_size, device=device)\n        intra_col = torch.arange(merge_size, device=device)\n\n        row_idx = block_rows[:, None, None, None] * merge_size + intra_row[None, None, :, None]\n        col_idx = block_cols[None, :, None, None] * merge_size + intra_col[None, None, None, :]\n\n        row_idx = row_idx.expand(merged_h, merged_w, merge_size, merge_size).reshape(-1)\n        col_idx = col_idx.expand(merged_h, merged_w, merge_size, merge_size).reshape(-1)\n\n        coords = torch.stack((row_idx, col_idx), dim=-1)\n\n        if num_frames > 1:\n            coords = coords.repeat(num_frames.item(), 1)\n\n        num_tokens = coords.shape[0]\n        pos_ids[offset:offset + num_tokens] = coords\n        offset += num_tokens\n\n    embeddings = freqs[pos_ids]\n    embeddings = embeddings.flatten(1)\n\n    freqs_3d = embeddings.unsqueeze(0).expand(3, -1, -1).clone()\n    freqs_t = freqs_3d[0]\n    for dim, offset_dim in enumerate((1, 2), start=1):\n        length = mrope_section[dim] * 3\n        idx = slice(offset_dim, length, 3)\n        freqs_t[..., idx] = freqs_3d[dim, ..., idx]\n\n    emb = torch.cat((freqs_t, freqs_t), dim=-1)\n    cos_embeddings = emb.cos()\n    sin_embeddings = emb.sin()\n\n    return patch_pos_embeds, cos_embeddings, sin_embeddings\n",
+  "description": "Multimodal RoPE position computation with grid-based indexing (Qwen2-VL style). Computes 3D rotary position embeddings using grid_thw and mrope_section. Returns (patch_pos_embeds, cos, sin)."
+}

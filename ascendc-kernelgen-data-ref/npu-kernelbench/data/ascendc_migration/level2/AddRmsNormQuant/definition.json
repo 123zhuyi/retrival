@@ -1,0 +1,78 @@
+{
+  "name": "AddRmsNormQuant",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "x1": {
+      "description": "shape varies; supports float16"
+    },
+    "x2": {
+      "description": "shape varies; supports float16"
+    },
+    "gamma": {
+      "description": "shape varies; supports float16"
+    },
+    "smoothScale1Optional": {
+      "description": "shape varies; supports ; optional, may be None"
+    },
+    "smoothScale2Optional": {
+      "description": "shape varies; supports ; optional, may be None"
+    },
+    "betaOptional": {
+      "description": "shape varies; supports ; optional, may be None"
+    },
+    "epsilon": {
+      "description": "float, default=1e-06"
+    },
+    "outputMaskOptional": {
+      "description": "; optional"
+    },
+    "y_dtype": {
+      "description": "string"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Quantized output"
+    },
+    "1": {
+      "description": "Normed output, same shape as input"
+    },
+    "2": {
+      "description": "Rstd, shape (N, group)"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, residual, gamma, scale, offset, epsilon=1e-6):\n    return torch_npu.npu_add_rms_norm_quant(x, residual, gamma, scale, offset, epsilon=epsilon)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "norm/add_rms_norm_quant/op_graph/CMakeLists.txt",
+      "norm/add_rms_norm_quant/op_graph/add_rms_norm_quant_proto.h"
+    ],
+    "op_host": [
+      "norm/add_rms_norm_quant/op_host/CMakeLists.txt",
+      "norm/add_rms_norm_quant/op_host/add_rms_norm_quant_def.cpp",
+      "norm/add_rms_norm_quant/op_host/add_rms_norm_quant_infershape.cpp",
+      "norm/add_rms_norm_quant/op_host/add_rms_norm_quant_tiling.cpp",
+      "norm/add_rms_norm_quant/op_host/add_rms_norm_quant_tiling.h",
+      "norm/add_rms_norm_quant/op_host/add_rms_norm_quant_tiling_arch35.cpp"
+    ],
+    "op_kernel": [
+      "norm/add_rms_norm_quant/op_kernel/add_rms_norm_quant.cpp",
+      "norm/add_rms_norm_quant/op_kernel/add_rms_norm_quant.h",
+      "norm/add_rms_norm_quant/op_kernel/add_rms_norm_quant_apt.cpp",
+      "norm/add_rms_norm_quant/op_kernel/add_rms_norm_quant_base.h",
+      "norm/add_rms_norm_quant/op_kernel/add_rms_norm_quant_single_n.h",
+      "norm/add_rms_norm_quant/op_kernel/add_rms_norm_quant_split_d.h",
+      "norm/add_rms_norm_quant/op_kernel/reduce_common.h"
+    ],
+    "op_api": [
+      "norm/add_rms_norm_quant/op_host/op_api/aclnn_add_rms_norm_quant.cpp",
+      "norm/add_rms_norm_quant/op_host/op_api/aclnn_add_rms_norm_quant.h",
+      "norm/add_rms_norm_quant/op_host/op_api/aclnn_add_rms_norm_quant_v2.h",
+      "norm/add_rms_norm_quant/op_host/op_api/add_rms_norm_quant.cpp",
+      "norm/add_rms_norm_quant/op_host/op_api/add_rms_norm_quant.h"
+    ]
+  },
+  "description": "Fused Add + RMSNorm + Quantize. torch_npu.npu_add_rms_norm_quant(x, residual, gamma, scale, offset, epsilon) returns (quantized_output, normed_output, rstd). Pure PyTorch: x+residual, RMSNorm with gamma, then quantize_per_tensor. Supports float16, bfloat16, float32."
+}

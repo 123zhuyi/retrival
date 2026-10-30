@@ -1,0 +1,68 @@
+{
+  "name": "Gdn2Bwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "查询张量, shape (B, T, H, K); bfloat16/float16"
+    },
+    "k": {
+      "description": "键张量, shape (B, T, H, K); 与 q 同 dtype"
+    },
+    "v": {
+      "description": "值张量, shape (B, T, H, V); bfloat16/float16"
+    },
+    "g": {
+      "description": "log 域衰减门控 (恒 ≤ 0), shape (B, T, H, K); float32"
+    },
+    "b": {
+      "description": "擦除门控 (sigmoid 域, (0,1)), shape (B, T, H, K); 与 q 同 dtype"
+    },
+    "w": {
+      "description": "写入门控 (sigmoid 域, (0,1)), shape (B, T, H, V); 与 v 同 dtype"
+    },
+    "initial_state": {
+      "description": "初始状态, shape (N, H, K, V) float32; shape[0]==0 表示无初始状态"
+    },
+    "do": {
+      "description": "输出梯度, shape (B, T, H, V); 与 v 同 dtype"
+    },
+    "dht": {
+      "description": "末状态梯度, shape (N, H, K, V) float32; shape[0]==0 表示无"
+    },
+    "scale": {
+      "description": "q 缩放因子, float 标量"
+    },
+    "use_qk_l2norm_in_kernel": {
+      "description": "是否在 kernel 内对 q/k 做 L2 归一化, int 0/1"
+    },
+    "cu_seqlens": {
+      "description": "varlen 前缀和, int 列表 (如 [0,6,13,26]); 缺省表示等长 (B,T) 布局"
+    }
+  },
+  "outputs": {
+    "dq": {
+      "description": "q 梯度, 同 q 形状与 dtype"
+    },
+    "dk": {
+      "description": "k 梯度, 同 k 形状与 dtype"
+    },
+    "dv": {
+      "description": "v 梯度, 同 v 形状与 dtype"
+    },
+    "dg": {
+      "description": "g 梯度, 同 g 形状与 dtype (float32)"
+    },
+    "db": {
+      "description": "b 梯度, 同 b 形状与 dtype"
+    },
+    "dw": {
+      "description": "w 梯度, 同 w 形状与 dtype"
+    },
+    "dh0": {
+      "description": "初始状态梯度, shape (N, H, K, V) float32"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\n\ndef _segment_bwd(qn, kn, vf, gf, bf, wf, dof,\n                 S_dec_stack, v_new_stack, s, e, dS0, scale):\n    dq = torch.zeros_like(qn)\n    dk = torch.zeros_like(kn)\n    dv = torch.zeros_like(vf)\n    dg = torch.zeros_like(gf)\n    db = torch.zeros_like(bf)\n    dw = torch.zeros_like(wf)\n    dS = dS0\n    for t in range(e - 1, s - 1, -1):\n        S_dec = S_dec_stack[t]\n        v_new = v_new_stack[t]\n        S_t = S_dec + kn[:, t - s].unsqueeze(-1) * v_new.unsqueeze(-2)\n        dq[:, t - s] = scale * (S_t * dof[:, t - s].unsqueeze(-2)).sum(-1)\n        dS = dS + (scale * qn[:, t - s]).unsqueeze(-1) * dof[:, t - s].unsqueeze(-2)\n        dk_t = (dS * v_new.unsqueeze(-2)).sum(-1)\n        dv_new = (dS * kn[:, t - s].unsqueeze(-1)).sum(-2)\n        dw[:, t - s] = dv_new * vf[:, t - s]\n        dv[:, t - s] = dv_new * wf[:, t - s]\n        derase = -dv_new\n        dbk = (S_dec * derase.unsqueeze(-2)).sum(-1)\n        dS_dec = dS + (bf[:, t - s] * kn[:, t - s]).unsqueeze(-1) * derase.unsqueeze(-2)\n        db[:, t - s] = dbk * kn[:, t - s]\n        dk_t = dk_t + dbk * bf[:, t - s]\n        dg[:, t - s] = (dS_dec * S_dec).sum(-1)\n        dS = dS_dec * gf[:, t - s].unsqueeze(-1).exp()\n        dk[:, t - s] = dk_t\n    return dq, dk, dv, dg, db, dw, dS\n\n\ndef run(q, k, v, g, b, w, initial_state, do, dht,\n        scale, use_qk_l2norm_in_kernel, cu_seqlens=None):\n    B, T, H, K = q.shape\n    V = v.shape[-1]\n\n    qf, kf, vf = q.float(), k.float(), v.float()\n    gf, bf, wf = g.float(), b.float(), w.float()\n    dof = do.float()\n\n    if use_qk_l2norm_in_kernel:\n        q_rstd = torch.rsqrt((qf * qf).sum(-1, keepdim=True) + 1e-6)\n        k_rstd = torch.rsqrt((kf * kf).sum(-1, keepdim=True) + 1e-6)\n        qn = qf * q_rstd\n        kn = kf * k_rstd\n    else:\n        qn, kn = qf, kf\n        q_rstd = k_rstd = None\n\n    has_init = initial_state is not None and initial_state.shape[0] > 0\n    has_dht = dht is not None and dht.shape[0] > 0\n\n    S_dec_all = []\n    v_new_all = []\n    if cu_seqlens is not None and len(cu_seqlens) > 0:\n        N = len(cu_seqlens) - 1\n        for n in range(N):\n            s, e = int(cu_seqlens[n]), int(cu_seqlens[n + 1])\n            S = qf.new_zeros(1, H, K, V)\n            if has_init:\n                S = S + initial_state[n:n + 1].float()\n            for t in range(s, e):\n                S_dec = S * gf[:, t].unsqueeze(-1).exp()\n                erase = ((bf[:, t].unsqueeze(-1) * kn[:, t].unsqueeze(-1)) * S_dec).sum(-2)\n                v_new = wf[:, t] * vf[:, t] - erase\n                S = S_dec + kn[:, t].unsqueeze(-1) * v_new.unsqueeze(-2)\n                S_dec_all.append(S_dec)\n                v_new_all.append(v_new)\n    else:\n        S = qf.new_zeros(B, H, K, V)\n        if has_init:\n            S = S + initial_state.float()\n        for t in range(T):\n            S_dec = S * gf[:, t].unsqueeze(-1).exp()\n            erase = ((bf[:, t].unsqueeze(-1) * kn[:, t].unsqueeze(-1)) * S_dec).sum(-2)\n            v_new = wf[:, t] * vf[:, t] - erase\n            S = S_dec + kn[:, t].unsqueeze(-1) * v_new.unsqueeze(-2)\n            S_dec_all.append(S_dec)\n            v_new_all.append(v_new)\n\n    S_dec_stack = torch.stack(S_dec_all, dim=0)\n    v_new_stack = torch.stack(v_new_all, dim=0)\n\n    dq = torch.zeros_like(qf)\n    dk = torch.zeros_like(kf)\n    dv = torch.zeros_like(vf)\n    dg = torch.zeros_like(gf)\n    db = torch.zeros_like(bf)\n    dw = torch.zeros_like(wf)\n\n    if cu_seqlens is not None and len(cu_seqlens) > 0:\n        N = len(cu_seqlens) - 1\n        dh0 = torch.zeros(N, H, K, V, dtype=torch.float32, device=q.device)\n        for n in range(N):\n            s, e = int(cu_seqlens[n]), int(cu_seqlens[n + 1])\n            dS0 = dht[n:n + 1].float() if has_dht else torch.zeros(1, H, K, V, device=q.device)\n            r = _segment_bwd(\n                qn[:, s:e], kn[:, s:e], vf[:, s:e],\n                gf[:, s:e], bf[:, s:e], wf[:, s:e],\n                dof[:, s:e], S_dec_stack, v_new_stack,\n                s, e, dS0, scale)\n            dq[:, s:e], dk[:, s:e], dv[:, s:e] = r[0], r[1], r[2]\n            dg[:, s:e], db[:, s:e], dw[:, s:e] = r[3], r[4], r[5]\n            dh0[n] = r[6][0]\n    else:\n        dS0 = dht.float() if has_dht else torch.zeros(B, H, K, V, device=q.device)\n        dq, dk, dv, dg, db, dw, dh0 = _segment_bwd(\n            qn, kn, vf, gf, bf, wf, dof,\n            S_dec_stack, v_new_stack, 0, T, dS0, scale)\n\n    if use_qk_l2norm_in_kernel:\n        dq = q_rstd * (dq - qn * (dq * qn).sum(-1, keepdim=True))\n        dk = k_rstd * (dk - kn * (dk * kn).sum(-1, keepdim=True))\n\n    return (dq.to(q.dtype), dk.to(k.dtype), dv.to(v.dtype),\n            dg.to(g.dtype), db.to(b.dtype), dw.to(w.dtype), dh0)\n",
+  "description": "GDN-2 (Gated DeltaNet 2) chunkwise 反向标杆。对标 fla-org/flash-linear-attention @ main 的 chunk_gdn2_bwd (fla/ops/gdn2/chunk_bwd.py, 由 chunk.py:133 ChunkGDN2Function.backward 调用), 数学定义为前向递推 (fla/ops/gdn2/naive.py) 的精确伴随。\n前向 (逐 token, 矩阵状态 S ∈ R^{K×V}, * 为 Hadamard 积):\n    S_dec = Diag(exp(g_t)) S_{t-1}\n    erase = (b_t * k_t)^T S_dec\n    v_new = w_t * v_t - erase\n    S_t   = S_dec + k_t ⊗ v_new\n    o_t   = (scale * q_t)^T S_t\n反向 (对偶递推, dS 从 dht 初始化, 逆序传播; 下标 t 为当前步):\n    dqs_t    = S_t @ do_t ; dq_t = scale * dqs_t\n    dS      += (scale * q_t) ⊗ do_t\n    dk_t     = dS @ v_new_t                      (秩一更新路径)\n    dv_new   = dS^T @ k_t\n    dw_t     = dv_new * v_t ; dv_t = dv_new * w_t\n    derase   = -dv_new\n    dbk      = S_dec_t @ derase                  (擦除门读取路径)\n    dS_dec   = dS + (b_t * k_t) ⊗ derase\n    db_t     = dbk * k_t ; dk_t += dbk * b_t\n    dg_t     = sum_V(dS_dec * S_dec_t)           (衰减路径)\n    dS      <- dS_dec * exp(g_t)                 (传给上一步)\n    dh0      = 递推结束时的 dS\nreference 在 run() 内先重算前向递推得到每步 S_dec/v_new 中间量, 再执行反向, solution 同样只接收叶子输入, 需自行重算前向中间量。\n输入约束: g 为 log 域衰减, 生成范围 uniform(-1, -0.02) (防止状态指数爆炸); b/w 为 sigmoid 门控, 生成范围 uniform(0, 1); q/k 生成范围 uniform(-0.05, 0.05) —— 真实场景 q/k 为 L2 归一化向量, 此处以小量级保证 delta 规则递推的擦除反馈因子 |1 - b·|k|²| < 1 (大随机值会导致状态指数爆炸); use_qk_l2norm_in_kernel=1 时 reference 在 fp32 下对 q/k 做 L2 归一化 (eps=1e-6) 并将梯度经 rstd 链式回传。\nvarlen: cu_seqlens 存在时 B 必须为 1, 各 segment 独立反向, dh0 形状 (N, H, K, V)。"
+}

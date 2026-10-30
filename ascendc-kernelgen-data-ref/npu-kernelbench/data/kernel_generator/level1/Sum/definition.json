@@ -1,0 +1,14 @@
+{
+  "name": "Sum",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "dim": {"description": "int, dimension along which to sum."},
+    "keepdim": {"description": "bool, whether to retain the reduced dimension."}
+  },
+  "outputs": {
+    "y": {"description": "Output tensor, reduced along dim (size 1 if keepdim=True, squeezed otherwise). Same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, dim, keepdim=False):\n    return torch.sum(x, dim=dim, keepdim=keepdim)\n",
+  "description": "Sum: Returns the sum of each row of the input tensor in the given dimension dim.\n\ntorch.sum = sum(input, dim, keepdim=False, *, dtype=None) -> Tensor\n\nIf keepdim is True, the output tensor is of the same size as input except in the dimension(s) dim where it is of size 1. Otherwise, dim is squeezed (see torch.squeeze), resulting in the output tensor having 1 (or len(dim)) fewer dimension(s).\n\nArgs:\n    input (Tensor): the input tensor.\n    dim (int or tuple of ints, optional): the dimension or dimensions to reduce. If None, all dimensions are reduced.\n    keepdim (bool, optional): whether the output tensor has dim retained or not. Default: False.\n\nKeyword args:\n    dtype (torch.dtype, optional): the desired data type of returned tensor. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. Default: None.\n\nReturns: Tensor, same dtype, reduced shape."
+}

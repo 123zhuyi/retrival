@@ -1,0 +1,65 @@
+{
+  "name": "ChunkKdaBwdIntra",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input q"
+    },
+    "k": {
+      "description": "Input k"
+    },
+    "g": {
+      "description": "Input g"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "dAqk": {
+      "description": "Input dAqk"
+    },
+    "dAkk": {
+      "description": "Input dAkk"
+    },
+    "dq": {
+      "description": "Input dq"
+    },
+    "dk": {
+      "description": "Input dk"
+    },
+    "db": {
+      "description": "Input db"
+    },
+    "dg": {
+      "description": "Input dg"
+    },
+    "cu_seqlens": {
+      "description": "Input cu_seqlens"
+    },
+    "chunk_indices": {
+      "description": "Input chunk_indices"
+    },
+    "chunk_size": {
+      "description": "Input chunk_size"
+    },
+    "safe_gate": {
+      "description": "Input safe_gate"
+    }
+  },
+  "outputs": {
+    "dq_out": {
+      "description": "Output dq_out"
+    },
+    "dk_out": {
+      "description": "Output dk_out"
+    },
+    "db_out": {
+      "description": "Output db_out"
+    },
+    "dg_out": {
+      "description": "Output dg_out"
+    }
+  },
+  "reference": "import torch\ndef run(q, k, g, beta, dAqk, dAkk, dq, dk, db, dg,\n            cu_seqlens=None, chunk_indices=None, chunk_size=64, safe_gate=False):\n    B, T, H, K = k.shape\n    HV = g.shape[2]\n    BT = chunk_size\n    G = HV // H\n    q_flat = q.float().reshape(B * T, H, K)\n    k_flat = k.float().reshape(B * T, H, K)\n    g_flat = g.float().reshape(B * T, HV, K)\n    b_flat = beta.float().reshape(B * T, HV)\n    dAqk_flat = dAqk.float().reshape(B * T, HV, BT)\n    dAkk_flat = dAkk.float().reshape(B * T, HV, BT)\n    dq_flat = dq.float().reshape(B * T, HV, K)\n    dk_flat = dk.float().reshape(B * T, HV, K)\n    db_flat = db.float().reshape(B * T, HV)\n    dg_flat = dg.float().reshape(B * T, HV, K)\n    dq_out = dq_flat.clone()\n    dk_out = dk_flat.clone()\n    db_out = db_flat.clone()\n    dg_out = dg_flat.clone()\n    if cu_seqlens is None:\n        bounds = [(b * T, (b + 1) * T) for b in range(B)]\n    else:\n        cu = cu_seqlens.tolist()\n        bounds = [(cu[n], cu[n + 1]) for n in range(len(cu) - 1)]\n    head_map = torch.arange(HV, device=k.device) // G\n    for (t0, t1) in bounds:\n        c = t0\n        while c < t1:\n            e = min(c + BT, t1)\n            L = e - c\n            q_c = q_flat[c:e][:, head_map]\n            k_c = k_flat[c:e][:, head_map]\n            g_c = g_flat[c:e]\n            b_c = b_flat[c:e]\n            dAq_c = dAqk_flat[c:e, :, :L]\n            dAk_c = dAkk_flat[c:e, :, :L]\n            D = g_c.unsqueeze(1) - g_c.unsqueeze(0)\n            lower = torch.tril(torch.ones(L, L, dtype=torch.bool, device=k.device))\n            E = torch.where(lower[:, :, None, None], torch.exp2(D),\n                            torch.zeros(1, device=k.device))\n            dq2 = torch.einsum('ths,shd,tshd->thd', dAq_c, k_c, E)\n            dkA = torch.einsum('ths,shd,tshd->thd', dAk_c, k_c, E)\n            db2 = torch.einsum('thd,thd->th', dkA, k_c)\n            kb = k_c * b_c[..., None]\n            dkt = torch.einsum('sht,shd,sthd->thd', dAq_c, q_c, E) + \\\n                torch.einsum('sht,shd,sthd->thd', dAk_c, kb, E)\n            dq_out[c:e] += dq2\n            dk_out[c:e] += b_c[..., None] * dkA + dkt\n            db_out[c:e] += db2\n            dg_out[c:e] += q_c * dq2 + (b_c[..., None] * dkA - dkt) * k_c\n            c = e\n    dq_out = dq_out.reshape(B, T, HV, K).to(dq.dtype)\n    dk_out = dk_out.reshape(B, T, HV, K).to(dk.dtype)\n    db_out = db_out.reshape(B, T, HV).float()\n    dg_out = dg_out.reshape(B, T, HV, K).float()\n    return dq_out, dk_out, db_out, dg_out",
+  "description": "Model that performs chunked KDA intra-chunk backward computation.\n    chunk_kda_bwd_intra(q, k, g, beta, dAqk, dAkk, dq, dk, db, dg,\n                        cu_seqlens, chunk_indices, chunk_size, safe_gate)\n        -> (dq_out, dk_out, db_out, dg_out)\n\n    torch 原生小算子拼接参考实现(与 Triton kernel 数学语义一致, 已用 autograd 闭环验证):\n    每条序列内按 chunk_size 分块, 块内局部位置 t, s, 逐通道门控 g (log2 域\n    chunk 内 inclusive cumsum, 与前向 chunk_kda_fwd_intra 的 gk 同一约定),\n    记 E[t,s,d] = 2^(g[t,d]-g[s,d]) (s <= t, 其余为 0), q/k 经 i_h = i_hv // (HV//H) 映射:\n        dq2[t,d] = sum_{s<=t} dAqk[t,s] * k[s,d] * E[t,s,d]\n        dkA[t,d] = sum_{s<=t} dAkk[t,s] * k[s,d] * E[t,s,d]        (未乘 beta)\n        dkt[t,d] = sum_{s>=t} (dAqk[s,t]*q[s,d] + dAkk[s,t]*beta_s*k[s,d]) * E[s,t,d]\n        dq_out = dq + dq2\n        dk_out = dk + beta_t * dkA + dkt\n        db_out = db + sum_d dkA * k                                 (fp32)\n        dg_out = dg + q * dq2 + (beta_t * dkA - dkt) * k            (fp32)\n    注:\n      1. dg 是\"对自然对数门控 cumsum 的梯度\": kernel 全程 exp2, 链式求导的 ln2\n         与下游 chunk_local_cumsum 反向的 RCP_LN2 相消, 故 kernel/golden 均不含 ln2;\n      2. dAkk 语义是对前向\"原始 Akk(未求逆)\"的梯度(经上游逆矩阵梯度恒等式换算后传入);\n      3. safe_gate 仅改变 kernel 内部数值路径, 数学语义不变;\n      4. q/k 输入为 L2 归一化向量, 与前向算子及真实 KDA 场景(qk-norm)一致。"
+}

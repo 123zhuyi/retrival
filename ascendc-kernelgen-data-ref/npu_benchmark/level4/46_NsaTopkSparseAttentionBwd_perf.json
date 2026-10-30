@@ -1,0 +1,4209 @@
+{
+ "op_name": "46_NsaTopkSparseAttentionBwd",
+ "source": "910b2 triton",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 1159.065341201352,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 418.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 431.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 437.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 504.5,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 495.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 559.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 421.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 496.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 435.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 507.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 613.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      128,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 510.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 554.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 521.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 613.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 648.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 563.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      256,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 798.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      256,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 740.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 643.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      128,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      128,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 532.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 928.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      1024,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 1615.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      1024,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 1632.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      256,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 1116.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 657.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      256,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 814.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      256,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 1136.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      512,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 1609.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      256,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      16,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 829.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      256,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      256,
+      16,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 1781.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 1177.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 1252.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      512,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 1073.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      1024,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 2092.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      512,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 2735.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      1024,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 3297.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      1024,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 1851.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2048,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 4882.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2048,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 2374.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      512,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 3754.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      2048,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 3880.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      1024,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 1793.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      1024,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 2889.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      1024,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 2191.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      4,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      1,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1,
+      2048,
+      5
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      4,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 2709.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      1024,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 6070.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      1024,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 5323.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      2,
+      32
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2,
+      2048,
+      16
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.17677669529663687
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2048,
+      8,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 5728.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      4,
+      512,
+      8
+     ]
+    },
+    {
+     "name": "block_size",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "cu_seqlens",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "max_seqlen",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    },
+    {
+     "name": "do",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 3637.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  }
+ ]
+}

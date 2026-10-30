@@ -1,0 +1,47 @@
+{
+  "name": "BatchDecodeMlaPaged",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q_nope": {
+      "description": "Input q_nope"
+    },
+    "q_pe": {
+      "description": "Input q_pe"
+    },
+    "paged_ckv_cache": {
+      "description": "Input paged_ckv_cache"
+    },
+    "paged_kpe_cache": {
+      "description": "Input paged_kpe_cache"
+    },
+    "kv_indptr": {
+      "description": "Input kv_indptr"
+    },
+    "kv_indices": {
+      "description": "Input kv_indices"
+    },
+    "kv_last_page_len": {
+      "description": "Input kv_last_page_len"
+    },
+    "sm_scale": {
+      "description": "Input sm_scale"
+    },
+    "window_left": {
+      "description": "Input window_left"
+    },
+    "logits_soft_cap": {
+      "description": "Input logits_soft_cap"
+    },
+    "return_lse": {
+      "description": "Input return_lse"
+    }
+  },
+  "outputs": {
+    "o": {
+      "description": "Output o"
+    }
+  },
+  "reference": "import torch\ndef run(q_nope, q_pe, paged_ckv_cache, paged_kpe_cache,\n            kv_indptr, kv_indices, kv_last_page_len, sm_scale,\n            window_left=-1, logits_soft_cap=0.0, return_lse=False):\n    torch.manual_seed(42)\n    B, H, Dc = q_nope.shape\n    page_size = paged_ckv_cache.shape[1]\n    q_nope_f = q_nope.float()\n    q_pe_f = q_pe.float()\n    o = torch.zeros(B, H, Dc, dtype=torch.float32, device=q_nope.device)\n    lse = torch.zeros(B, H, dtype=torch.float32, device=q_nope.device)\n    indptr = kv_indptr.tolist()\n    indices = kv_indices.tolist()\n    last_len = kv_last_page_len.tolist()\n    for b in range(B):\n        pages = indices[indptr[b]:indptr[b + 1]]\n        kv_len = (len(pages) - 1) * page_size + last_len[b]\n        ckv = paged_ckv_cache[pages].float().reshape(-1, Dc)[:kv_len]\n        kpe = paged_kpe_cache[pages].float().reshape(-1, q_pe.shape[-1])[:kv_len]\n        s = sm_scale * (q_nope_f[b] @ ckv.t() + q_pe_f[b] @ kpe.t())\n        if window_left >= 0:\n            mask = torch.arange(kv_len, device=q_nope.device) < kv_len - (window_left + 1)\n            s = s.masked_fill(mask[None, :], float(\"-inf\"))\n        if logits_soft_cap and logits_soft_cap > 0:\n            s = logits_soft_cap * torch.tanh(s / logits_soft_cap)\n        m = s.max(dim=-1, keepdim=True).values\n        e = torch.exp(s - m)\n        denom = e.sum(dim=-1, keepdim=True)\n        o[b] = (e / denom) @ ckv\n        lse[b] = m.squeeze(-1) + torch.log(denom.squeeze(-1))\n    o = o.to(q_nope.dtype)\n    if return_lse:\n        return o, lse\n    return o",
+  "description": "Model that performs batch decode MLA attention with paged KV cache.\n    FlashInfer BatchDecodeMlaWithPagedKVCacheWrapper (flashinfer/decode.py, 已 deprecated,\n    官方建议 BatchMLAPagedAttentionWrapper, 数学语义一致):\n        wrapper.run(q_nope, q_pe, paged_ckv_cache, paged_kpe_cache, ...) -> o (, lse)\n\n    torch 原生小算子拼接参考实现(基于矩阵吸收 Matrix Absorption trick):\n    每个请求 b 按页表 (kv_indptr/kv_indices/kv_last_page_len) gather 出 kv_len 个 token:\n        scores[b,h,j] = sm_scale * (q_nope[b,h]·ckv_j + q_pe[b,h]·kpe_j)\n        o[b,h] = softmax(scores) @ ckv          # ckv 吸收后同时作为 K 和 V\n        lse[b,h] = logsumexp(scores)            # return_lse=True 时返回\n    注:\n      1. decode 阶段单 query token 注意全部 kv token, 无因果 mask;\n      2. window_left >= 0 时只注意每请求最后 window_left+1 个 token;\n      3. logits_soft_cap > 0 时 logits = cap * tanh(logits / cap);\n      4. sm_scale 应为 1/sqrt(qk_nope_head_dim + qk_rope_head_dim) = 1/sqrt(576);\n      5. 页表索引可以乱序且允许存在未被任何请求引用的冗余页,\n         只有 indptr/indices 指定的页参与计算;\n      6. q_scale/k_scale/v_scale (FP8) 与 rope_scale/rope_theta (decode 不生效) 未纳入。"
+}

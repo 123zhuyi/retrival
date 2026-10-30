@@ -1,0 +1,2909 @@
+{
+ "op_name": "83_GqaSparseFwdKernel",
+ "source": "GPU 实测延迟（run_perf_gpu.py, cuda event 端到端, warmup/repeats 见测量记录）：reference_latency_us = torch 参考实现实测；impl_latency_us = GPU Triton 实现 (triton_impl/{op}_triton_gpu_impl.py) 实测。性能基线取 impl_latency_us（逐 case）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 49,
+ "accuracy_approx_cases": 0,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1903.6,
+   "impl_latency_us": 145.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1798.1,
+   "impl_latency_us": 135.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1813.5,
+   "impl_latency_us": 155.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1827.8,
+   "impl_latency_us": 135.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1785.9,
+   "impl_latency_us": 155.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1834.0,
+   "impl_latency_us": 151.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1879.0,
+   "impl_latency_us": 156.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1924.1,
+   "impl_latency_us": 161.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1798.1,
+   "impl_latency_us": 140.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      480,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      480
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1766.4,
+   "impl_latency_us": 123.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1806.3,
+   "impl_latency_us": 133.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      8
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 3258.4,
+   "impl_latency_us": 177.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1839.1,
+   "impl_latency_us": 150.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      2,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1962.0,
+   "impl_latency_us": 182.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      240,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1775.6,
+   "impl_latency_us": 139.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23662.6,
+   "impl_latency_us": 710.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      960,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      960,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 50490.4,
+   "impl_latency_us": 1463.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3840,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      3840,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 158815.2,
+   "impl_latency_us": 4833.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 28092.4,
+   "impl_latency_us": 1059.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      480,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      480,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      480,
+      4
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      2,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1788.9,
+   "impl_latency_us": 131.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      3840,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      3840
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23217.2,
+   "impl_latency_us": 308.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      2880,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      2880
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23064.6,
+   "impl_latency_us": 594.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      3840,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      3840
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23298.0,
+   "impl_latency_us": 597.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 24555.5,
+   "impl_latency_us": 1079.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23104.5,
+   "impl_latency_us": 605.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      960,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      960,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 57440.3,
+   "impl_latency_us": 3241.0,
+   "accuracy": "fail(diff=3.88e-07,matched=0.905[torch.float32 cap=True mr=True mere=False])"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      960,
+      2,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      960
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 24460.3,
+   "impl_latency_us": 858.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      480,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      480
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 33076.2,
+   "impl_latency_us": 1422.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      480,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      480,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      480,
+      32
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      2,
+      240
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 14479.4,
+   "impl_latency_us": 487.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1920,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      1920,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 81848.3,
+   "impl_latency_us": 2577.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 25636.9,
+   "impl_latency_us": 708.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      128
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 46044.2,
+   "impl_latency_us": 1073.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      2400,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      2400
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23111.7,
+   "impl_latency_us": 579.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3840,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      3840,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 158054.4,
+   "impl_latency_us": 4803.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      960,
+      2,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      240,
+      32
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      960
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 12442.6,
+   "impl_latency_us": 481.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 61114.4,
+   "impl_latency_us": 2460.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      960,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      7680,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      960,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      4,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 215345.2,
+   "impl_latency_us": 9266.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      15360,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      15360
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 22961.2,
+   "impl_latency_us": 587.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      23040,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      23040
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23043.1,
+   "impl_latency_us": 597.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      30720,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      30720
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 23260.2,
+   "impl_latency_us": 582.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      3840,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      3840
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 61055.0,
+   "impl_latency_us": 2538.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      7680,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      7680
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 61159.4,
+   "impl_latency_us": 2483.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      480,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      3840,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      480,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      2,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 110217.2,
+   "impl_latency_us": 4817.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      4,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      4,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 33087.5,
+   "impl_latency_us": 1423.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      3840,
+      2,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      2,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      3840
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 24460.3,
+   "impl_latency_us": 853.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1920,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      7680,
+      1,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      1,
+      1920,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      7680
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 81811.5,
+   "impl_latency_us": 2527.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3840,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      7680,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      3840,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      4,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      5
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 832379.9,
+   "impl_latency_us": 36104.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 60824.6,
+   "impl_latency_us": 2505.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      8,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      8,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 84056.1,
+   "impl_latency_us": 6069.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      240,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1920,
+      16,
+      128,
+      256
+     ]
+    },
+    {
+     "name": "topk_idx",
+     "shape": [
+      16,
+      240,
+      64
+     ]
+    },
+    {
+     "name": "block_table",
+     "shape": [
+      1,
+      1920
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "seq_lens",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "prefix_lens",
+     "shape": [
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 109990.9,
+   "impl_latency_us": 4778.0,
+   "accuracy": "pass"
+  }
+ ]
+}

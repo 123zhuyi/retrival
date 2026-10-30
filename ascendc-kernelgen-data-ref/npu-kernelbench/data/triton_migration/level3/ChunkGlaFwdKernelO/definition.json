@@ -1,0 +1,41 @@
+{
+  "name": "ChunkGlaFwdKernelO",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input 'q'."
+    },
+    "v": {
+      "description": "Input 'v'."
+    },
+    "g": {
+      "description": "Input 'g'."
+    },
+    "A": {
+      "description": "Input 'A'."
+    },
+    "h": {
+      "description": "Input 'h'."
+    },
+    "o": {
+      "description": "Input 'o'."
+    },
+    "scale": {
+      "description": "Input 'scale'."
+    },
+    "cu_seqlens": {
+      "description": "Input 'cu_seqlens'."
+    },
+    "chunk_size": {
+      "description": "Input 'chunk_size'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\nimport json\nimport os\n\n\ndef run(q, v, g, A, h, o=None, scale=None, cu_seqlens=None, chunk_size=64):\n    torch.manual_seed(42)\n    B, T, H, K = q.shape\n    V = v.shape[-1]\n    BT = chunk_size\n    q_flat = q.float().reshape(B * T, H, K)\n    v_flat = v.float().reshape(B * T, H, V)\n    g_flat = g.float().reshape(B * T, H, K)\n    A_flat = A.float().reshape(B * T, H, BT)\n    o_flat = torch.zeros(B * T, H, V, dtype=torch.float32, device=q.device)\n    if cu_seqlens is None:\n        bounds = [(b * T, (b + 1) * T) for b in range(B)]\n    else:\n        cu = cu_seqlens.tolist()\n        bounds = [(cu[n], cu[n + 1]) for n in range(len(cu) - 1)]\n    gc = 0\n    for bi, (t0, t1) in enumerate(bounds):\n        c = t0\n        while c < t1:\n            e = min(c + BT, t1)\n            L = e - c\n            q_c, g_c = (q_flat[c:e], g_flat[c:e])\n            v_c = v_flat[c:e]\n            A_c = A_flat[c:e, :, :L]\n            if cu_seqlens is None:\n                h_c = h[bi, (c - t0) // BT].float()\n            else:\n                h_c = h[gc].float()\n            lower = torch.tril(torch.ones(L, L, dtype=torch.bool, device=q.device))\n            A_m = torch.where(lower[:, None, :], A_c, torch.zeros(1, device=q.device))\n            o_intra = torch.einsum('ths,shv->thv', A_m, v_c)\n            qg = q_c * scale * torch.exp(g_c)\n            o_state = torch.einsum('thk,hkv->thv', qg, h_c)\n            o_flat[c:e] = o_intra + o_state\n            c = e\n            gc += 1\n    return o_flat.reshape(B, T, H, V).to(q.dtype)",
+  "description": "Model that performs chunked GLA output computation (KDA pipeline 的输出阶段). chunk_gla_fwd_o_gk(q, v, g, A, h, o, scale, cu_seqlens, chunk_size) -> o (vLLM vllm/model_executor/layers/fla/ops/kda.py, 底层 kernel: chunk_gla_fwd_kernel_o)"
+}

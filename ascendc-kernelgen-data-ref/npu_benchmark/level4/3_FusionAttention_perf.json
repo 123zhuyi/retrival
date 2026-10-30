@@ -1,0 +1,2456 @@
+{
+ "op_name": "3_FusionAttention",
+ "source": "model.py forward NPU 实测基线（2026-09-15 shape 放大重测, 910B2C, wall-clock 逐 case, warmup=1, repeat=1）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 625.8905873145526,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "sink",
+     "shape": [
+      8
+     ]
+    }
+   ],
+   "impl_latency_us": 1902.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.0625
+    },
+    {
+     "name": "sparse_mode",
+     "value": 0
+    },
+    {
+     "name": "pre_tockens",
+     "value": 256
+    },
+    {
+     "name": "next_tockens",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 7108.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "atten_mask",
+     "shape": [
+      2,
+      16,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "sparse_mode",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 11184.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      256,
+      4096
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      256,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      256,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    }
+   ],
+   "impl_latency_us": 1188.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      512,
+      4096
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "inner_precise",
+     "value": 2
+    }
+   ],
+   "impl_latency_us": 3424.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      1024,
+      1024
+     ]
+    }
+   ],
+   "impl_latency_us": 2606.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      2,
+      16,
+      1024,
+      1024
+     ]
+    }
+   ],
+   "impl_latency_us": 5482.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    }
+   ],
+   "impl_latency_us": 2562.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "sink",
+     "shape": [
+      8
+     ]
+    }
+   ],
+   "impl_latency_us": 7791.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "sparse_mode",
+     "value": 0
+    },
+    {
+     "name": "pre_tockens",
+     "value": 64
+    },
+    {
+     "name": "next_tockens",
+     "value": 64
+    }
+   ],
+   "impl_latency_us": 380.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 32
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 1518.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 32
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 1520.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 32
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 1537.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      4,
+      32,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 32
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 1539.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "keep_prob",
+     "value": 0.9
+    },
+    {
+     "name": "gen_mask_parallel",
+     "value": false
+    },
+    {
+     "name": "sync",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 197.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "keep_prob",
+     "value": 0.9
+    }
+   ],
+   "impl_latency_us": 166.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "atten_mask",
+     "shape": [
+      1,
+      8,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "sparse_mode",
+     "value": 1
+    },
+    {
+     "name": "sink",
+     "shape": [
+      8
+     ]
+    }
+   ],
+   "impl_latency_us": 220.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "keep_prob",
+     "value": 0.9
+    },
+    {
+     "name": "gen_mask_parallel",
+     "value": true
+    },
+    {
+     "name": "sync",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 256.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 263.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "sparse_mode",
+     "value": 0
+    },
+    {
+     "name": "pre_tockens",
+     "value": 128
+    },
+    {
+     "name": "next_tockens",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 253.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      1024,
+      1024
+     ]
+    }
+   ],
+   "impl_latency_us": 197.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 259.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "inner_precise",
+     "value": 2
+    }
+   ],
+   "impl_latency_us": 271.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "sparse_mode",
+     "value": 0
+    },
+    {
+     "name": "pre_tockens",
+     "value": 128
+    },
+    {
+     "name": "next_tockens",
+     "value": 128
+    }
+   ],
+   "impl_latency_us": 173.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      1024,
+      1024
+     ]
+    }
+   ],
+   "impl_latency_us": 185.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    }
+   ],
+   "impl_latency_us": 124.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.125
+    },
+    {
+     "name": "inner_precise",
+     "value": 2
+    }
+   ],
+   "impl_latency_us": 159.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "keep_prob",
+     "value": 0.85
+    }
+   ],
+   "impl_latency_us": 581.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 262.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "inner_precise",
+     "value": 2
+    }
+   ],
+   "impl_latency_us": 278.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "atten_mask",
+     "shape": [
+      1,
+      8,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "sparse_mode",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 293.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "sink",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    }
+   ],
+   "impl_latency_us": 293.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 250.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "inner_precise",
+     "value": 2
+    }
+   ],
+   "impl_latency_us": 205.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 1596.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "sink",
+     "shape": [
+      8
+     ]
+    }
+   ],
+   "impl_latency_us": 263.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      512,
+      4096
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    }
+   ],
+   "impl_latency_us": 1059.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 329.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 2501.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      512,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "atten_mask",
+     "shape": [
+      1,
+      8,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "sparse_mode",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 186.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 303.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "pse",
+     "shape": [
+      1,
+      8,
+      1,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 295.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    }
+   ],
+   "impl_latency_us": 356.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    },
+    {
+     "name": "scale",
+     "value": 0.08838
+    },
+    {
+     "name": "sparse_mode",
+     "value": 4
+    },
+    {
+     "name": "pre_tockens",
+     "value": 64
+    },
+    {
+     "name": "next_tockens",
+     "value": 64
+    }
+   ],
+   "impl_latency_us": 267.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    }
+   ],
+   "impl_latency_us": 851.5,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "value": 0.0625
+    }
+   ],
+   "impl_latency_us": 575.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 16
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    },
+    {
+     "name": "sink",
+     "shape": [
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 606.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      2048,
+      1024
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BSH"
+    }
+   ],
+   "impl_latency_us": 217.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      1,
+      8,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 8
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 266.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "query",
+     "shape": [
+      4,
+      32,
+      16384,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "shape": [
+      4,
+      32,
+      16384,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "shape": [
+      4,
+      32,
+      16384,
+      64
+     ]
+    },
+    {
+     "name": "head_num",
+     "value": 32
+    },
+    {
+     "name": "input_layout",
+     "value": "BNSD"
+    }
+   ],
+   "impl_latency_us": 87676.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  }
+ ]
+}

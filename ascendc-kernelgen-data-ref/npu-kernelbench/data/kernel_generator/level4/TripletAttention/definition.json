@@ -1,0 +1,20 @@
+{
+  "name": "TripletAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "kernel_size": {
+      "description": "kernel size for gate convolutions; default 7"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, kernel_size=7):\n    torch.manual_seed(42)\n    kw = {\"device\": x.device, \"dtype\": x.dtype}\n    conv_ch = nn.Conv2d(2, 1, kernel_size=kernel_size, stride=1, padding=(kernel_size - 1) // 2, **kw)\n    bn_ch = nn.BatchNorm2d(1, **kw)\n    conv_cw = nn.Conv2d(2, 1, kernel_size=kernel_size, stride=1, padding=(kernel_size - 1) // 2, **kw)\n    bn_cw = nn.BatchNorm2d(1, **kw)\n    conv_hw = nn.Conv2d(2, 1, kernel_size=kernel_size, stride=1, padding=(kernel_size - 1) // 2, **kw)\n    bn_hw = nn.BatchNorm2d(1, **kw)\n\n    def gate_fn(t, conv, bn, permute=None, permute_back=None):\n        if permute is not None:\n            t = t.permute(permute)\n        z = torch.cat([t.mean(dim=1, keepdim=True), t.max(dim=1, keepdim=True)[0]], dim=1)\n        y = bn(conv(z))\n        y = F.relu(y, inplace=True)\n        attn = torch.sigmoid(y)\n        out = t * attn\n        if permute_back is not None:\n            out = out.permute(permute_back)\n        return out\n\n    x_ch = gate_fn(x, conv_ch, bn_ch, permute=(0, 3, 1, 2), permute_back=(0, 2, 3, 1))\n    x_cw = gate_fn(x, conv_cw, bn_cw, permute=(0, 2, 1, 3), permute_back=(0, 2, 1, 3))\n    x_hw = gate_fn(x, conv_hw, bn_hw)\n    return (x_ch + x_cw + x_hw) / 3.0\n",
+  "description": "Migrated TripletAttention operator."
+}

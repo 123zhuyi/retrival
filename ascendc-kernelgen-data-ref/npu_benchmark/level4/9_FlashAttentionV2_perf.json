@@ -1,0 +1,3053 @@
+{
+ "op_name": "flash_attention_score_9_FlashAttentionV2",
+ "source": "ops-ref flash_attention_score 核（源码未改）+ host 侧补齐 4 个 Linear 投影，对齐 benchmark Model.forward 全语义；实测口径 = 逐 case 隔离 msprof Quick mode、Task_Duration、warmup=3/repeats=1、50/50 case、device=11（起止各核一次该卡无并发 msprof 作业）。实测日期 2026-09-18。原始 attention-only 口径值见同目录 .bak_ 副本，未被删除。",
+ "benchmark": "9_FlashAttentionV2",
+ "total_cases": 50,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 1291.432189,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 8,
+   "ratio": 0.16
+  },
+  "500-1000us": {
+   "count": 6,
+   "ratio": 0.12
+  },
+  ">1000us": {
+   "count": 36,
+   "ratio": 0.72
+  }
+ },
+ "max_mfu_pct": 72.51605,
+ "sweet_spot_shape": {
+  "case_idx": 14,
+  "inputs_shape": [
+   {
+    "name": "q",
+    "shape": [
+     1,
+     2048,
+     8192
+    ]
+   },
+   {
+    "name": "k",
+    "shape": [
+     1,
+     2048,
+     8192
+    ]
+   },
+   {
+    "name": "v",
+    "shape": [
+     1,
+     2048,
+     8192
+    ]
+   },
+   {
+    "name": "mask",
+    "shape": [
+     2048,
+     2048
+    ]
+   }
+  ],
+  "impl_latency_us": 4819.972,
+  "mfu_pct": 72.51605
+ },
+ "caliber_status": "FULLMODEL_ALIGNED_PENDING_INDEPENDENT_ACCURACY",
+ "caliber_review_needed": "【口径】本次换口径后 (a) impl_latency_us 覆盖全模型而非注意力核；(b) mfu_pct 改用 flops_total。原 fp32 case 的 cube 峰值归一问题（原 caliber_review_needed 所述）仍未解决，本轮沿用统一峰值。【未做】本轮精度未复核：本次测量走 msprof 时延路径，未跑精度判据。committed 版 host/model_new_ascendc.py 自带 50/50 PASS 的align_verify 记录（见该 op 目录 host/ALIGN_VERIFY.md）。【已知偏差·如实记录】本次测量所用 wrapper 把注意力操作数按 半精度 直喂 FA 核；committed 版 wrapper 把 q·scale / k / v 显式升 fp32 再喂（更贴 golden）。fp32 mma 通路速率低于半精度，故本值相对 committed 版可能偏乐观。",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      512,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      512,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      512,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      512,
+      512
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 377.645,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 4294967296.0,
+   "mfu_pct": 54.632534,
+   "flops_total": 73014444032.0
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1024,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1024,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1024,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1024,
+      1024
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 771.291,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 17179869184.0,
+   "mfu_pct": 56.646151,
+   "flops_total": 154618822656.0
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2048,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2048,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2048,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 1467.727,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 68719476736.0,
+   "mfu_pct": 66.150155,
+   "flops_total": 343597383680.0
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4096,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4096,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4096,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 3668.47,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 274877906944.0,
+   "mfu_pct": 63.51882,
+   "flops_total": 824633720832.0
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      2048,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      2048,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      2048,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2048,
+      2048
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 10935.214,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 549755813888.0,
+   "mfu_pct": 71.029516,
+   "flops_total": 2748779069440.0
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1024,
+      3584
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1024,
+      3584
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1024,
+      3584
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 28
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1024,
+      1024
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 614.331,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 15032385536.0,
+   "mfu_pct": 55.314853,
+   "flops_total": 120259084288.0
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2048,
+      3584
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2048,
+      3584
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2048,
+      3584
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 28
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2048,
+      2048
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1270.101,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 60129542144.0,
+   "mfu_pct": 60.198886,
+   "flops_total": 270582939648.0
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3072,
+      3584
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3072,
+      3584
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3072,
+      3584
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 28
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 1969.257,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 135291469824.0,
+   "mfu_pct": 64.710248,
+   "flops_total": 450971566080.0
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1408,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1408,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1408,
+      4096
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1408,
+      1408
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1109.518,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 32480690176.0,
+   "mfu_pct": 56.400867,
+   "flops_total": 221459251200.0
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3584,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3584,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3584,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3584,
+      3584
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 3018.496,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 210453397504.0,
+   "mfu_pct": 64.732351,
+   "flops_total": 691489734656.0
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2048,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2048,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2048,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.11180339887498948
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2048,
+      2048
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1032.655,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 42949672960.0,
+   "mfu_pct": 41.133812,
+   "flops_total": 150323855360.0
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2048,
+      2048
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2048,
+      2048
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2048,
+      2048
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 537.169,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 34359738368.0,
+   "mfu_pct": 54.223365,
+   "flops_total": 103079215104.0
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4096,
+      2048
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4096,
+      2048
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4096,
+      2048
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      4096,
+      4096
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1560.707,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 49.767378,
+   "flops_total": 274877906944.0
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4096,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4096,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4096,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      4096,
+      4096
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 3850.193,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 274877906944.0,
+   "mfu_pct": 60.520833,
+   "flops_total": 824633720832.0
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2048,
+      8192
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2048,
+      8192
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2048,
+      8192
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 64
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2048,
+      2048
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 4819.972,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 137438953472.0,
+   "mfu_pct": 72.51605,
+   "flops_total": 1236950581248.0
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1024,
+      3072
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1024,
+      3072
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1024,
+      3072
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.10206207261596577
+    }
+   ],
+   "impl_latency_us": 487.947,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 12884901888.0,
+   "mfu_pct": 52.231537,
+   "flops_total": 90194313216.0
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      828,
+      256
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      828,
+      256
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      828,
+      256
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 4
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      828,
+      828
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 139.641,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 702038016.0,
+   "mfu_pct": 2.29905,
+   "flops_total": 1136148480.0
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      701,
+      288
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      701,
+      288
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      701,
+      288
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 6
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.14433756729740646
+    },
+    {
+     "name": "mask",
+     "shape": [
+      701,
+      701
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 165.621,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 1132187904.0,
+   "mfu_pct": 3.518862,
+   "flops_total": 2062487808.0
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1396,
+      480
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1396,
+      480
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1396,
+      480
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.15811388300841897
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1396,
+      1396
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 395.603,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 3741726720.0,
+   "mfu_pct": 4.510541,
+   "flops_total": 6314833920.0
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      1367,
+      160
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      1367,
+      160
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      1367,
+      160
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 5
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.17677669529663687
+    }
+   ],
+   "impl_latency_us": 281.484,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 4783843840.0,
+   "mfu_pct": 5.926471,
+   "flops_total": 5903690240.0
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2048,
+      384
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2048,
+      384
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2048,
+      384
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 3
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2048,
+      2048
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 190.921,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 6442450944.0,
+   "mfu_pct": 13.110716,
+   "flops_total": 8858370048.0
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1024,
+      512
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1024,
+      512
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1024,
+      512
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 4
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1024,
+      1024
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 188.401,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 2147483648.0,
+   "mfu_pct": 6.441737,
+   "flops_total": 4294967296.0
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3937,
+      1536
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3937,
+      1536
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3937,
+      1536
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3937,
+      3937
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1292.563,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 95231809536.0,
+   "mfu_pct": 37.063571,
+   "flops_total": 169540196352.0
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1646,
+      2048
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1646,
+      2048
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1646,
+      2048
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 616.688,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 22194716672.0,
+   "mfu_pct": 35.476745,
+   "flops_total": 77425311744.0
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      3828,
+      1536
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      3828,
+      1536
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      3828,
+      1536
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3828,
+      3828
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 2087.778,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 180063240192.0,
+   "mfu_pct": 43.928281,
+   "flops_total": 324565401600.0
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4143,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4143,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4143,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 10
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      4143,
+      4143
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 963.076,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 43940989440.0,
+   "mfu_pct": 16.87564,
+   "flops_total": 57516771840.0
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      2766,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      2766,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      2766,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2766,
+      2766
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 932.874,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 47006244864.0,
+   "mfu_pct": 22.145072,
+   "flops_total": 73109495808.0
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5182,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5182,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5182,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 1687.952,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 109990395904.0,
+   "mfu_pct": 25.689868,
+   "flops_total": 153460162560.0
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      1694,
+      640
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      1694,
+      640
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      1694,
+      640
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 10
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1694,
+      1694
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1165.92,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 22038804480.0,
+   "mfu_pct": 9.377199,
+   "flops_total": 38691502080.0
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3760,
+      1008
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3760,
+      1008
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3760,
+      1008
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 9
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.0944911182523068
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3760,
+      3760
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1031.477,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 57002803200.0,
+   "mfu_pct": 23.988457,
+   "flops_total": 87566008320.0
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      2211,
+      1536
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      2211,
+      1536
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      2211,
+      1536
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.10206207261596577
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2211,
+      2211
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1190.859,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 60070146048.0,
+   "mfu_pct": 34.057794,
+   "flops_total": 143532601344.0
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      3984,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      3984,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      3984,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 2429.227,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 260051042304.0,
+   "mfu_pct": 45.799296,
+   "flops_total": 393731899392.0
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      2110,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      2110,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      2110,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2110,
+      2110
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1210.56,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 54707404800.0,
+   "mfu_pct": 22.065832,
+   "flops_total": 94532321280.0
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      2599,
+      1280
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      2599,
+      1280
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      2599,
+      1280
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 20
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2599,
+      2599
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1448.266,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 69169162240.0,
+   "mfu_pct": 26.788582,
+   "flops_total": 137300387840.0
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2993,
+      2016
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2993,
+      2016
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2993,
+      2016
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 14
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08333333333333333
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2993,
+      2993
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1405.884,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 72237707136.0,
+   "mfu_pct": 34.078493,
+   "flops_total": 169552252800.0
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      2065,
+      1152
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      2065,
+      1152
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      2065,
+      1152
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 18
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 1311.382,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 58948646400.0,
+   "mfu_pct": 26.874037,
+   "flops_total": 124719920640.0
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1446,
+      3840
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1446,
+      3840
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1446,
+      3840
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 24
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.07905694150420949
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1446,
+      1446
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 2815.213,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 32116469760.0,
+   "mfu_pct": 20.344875,
+   "flops_total": 202693570560.0
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2762,
+      4096
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2762,
+      4096
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2762,
+      4096
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2762,
+      2762
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 7235.18,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 124987703296.0,
+   "mfu_pct": 19.359463,
+   "flops_total": 495697068032.0
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2268,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2268,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2268,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 40
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2268,
+      2268
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1407.485,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 52672757760.0,
+   "mfu_pct": 34.447081,
+   "flops_total": 171581276160.0
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      5,
+      2035,
+      704
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      5,
+      2035,
+      704
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      5,
+      2035,
+      704
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 11
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 1898.416,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 58308448000.0,
+   "mfu_pct": 14.683819,
+   "flops_total": 98651590400.0
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      3614,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      3614,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      3614,
+      4096
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3614,
+      3614
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 7306.442,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 427982716928.0,
+   "mfu_pct": 54.070604,
+   "flops_total": 1398108454912.0
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2097,
+      4032
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2097,
+      4032
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2097,
+      4032
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 18
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.0668153104781061
+    },
+    {
+     "name": "mask",
+     "shape": [
+      2097,
+      2097
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 2397.18,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 70921412352.0,
+   "mfu_pct": 40.508024,
+   "flops_total": 343649246976.0
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3552,
+      768
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3552,
+      768
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3552,
+      768
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3552,
+      3552
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1244.242,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 38758514688.0,
+   "mfu_pct": 12.60848,
+   "flops_total": 55518953472.0
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      3518,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      3518,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      3518,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    }
+   ],
+   "impl_latency_us": 1668.509,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 101386846208.0,
+   "mfu_pct": 27.166065,
+   "flops_total": 160409092096.0
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5164,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5164,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5164,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    },
+    {
+     "name": "mask",
+     "shape": [
+      5164,
+      5164
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 1329.664,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 109227606016.0,
+   "mfu_pct": 32.418006,
+   "flops_total": 152546377728.0
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      3564,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      3564,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      3564,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 12
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3564,
+      3564
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 2001.258,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 117062516736.0,
+   "mfu_pct": 23.65231,
+   "flops_total": 167513702400.0
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1770,
+      4096
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1770,
+      4096
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1770,
+      4096
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.0625
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1770,
+      1770
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 3878.293,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51329433600.0,
+   "mfu_pct": 21.048707,
+   "flops_total": 288894812160.0
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      3400,
+      1280
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      3400,
+      1280
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      3400,
+      1280
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 10
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.08838834764831843
+    }
+   ],
+   "impl_latency_us": 1245.661,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 118374400000.0,
+   "mfu_pct": 47.070799,
+   "flops_total": 207503360000.0
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3705,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3705,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3705,
+      2560
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 32
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.11180339887498948
+    },
+    {
+     "name": "mask",
+     "shape": [
+      3705,
+      3705
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 3031.717,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 140564736000.0,
+   "mfu_pct": 31.206174,
+   "flops_total": 334813440000.0
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      4059,
+      576
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      4059,
+      576
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      4059,
+      576
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "head_num",
+     "shape": [],
+     "value": 9
+    },
+    {
+     "name": "layout",
+     "shape": [],
+     "value": "BSH"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.125
+    },
+    {
+     "name": "mask",
+     "shape": [
+      4059,
+      4059
+     ],
+     "dtype": "uint8",
+     "kind": "causal_upper"
+    }
+   ],
+   "impl_latency_us": 2550.127,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 151838032896.0,
+   "mfu_pct": 21.599668,
+   "flops_total": 194931753984.0
+  }
+ ],
+ "data_status": "FULLMODEL_SEMANTICS_20260920 — 口径从「只算 flash_attention_score 注意力核」改为「benchmark Model.forward 全模型 = 4 个 Linear 投影 + attention + out 投影」。原因：本文件原 impl_latency_us 只覆盖注意力核（输入是预投影好的 q/k/v），而 benchmark 的 Model.forward(x, n_heads, causal) 内部才做投影，两者不同源，与自研核的全模型耗时不可直接比较。本次 impl_latency_us 为全模型口径；cases[].inputs 仍描述该 case 的张量族（q/k/v 与 x 同 shape）。mfu_pct 按新增的 flops_total（= 原 flops 注意力 FLOPs + 8·B·S·D·D 投影 FLOPs）重算，峰值沿用本文件原口径反解值。accuracy 本轮未复核（本轮只测时延）。"
+}

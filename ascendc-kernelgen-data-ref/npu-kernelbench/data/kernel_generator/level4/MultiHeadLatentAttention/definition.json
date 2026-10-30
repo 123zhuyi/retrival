@@ -1,0 +1,32 @@
+{
+  "name": "MultiHeadLatentAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "query tensor (B, S_q, _, qk_dim)"
+    },
+    "kv_cache": {
+      "description": "combined key/value cache (num_blocks, page_size, _, cache_dim)"
+    },
+    "block_table": {
+      "description": "page table mapping (B, num_pages)"
+    },
+    "cache_seqlens": {
+      "description": "actual cache length per batch (B,)"
+    },
+    "headdim_v": {
+      "description": "value head dimension"
+    },
+    "causal": {
+      "description": "whether to apply causal mask"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output (B, S_q, _, headdim_v)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport math\nimport torch.nn.functional as F\n\ndef run(q, kv_cache, block_table, cache_seqlens, headdim_v, causal):\n    batch, query_length, _, qk_dim = q.shape\n    _, page_size, _, cache_dim = kv_cache.shape\n    if cache_dim != qk_dim or not 0 < headdim_v <= qk_dim:\n        raise ValueError('cache and value dimensions are inconsistent')\n    offsets = torch.arange(page_size, device=q.device)\n    logical_indices = (block_table.long().unsqueeze(-1) * page_size + offsets).reshape(batch, -1)\n    capacity = logical_indices.shape[1]\n    flat_cache = kv_cache.reshape(-1, cache_dim)\n    selected = flat_cache[logical_indices]\n    k = selected.unsqueeze(1).float()\n    v = selected[..., :headdim_v].unsqueeze(1).float()\n    q_heads = q.transpose(1, 2).float()\n    scores = torch.matmul(q_heads, k.transpose(-2, -1)) / math.sqrt(qk_dim)\n    positions = torch.arange(capacity, device=q.device)\n    valid = positions.unsqueeze(0) < cache_seqlens.long().unsqueeze(1)\n    allowed = valid.unsqueeze(1).expand(batch, query_length, capacity)\n    if causal:\n        query_positions = torch.arange(query_length, device=q.device).view(1, query_length, 1)\n        last_positions = cache_seqlens.long().view(batch, 1, 1) - query_length + query_positions\n        allowed = allowed & (positions.view(1, 1, capacity) <= last_positions)\n    scores = scores.masked_fill((~allowed).unsqueeze(1), float('-inf'))\n    output = torch.matmul(F.softmax(scores, dim=-1), v)\n    return output.transpose(1, 2).to(dtype=q.dtype)\n",
+  "description": "Multi-head latent attention over a paged KV cache with a single combined cache tensor."
+}

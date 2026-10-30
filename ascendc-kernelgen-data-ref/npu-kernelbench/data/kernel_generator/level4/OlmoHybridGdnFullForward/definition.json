@@ -1,0 +1,59 @@
+{
+  "name": "OlmoHybridGdnFullForward",
+  "op_type": "linear_attention",
+  "axes": {},
+  "inputs": {
+    "hidden_states": {
+      "description": "shape (num_tokens, hidden_size); supports float16, bfloat16"
+    },
+    "output_buffer": {
+      "description": "shape (num_tokens, hidden_size); output buffer to be filled"
+    },
+    "w_qkvg": {
+      "description": "shape (key_dim*2 + value_dim*2, hidden_size); fused Q/K/V/Gate projection weight"
+    },
+    "w_b": {
+      "description": "shape (num_heads_v, hidden_size); beta projection weight"
+    },
+    "w_a": {
+      "description": "shape (num_heads_v, hidden_size); alpha projection weight"
+    },
+    "w_conv1d": {
+      "description": "shape (key_dim*2 + value_dim, conv_kernel_size); fused depthwise causal conv1d weight"
+    },
+    "dt_bias": {
+      "description": "shape (num_heads_v,); dt bias for softplus gating"
+    },
+    "A_log": {
+      "description": "shape (num_heads_v,); log-decay parameter"
+    },
+    "w_o_norm": {
+      "description": "shape (head_v_dim,); gated RMSNorm weight"
+    },
+    "w_o_proj": {
+      "description": "shape (hidden_size, value_dim); output projection weight"
+    },
+    "num_heads_k": {
+      "description": "int; number of key heads (before GQA expansion)"
+    },
+    "num_heads_v": {
+      "description": "int; number of value heads"
+    },
+    "head_k_dim": {
+      "description": "int; per-head key dimension"
+    },
+    "head_v_dim": {
+      "description": "int; per-head value dimension"
+    },
+    "conv_kernel_size": {
+      "description": "int; causal conv1d kernel size (typically 4)"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "shape (num_tokens, hidden_size); linear attention output"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\nimport math\n\ndef rms_norm(x, normalized_shape, weight=None, eps=1e-5):\n    dims = tuple(range(-len(normalized_shape), 0))\n    variance = x.pow(2).mean(dims, keepdim=True)\n    out = x * torch.rsqrt(variance + eps)\n    if weight is not None:\n        out = out * weight\n    return out\n\ndef silu(x):\n    return x * torch.sigmoid(x)\n\ndef _gdn_recurrence(q_f, k_f, v_f, g, beta, head_k_dim, num_tokens, num_heads_v, head_v_dim, device):\n    core_attn_out = torch.zeros(num_tokens, num_heads_v, head_v_dim, dtype=torch.float32, device=device)\n    S = torch.zeros(num_heads_v, head_v_dim, head_k_dim, dtype=torch.float32, device=device)\n    scale = 1.0 / math.sqrt(head_k_dim)\n\n    for t in range(num_tokens):\n        decay = torch.exp(g[t]).unsqueeze(-1).unsqueeze(-1)\n        beta_t = beta[t].unsqueeze(-1)\n        S = decay * S\n\n        k_t = k_f[t]\n        q_t = q_f[t]\n        v_t = v_f[t]\n\n        k_norm = k_t / (torch.norm(k_t, dim=-1, keepdim=True) + 1e-6)\n        q_norm = q_t / (torch.norm(q_t, dim=-1, keepdim=True) + 1e-6) * scale\n\n        Sk = (k_norm.unsqueeze(1) * S).sum(dim=-1)\n        residual = v_t - Sk\n        S = S + beta_t.unsqueeze(-1) * residual.unsqueeze(-1) * k_norm.unsqueeze(1)\n        core_attn_out[t] = (q_norm.unsqueeze(1) * S).sum(dim=-1)\n\n    return core_attn_out\n\ndef run(hidden_states, output_buffer, w_qkvg, w_b, w_a, w_conv1d, dt_bias, A_log,\n        w_o_norm, w_o_proj, num_heads_k, num_heads_v, head_k_dim, head_v_dim, conv_kernel_size):\n    num_tokens = hidden_states.shape[0]\n    hidden_size = hidden_states.shape[1]\n    dtype = hidden_states.dtype\n    device = hidden_states.device\n\n    # Clamp decay parameters to avoid fp16 overflow/NaN in exp/softplus combinations\n    A_log = A_log.clamp(-3.0, 3.0)\n    dt_bias = dt_bias.clamp(-3.0, 3.0)\n\n    key_dim = num_heads_k * head_k_dim\n    value_dim = num_heads_v * head_v_dim\n\n    projected_qkvg = F.linear(hidden_states, w_qkvg)\n    mixed_qkv = projected_qkvg[:, :key_dim * 2 + value_dim]\n    gate = projected_qkvg[:, key_dim * 2 + value_dim:]\n\n    b = F.linear(hidden_states, w_b)\n    a = F.linear(hidden_states, w_a)\n\n    conv_dim = key_dim * 2 + value_dim\n    mixed_qkv_t = mixed_qkv.unsqueeze(0).transpose(1, 2)\n    conv_w = w_conv1d.view(conv_dim, 1, conv_kernel_size)\n    pad_size = conv_kernel_size - 1\n    mixed_qkv_padded = F.pad(mixed_qkv_t, (pad_size, 0))\n    mixed_qkv_conv = F.conv1d(mixed_qkv_padded, conv_w, groups=conv_dim)\n    mixed_qkv_conv = mixed_qkv_conv.squeeze(0).transpose(0, 1)\n    mixed_qkv_conv = silu(mixed_qkv_conv)\n\n    query = mixed_qkv_conv[:, :key_dim].view(num_tokens, num_heads_k, head_k_dim)\n    key = mixed_qkv_conv[:, key_dim:2 * key_dim].view(num_tokens, num_heads_k, head_k_dim)\n    value = mixed_qkv_conv[:, 2 * key_dim:].view(num_tokens, num_heads_v, head_v_dim)\n\n    if num_heads_v > num_heads_k:\n        expand_ratio = num_heads_v // num_heads_k\n        query = query.unsqueeze(2).expand(-1, -1, expand_ratio, -1).reshape(num_tokens, num_heads_v, head_k_dim)\n        key = key.unsqueeze(2).expand(-1, -1, expand_ratio, -1).reshape(num_tokens, num_heads_v, head_k_dim)\n\n    g = -A_log.float().exp().unsqueeze(0) * F.softplus(a.float() + dt_bias.unsqueeze(0))\n    beta = torch.sigmoid(b.float()) * 2.0\n\n    q_f = query.float()\n    k_f = key.float()\n    v_f = value.float()\n\n    core_attn_out = _gdn_recurrence(q_f, k_f, v_f, g, beta, head_k_dim, num_tokens, num_heads_v, head_v_dim, device)\n\n    core_attn_out = core_attn_out.to(dtype)\n    gate = gate.view(num_tokens, num_heads_v, head_v_dim).clamp(-10.0, 10.0)\n\n    core_attn_out_flat = core_attn_out.reshape(-1, head_v_dim)\n    gate_flat = gate.reshape(-1, head_v_dim)\n    normed = rms_norm(core_attn_out_flat.float(), (head_v_dim,), weight=w_o_norm)\n    core_attn_out_normed = (normed * gate_flat.float() * torch.sigmoid(gate_flat.float()))\n\n    core_attn_out_reshaped = core_attn_out_normed.view(num_tokens, value_dim)\n    output = F.linear(core_attn_out_reshaped, w_o_proj.float()).to(dtype)\n    output_buffer[:num_tokens] = output\n\n    return output_buffer\n",
+  "description": "OLMo Hybrid Gated Delta Net (GDN) full forward pass for linear attention layers. Implements the complete GDN mechanism matching vLLM's OlmoHybridGatedDeltaNetAttention._full_forward. Key components: (1) Fused QKVG projection via w_qkvg, producing [Q|K|V|Gate]; (2) Separate B and A projections for numerical precision; (3) Causal depthwise 1D convolution (kernel_size=4) with SiLU activation; (4) GQA expansion from num_heads_k to num_heads_v; (5) GDN gating: g = -exp(A_log) * softplus(a + dt_bias), beta = sigmoid(b) * 2; (6) Gated delta rule recurrence: S = decay*S + outer(v - proj, k*beta), output = q @ S; (7) Gated RMSNorm (RMSNorm then sigmoid gate); (8) Output projection. Common in OLMo-Hybrid-7B with hidden_size 4096, num_heads_k 4, num_heads_v 8, head_k_dim 64, head_v_dim 64, conv_kernel_size 4."
+}

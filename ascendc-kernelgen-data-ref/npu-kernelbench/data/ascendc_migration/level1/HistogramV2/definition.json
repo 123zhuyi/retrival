@@ -1,0 +1,62 @@
+{
+  "name": "HistogramV2",
+  "op_type": "histogram",
+  "axes": {},
+  "inputs": {
+    "input": {
+      "description": "shape varies; supports float32"
+    },
+    "bins": {
+      "description": "int, default=10"
+    },
+    "range": {
+      "description": "list"
+    },
+    "weight": {
+      "description": "list"
+    },
+    "density": {
+      "description": "bool, default=False"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Histogram tensor"
+    },
+    "1": {
+      "description": "Bin edges tensor"
+    }
+  },
+  "reference": "import torch\n\ndef run(input, bins, range=None, weight=None, density=False):\n    if isinstance(range, list):\n        range = tuple(range)\n    return torch.histogram(input, bins, range=range, weight=weight, density=density)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-math.git",
+  "kernel_reference": {
+    "op_graph": [
+      "math/histogram_v2/op_graph/CMakeLists.txt",
+      "math/histogram_v2/op_graph/histogram_proto.h",
+      "math/histogram_v2/op_graph/histogram_v2_graph_infer.cpp",
+      "math/histogram_v2/op_graph/histogram_v2_proto.h"
+    ],
+    "op_host": [
+      "math/histogram_v2/op_host/CMakeLists.txt",
+      "math/histogram_v2/op_host/histogram_v2_base_tiling.cpp",
+      "math/histogram_v2/op_host/histogram_v2_def.cpp",
+      "math/histogram_v2/op_host/histogram_v2_infershape.cpp",
+      "math/histogram_v2/op_host/histogram_v2_op_tiling.cpp",
+      "math/histogram_v2/op_host/histogram_v2_simt_tiling.cpp",
+      "math/histogram_v2/op_host/histogram_v2_tiling.cpp",
+      "math/histogram_v2/op_host/histogram_v2_tiling.h"
+    ],
+    "op_kernel": [
+      "math/histogram_v2/op_kernel/histogram_v2.cpp",
+      "math/histogram_v2/op_kernel/histogram_v2_apt.cpp",
+      "math/histogram_v2/op_kernel/histogram_v2_scalar.h"
+    ],
+    "op_api": [
+      "math/histogram_v2/op_host/op_api/aclnn_histc.cpp",
+      "math/histogram_v2/op_host/op_api/aclnn_histc.h",
+      "math/histogram_v2/op_host/op_api/histogram.cpp",
+      "math/histogram_v2/op_host/op_api/histogram.h"
+    ]
+  },
+  "description": "Computes a histogram of the values in a tensor. bins can be int (equal-width) or tensor (custom edges). range specifies (min, max). weight optionally weights each sample. density=True returns probability density. Returns (hist, bin_edges) tuple."
+}

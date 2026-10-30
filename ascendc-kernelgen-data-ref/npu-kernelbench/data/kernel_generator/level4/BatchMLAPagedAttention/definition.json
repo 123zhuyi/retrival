@@ -1,0 +1,50 @@
+{
+  "name": "BatchMLAPagedAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q_nope": {
+      "description": "Input q_nope"
+    },
+    "q_pe": {
+      "description": "Input q_pe"
+    },
+    "ckv_cache": {
+      "description": "Input ckv_cache"
+    },
+    "kpe_cache": {
+      "description": "Input kpe_cache"
+    },
+    "qo_indptr": {
+      "description": "Input qo_indptr"
+    },
+    "kv_indptr": {
+      "description": "Input kv_indptr"
+    },
+    "kv_indices": {
+      "description": "Input kv_indices"
+    },
+    "kv_len_arr": {
+      "description": "Input kv_len_arr"
+    },
+    "causal": {
+      "description": "Input causal"
+    },
+    "sm_scale": {
+      "description": "Input sm_scale"
+    },
+    "return_lse": {
+      "description": "Input return_lse"
+    },
+    "return_lse_base_on_e": {
+      "description": "Input return_lse_base_on_e"
+    }
+  },
+  "outputs": {
+    "o": {
+      "description": "Output o"
+    }
+  },
+  "reference": "import torch\nimport math\nLOG2E = 1.0 / math.log(2.0)\ndef run(q_nope, q_pe, ckv_cache, kpe_cache,\n            qo_indptr, kv_indptr, kv_indices, kv_len_arr,\n            causal, sm_scale, return_lse=False, return_lse_base_on_e=False):\n    total_q, H, Dc = q_nope.shape\n    Dp = q_pe.shape[-1]\n    page_size = ckv_cache.shape[1]\n    q_nope_f, q_pe_f = q_nope.float(), q_pe.float()\n    o = torch.zeros(total_q, H, Dc, dtype=torch.float32, device=q_nope.device)\n    lse = torch.zeros(total_q, H, dtype=torch.float32, device=q_nope.device)\n    qo = qo_indptr.tolist()\n    indptr = kv_indptr.tolist()\n    indices = kv_indices.tolist()\n    kv_lens = kv_len_arr.tolist()\n    for b in range(len(kv_lens)):\n        qo_len = qo[b + 1] - qo[b]\n        kv_len = kv_lens[b]\n        npages = (kv_len + page_size - 1) // page_size\n        pages = indices[indptr[b]:indptr[b] + npages]\n        ckv = ckv_cache[pages].float().reshape(-1, Dc)[:kv_len]\n        kpe = kpe_cache[pages].float().reshape(-1, Dp)[:kv_len]\n        for i in range(qo_len):\n            s = sm_scale * (q_nope_f[qo[b] + i] @ ckv.t() + q_pe_f[qo[b] + i] @ kpe.t())\n            if causal:\n                mask = torch.arange(kv_len, device=q_nope.device) > kv_len - qo_len + i\n                s = s.masked_fill(mask[None, :], float(\"-inf\"))\n            s2 = s * LOG2E\n            m = s2.max(dim=-1, keepdim=True).values\n            e = torch.exp2(s2 - m)\n            denom = e.sum(dim=-1, keepdim=True)\n            o[qo[b] + i] = (e / denom) @ ckv\n            lse2 = m.squeeze(-1) + torch.log2(denom.squeeze(-1))\n            lse[qo[b] + i] = lse2 / LOG2E if return_lse_base_on_e else lse2\n    o = o.to(q_nope.dtype)\n    if return_lse:\n        return o, lse\n    return o",
+  "description": "Model that performs batch MLA paged attention (decode / MTP / incremental prefill).\n    FlashInfer BatchMLAPagedAttentionWrapper (flashinfer/mla/_core.py):\n        wrapper.plan(qo_indptr, kv_indptr, kv_indices, kv_len_arr, num_heads,\n                     head_dim_ckv, head_dim_kpe, page_size, causal, sm_scale, ...)\n        wrapper.run(q_nope, q_pe, ckv_cache, kpe_cache, ...) -> o (, lse)\n     deprecated \u7684 BatchDecodeMlaWithPagedKVCacheWrapper \u7684\u7ee7\u4efb\u8005,\n     \u65b0\u589e q_len > 1 (MTP/spec decode) \u4e0e\u589e\u91cf\u56e0\u679c\u63a9\u7801\u652f\u6301\u3002\n\n    torch \u539f\u751f\u5c0f\u7b97\u5b50\u62fc\u63a5\u53c2\u8003\u5b9e\u73b0(\u57fa\u4e8e\u77e9\u9635\u5438\u6536 Matrix Absorption trick):\n    \u6bcf\u4e2a\u8bf7\u6c42 b \u7684\u7b2c i \u4e2a query (\u5757\u5185\u5e8f\u53f7) \u5bf9\u6bcf\u4e2a head:\n        scores[h, j] = sm_scale * (q_nope\u00b7ckv_j + q_pe\u00b7kpe_j),  j \u2208 [0, kv_len)\n        causal \u65f6\u63a9\u7801 j > kv_len - qo_len + i   (q \u5757\u89c6\u4e3a\u8ffd\u52a0\u5728 kv \u672b\u5c3e)\n        o = softmax(scores) @ ckv                # ckv \u5438\u6536\u540e\u540c\u65f6\u4f5c\u4e3a K \u548c V\n        lse = log2(sum(exp2(log2e * scores)))    # \u9ed8\u8ba4 base-2;\n                                                 # return_lse_base_on_e=True \u65f6\u8f6c\u81ea\u7136\u5bf9\u6570\n    \u6ce8:\n      1. sm_scale \u5b98\u65b9\u793a\u4f8b\u53d6 1/sqrt(128+64) = 1/sqrt(192) (\u5438\u6536\u524d\u7ef4\u5ea6),\n         \u4e0e\u65e7 wrapper \u5e38\u7528\u7684 1/sqrt(576) \u4e0d\u540c, \u4ec5\u4e3a\u8f93\u5165\u8d85\u53c2, \u6309 case \u7ed9\u5b9a;\n      2. lse \u9ed8\u8ba4 base-2 (\u4e0e kernel \u5185\u90e8 log \u5e95\u6570\u4e00\u81f4), base_on_e=True \u65f6\u9664\u4ee5 log2(e);\n      3. o_scale/ckv_scale/kpe_scale \u4e3a FP8 \u53cd\u91cf\u5316\u53c2\u6570, \u975e FP8 \u573a\u666f\u4e0d\u7eb3\u5165;\n      4. \u9875\u8868\u7d22\u5f15\u4e71\u5e8f\u4e14\u5141\u8bb8\u5197\u4f59\u9875, \u53ea\u6709 kv_indptr/kv_indices \u6307\u5b9a\u7684\u9875\u53c2\u4e0e\u8ba1\u7b97;\n      5. backend (fa2/fa3/cutlass/trtllm-gen) \u4ec5 kernel \u5b9e\u73b0\u9009\u62e9, \u6570\u5b66\u8bed\u4e49\u4e00\u81f4\u3002"
+}

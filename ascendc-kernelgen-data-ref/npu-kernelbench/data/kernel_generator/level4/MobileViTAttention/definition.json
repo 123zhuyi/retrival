@@ -1,0 +1,23 @@
+{
+  "name": "MobileViTAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "patch_size": {
+      "description": "patch size (must divide H and W)"
+    },
+    "kernel_size": {
+      "description": "convolution kernel size; default 3"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, patch_size, kernel_size=3):\n    import math\n    torch.manual_seed(42)\n    in_channel = x.shape[1]\n    dim = in_channel\n    b, c, h, w = x.shape\n    if b == 0 or c == 0 or h == 0 or w == 0:\n        return x\n    conv1 = nn.Conv2d(c, c, kernel_size, padding=kernel_size//2).to(device=x.device, dtype=x.dtype)\n    conv2 = nn.Conv2d(c, dim, 1).to(device=x.device, dtype=x.dtype)\n    conv3 = nn.Conv2d(dim, c, 1).to(device=x.device, dtype=x.dtype)\n    conv4 = nn.Conv2d(2*c, c, kernel_size, padding=kernel_size//2).to(device=x.device, dtype=x.dtype)\n    to_qkv = nn.Linear(dim, dim*3, bias=False).to(device=x.device, dtype=x.dtype)\n    to_out = nn.Linear(dim, dim).to(device=x.device, dtype=x.dtype)\n\n    y = conv2(conv1(x))\n    ph, pw = patch_size, patch_size\n    nh, nw = h // ph, w // pw\n    y = y.reshape(b, dim, nh, ph, nw, pw).permute(0, 3, 5, 2, 4, 1).reshape(b, ph*pw, nh*nw, dim)\n    qkv = to_qkv(y).reshape(b, ph*pw, nh*nw, 3, -1).permute(3, 0, 1, 2, 4)\n    q, k, v = qkv[0], qkv[1], qkv[2]\n    attn = F.softmax(torch.matmul(q.float(), k.float().transpose(-2, -1)) / math.sqrt(dim), dim=-1)\n    y = torch.matmul(attn, v.float()).to(dtype=x.dtype).transpose(1, 2).reshape(b, ph*pw, nh*nw, dim)\n    y = to_out(y)\n    y = y.reshape(b, ph, pw, nh, nw, dim).permute(0, 5, 3, 1, 4, 2).reshape(b, dim, h, w)\n    y = conv3(y)\n    y = torch.cat([x, y], 1)\n    y = conv4(y)\n    return y\n",
+  "description": "Migrated MobileViTAttention operator."
+}

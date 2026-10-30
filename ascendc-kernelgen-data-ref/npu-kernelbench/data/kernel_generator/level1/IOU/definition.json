@@ -1,0 +1,14 @@
+{
+  "name": "IOU",
+  "axes": {},
+  "inputs": {
+    "bboxes": {"description": "First set of bounding boxes, shape (N, 4). Supports float32, float16."},
+    "gtboxes": {"description": "Second set of bounding boxes (ground truth), shape (M, 4). Same dtype as bboxes."},
+    "mode": {"description": "int, IoU computation mode: 0 = IoU (intersection over union), 1 = IoF (intersection over foreground area)."}
+  },
+  "outputs": {
+    "iou": {"description": "IoU matrix of shape (N, M), same dtype as inputs."}
+  },
+  "reference": "import torch\nfrom mmcv.ops import bbox_overlaps\n\ndef run(bboxes, gtboxes, mode=0):\n    result = bbox_overlaps(bboxes, gtboxes, mode=mode)\n    return result.t()\n",
+  "description": "IOU: Intersection over Union computation between bounding box sets.\n\nComputes IoU (mode=0: intersection/union) or IoF (mode=1: intersection/foreground_area) between two sets of bounding boxes in (x1, y1, x2, y2) format.\n\nArgs:\n    bboxes (Tensor): shape (N, 4), first set of bounding boxes.\n    gtboxes (Tensor): shape (M, 4), second set of bounding boxes (ground truth).\n    mode (int): 0 = IoU (intersection over union), 1 = IoF (intersection over foreground area).\n\nReturns: Tensor of shape (N, M), same dtype as inputs.\n\n---\nNPU vendor API: torch_npu.npu_iou(bboxes, gtboxes, mode=mode) returns shape (N, M).\nAlso available via mmcv.ops.bbox_overlaps(bboxes, gtboxes, mode=mode).t()."
+}

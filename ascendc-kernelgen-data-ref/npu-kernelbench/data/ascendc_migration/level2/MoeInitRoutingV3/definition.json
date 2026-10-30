@@ -1,0 +1,85 @@
+{
+  "name": "MoeInitRoutingV3",
+  "op_type": "routing",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "row_idx": {
+      "description": "shape varies; supports int32"
+    },
+    "expert_idx": {
+      "description": "shape varies; supports int32"
+    },
+    "active_num": {
+      "description": "int, default=3"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Expanded x features"
+    },
+    "1": {
+      "description": "Expanded row indices, int32"
+    },
+    "2": {
+      "description": "Expanded expert indices, int32"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, row_idx, expert_idx, active_num):\n    return torch_npu.npu_moe_init_routing(x, row_idx, expert_idx, active_num)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-transformer.git",
+  "kernel_reference": {
+    "op_graph": [
+      "moe/moe_init_routing_v3/op_graph/CMakeLists.txt",
+      "moe/moe_init_routing_v3/op_graph/moe_init_routing_v3_proto.h"
+    ],
+    "op_host": [
+      "moe/moe_init_routing_v3/op_host/CMakeLists.txt",
+      "moe/moe_init_routing_v3/op_host/moe_init_routing_v3_def.cpp",
+      "moe/moe_init_routing_v3/op_host/moe_init_routing_v3_infershape.cpp",
+      "moe/moe_init_routing_v3/op_host/moe_init_routing_v3_tiling.cpp",
+      "moe/moe_init_routing_v3/op_host/moe_init_routing_v3_tiling.h",
+      "moe/moe_init_routing_v3/op_host/moe_init_routing_v3_tiling_arch35.cpp",
+      "moe/moe_init_routing_v3/op_host/moe_init_routing_v3_tiling_base.cpp"
+    ],
+    "op_kernel": [
+      "moe/moe_init_routing_v3/op_kernel/moe_init_routing_v3.cpp",
+      "moe/moe_init_routing_v3/op_kernel/moe_init_routing_v3_apt.cpp",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_common.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_cut_origin_t.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_expert_tokens_count.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_full_load.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_full_load_base.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_full_load_cut_origin_t.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_full_load_dynamic_quant.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_full_load_static_quant.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_full_load_unquantized.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_gather_droppad_static_quant.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_gather_dynamic_quant.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_gather_out.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_gather_out_droppad.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_gather_sort_multi_core.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_gather_static_quant.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_mrgsort.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_mrgsort_out.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_mrgsort_out_performance.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_mrgsort_performance.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_row_idx_gather.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_row_idx_gather_droppad.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_row_idx_gather_droppad_dynamic.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_sort_actual_expert.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_sort_base.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_sort_multi_core.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_sort_multi_core_performance.h",
+      "moe/moe_init_routing_v3/op_kernel/moe_v3_sort_one_core.h"
+    ],
+    "op_api": [
+      "moe/moe_init_routing_v3/op_host/op_api/aclnn_moe_init_routing_v3.cpp",
+      "moe/moe_init_routing_v3/op_host/op_api/aclnn_moe_init_routing_v3.h",
+      "moe/moe_init_routing_v3/op_host/op_api/moe_init_routing_v3.cpp",
+      "moe/moe_init_routing_v3/op_host/op_api/moe_init_routing_v3.h"
+    ]
+  },
+  "description": "torch_npu.npu_moe_init_routing(x, row_idx, expert_idx, active_num) initializes routing for Mixture of Experts. Pure PyTorch: sort by expert_idx, compute src_to_dst mapping, gather x rows. Returns (expanded_x, expanded_row_idx, expanded_expert_idx). x is 2D (NUM_ROWS, H), row_idx and expert_idx are int32."
+}

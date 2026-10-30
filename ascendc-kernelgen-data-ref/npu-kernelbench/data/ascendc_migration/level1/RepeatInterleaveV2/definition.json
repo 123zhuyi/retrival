@@ -1,0 +1,46 @@
+{
+  "name": "RepeatInterleaveV2",
+  "op_type": "repeat",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "repeats": {
+      "description": "int, default=2"
+    },
+    "dim": {
+      "description": "int, default=0; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Repeated tensor, same shape as input except along dim"
+    }
+  },
+  "reference": "import torch\n\ndef run(x, repeats, dim=None, output_size=None):\n    if output_size is not None:\n        return torch.repeat_interleave(x, repeats, dim=dim, output_size=output_size)\n    return torch.repeat_interleave(x, repeats, dim=dim)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "index/repeat_interleave/op_graph/CMakeLists.txt",
+      "index/repeat_interleave/op_graph/repeat_interleave_proto.h"
+    ],
+    "op_host": [
+      "index/repeat_interleave/op_host/repeat_interleave_def.cpp",
+      "index/repeat_interleave/op_host/repeat_interleave_infershape.cpp"
+    ],
+    "op_kernel": [
+      "index/repeat_interleave/op_kernel/repeat_interleave_apt.cpp",
+      "index/repeat_interleave/op_kernel/arch35/repeat_interleave.h",
+      "index/repeat_interleave/op_kernel/arch35/repeat_interleave_scalar.h",
+      "index/repeat_interleave/op_kernel/arch35/repeat_interleave_small.h"
+    ],
+    "op_api": [
+      "index/repeat_interleave/op_api/aclnn_repeat_interleave.cpp",
+      "index/repeat_interleave/op_api/aclnn_repeat_interleave.h",
+      "index/repeat_interleave/op_api/repeat_interleave.cpp",
+      "index/repeat_interleave/op_api/repeat_interleave.h"
+    ]
+  },
+  "description": "Repeats elements of a tensor. repeats can be int or tensor. dim specifies the dimension to repeat along (default: flattened). output_size optionally pre-specifies total output size. Output shape same as input except along the repeated axis."
+}

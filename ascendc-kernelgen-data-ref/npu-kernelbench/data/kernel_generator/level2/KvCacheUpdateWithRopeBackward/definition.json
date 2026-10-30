@@ -1,0 +1,47 @@
+{
+  "name": "KvCacheUpdateWithRopeBackward",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "grad_key_cache": {
+      "description": "shape varies; supports float32"
+    },
+    "grad_value_cache": {
+      "description": "shape varies; supports float32"
+    },
+    "key_states": {
+      "description": "shape varies; supports float32"
+    },
+    "cos": {
+      "description": "shape varies; supports float32"
+    },
+    "sin": {
+      "description": "shape varies; supports float32"
+    },
+    "cache_position": {
+      "description": "shape varies; supports int64"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Gradient w.r.t. key_states, bfloat16"
+    },
+    "1": {
+      "description": "Gradient w.r.t. value_states, bfloat16"
+    },
+    "2": {
+      "description": "Gradient w.r.t. cos"
+    },
+    "3": {
+      "description": "Gradient w.r.t. sin"
+    },
+    "4": {
+      "description": "Gradient w.r.t. key_cache_input"
+    },
+    "5": {
+      "description": "Gradient w.r.t. value_cache_input"
+    }
+  },
+  "reference": "import torch\n\ndef run(grad_key_cache, grad_value_cache, key_states, cos, sin, cache_position):\n    half_dim = key_states.shape[-1] // 2\n    k1 = key_states[..., :half_dim]\n    k2 = key_states[..., half_dim:]\n    k_rotated_half = torch.cat((-k2, k1), dim=-1)\n    cos_expanded = cos.unsqueeze(1)\n    sin_expanded = sin.unsqueeze(1)\n    grad_key_states_rotated = grad_key_cache[:, :, cache_position]\n    grad_value_states = grad_value_cache[:, :, cache_position]\n    grad_from_cos_term = grad_key_states_rotated * cos_expanded\n    grad_k_rotated_half = grad_key_states_rotated * sin_expanded\n\n    grad_k_rotated_half_1 = grad_k_rotated_half[..., :half_dim]\n    grad_k_rotated_half_2 = grad_k_rotated_half[..., half_dim:]\n\n    grad_k2_from_rotate = -grad_k_rotated_half_1\n    grad_k1_from_rotate = grad_k_rotated_half_2\n\n    grad_k1_total = grad_from_cos_term[..., :half_dim] + grad_k1_from_rotate\n    grad_k2_total = grad_from_cos_term[..., half_dim:] + grad_k2_from_rotate\n\n    grad_key_states = torch.cat([grad_k1_total, grad_k2_total], dim=-1)\n\n    grad_cos_expanded = grad_key_states_rotated * key_states\n    grad_cos = grad_cos_expanded.sum(dim=1)\n\n    grad_sin_expanded = grad_key_states_rotated * k_rotated_half\n    grad_sin = grad_sin_expanded.sum(dim=1)\n\n    grad_key_cache_input = grad_key_cache.clone()\n    grad_key_cache_input[:, :, cache_position] = 0\n\n    grad_value_cache_input = grad_value_cache.clone()\n    grad_value_cache_input[:, :, cache_position] = 0\n\n    return (\n        grad_key_states.to(torch.bfloat16),\n        grad_value_states.to(torch.bfloat16),\n        grad_cos.to(torch.bfloat16),\n        grad_sin.to(torch.bfloat16),\n        grad_key_cache_input.to(torch.bfloat16),\n        grad_value_cache_input.to(torch.bfloat16),\n    )\n",
+  "description": "Backward pass for KV cache update with RoPE. Computes 6 gradient tensors for key/value states, cos/sin, and cache inputs. All outputs in bfloat16."
+}

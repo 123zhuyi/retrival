@@ -1,0 +1,29 @@
+{
+  "name": "BAM",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "channel": {
+      "description": "number of input channels"
+    },
+    "reduction": {
+      "description": "reduction factor for bottleneck; default 16"
+    },
+    "kernel_size": {
+      "description": "kernel size for dilated convolutions; default 3"
+    },
+    "dilation_val": {
+      "description": "dilation value for spatial branch; default 4"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention-refined tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, channel, reduction=16, kernel_size=3, dilation_val=4):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    eff = dilation_val * (kernel_size - 1) + 1\n    min_size = min(h, w)\n    if eff > min_size:\n        if min_size <= 1:\n            safe_dilation = 1\n            safe_kernel = 1\n        else:\n            safe_dilation = min(dilation_val, min_size)\n            safe_kernel = min(kernel_size, (min_size - 1) // safe_dilation + 1)\n            if safe_kernel > 1 and safe_kernel % 2 == 0:\n                safe_kernel -= 1\n        kernel_size = safe_kernel\n        dilation_val = safe_dilation\n\n    mlp = nn.Sequential(\n        nn.Linear(channel, channel // reduction),\n        nn.ReLU(inplace=True),\n        nn.Linear(channel // reduction, channel)\n    ).to(device=x.device, dtype=x.dtype)\n    conv1 = nn.Conv2d(channel, channel // reduction, kernel_size=1).to(device=x.device, dtype=x.dtype)\n    conv2 = nn.Sequential(\n        nn.Conv2d(channel // reduction, channel // reduction,\n                  kernel_size, padding=dilation_val, dilation=dilation_val),\n        nn.ReLU(inplace=True),\n        nn.Conv2d(channel // reduction, channel // reduction,\n                  kernel_size, padding=dilation_val, dilation=dilation_val),\n        nn.ReLU(inplace=True)\n    ).to(device=x.device, dtype=x.dtype)\n    conv3 = nn.Conv2d(channel // reduction, 1, kernel_size=1).to(device=x.device, dtype=x.dtype)\n\n    y_ch = F.adaptive_avg_pool2d(x, 1).view(b, c)\n    y_ch = mlp(y_ch)\n    y_ch = y_ch.view(b, c, 1, 1)\n    channel_attn = y_ch.expand_as(x)\n\n    y_sp = conv1(x)\n    y_sp = conv2(y_sp)\n    y_sp = conv3(y_sp)\n    spatial_attn = F.adaptive_avg_pool2d(y_sp, (h, w))\n    spatial_attn = spatial_attn.expand_as(x)\n\n    attn = torch.sigmoid(channel_attn + spatial_attn)\n    out = x + x * attn\n    return out\n",
+  "description": "Migrated BAM operator."
+}

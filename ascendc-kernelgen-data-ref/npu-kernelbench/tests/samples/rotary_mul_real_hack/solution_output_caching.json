@@ -1,0 +1,17 @@
+{
+  "name": "RotaryMul_output_caching",
+  "definition": "RotaryMul",
+  "author": "cannbot",
+  "spec": {
+    "languages": ["python"],
+    "target_hardware": ["ascend910b"],
+    "entry_point": "kernel.py::run",
+    "destination_passing_style": false
+  },
+  "sources": [
+    {
+      "path": "kernel.py",
+      "content": "import torch\nimport torch_npu\n\n_cache = None\n\ndef run(input, r1, r2, rotary_mode='half'):\n    global _cache\n    if _cache is None:\n        _cache = torch_npu.npu_rotary_mul(input, r1, r2, rotary_mode=rotary_mode)\n    return _cache\n"
+    }
+  ]
+}

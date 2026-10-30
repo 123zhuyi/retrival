@@ -1,0 +1,32 @@
+{
+  "name": "CausalConv1dUpdate",
+  "op_type": "convolution",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input tensor, shape (total_batch, dim) or (total_batch, dim, seqlen); supports bfloat16, float16, float32. total_batch includes padded slots."
+    },
+    "conv_state": {
+      "description": "Convolution state cache pool, shape (num_cache_lines, dim, state_len) where state_len >= width - 1; same dtype as x. Effective state is selected via randperm internally."
+    },
+    "weight": {
+      "description": "Convolution weight, shape (dim, width); same dtype as x"
+    },
+    "bias": {
+      "description": "Optional bias term, shape (dim,); same dtype as x"
+    },
+    "activation": {
+      "description": "Optional activation function, string 'silu' or None"
+    },
+    "padding": {
+      "description": "Number of padded slots in x's batch dimension. Effective batch = x.shape[0] - padding. Scalar int, default 0."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor, shape (effective_batch, ...) and same dtype as x"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(x, conv_state, weight, bias=None, activation=None, padding=0):\n    batch_size = x.shape[0] - padding\n    x = x[:batch_size]\n    torch.manual_seed(1234)\n    conv_state_indices = torch.randperm(conv_state.shape[0])[:batch_size].to(dtype=torch.int32, device=x.device)\n    conv_state = conv_state[conv_state_indices].detach().clone()\n    dtype_in = x.dtype\n    unsqueeze = x.dim() == 2\n    if unsqueeze:\n        x = x.unsqueeze(-1)\n    x_new = torch.cat([conv_state, x], dim=-1).to(weight.dtype)\n    conv_state.copy_(x_new[:, :, -conv_state.shape[-1]:])\n    left = x_new[:, :, :weight.shape[1] - 1]\n    right = x_new[:, :, -x.shape[-1]:]\n    concat = torch.cat([left, right], dim=2)\n    out = F.conv1d(concat, weight.unsqueeze(1), bias, padding=0, groups=x.shape[1])\n    out = out[:, :, -x.shape[-1]:]\n    if unsqueeze:\n        out = out.squeeze(-1)\n    if activation == \"silu\":\n        out = F.silu(out)\n    return out.to(dtype_in)\n",
+  "description": "Causal 1D convolution update operator.\n\nConcatenates the convolution state history with the current input along the time dimension, updates the selected state buffer in-place, and applies a grouped 1D convolution with optional SiLU activation.\n\n**Parameters:**\n- x: Input tensor of shape (total_batch, dim) or (total_batch, dim, seqlen). total_batch may include padded slots.\n- conv_state: State cache pool of shape (num_cache_lines, dim, state_len), where state_len >= width - 1 and width = weight.shape[1].\n- weight: Weight tensor of shape (dim, width).\n- bias: Optional bias tensor of shape (dim,).\n- activation: Optional string, 'silu' for SiLU activation or None.\n- padding: Scalar int, number of padded slots at the end of x's batch dim. Effective batch = x.shape[0] - padding. Default 0.\n\n**Returns:**\n- y: Output tensor with shape (effective_batch, ...) and same dtype as x.\n\n**Constraints:**\n- state_len must be >= width - 1.\n- The operator performs in-place update on the selected conv_state slice.\n- When x is 2D (batch, dim), it is treated as a single token (batch, dim, 1).\n- conv_state is selected from the cache pool via torch.randperm for reproducibility."
+}

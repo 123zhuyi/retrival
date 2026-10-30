@@ -1,0 +1,13 @@
+{
+  "name": "SwiGLU",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor where size of dim must be even. Supports float32, float16, bfloat16."},
+    "dim": {"description": "int, dimension along which to chunk. Default -1 (last dim)."}
+  },
+  "outputs": {
+    "y": {"description": "Output tensor, same shape as x except the dim dimension is halved. Same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, dim=-1):\n    a, b = torch.chunk(x, 2, dim=dim)\n    return torch.nn.functional.silu(a) * b\n",
+  "description": "SwiGLU activation: splits input along dim, applies SiLU to first half, multiplies by second half.\n\nsilu(x) = x * sigmoid(x)\nSwiGLU(x, dim) = silu(a) * b where a, b = chunk(x, 2, dim).\n\nArgs: x (Tensor, dim size must be even), dim (int, default -1). Returns: Tensor, same rank, dim halved."
+}

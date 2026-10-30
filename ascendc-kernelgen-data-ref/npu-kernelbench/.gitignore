@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.ruff_cache
+.pytest_cache
+
+# Virtual environments
+.venv
+
+# datasets (raw data excluded, migrated kernel_generator and ascendc_migration tracked)
+/data/*
+!/data/kernel_generator/
+!/data/kernel_generator/**
+!/data/ascendc_migration/
+!/data/ascendc_migration/**
+
+# outputs
+/out/
+
+# External reference data
+/SOL-ExecBench/
+/ascendc-kernelgen-data/
+extra-info/

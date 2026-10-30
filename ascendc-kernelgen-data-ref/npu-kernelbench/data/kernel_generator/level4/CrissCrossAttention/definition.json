@@ -1,0 +1,17 @@
+{
+  "name": "CrissCrossAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input feature map (N, C, H, W)"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "context-enhanced feature map (N, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n\n    conv_q = nn.Conv2d(c, c // 8, 1).to(device=x.device, dtype=x.dtype)\n    conv_k = nn.Conv2d(c, c // 8, 1).to(device=x.device, dtype=x.dtype)\n    conv_v = nn.Conv2d(c, c, 1).to(device=x.device, dtype=x.dtype)\n    gamma = torch.zeros(1, device=x.device, dtype=x.dtype)\n\n    proj_q = conv_q(x)\n    proj_k = conv_k(x)\n    proj_v = conv_v(x)\n\n    m_batchsize = b\n    proj_query_H = proj_q.permute(0, 3, 1, 2).contiguous().view(m_batchsize * w, -1, h).permute(0, 2, 1)\n    proj_query_W = proj_q.permute(0, 2, 1, 3).contiguous().view(m_batchsize * h, -1, w).permute(0, 2, 1)\n    proj_key_H = proj_k.permute(0, 3, 1, 2).contiguous().view(m_batchsize * w, -1, h)\n    proj_key_W = proj_k.permute(0, 2, 1, 3).contiguous().view(m_batchsize * h, -1, w)\n    proj_value_H = proj_v.permute(0, 3, 1, 2).contiguous().view(m_batchsize * w, -1, h)\n    proj_value_W = proj_v.permute(0, 2, 1, 3).contiguous().view(m_batchsize * h, -1, w)\n\n    def _INF(size, device):\n        return -torch.diag(torch.tensor(float(\"inf\"), device=device).repeat(size), 0).unsqueeze(0)\n\n    energy_H = (torch.bmm(proj_query_H, proj_key_H) + _INF(h, x.device)).view(m_batchsize, w, h, h).permute(0, 2, 1, 3)\n    energy_W = torch.bmm(proj_query_W, proj_key_W).view(m_batchsize, h, w, w)\n\n    concate = F.softmax(torch.cat([energy_H, energy_W], 3).float(), dim=3).to(dtype=x.dtype)\n    att_H = concate[:, :, :, 0:h].permute(0, 2, 1, 3).contiguous().view(m_batchsize * w, h, h)\n    att_W = concate[:, :, :, h:h + w].contiguous().view(m_batchsize * h, w, w)\n    out_H = torch.bmm(proj_value_H, att_H.permute(0, 2, 1)).view(m_batchsize, w, -1, h).permute(0, 2, 3, 1)\n    out_W = torch.bmm(proj_value_W, att_W.permute(0, 2, 1)).view(m_batchsize, h, -1, w).permute(0, 2, 1, 3)\n    out = gamma * (out_H + out_W) + x\n    return out\n",
+  "description": "Criss-Cross Attention that captures full-image context through horizontal and vertical attention paths."
+}

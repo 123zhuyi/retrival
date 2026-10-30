@@ -1,0 +1,29 @@
+{
+  "name": "OutlookAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, H, W, C)"
+    },
+    "kernel_size": {
+      "description": "local window kernel size"
+    },
+    "padding": {
+      "description": "padding for unfold/fold"
+    },
+    "stride": {
+      "description": "stride for unfold/fold"
+    },
+    "num_heads": {
+      "description": "number of attention heads"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, H, W, C)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, kernel_size, padding, stride, num_heads=None):\n    torch.manual_seed(42)\n    if num_heads is None:\n        num_heads = 1\n    B, H, W, C = x.shape\n    if B == 0 or H == 0 or W == 0 or C == 0:\n        return x\n    kernel_size = max(1, kernel_size)\n    stride = max(1, stride)\n    padding = max(0, padding)\n    if kernel_size > H or kernel_size > W:\n        kernel_size = min(kernel_size, H, W)\n        if kernel_size < 1:\n            kernel_size = 1\n    if stride > H or stride > W:\n        stride = 1\n    if padding >= kernel_size:\n        padding = kernel_size // 2\n    dim = C\n    attn_dim = (dim // num_heads) * num_heads\n    if attn_dim == 0:\n        attn_dim = num_heads\n    head_dim = attn_dim // num_heads\n    v_pj = nn.Linear(C, attn_dim).to(device=x.device, dtype=x.dtype)\n    attn_pj = nn.Linear(C, kernel_size ** 4 * num_heads).to(device=x.device, dtype=x.dtype)\n    proj = nn.Linear(attn_dim, C).to(device=x.device, dtype=x.dtype)\n    h = (H + 2 * padding - kernel_size) // stride + 1\n    w = (W + 2 * padding - kernel_size) // stride + 1\n    if h <= 0 or w <= 0:\n        return x\n    v = v_pj(x).permute(0, 3, 1, 2)\n    unfold = nn.Unfold(kernel_size=kernel_size, padding=padding, stride=stride)\n    v_unfold = unfold(v)\n    L = v_unfold.shape[-1]\n    h_out = (H + 2 * padding - kernel_size) // stride + 1\n    w_out = (W + 2 * padding - kernel_size) // stride + 1\n    if h_out * w_out != L:\n        ratio = H / max(1, W)\n        w_out = int((L / ratio) ** 0.5)\n        w_out = max(1, min(L, w_out))\n        h_out = L // w_out\n        while h_out * w_out != L and w_out > 1:\n            w_out -= 1\n            h_out = L // w_out\n    v = v_unfold.reshape(B, num_heads, head_dim, kernel_size * kernel_size, L).permute(0, 1, 4, 3, 2)\n    attn = x.permute(0, 3, 1, 2)\n    attn = F.avg_pool2d(attn, kernel_size=stride, stride=stride, ceil_mode=False)\n    if attn.shape[2] != h_out or attn.shape[3] != w_out:\n        attn = F.adaptive_avg_pool2d(attn, (h_out, w_out))\n    attn = attn.permute(0, 2, 3, 1)\n    attn = attn_pj(attn).reshape(B, L, num_heads, kernel_size * kernel_size, kernel_size * kernel_size).permute(0, 2, 1, 3, 4)\n    scale = head_dim ** -0.5\n    attn = F.softmax((attn * scale).float(), dim=-1).to(dtype=x.dtype)\n    out = (attn.float() @ v.float()).to(dtype=x.dtype).permute(0, 1, 4, 3, 2).reshape(B, attn_dim * kernel_size * kernel_size, L)\n    out = F.fold(out, output_size=(H, W), kernel_size=kernel_size, padding=padding, stride=stride)\n    out = proj(out.permute(0, 2, 3, 1))\n    return out\n",
+  "description": "Migrated OutlookAttention operator from old npu_benchmark architecture."
+}

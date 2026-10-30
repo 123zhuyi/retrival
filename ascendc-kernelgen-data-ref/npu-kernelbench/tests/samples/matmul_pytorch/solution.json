@@ -1,0 +1,17 @@
+{
+  "name": "matmul_pytorch",
+  "definition": "matmul",
+  "author": "example",
+  "spec": {
+    "languages": ["tilelang"],
+    "target_hardware": ["ascend910b"],
+    "entry_point": "main.py::run",
+    "destination_passing_style": false
+  },
+  "sources": [
+    {
+      "path": "main.py",
+      "content": "import torch\n\ndef run(a, b):\n    return torch.mm(a, b)\n"
+    }
+  ]
+}

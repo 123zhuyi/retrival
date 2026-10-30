@@ -1,0 +1,41 @@
+{
+  "name": "AdvanceStepFlashattn",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "input_tokens": {
+      "description": "shape varies; supports int64"
+    },
+    "sampled_token_ids": {
+      "description": "shape varies; supports int64"
+    },
+    "input_positions": {
+      "description": "shape varies; supports int64"
+    },
+    "seq_lens": {
+      "description": "shape varies; supports int64"
+    },
+    "slot_mapping": {
+      "description": "shape varies; supports int64"
+    },
+    "block_tables": {
+      "description": "shape varies; supports int64"
+    },
+    "num_seqs": {
+      "description": "int, default=16"
+    },
+    "num_queries": {
+      "description": "int, default=8"
+    },
+    "block_size": {
+      "description": "int, default=8"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "In-place operation: updates k_cache and v_cache. Returns None."
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(input_tokens, sampled_token_ids, input_positions, seq_lens, slot_mapping, block_tables, num_seqs, num_queries, block_size):\n    torch_npu.npu_advance_step_flashattn(input_tokens, sampled_token_ids, input_positions, seq_lens, slot_mapping, block_tables, num_seqs, num_queries, block_size)\n",
+  "description": "Advance step for flash attention in KV cache. torch_npu.npu_advance_step_flashattn updates k_cache and v_cache in-place with new tokens. In-place operation, returns None. Pure PyTorch equivalent: scatter_add new key/value into cache at slot positions."
+}

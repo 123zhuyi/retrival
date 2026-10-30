@@ -1,0 +1,68 @@
+{
+  "name": "FusedQuantMatmul",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "x1": {
+      "description": "shape varies; supports int8"
+    },
+    "x2": {
+      "description": "shape varies; supports int8"
+    },
+    "x1scale": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "x2scale": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "bias": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "fused_op_type": {
+      "description": "str"
+    },
+    "out_dtype": {
+      "description": "str"
+    },
+    "transpose_x1": {
+      "description": "bool, default=True; optional"
+    },
+    "transpose_x2": {
+      "description": "bool, default=True; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor after fused quant matmul + dequant + bias + gelu"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(x1, x2, x1scale, x2scale, bias, fused_op_type, out_dtype, transpose_x1=False, transpose_x2=False):\n    if transpose_x1:\n        x1 = x1.transpose(-2, -1)\n    if transpose_x2:\n        x2 = x2.transpose(-2, -1)\n    temp = torch.matmul(x1.to(torch.float32), x2.to(torch.float32))\n    x2scale_f = x2scale.to(torch.float32)\n    x1scale_f = x1scale.unsqueeze(-1).to(torch.float32)\n    if bias is None:\n        out = temp * x2scale_f * x1scale_f\n    elif bias.dtype == torch.int32:\n        out = (temp + bias.to(torch.float32)) * x2scale_f * x1scale_f\n    else:\n        out = temp * x2scale_f * x1scale_f + bias.to(torch.float32)\n    if fused_op_type == \"gelu_erf\":\n        out = F.gelu(out, approximate='none')\n    elif fused_op_type == \"gelu_tanh\":\n        out = F.gelu(out, approximate='tanh')\n    dtype_map = {\"float16\": torch.float16, \"bfloat16\": torch.bfloat16, \"float32\": torch.float32, \"int32\": torch.int32, \"int8\": torch.int8}\n    target_dtype = dtype_map.get(out_dtype, torch.float16) if isinstance(out_dtype, str) else out_dtype\n    return out.to(target_dtype)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "matmul/fused_quant_mat_mul/op_graph/fused_quant_mat_mul_proto.h"
+    ],
+    "op_host": [
+      "matmul/fused_quant_mat_mul/op_host/CMakeLists.txt",
+      "matmul/fused_quant_mat_mul/op_host/fused_quant_mat_mul_def.cpp",
+      "matmul/fused_quant_mat_mul/op_host/fused_quant_mat_mul_infershape.cpp"
+    ],
+    "op_kernel": [
+      "matmul/fused_quant_mat_mul/op_kernel/arch35/fused_quant_mat_mul.cpp",
+      "matmul/fused_quant_mat_mul/op_kernel/arch35/fused_quant_mat_mul_tiling_data.h",
+      "matmul/fused_quant_mat_mul/op_kernel/arch35/fused_quant_mat_mul_tilingkey.h",
+      "matmul/fused_quant_mat_mul/op_kernel/CMakeLists.txt",
+      "matmul/fused_quant_mat_mul/op_kernel/fused_quant_mat_mul.cpp",
+      "matmul/fused_quant_mat_mul/op_kernel/fused_quant_mat_mul_kernel_tilingkey.h",
+      "matmul/fused_quant_mat_mul/op_kernel/fused_quant_mat_mul_swiglu.h"
+    ],
+    "op_api": [
+      "matmul/fused_quant_mat_mul/op_host/op_api/aclnn_fused_quant_matmul.cpp",
+      "matmul/fused_quant_mat_mul/op_host/op_api/aclnn_fused_quant_matmul.h",
+      "matmul/fused_quant_mat_mul/op_host/op_api/aclnn_fused_quant_matmul_weight_nz.h",
+      "matmul/fused_quant_mat_mul/op_host/op_api/fused_quant_matmul.cpp",
+      "matmul/fused_quant_mat_mul/op_host/op_api/fused_quant_matmul.h"
+    ]
+  },
+  "description": "Fused quantized matrix multiplication with dequantization, bias addition, and optional GELU activation. Steps: (1) optional transpose, (2) matmul in float32, (3) dequantize using x1scale/x2scale, (4) add bias (int32 adds before dequant, float adds after), (5) optional GELU (gelu_erf or gelu_tanh), (6) cast to output dtype. x1/x2 are int8, scales are float32, bias is optional."
+}

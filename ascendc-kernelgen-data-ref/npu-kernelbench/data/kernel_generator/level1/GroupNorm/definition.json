@@ -1,0 +1,15 @@
+{
+  "name": "GroupNorm",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, shape [N, C, *]. Supports float32, float16, bfloat16."},
+    "num_groups": {"description": "int, number of groups to separate channels into."},
+    "weight": {"description": "Optional tensor of shape [C]. Same dtype as x. Omit if absent."},
+    "bias": {"description": "Optional tensor of shape [C]. Same dtype as x. Omit if absent."}
+  },
+  "outputs": {
+    "y": {"description": "Normalized tensor, same shape and dtype as input x."}
+  },
+  "reference": "import torch\n\ndef run(x, num_groups, weight=None, bias=None):\n    return torch.nn.functional.group_norm(x, num_groups, weight=weight, bias=bias)\n",
+  "description": "GroupNorm: Applies Group Normalization for last certain number of dimensions.\n\ntorch.nn.functional.group_norm = group_norm(input, num_groups, weight=None, bias=None, eps=1e-05) -> Tensor\n\ny = (x - E[x]) / sqrt(Var[x] + epsilon) * gamma + beta\n\nThe input channels are separated into num_groups groups, each containing num_channels / num_groups channels. num_channels must be divisible by num_groups. The mean and standard-deviation are calculated separately over each group. gamma and beta are learnable per-channel affine transform parameter vectors of size num_channels if affine is True. The variance is calculated via the biased estimator, equivalent to torch.var(input, correction=0).\n\nThis layer uses statistics computed from input data in both training and evaluation modes.\n\nArgs:\n    num_groups (int): number of groups to separate the channels into.\n    num_channels (int): number of channels expected in input.\n    eps: a value added to the denominator for numerical stability. Default: 1e-5.\n    affine: a boolean value that when set to True, this module has learnable per-channel affine parameters initialized to ones (for weights) and zeros (for biases). Default: True.\n    bias: If set to False, the layer will not learn an additive bias (only relevant if affine is True). Default: True.\n\nShape:\n    - Input: (N, C, *) where C=num_channels.\n    - Output: (N, C, *) (same shape as input).\n\nExamples:\n    >>> input = torch.randn(20, 6, 10, 10)\n    >>> # Separate 6 channels into 3 groups\n    >>> m = nn.GroupNorm(3, 6)\n    >>> # Separate 6 channels into 6 groups (equivalent with InstanceNorm)\n    >>> m = nn.GroupNorm(6, 6)\n    >>> # Put all 6 channels into a single group (equivalent with LayerNorm)\n    >>> m = nn.GroupNorm(1, 6)\n\nReturns: Tensor, same shape as input."
+}

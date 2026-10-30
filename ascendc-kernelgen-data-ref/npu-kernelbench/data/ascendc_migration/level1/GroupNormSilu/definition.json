@@ -1,0 +1,71 @@
+{
+  "name": "GroupNormSilu",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "input": {
+      "description": "shape varies; supports float32"
+    },
+    "weight": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "bias": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "group": {
+      "description": "int, default=32"
+    },
+    "eps": {
+      "description": "float, default=1e-05"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Normalized + SiLU activated output, same shape as input"
+    },
+    "1": {
+      "description": "Mean per group, shape (N, group)"
+    },
+    "2": {
+      "description": "Rstd per group, shape (N, group)"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(input, weight, bias, group, eps):\n    return torch_npu.npu_group_norm_silu(input, weight, bias, group, eps)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "norm/group_norm_silu/op_graph/CMakeLists.txt",
+      "norm/group_norm_silu/op_graph/group_norm_silu_fallback.cpp",
+      "norm/group_norm_silu/op_graph/group_norm_silu_proto.h"
+    ],
+    "op_host": [
+      "norm/group_norm_silu/op_host/CMakeLists.txt",
+      "norm/group_norm_silu/op_host/group_norm_silu_def.cpp",
+      "norm/group_norm_silu/op_host/group_norm_silu_infershape.cpp",
+      "norm/group_norm_silu/op_host/group_norm_silu_tiling.cpp",
+      "norm/group_norm_silu/op_host/group_norm_silu_tiling.h",
+      "norm/group_norm_silu/op_host/group_norm_silu_tiling_arch35.cpp"
+    ],
+    "op_kernel": [
+      "norm/group_norm_silu/op_kernel/group_norm_silu.cpp",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_apt.cpp",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_b16.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_b32.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_g16.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_g32.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_base.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_hw1_b16.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_hw1_b32.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_sd.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_small_b16.h",
+      "norm/group_norm_silu/op_kernel/group_norm_silu_small_b32.h"
+    ],
+    "op_api": [
+      "norm/group_norm_silu/op_host/op_api/aclnn_group_norm_silu.cpp",
+      "norm/group_norm_silu/op_host/op_api/aclnn_group_norm_silu.h",
+      "norm/group_norm_silu/op_host/op_api/group_norm_silu.cpp",
+      "norm/group_norm_silu/op_host/op_api/group_norm_silu.h"
+    ]
+  },
+  "description": "Fused Group Normalization with SiLU activation. torch_npu.npu_group_norm_silu(input, weight, bias, group, eps) returns (output, meanOut, rstdOut). Pure PyTorch equivalent: GroupNorm + SiLU(x * sigmoid(x)). weight and bias are optional (may be None). Supports float32, float16, bfloat16."
+}

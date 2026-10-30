@@ -1,0 +1,46 @@
+{
+  "name": "TopPSample",
+  "op_type": "sampling",
+  "axes": {},
+  "inputs": {
+    "logits": {
+      "description": "shape varies; supports float32"
+    },
+    "top_p": {
+      "description": "float, default=0.9"
+    },
+    "eps": {
+      "description": "float, default=1e-08"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Sampled indices"
+    },
+    "1": {
+      "description": "Filtered logits"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(logits, top_p, eps=1e-8):\n    batch_size = logits.shape[0]\n    device = logits.device\n    top_k = torch.ones(batch_size, 1, dtype=torch.int32, device=device)\n    return torch_npu.npu_top_k_top_p_sample(logits, top_k, top_p, q=None, eps=eps, is_need_logits=False, top_k_guess=32)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "index/top_k_top_p_sample/op_graph/CMakeLists.txt",
+      "index/top_k_top_p_sample/op_graph/top_k_top_p_sample_proto.h"
+    ],
+    "op_host": [
+      "index/top_k_top_p_sample/op_host/CMakeLists.txt",
+      "index/top_k_top_p_sample/op_host/top_k_top_p_sample_def.cpp",
+      "index/top_k_top_p_sample/op_host/top_k_top_p_sample_tiling.cpp",
+      "index/top_k_top_p_sample/op_host/top_k_top_p_sample_tiling.h"
+    ],
+    "op_kernel": [
+      "index/top_k_top_p_sample/op_kernel/top_k_top_p_comm.h",
+      "index/top_k_top_p_sample/op_kernel/top_k_top_p_sample.cpp",
+      "index/top_k_top_p_sample/op_kernel/top_k_top_p_sample.h",
+      "index/top_k_top_p_sample/op_kernel/top_k_top_p_sort_cumsum.h"
+    ],
+    "op_api": []
+  },
+  "description": "Top-P (nucleus) sampling. torch_npu.npu_top_k_top_p_sample with invalid top_k to skip topK filtering. top_p can be float or [batch] tensor. Returns (sampled_indices, filtered_logits). Pure PyTorch: softmax, sort descending, cumsum, mask above top_p, sample from filtered."
+}

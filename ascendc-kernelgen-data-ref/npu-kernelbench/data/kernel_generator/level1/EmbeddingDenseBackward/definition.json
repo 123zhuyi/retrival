@@ -1,0 +1,16 @@
+{
+  "name": "EmbeddingDenseBackward",
+  "axes": {},
+  "inputs": {
+    "grad_output": {"description": "Gradient of the output, shape [*, hidden_dim]. Supports float32, float16, bfloat16."},
+    "indices": {"description": "Int64 tensor of indices from forward pass, shape [*]."},
+    "num_weights": {"description": "int, number of rows in the embedding weight matrix."},
+    "padding_idx": {"description": "int, index of padding token to zero out gradient. Default -1."},
+    "scale_grad_by_freq": {"description": "bool, whether to scale gradients by frequency."}
+  },
+  "outputs": {
+    "y": {"description": "Gradient tensor for embedding weights, shape [num_weights, hidden_dim], same dtype as grad_output."}
+  },
+  "reference": "import torch\n\ndef run(grad_output, indices, num_weights, padding_idx=-1, scale_grad_by_freq=False):\n    return torch.ops.aten.embedding_dense_backward(grad_output, indices, num_weights, padding_idx, scale_grad_by_freq)\n",
+  "description": "EmbeddingDenseBackward: Computes the gradient for an embedding layer with dense backward pass.\n\ntorch.ops.aten.embedding_dense_backward(grad_output, indices, num_weights, padding_idx, scale_grad_by_freq) -> Tensor\n\nPerforms the backward pass for torch.nn.functional.embedding. Given the gradient of the output (grad_output) and the indices used in the forward pass, computes the gradient with respect to the embedding weights.\n\nArgs:\n    grad_output (Tensor): Gradient of the output, shape [*, hidden_dim].\n    indices (Tensor): The indices tensor from forward pass, shape [*].\n    num_weights (int): Number of rows in the embedding weight matrix.\n    padding_idx (int, optional): Index of padding token whose gradient is zeroed out. Default: -1.\n    scale_grad_by_freq (bool, optional): Whether to scale gradients by the inverse frequency of each index. Default: False.\n\nReturns: Tensor of shape [num_weights, hidden_dim], same dtype as grad_output."
+}

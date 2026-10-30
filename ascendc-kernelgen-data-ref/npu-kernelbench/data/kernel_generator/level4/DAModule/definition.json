@@ -1,0 +1,20 @@
+{
+  "name": "DAModule",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "kernel_size": {
+      "description": "kernel size for position/channel convolutions; default 3"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, kernel_size=3):\n    torch.manual_seed(42)\n    channel = x.shape[1]\n    b, c, h, w = x.shape\n    conv_pos = nn.Conv2d(c, c, kernel_size, padding=kernel_size//2).to(device=x.device, dtype=x.dtype)\n    conv_ch = nn.Conv2d(c, c, kernel_size, padding=kernel_size//2).to(device=x.device, dtype=x.dtype)\n\n    y_pos = conv_pos(x).view(b, c, -1).permute(0, 2, 1)\n    y_pos_f = y_pos.float()\n    attn_pos = F.softmax(torch.bmm(y_pos_f, y_pos_f.transpose(1, 2)) * (c ** -0.5), dim=-1)\n    out_pos = torch.bmm(attn_pos, y_pos_f).permute(0, 2, 1).view(b, c, h, w).to(x.dtype)\n\n    y_ch = conv_ch(x).view(b, c, -1)\n    y_ch_f = y_ch.float()\n    attn_ch = F.softmax(torch.bmm(y_ch_f, y_ch_f.transpose(1, 2)) * ((h*w) ** -0.5), dim=-1)\n    out_ch = torch.bmm(attn_ch, y_ch_f).view(b, c, h, w).to(x.dtype)\n\n    return out_pos + out_ch\n",
+  "description": "Migrated DAModule operator."
+}

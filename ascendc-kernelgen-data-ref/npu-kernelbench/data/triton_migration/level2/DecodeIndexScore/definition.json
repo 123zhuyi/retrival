@@ -1,0 +1,35 @@
+{
+  "name": "DecodeIndexScore",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "idx_q": {
+      "description": "Input 'idx_q'."
+    },
+    "index_kv_cache": {
+      "description": "Input 'index_kv_cache'."
+    },
+    "block_table": {
+      "description": "Input 'block_table'."
+    },
+    "seq_lens": {
+      "description": "Input 'seq_lens'."
+    },
+    "init_blocks": {
+      "description": "Input 'init_blocks'."
+    },
+    "local_blocks": {
+      "description": "Input 'local_blocks'."
+    },
+    "decode_query_len": {
+      "description": "Input 'decode_query_len'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\nSPARSE_BLOCK_SIZE = 128\n\n\ndef run(idx_q, index_kv_cache, block_table, seq_lens, init_blocks, local_blocks, decode_query_len):\n    assert idx_q.dim() == 3, f'idx_q 应为 3D, got {idx_q.shape}'\n    total_q, H, D = idx_q.shape\n    P, BS, D2 = index_kv_cache.shape\n    assert BS == SPARSE_BLOCK_SIZE and D2 == D, f'cache 形状应为 [P, 128, {D}], got {index_kv_cache.shape}'\n    B, max_block = block_table.shape\n    assert seq_lens.shape[0] == B\n    assert total_q == B * decode_query_len, f'total_q={total_q} != num_reqs({B}) * dql({decode_query_len})'\n    dql = decode_query_len\n    q = idx_q.float()\n    score = torch.full((H, total_q, max_block), float('-inf'), dtype=torch.float32, device=idx_q.device)\n    arange_bs = torch.arange(BS, device=idx_q.device)\n    arange_q = torch.arange(dql, device=idx_q.device)\n    for r in range(B):\n        seq_len = int(seq_lens[r])\n        sl = slice(r * dql, (r + 1) * dql)\n        q_r = q[sl]\n        query_pos = seq_len - dql + arange_q\n        kv_len = (query_pos + 1).clamp(min=0)\n        nb_q = (kv_len + BS - 1) // BS\n        nb = min(int(nb_q.max().item()), max_block)\n        local_start = (nb_q - local_blocks).clamp(min=0)\n        for blk in range(nb):\n            page = int(block_table[r, blk])\n            k = index_kv_cache[page].float()\n            qk = torch.einsum('kd,qhd->hqk', k, q_r)\n            pos = blk * BS + arange_bs\n            visible = pos[None, :] < kv_len[:, None]\n            qk = torch.where(visible[None, :, :], qk, torch.full_like(qk, float('-inf')))\n            s = qk.max(dim=-1).values\n            is_vis = blk < nb_q\n            is_local = (blk >= local_start) & is_vis\n            is_init = (blk < init_blocks) & is_vis\n            s = torch.where(is_local[None, :], torch.full_like(s, 1e+29), torch.where(is_init[None, :], torch.full_like(s, 1e+30), s))\n            score[:, sl, blk] = s\n    return score",
+  "description": "_decode_index_score_kernel —— MiniMax M3 lightning-indexer 的 decode 阶段 index 块打分算子（split-K，cudagraph 安全；golden reference）。"
+}

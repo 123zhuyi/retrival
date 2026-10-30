@@ -1,0 +1,15 @@
+{
+  "name": "Histc",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-2D). Supports float32, float16, bfloat16."},
+    "bins": {"description": "int, number of histogram bins."},
+    "min": {"description": "float, lower end of the range (inclusive)."},
+    "max": {"description": "float, upper end of the range (inclusive)."}
+  },
+  "outputs": {
+    "hist": {"description": "Histogram tensor of shape (bins,), dtype float32 (histc always returns float32)."}
+  },
+  "reference": "import torch\n\ndef run(x, bins, min, max):\n    return torch.histc(x.float(), bins=bins, min=min, max=max)\n",
+  "description": "Histc: Computes the histogram of a tensor.\n\ntorch.histc = histc(input, bins=100, min=0, max=0, *, out=None) -> Tensor\n\nThe elements are sorted into equal width bins between min and max. If min and max are both zero, the minimum and maximum values of the data are used.\n\nElements lower than min and higher than max and NaN elements are ignored.\n\nArgs:\n    input (Tensor): the input tensor.\n    bins (int): number of histogram bins.\n    min (Scalar): lower end of the range (inclusive).\n    max (Scalar): upper end of the range (inclusive).\n\nKeyword args:\n    out (Tensor, optional): the output tensor.\n\nExample:\n    >>> torch.histc(torch.tensor([1., 2, 1]), bins=4, min=0, max=3)\n    tensor([0., 2., 1., 0.])\n\nReturns: Tensor of shape (bins,), dtype float32."
+}

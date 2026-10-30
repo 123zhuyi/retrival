@@ -1,0 +1,4123 @@
+{
+ "op_name": "96_KdaBwd",
+ "source": "torch reference 逐 case 实测（run_perf_gpu.py，cuda，warmup=3，repeats=10，cuda event 端到端）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 0,
+ "speedup_vs_reference_geomean": null,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "500-1000us": {
+   "count": 5,
+   "ratio": 0.1
+  },
+  ">1000us": {
+   "count": 45,
+   "ratio": 0.9
+  }
+ },
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1,
+      1
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      1,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 685.7,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": "500-1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1,
+      2
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 690.0,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": "500-1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1,
+      1
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      1,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      1,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 679.2,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": "500-1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1,
+      2
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      1,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 2165.2,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1,
+      1
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      1,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      1,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      1,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 610.1,
+   "impl_latency_us": 875.7,
+   "speedup_vs_reference": 0.697,
+   "accuracy": "fail(diff=4.07e-01,matched=0.000[torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=True mr=False mere=False])",
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      2
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 1093.9,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      1,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      1,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      1,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      1,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      1,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 698.3,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": "500-1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      4,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      4,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      4,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      4,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      4,
+      2
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      4,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 2035.4,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1175.8,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1052.0,
+   "impl_latency_us": 887.6,
+   "speedup_vs_reference": 1.185,
+   "accuracy": "fail(diff=4.79e-01,matched=0.000[torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False])",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1137.8,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1111.1,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      0,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1103.9,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      0,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1111.8,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      2,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1132.7,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 3988.4,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      2,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      3,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      2,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      2,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1974.4,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7175.7,
+   "impl_latency_us": 1258.6,
+   "speedup_vs_reference": 5.701,
+   "accuracy": "fail(diff=2.89e-01,matched=0.014[torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=True mr=False mere=False])",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7153.9,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      0,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7534.2,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      0,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7710.5,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7840.2,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      6,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 8847.8,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      6,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 8595.5,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      32
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      32,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      32,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 2431.6,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      4,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      4,
+      3,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      4,
+      3,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      4,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      4,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 1768.9,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      12,
+      2
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 7886.5,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      10,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      10,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      10,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      10,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      10,
+      4
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      10,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      4,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      4,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 4862.3,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 2501.0,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 2432.5,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 2468.0,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 2425.4,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      12,
+      2
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      12,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      2,
+      64,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 5339.8,
+   "impl_latency_us": 1379.4,
+   "speedup_vs_reference": 3.871,
+   "accuracy": "fail(diff=8.44e-02,matched=0.022[torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=False mr=False mere=False][torch.float32 cap=True mr=False mere=False])",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      6,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      6,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7372.1,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      5,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      5,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 2407.6,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      9,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      9,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      9,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      9,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      9,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      9,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 4239.6,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      10,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 5054.6,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      12,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      12,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      12,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      12,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      12,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      12,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 5791.6,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      16,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      16,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      16,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      16,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      16,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 8079.8,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      20,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      20,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      20,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      20,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      20,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      20,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 9336.3,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      24,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      24,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      24,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      24,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      24,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      24,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 10870.2,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      32,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      32,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      32,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      32,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      32,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      32,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 14096.9,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      48,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      48,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      48,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      48,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      48,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      48,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 21204.6,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      64,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      64,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      64,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      64,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      64,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      64,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 28016.4,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      8,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      8,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      8,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      8,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      8,
+      32
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      8,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      32,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      32,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 3719.4,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      12,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      12,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      12,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      12,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      12,
+      32
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      12,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      32,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      32,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 5512.3,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      4,
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      4,
+      8,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      4,
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      4,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      4,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 4163.2,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      6,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      6,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      6,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      2,
+      6,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      2,
+      6,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      2,
+      6,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      2,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      2,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 3155.1,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      10,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      10,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      10,
+      16
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      10,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      16,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 4579.7,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "g",
+     "shape": [
+      1,
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "beta",
+     "shape": [
+      1,
+      16,
+      8
+     ]
+    },
+    {
+     "name": "do",
+     "shape": [
+      1,
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "dht",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    },
+    {
+     "name": "initial_state",
+     "shape": [
+      1,
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "reference_latency_us": 7573.0,
+   "impl_latency_us": null,
+   "speedup_vs_reference": null,
+   "accuracy": "impl_error(CompilationError)",
+   "latency_band": ">1000us",
+   "impl_note": "at 94:14:"
+  }
+ ]
+}

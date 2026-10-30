@@ -1,0 +1,5 @@
+#!/bin/bash
+cd {{ work_dir }}
+mkdir -p build
+cmake -B build -DGLIBCXX_USE_CXX11_ABI={{ abi_value }} -DSOC_VERSION={{ soc_version }}
+cmake --build build

@@ -1,0 +1,62 @@
+{
+  "name": "ChunkKdaFwdIntra",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input q"
+    },
+    "k": {
+      "description": "Input k"
+    },
+    "v": {
+      "description": "Input v"
+    },
+    "gk": {
+      "description": "Input gk"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "scale": {
+      "description": "Input scale"
+    },
+    "cu_seqlens": {
+      "description": "Input cu_seqlens"
+    },
+    "chunk_size": {
+      "description": "Input chunk_size"
+    },
+    "chunk_indices": {
+      "description": "Input chunk_indices"
+    },
+    "safe_gate": {
+      "description": "Input safe_gate"
+    },
+    "disable_recompute": {
+      "description": "Input disable_recompute"
+    }
+  },
+  "outputs": {
+    "w": {
+      "description": "Output w"
+    },
+    "u": {
+      "description": "Output u"
+    },
+    "qg": {
+      "description": "Output qg"
+    },
+    "kg": {
+      "description": "Output kg"
+    },
+    "Aqk": {
+      "description": "Output Aqk"
+    },
+    "Akk": {
+      "description": "Output Akk"
+    }
+  },
+  "reference": "import torch\ndef run(q, k, v, gk, beta, scale, cu_seqlens=None, chunk_size=64,\n            chunk_indices=None, safe_gate=False, disable_recompute=False):\n    torch.manual_seed(42)\n    B, T, H, K = k.shape\n    HV, V = v.shape[2], v.shape[-1]\n    BT = chunk_size\n    G = HV // H\n    q_f, k_f, v_f = q.float(), k.float(), v.float()\n    g_f, b_f = gk.float(), beta.float()\n    q_flat = q_f.reshape(B * T, H, K)\n    k_flat = k_f.reshape(B * T, H, K)\n    v_flat = v_f.reshape(B * T, HV, V)\n    g_flat = g_f.reshape(B * T, HV, K)\n    b_flat = b_f.reshape(B * T, HV)\n    Aqk = torch.zeros(B * T, HV, BT, dtype=torch.float32, device=k.device)\n    Akk = torch.zeros(B * T, HV, BT, dtype=torch.float32, device=k.device)\n    w = torch.zeros(B * T, HV, K, dtype=torch.float32, device=k.device)\n    u = torch.zeros(B * T, HV, V, dtype=torch.float32, device=k.device)\n    kg = torch.zeros(B * T, HV, K, dtype=torch.float32, device=k.device)\n    qg = torch.zeros(B * T, HV, K, dtype=torch.float32, device=k.device) \\\n        if disable_recompute else None\n    if cu_seqlens is None:\n        bounds = [(b * T, (b + 1) * T) for b in range(B)]\n    else:\n        cu = cu_seqlens.tolist()\n        bounds = [(cu[n], cu[n + 1]) for n in range(len(cu) - 1)]\n    head_map = torch.arange(HV, device=k.device) // G\n    for (t0, t1) in bounds:\n        c = t0\n        while c < t1:\n            e = min(c + BT, t1)\n            L = e - c\n            q_c = q_flat[c:e][:, head_map]\n            k_c = k_flat[c:e][:, head_map]\n            g_c = g_flat[c:e]\n            v_c = v_flat[c:e]\n            b_c = b_flat[c:e]\n            D = g_c.unsqueeze(1) - g_c.unsqueeze(0)\n            lower = torch.tril(torch.ones(L, L, dtype=torch.bool, device=k.device))\n            strict = torch.tril(torch.ones(L, L, dtype=torch.bool, device=k.device), -1)\n            zero = torch.zeros(1, device=k.device)\n            Dec = torch.where(lower[:, :, None, None], torch.exp2(D), zero)\n            DecS = torch.where(strict[:, :, None, None], torch.exp2(D), zero)\n            Aqk_l = scale * torch.einsum('thd,shd,tshd->hts', q_c, k_c, Dec)\n            Akk_raw = torch.einsum('thd,shd,tshd->hts', k_c, k_c, DecS) * b_c.t()[:, :, None]\n            eye = torch.eye(L, device=k.device).expand(HV, L, L)\n            Akk_inv = torch.linalg.solve_triangular(eye + Akk_raw, eye, upper=False)\n            kb = k_c * b_c[..., None] * torch.exp2(g_c)\n            vb = v_c * b_c[..., None]\n            w_l = torch.einsum('hts,shd->thd', Akk_inv, kb)\n            u_l = torch.einsum('hts,shv->thv', Akk_inv, vb)\n            kg_l = k_c * torch.exp2(g_c[L - 1:L] - g_c)\n            if qg is not None:\n                qg[c:e] = q_c * torch.exp2(g_c)\n            Aqk[c:e, :, :L] = Aqk_l.permute(1, 0, 2)\n            Akk[c:e, :, :L] = Akk_inv.permute(1, 0, 2)\n            w[c:e] = w_l\n            u[c:e] = u_l\n            kg[c:e] = kg_l\n            c = e\n    dt = k.dtype\n    Aqk = Aqk.reshape(B, T, HV, BT).to(dt)\n    Akk = Akk.reshape(B, T, HV, BT).to(dt)\n    w = w.reshape(B, T, HV, K).to(dt)\n    u = u.reshape(B, T, HV, V).to(v.dtype)\n    kg = kg.reshape(B, T, HV, K).to(dt)\n    if qg is not None:\n        qg = qg.reshape(B, T, HV, K).to(dt)\n    return w, u, qg, kg, Aqk, Akk",
+  "description": "Model that performs chunked KDA intra-chunk forward computation.\n    chunk_kda_fwd_intra(q, k, v, gk, beta, scale, cu_seqlens, chunk_size,\n                        chunk_indices, safe_gate, disable_recompute)\n        -> (w, u, qg, kg, Aqk, Akk)\n\n    torch 原生小算子拼接参考实现(与 Triton kernel 数学语义一致, 已闭环验证):\n    每条序列内按 chunk_size 分块, 块内局部位置 t, s, 逐通道门控 gk (log2 域\n    chunk 内 inclusive cumsum, 即上游 chunk_local_cumsum 的产物):\n        Aqk[t,s] = scale * sum_d q[t,d]*k[s,d]*2^(gk[t,d]-gk[s,d])      (s <= t)\n        Akk_raw[t,s] = beta_t * sum_d k[t,d]*k[s,d]*2^(gk[t,d]-gk[s,d]) (s < t)\n        Akk = (I + tril(Akk_raw, -1))^{-1}        # 单位下三角逆 (solve_tril)\n        w  = Akk @ (k * beta * 2^gk)              # WY 表示\n        u  = Akk @ (v * beta)\n        kg = k * 2^(gk_last - gk)                 # 衰减到块末, 供块间状态更新\n        qg = q * 2^gk                             # 仅 disable_recompute=True 时输出\n    注:\n      1. Aqk 严格上三角 kernel 侧是 empty 未初始化垃圾值, golden 置 0,\n         该部分不参与精度比较;\n      2. safe_gate 仅改变 kernel 内部数值路径(防溢出取参考点), 数学语义不变;\n      3. q/k 输入必须是 L2 归一化后的向量(真实 KDA 场景层内先做 qk-norm),\n         否则 ||k||~sqrt(K) 时 (I+Akk)^{-1} 组合爆炸, kernel 与 golden 同溢出。"
+}

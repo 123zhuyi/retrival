@@ -1,0 +1,44 @@
+{
+  "name": "TrtllmBatchDecodeSparseMlaDsv4",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "Input query"
+    },
+    "swa_kv_cache": {
+      "description": "Input swa_kv_cache"
+    },
+    "compressed_kv_cache": {
+      "description": "Input compressed_kv_cache"
+    },
+    "sparse_indices": {
+      "description": "Input sparse_indices"
+    },
+    "sparse_topk_lens": {
+      "description": "Input sparse_topk_lens"
+    },
+    "seq_lens": {
+      "description": "Input seq_lens"
+    },
+    "bmm1_scale": {
+      "description": "Input bmm1_scale"
+    },
+    "bmm2_scale": {
+      "description": "Input bmm2_scale"
+    },
+    "sinks": {
+      "description": "Input sinks"
+    },
+    "cum_seq_lens_q": {
+      "description": "Input cum_seq_lens_q"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    }
+  },
+  "reference": "import torch\nDSV4_HEAD_DIM = 512\nDSV4_SWA_TOPK = 128\ndef run(query, swa_kv_cache, compressed_kv_cache, sparse_indices,\n            sparse_topk_lens, seq_lens, bmm1_scale=1.0, bmm2_scale=1.0,\n            sinks=None, cum_seq_lens_q=None):\n    D = DSV4_HEAD_DIM\n    swa_flat = swa_kv_cache.reshape(-1, D).float()\n    comp_flat = compressed_kv_cache.reshape(-1, D).float()\n    if query.ndim == 4:\n        B, q_len, H, _ = query.shape\n        sum_q = B * q_len\n        out_shape = (B, q_len, H, D)\n    else:\n        B = cum_seq_lens_q.numel() - 1 if cum_seq_lens_q is not None else None\n        sum_q, H, _ = query.shape\n        out_shape = (sum_q, H, D)\n    q_flat = query.reshape(sum_q, H, D).float()\n    o_flat = torch.zeros(sum_q, H, D, dtype=torch.float32, device=query.device)\n    for j in range(sum_q):\n        idx = sparse_indices[j].long()\n        topk_len = int(sparse_topk_lens[j].item())\n        swa_idx = idx[:DSV4_SWA_TOPK]\n        comp_idx = idx[DSV4_SWA_TOPK:]\n        kv_parts, valid_parts = [], []\n        swa_valid = (swa_idx >= 0) & (swa_idx < swa_flat.shape[0])\n        kv_parts.append(swa_flat[swa_idx.clamp(0, swa_flat.shape[0] - 1)])\n        valid_parts.append(swa_valid)\n        if comp_idx.numel() > 0:\n            comp_valid_len = max(topk_len - DSV4_SWA_TOPK, 0)\n            comp_valid = (comp_idx >= 0) & (comp_idx < comp_flat.shape[0])\n            comp_valid &= (\n                torch.arange(comp_idx.numel(), device=comp_idx.device)\n                < comp_valid_len\n            )\n            kv_parts.append(comp_flat[comp_idx.clamp(0, comp_flat.shape[0] - 1)])\n            valid_parts.append(comp_valid)\n        kv = torch.cat(kv_parts, dim=0)\n        valid = torch.cat(valid_parts, dim=0)\n        if not bool(valid.any()):\n            continue\n        kv_v = kv[valid]\n        q = q_flat[j]\n        logits = (q @ kv_v.t()) * bmm1_scale\n        lse = torch.logsumexp(logits, dim=-1)\n        out = torch.exp(logits - lse.unsqueeze(-1)) @ kv_v\n        if sinks is not None:\n            sink_scale = 1.0 / (1.0 + torch.exp(sinks.float() - lse))\n            sink_scale = torch.where(torch.isfinite(sink_scale), sink_scale,\n                                     torch.zeros_like(sink_scale))\n            out = out * sink_scale.unsqueeze(-1)\n        o_flat[j] = out * bmm2_scale\n    return o_flat.reshape(out_shape).to(torch.bfloat16)",
+  "description": "Model that performs TRTLLM-GEN DeepSeek-V4 sparse MLA decode.\n    FlashInfer trtllm_batch_decode_sparse_mla_dsv4 (flashinfer/mla/_core.py):\n        trtllm_batch_decode_sparse_mla_dsv4(query, swa_kv_cache, workspace_buffer,\n            sparse_indices, compressed_kv_cache, sparse_topk_lens, seq_lens, out,\n            bmm1_scale, bmm2_scale, sinks, kv_layout, cum_seq_lens_q, max_q_len,\n            enable_pdl, swa_topk_lens, extra_sparse_indices, extra_sparse_topk_lens)\n        -> out (bf16)\n\n    torch \u539f\u751f\u5c0f\u7b97\u5b50\u62fc\u63a5\u53c2\u8003\u5b9e\u73b0(\u4e0e\u5b98\u65b9\u5355\u6d4b\u53c2\u8003 ref_sparse_attn_decode\n    (tests/attention/test_trtllm_gen_sparse_mla_dsv4.py) \u9010\u9879\u5bf9\u7167):\n    query/kv \u7684 head_dim \u5747\u4e3a 512 (DSv4 \u65e0 rope \u62c6\u5206), \u4e24\u4e2a\u5206\u9875 KV \u6c60:\n      swa_kv_cache       \u2014 \u6ed1\u7a97(SWA)\u6c60, \u4fdd\u7559\u5e8f\u5217\u5c3e\u90e8 token;\n      compressed_kv_cache \u2014 \u538b\u7f29\u6c60, \u5b58\u653e indexer \u9009\u4e2d\u7684\u538b\u7f29 token\u3002\n    sparse_indices [sum_q, 128 + topk] \u4e3a\u6241\u5e73 token \u69fd\u7d22\u5f15\n    (= physical_page * page_size + page_offset), -1 \u8868\u793a\u65e0\u6548:\n      \u524d 128 \u5217\u7d22\u5f15 SWA \u6c60, \u5176\u4f59\u5217\u7d22\u5f15\u538b\u7f29\u6c60\u3002\n    sparse_topk_lens [sum_q] \u4e3a\u8be5 query token \u7684\u603b\u6709\u6548\u957f\u5ea6, \u5df2\u5305\u542b\u56fa\u5b9a 128 \u4e2a\n    SWA \u9879, \u6545\u538b\u7f29\u6bb5\u6709\u6548\u6570 = sparse_topk_lens - 128 (\u6309\u5217\u524d\u7f00\u622a\u53d6)\u3002\n    \u6bcf\u4e2a query token j \u5bf9\u6bcf\u4e2a head:\n        kv      = concat(gather(swa_pool, idx[:128]), gather(comp_pool, idx[128:]))\n        logits  = q_j @ kv^T * bmm1_scale        # \u65e0\u6548\u9879 -inf\n        lse     = logsumexp(logits)\n        o       = exp(logits - lse) @ kv         # (= softmax(logits) @ kv)\n        \u82e5 sinks \u975e\u7a7a: o *= 1 / (1 + exp(sinks - lse))   # \u7b49\u4ef7 softmax \u5206\u6bcd\u52a0 exp(sinks)\n        o      *= bmm2_scale\n    \u6ce8:\n      1. \u8f93\u51fa\u6052\u4e3a BF16 (kernel \u8bed\u4e49), \u5185\u90e8 fp32 \u8ba1\u7b97;\n      2. \u63a9\u7801\u5b8c\u5168\u7531 -1 \u7d22\u5f15\u4e0e sparse_topk_lens \u51b3\u5b9a (\u540c\u5b98\u65b9\u53c2\u8003); seq_lens \u4f9b\n         kernel \u63a8\u5bfc SWA-128 \u6709\u6548\u7a97\u53e3/\u6821\u9a8c (\u8981\u6c42 seq_lens >= q_len), \u6807\u6746\u4e0d\u6539\u53d8\n         \u63a9\u7801\u8bed\u4e49, \u771f\u5b9e SWA \u56e0\u679c\u7a97\u53e3\u5df2\u7531\u7d22\u5f15\u751f\u6210\u4fa7\u7684 -1 \u586b\u5145\u8868\u8fbe;\n      3. \u65e0\u4efb\u4f55\u6709\u6548\u9879\u7684 query token \u8f93\u51fa\u4e3a 0;\n      4. workspace_buffer/out/max_q_len/enable_pdl/kv_layout \u4ec5\u4e3a kernel \u8c03\u5ea6\u4e0e\n         \u5185\u5b58\u5e03\u5c40\u53c2\u6570, \u4e0d\u5f71\u54cd\u6570\u5b66\u8bed\u4e49 (kv_layout \u4e0d\u540c\u4ec5\u6539\u53d8\u6c60\u7684\u7269\u7406\u6392\u5e03, \u6241\u5e73\u5316\n         \u540e\u7b49\u4ef7); SM120 packed uint8/FP8 \u8def\u5f84\u672a\u7eb3\u5165, query \u53d6 BF16;\n      5. \u652f\u6301 cum_seq_lens_q \u7684 ragged query \u8f93\u5165 [sum_q, H, 512]\u3002"
+}

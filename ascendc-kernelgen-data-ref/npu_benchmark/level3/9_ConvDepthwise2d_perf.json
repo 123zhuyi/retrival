@@ -1,0 +1,1083 @@
+{
+ "op_name": "9_ConvDepthwise2d",
+ "source": "融合算子(model.py PyTorch) 实测；impl=融合参考时延；asc_latency_us 为生成核时延。MFU vs fp32 176.947TF",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 1353.0406879052528,
+ "reference_latency_geomean_us": 1353.0406879052528,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 15,
+   "ratio": 0.3
+  },
+  "500-1000us": {
+   "count": 12,
+   "ratio": 0.24
+  },
+  ">1000us": {
+   "count": 23,
+   "ratio": 0.46
+  }
+ },
+ "max_mfu_pct": 0.004838072669826225,
+ "sweet_spot_shape": {
+  "case_idx": 30,
+  "impl_latency_us": 422.0,
+  "mfu_pct": 0.004838072669826225
+ },
+ "compute_unit": "AIV_ONLY",
+ "peak_note": "本生成核【不使用 cube】：KERNEL_TYPE_AIV_ONLY 纯 Vector 核（conv_depthwise2d_kernels.cpp:11 KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIV_ONLY)；conv_depthwise2d_kernel.h 无任何 Mmad/mma；op_host/conv_depthwise2d.cpp:33 TORCH_CHECK(x.scalar_type()==at::kFloat,\"only fp32 supported\")）；全部算术为 fp32。| 分母口径：既有 source 的「MFU vs fp32 cube 峰值 176.947TF」对本核只是【跨算子统一参照系】，不是物理天花板（cube 利用率恒为 0）；真实效率分母 = AIV(Vector) FFMA 峰值 22.1184 TF = 128 lanes × 48 vector_core × 1800MHz × 2 / 1e6，按该口径本文件既有 mfu_pct 应 ×8.0（本次不刷数值，仅标注）。",
+ "aiv_vector_peak_tflops": {
+  "48_core_ffma": 22.1184,
+  "basis": "n_aiv × 128 lanes × 2 FLOP/FMA × 1.8GHz (Ascend910B2C: vector_core_cnt=48, vec_calc_size=128, cube_freq=1800MHz)"
+ },
+ "mfu_pct_aiv_ffma": 0.0861,
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      1,
+      1,
+      1
+     ]
+    }
+   ],
+   "impl_latency_us": 407.7,
+   "reference_latency_us": 407.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      4,
+      1,
+      1
+     ]
+    }
+   ],
+   "impl_latency_us": 461.4,
+   "reference_latency_us": 461.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      1,
+      8,
+      8
+     ]
+    }
+   ],
+   "impl_latency_us": 303.1,
+   "reference_latency_us": 303.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 1152.0,
+   "asc_latency_us": 14.359,
+   "mfu_pct": 2.1479434730012094e-06
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      2,
+      10,
+      10
+     ]
+    }
+   ],
+   "impl_latency_us": 493.8,
+   "reference_latency_us": 493.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 2304.0,
+   "asc_latency_us": 19.387999999999998,
+   "mfu_pct": 2.636863777507763e-06
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      7,
+      15,
+      15
+     ]
+    }
+   ],
+   "impl_latency_us": 600.7,
+   "reference_latency_us": 600.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 8064.0,
+   "asc_latency_us": 20.258,
+   "mfu_pct": 7.586635036901394e-06
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      10,
+      28,
+      28
+     ]
+    }
+   ],
+   "impl_latency_us": 573.2,
+   "reference_latency_us": 573.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 196000.0,
+   "asc_latency_us": 77.095,
+   "mfu_pct": 0.00019324407848401434
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      6,
+      20,
+      20
+     ]
+    }
+   ],
+   "impl_latency_us": 543.1,
+   "reference_latency_us": 543.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 43200.0,
+   "asc_latency_us": 41.967,
+   "mfu_pct": 4.4953162401031115e-05
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      3,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 640.1,
+   "reference_latency_us": 640.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 55296.0,
+   "asc_latency_us": 73.815,
+   "mfu_pct": 4.882049679737542e-05
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      3,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 448.9,
+   "reference_latency_us": 448.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 55296.0,
+   "asc_latency_us": 54.385999999999996,
+   "mfu_pct": 6.961461349966585e-05
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      8,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 2687.8,
+   "reference_latency_us": 2687.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 102400.0,
+   "asc_latency_us": 69.05449999999999,
+   "mfu_pct": 2.1530757634634414e-05
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      8,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 599.0,
+   "reference_latency_us": 599.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 147456.0,
+   "asc_latency_us": 33.1575,
+   "mfu_pct": 0.0001391207568169171
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      16,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 574.3,
+   "reference_latency_us": 574.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 32768.0,
+   "asc_latency_us": 19.4185,
+   "mfu_pct": 3.224537440104217e-05
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      8,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 4227.4,
+   "reference_latency_us": 4227.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 112896.0,
+   "asc_latency_us": 30.387,
+   "mfu_pct": 1.5092511551623539e-05
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      3,
+      224,
+      224
+     ]
+    }
+   ],
+   "impl_latency_us": 2624.2,
+   "reference_latency_us": 2624.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 677376.0,
+   "asc_latency_us": 258.184,
+   "mfu_pct": 0.00014587779132688058
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      11,
+      13,
+      13
+     ]
+    }
+   ],
+   "impl_latency_us": 374.6,
+   "reference_latency_us": 374.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 182182.0,
+   "asc_latency_us": 104.103,
+   "mfu_pct": 0.0002748488965004029
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      32,
+      48,
+      48
+     ]
+    }
+   ],
+   "impl_latency_us": 3970.9,
+   "reference_latency_us": 3970.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 7372800.0,
+   "asc_latency_us": 436.3835,
+   "mfu_pct": 0.0010493003265422617
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      16,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 387.1,
+   "reference_latency_us": 387.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 1179648.0,
+   "asc_latency_us": 117.8725,
+   "mfu_pct": 0.001722207870489968
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      4,
+      12,
+      12
+     ]
+    }
+   ],
+   "impl_latency_us": 391.9,
+   "reference_latency_us": 391.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 28800.0,
+   "asc_latency_us": 51.046,
+   "mfu_pct": 4.1531109126477846e-05
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      40,
+      18,
+      18
+     ]
+    }
+   ],
+   "impl_latency_us": 400.3,
+   "reference_latency_us": 400.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 58320.0,
+   "asc_latency_us": 27.057,
+   "mfu_pct": 8.233570915563327e-05
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      4,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 497.9,
+   "reference_latency_us": 497.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 147456.0,
+   "asc_latency_us": 32.0675,
+   "mfu_pct": 0.000167369619066747
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      16,
+      112,
+      112
+     ]
+    }
+   ],
+   "impl_latency_us": 380.5,
+   "reference_latency_us": 380.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 903168.0,
+   "asc_latency_us": 135.5215,
+   "mfu_pct": 0.0013414367060884803
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      384,
+      3,
+      3
+     ]
+    }
+   ],
+   "impl_latency_us": 570.4,
+   "reference_latency_us": 570.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 62208.0,
+   "asc_latency_us": 77.6545,
+   "mfu_pct": 6.16343793828892e-05
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      12,
+      48,
+      48
+     ]
+    }
+   ],
+   "impl_latency_us": 1556.8,
+   "reference_latency_us": 1556.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 2764800.0,
+   "asc_latency_us": 227.096,
+   "mfu_pct": 0.0010036613566289827
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      128,
+      8,
+      8
+     ]
+    }
+   ],
+   "impl_latency_us": 562.2,
+   "reference_latency_us": 562.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 16384.0,
+   "asc_latency_us": 19.9675,
+   "mfu_pct": 1.6469689184025717e-05
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      160,
+      5,
+      5
+     ]
+    }
+   ],
+   "impl_latency_us": 4158.9,
+   "reference_latency_us": 4158.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 72000.0,
+   "asc_latency_us": 44.197,
+   "mfu_pct": 9.783862118989798e-06
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      128,
+      14,
+      14
+     ]
+    }
+   ],
+   "impl_latency_us": 450.4,
+   "reference_latency_us": 450.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 451584.0,
+   "asc_latency_us": 102.18350000000001,
+   "mfu_pct": 0.0005666259621077561
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      256,
+      7,
+      7
+     ]
+    }
+   ],
+   "impl_latency_us": 1802.4,
+   "reference_latency_us": 1802.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 451584.0,
+   "asc_latency_us": 153.9495,
+   "mfu_pct": 0.00014159361591951472
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      16,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 3917.3,
+   "reference_latency_us": 3917.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 2880000.0,
+   "asc_latency_us": 338.7095,
+   "mfu_pct": 0.0004154913248070525
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      8,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 4140.3,
+   "reference_latency_us": 4140.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 129600.0,
+   "asc_latency_us": 55.786,
+   "mfu_pct": 1.769006774871386e-05
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      32,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 446.7,
+   "reference_latency_us": 446.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 1059968.0,
+   "asc_latency_us": 226.656,
+   "mfu_pct": 0.0013410133675762176
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      64,
+      24,
+      24
+     ]
+    }
+   ],
+   "impl_latency_us": 422.0,
+   "reference_latency_us": 422.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 3612672.0,
+   "asc_latency_us": 374.477,
+   "mfu_pct": 0.004838072669826225
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      64,
+      28,
+      28
+     ]
+    }
+   ],
+   "impl_latency_us": 567.4,
+   "reference_latency_us": 567.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 903168.0,
+   "asc_latency_us": 104.333,
+   "mfu_pct": 0.0008995711432264131
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      64,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 680.9,
+   "reference_latency_us": 680.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 32768.0,
+   "asc_latency_us": 16.6385,
+   "mfu_pct": 2.719711928112575e-05
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      128,
+      28,
+      28
+     ]
+    }
+   ],
+   "impl_latency_us": 1971.3,
+   "reference_latency_us": 1971.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 451584.0,
+   "asc_latency_us": 118.3625,
+   "mfu_pct": 0.00012946194558582325
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      3,
+      128,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 5049.1,
+   "reference_latency_us": 5049.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 214326.0,
+   "asc_latency_us": 182.20749999999998,
+   "mfu_pct": 2.3989278797830305e-05
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      256,
+      14,
+      14
+     ]
+    }
+   ],
+   "impl_latency_us": 425.3,
+   "reference_latency_us": 425.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 165888.0,
+   "asc_latency_us": 87.55449999999999,
+   "mfu_pct": 0.00022043263578650364
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      512,
+      4,
+      4
+     ]
+    }
+   ],
+   "impl_latency_us": 893.9,
+   "reference_latency_us": 893.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 147456.0,
+   "asc_latency_us": 118.0025,
+   "mfu_pct": 9.322444717902824e-05
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      512,
+      7,
+      7
+     ]
+    }
+   ],
+   "impl_latency_us": 5561.3,
+   "reference_latency_us": 5561.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 82944.0,
+   "asc_latency_us": 85.6945,
+   "mfu_pct": 8.428784636685668e-06
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      80,
+      9,
+      9
+     ]
+    }
+   ],
+   "impl_latency_us": 4072.6,
+   "reference_latency_us": 4072.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 70560.0,
+   "asc_latency_us": 30.228,
+   "mfu_pct": 9.791362295175892e-06
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      32,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 4454.4,
+   "reference_latency_us": 4454.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 21099008.0,
+   "asc_latency_us": 1107.962,
+   "mfu_pct": 0.002676881389853395
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      48,
+      24,
+      24
+     ]
+    }
+   ],
+   "impl_latency_us": 513.0,
+   "reference_latency_us": 513.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 124416.0,
+   "asc_latency_us": 52.3865,
+   "mfu_pct": 0.00013706140350877192
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      32,
+      56,
+      56
+     ]
+    }
+   ],
+   "impl_latency_us": 5405.4,
+   "reference_latency_us": 5405.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 3612672.0,
+   "asc_latency_us": 223.26600000000002,
+   "mfu_pct": 0.0003777087110420444
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      24,
+      40,
+      40
+     ]
+    }
+   ],
+   "impl_latency_us": 5645.1,
+   "reference_latency_us": 5645.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 3763200.0,
+   "asc_latency_us": 346.7475,
+   "mfu_pct": 0.0003767402014332982
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      64,
+      28,
+      28
+     ]
+    }
+   ],
+   "impl_latency_us": 10988.2,
+   "reference_latency_us": 10988.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 1229312.0,
+   "asc_latency_us": 265.0025,
+   "mfu_pct": 6.322544150054571e-05
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      64,
+      56,
+      56
+     ]
+    }
+   ],
+   "impl_latency_us": 3146.3,
+   "reference_latency_us": 3146.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 3875328.0,
+   "asc_latency_us": 238.5855,
+   "mfu_pct": 0.0006960887921262012
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      16,
+      48,
+      48
+     ]
+    }
+   ],
+   "impl_latency_us": 5858.3,
+   "reference_latency_us": 5858.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 1548800.0,
+   "asc_latency_us": 217.1765,
+   "mfu_pct": 0.00014941012782750145
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      192,
+      6,
+      6
+     ]
+    }
+   ],
+   "impl_latency_us": 1321.9,
+   "reference_latency_us": 1321.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 124416.0,
+   "asc_latency_us": 58.685,
+   "mfu_pct": 5.319048339511309e-05
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      32,
+      56,
+      56
+     ]
+    }
+   ],
+   "impl_latency_us": 4309.4,
+   "reference_latency_us": 4309.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 2508800.0,
+   "asc_latency_us": 318.9805,
+   "mfu_pct": 0.00032900730358613125
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      96,
+      12,
+      12
+     ]
+    }
+   ],
+   "impl_latency_us": 2140.3,
+   "reference_latency_us": 2140.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 248832.0,
+   "asc_latency_us": 67.8055,
+   "mfu_pct": 6.570340606457039e-05
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      16,
+      256,
+      8192
+     ]
+    }
+   ],
+   "impl_latency_us": 471337.1,
+   "reference_latency_us": 471337.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  }
+ ],
+ "remeasure_note": "2026-09-15 重测：Model.forward NPU wall-clock 逐 case 实测（910B2C, warmup=1, repeat=1, perf_counter + npu.synchronize）；口径为端到端单次的 host+device 时延（含 launch 开销），与旧 kernel 级口径不可直接比较。；任务 .json 已于此前扩展重建（shape 全换/部分换），flops/mfu_pct/asc_latency_us 仅保留与新 shape 匹配的旧 case，mfu_pct 已按新旧延迟比换算"
+}

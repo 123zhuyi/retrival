@@ -1,0 +1,23 @@
+{
+  "name": "gelu",
+  "axes": {
+    "N": {"type": "var", "description": "batch size"},
+    "D": {"type": "var", "description": "feature dim"}
+  },
+  "inputs": {
+    "x": {
+      "shape": ["N", "D"],
+      "dtype": "float32",
+      "description": "input tensor"
+    }
+  },
+  "outputs": {
+    "y": {
+      "shape": ["N", "D"],
+      "dtype": "float32",
+      "description": "output tensor"
+    }
+  },
+  "reference": "import torch\ndef run(x):\n    return torch.nn.functional.gelu(x, approximate='none')\n",
+  "description": "GELU activation function"
+}

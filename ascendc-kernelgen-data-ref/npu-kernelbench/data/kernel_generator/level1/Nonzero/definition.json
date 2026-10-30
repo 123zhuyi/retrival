@@ -1,0 +1,13 @@
+{
+  "name": "Nonzero",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16, int32, int64."},
+    "as_tuple": {"description": "bool, if True returns tuple of 1-D tensors per dimension, else returns 2-D tensor of indices."}
+  },
+  "outputs": {
+    "indices": {"description": "Indices of non-zero elements. If as_tuple=False: 2-D (z,n) LongTensor. If as_tuple=True: tuple of n 1-D LongTensors."}
+  },
+  "reference": "import torch\n\ndef run(x, as_tuple=False):\n    return torch.nonzero(x, as_tuple=as_tuple)\n",
+  "description": "Nonzero: Returns indices of non-zero elements in the tensor.\n\ntorch.nonzero = nonzero(input, *, out=None, as_tuple=False) -> LongTensor or tuple of LongTensors\n\nWhen as_tuple is False (default): Returns a 2-D tensor where each row is the index for a nonzero value. The result is sorted lexicographically, with the last index changing the fastest (C-style). If input has n dimensions, then the resulting indices tensor out is of size (z x n), where z is the total number of non-zero elements in the input tensor.\n\nWhen as_tuple is True: Returns a tuple of 1-D tensors, one for each dimension in input, each containing the indices (in that dimension) of all non-zero elements of input. If input has n dimensions, then the resulting tuple contains n tensors of size z.\n\nArgs:\n    input (Tensor): the input tensor.\n\nKeyword args:\n    out (LongTensor, optional): the output tensor containing indices.\n\nReturns:\n    LongTensor or tuple of LongTensor: If as_tuple is False, the output tensor containing indices. If as_tuple is True, one 1-D tensor for each dimension.\n\nExample:\n    >>> torch.nonzero(torch.tensor([1, 1, 1, 0, 1]))\n    tensor([[0], [1], [2], [4]])\n    >>> torch.nonzero(torch.tensor([[0.6, 0.0, 0.0, 0.0], [0.0, 0.4, 0.0, 0.0], [0.0, 0.0, 1.2, 0.0], [0.0, 0.0, 0.0, -0.4]]))\n    tensor([[0, 0], [1, 1], [2, 2], [3, 3]])\n    >>> torch.nonzero(torch.tensor([1, 1, 1, 0, 1]), as_tuple=True)\n    (tensor([0, 1, 2, 4]),)"
+}

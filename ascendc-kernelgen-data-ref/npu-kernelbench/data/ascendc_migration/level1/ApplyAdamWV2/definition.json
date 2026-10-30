@@ -1,0 +1,92 @@
+{
+  "name": "ApplyAdamWV2",
+  "op_type": "optimizer",
+  "axes": {},
+  "inputs": {
+    "param": {
+      "description": "shape varies; supports float32"
+    },
+    "exp_avg": {
+      "description": "shape varies; supports float32"
+    },
+    "exp_avg_sq": {
+      "description": "shape varies; supports float32"
+    },
+    "max_exp_avg_sq": {
+      "description": "shape varies; supports float32"
+    },
+    "grad": {
+      "description": "shape varies; supports float32"
+    },
+    "step": {
+      "description": "shape varies; supports int64"
+    },
+    "lr": {
+      "description": "float, default=0.01"
+    },
+    "beta1": {
+      "description": "float, default=0.9"
+    },
+    "beta2": {
+      "description": "float, default=0.999"
+    },
+    "weight_decay": {
+      "description": "float, default=0.0"
+    },
+    "eps": {
+      "description": "float, default=1e-08"
+    },
+    "amsgrad": {
+      "description": "bool, default=False"
+    },
+    "maximize": {
+      "description": "bool, default=False"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Updated param"
+    },
+    "1": {
+      "description": "Updated exp_avg"
+    },
+    "2": {
+      "description": "Updated exp_avg_sq"
+    },
+    "3": {
+      "description": "Updated max_exp_avg_sq"
+    }
+  },
+  "reference": "import torch\nimport math\n\ndef run(param, exp_avg, exp_avg_sq, max_exp_avg_sq, grad, step, lr, beta1, beta2, weight_decay, eps, amsgrad, maximize):\n    dtype = param.dtype\n    if grad.dtype != dtype:\n        grad = grad.to(dtype)\n        max_exp_avg_sq = max_exp_avg_sq.to(dtype)\n    if maximize:\n        grad = -grad\n    step_val = int(step.item()) + 1\n    param = param * (1 - lr * weight_decay)\n    exp_avg.lerp_(grad, 1 - beta1)\n    exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)\n    bias_correction1 = 1 - beta1 ** step_val\n    bias_correction2 = 1 - beta2 ** step_val\n    step_size = lr / bias_correction1\n    bias_correction2_sqrt = math.sqrt(bias_correction2)\n    if amsgrad:\n        torch.maximum(max_exp_avg_sq, exp_avg_sq, out=max_exp_avg_sq)\n        denom = (max_exp_avg_sq.sqrt() / bias_correction2_sqrt) + eps\n    else:\n        denom = (exp_avg_sq.sqrt() / bias_correction2_sqrt) + eps\n    param.addcdiv_(exp_avg, denom, value=-step_size)\n    return param, exp_avg, exp_avg_sq, max_exp_avg_sq\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "optim/apply_adam_w_v2/op_graph/CMakeLists.txt",
+      "optim/apply_adam_w_v2/op_graph/apply_adam_w_v2_proto.h"
+    ],
+    "op_host": [
+      "optim/apply_adam_w_v2/op_host/CMakeLists.txt",
+      "optim/apply_adam_w_v2/op_host/apply_adam_w_v2_def.cpp",
+      "optim/apply_adam_w_v2/op_host/apply_adam_w_v2_infershape.cpp",
+      "optim/apply_adam_w_v2/op_host/apply_adam_w_v2_tiling.cpp",
+      "optim/apply_adam_w_v2/op_host/apply_adam_w_v2_tiling.h",
+      "optim/apply_adam_w_v2/op_host/apply_adam_w_v2_tiling_arch35.cpp",
+      "optim/apply_adam_w_v2/op_host/apply_adam_w_v2_tiling_arch35.h"
+    ],
+    "op_kernel": [
+      "optim/apply_adam_w_v2/op_kernel/apply_adam_w_v2.cpp",
+      "optim/apply_adam_w_v2/op_kernel/apply_adam_w_v2.b16.h",
+      "optim/apply_adam_w_v2/op_kernel/apply_adam_w_v2.base.h",
+      "optim/apply_adam_w_v2/op_kernel/apply_adam_w_v2.fp.h",
+      "optim/apply_adam_w_v2/op_kernel/apply_adam_w_v2_mix_dtype.h",
+      "optim/apply_adam_w_v2/op_kernel/CMakeLists.txt"
+    ],
+    "op_api": [
+      "optim/apply_adam_w_v2/op_host/op_api/apply_adam_w_v2.h",
+      "optim/apply_adam_w_v2/op_host/op_api/apply_adam_w_v2.cpp",
+      "optim/apply_adam_w_v2/op_host/op_api/aclnn_apply_adam_w_v2.h",
+      "optim/apply_adam_w_v2/op_host/op_api/aclnn_apply_adam_w_v2.cpp"
+    ]
+  },
+  "description": "Fused AdamW optimizer step. Updates param, exp_avg, exp_avg_sq, and optionally max_exp_avg_sq using gradient descent with AdamW algorithm. Supports amsgrad variant and maximize mode. Returns (param, exp_avg, exp_avg_sq, max_exp_avg_sq) tuple. In-place updates on exp_avg and exp_avg_sq."
+}

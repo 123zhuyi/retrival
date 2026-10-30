@@ -1,0 +1,44 @@
+{
+  "name": "ChunkO",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input q"
+    },
+    "k": {
+      "description": "Input k"
+    },
+    "v": {
+      "description": "Input v"
+    },
+    "h": {
+      "description": "Input h"
+    },
+    "g": {
+      "description": "Input g"
+    },
+    "g_gamma": {
+      "description": "Input g_gamma"
+    },
+    "scale": {
+      "description": "Input scale"
+    },
+    "chunk_size": {
+      "description": "Input chunk_size"
+    },
+    "gate_mode": {
+      "description": "Input gate_mode"
+    },
+    "state_v_first": {
+      "description": "Input state_v_first"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    }
+  },
+  "reference": "import torch\ndef run(q,\n    k,\n    v,\n    h,\n    g,\n    g_gamma,\n    scale,\n    chunk_size,\n    gate_mode,\n    state_v_first,\n):\n    torch.manual_seed(42)\n    batch, tokens, heads, key_dim = q.shape\n    value_heads, value_dim = v.shape[2], v.shape[3]\n    if value_heads % heads != 0:\n        raise ValueError(\"value heads must be divisible by query heads\")\n    group_size = value_heads // heads\n    query = q.repeat_interleave(group_size, dim=2).float()\n    key = k.repeat_interleave(group_size, dim=2).float()\n    output = torch.empty_like(v)\n    num_chunks = (tokens + chunk_size - 1) // chunk_size\n    for chunk in range(num_chunks):\n        start = chunk * chunk_size\n        end = min(tokens, start + chunk_size)\n        length = end - start\n        state = h[:, chunk].float()\n        if state_v_first:\n            state = state.transpose(-2, -1)\n        query_chunk = query[:, start:end]\n        key_chunk = key[:, start:end]\n        value_chunk = v[:, start:end].float()\n        inter = torch.einsum(\n            \"bthk,bhkv->bthv\", query_chunk, state\n        )\n        scores = torch.matmul(\n            query_chunk.permute(0, 2, 1, 3),\n            key_chunk.permute(0, 2, 1, 3).transpose(-1, -2),\n        )\n        if gate_mode == 1:\n            gate = g[:, start:end].float().permute(0, 2, 1)\n            inter = inter * torch.exp2(\n                gate.permute(0, 2, 1)[..., None]\n            )\n            scores = scores * torch.exp2(\n                gate[..., :, None] - gate[..., None, :]\n            )\n        elif gate_mode == 2:\n            positions = torch.arange(\n                1,\n                length + 1,\n                device=q.device,\n                dtype=torch.float32,\n            )\n            gate = g_gamma.float()[None, :, None] * positions[None, None, :]\n            inter = inter * torch.exp2(\n                gate.permute(0, 2, 1)[..., None]\n            )\n            scores = scores * torch.exp2(\n                gate[..., :, None] - gate[..., None, :]\n            )\n        elif gate_mode != 0:\n            raise ValueError(\"gate_mode must be 0, 1, or 2\")\n        causal = torch.tril(\n            torch.ones(\n                length,\n                length,\n                device=q.device,\n                dtype=torch.float32,\n            )\n        )\n        scores = scores * causal\n        intra = torch.matmul(\n            scores, value_chunk.permute(0, 2, 1, 3)\n        )\n        result = (\n            inter.permute(0, 2, 1, 3) + intra\n        ) * scale\n        output[:, start:end] = result.permute(0, 2, 1, 3).to(v.dtype)\n    return output",
+  "description": "Reference implementation for ChunkO."
+}

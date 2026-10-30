@@ -1,0 +1,77 @@
+{
+  "name": "FusedRecurrentGatedDeltaRule",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input q"
+    },
+    "k": {
+      "description": "Input k"
+    },
+    "v": {
+      "description": "Input v"
+    },
+    "g": {
+      "description": "Input g"
+    },
+    "gk": {
+      "description": "Input gk"
+    },
+    "gv": {
+      "description": "Input gv"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "A_log": {
+      "description": "Input A_log"
+    },
+    "dt_bias": {
+      "description": "Input dt_bias"
+    },
+    "initial_state": {
+      "description": "Input initial_state"
+    },
+    "scale": {
+      "description": "Input scale"
+    },
+    "gate_mode": {
+      "description": "Input gate_mode"
+    },
+    "use_gate_in_kernel": {
+      "description": "Input use_gate_in_kernel"
+    },
+    "use_bias": {
+      "description": "Input use_bias"
+    },
+    "use_initial_state": {
+      "description": "Input use_initial_state"
+    },
+    "output_final_state": {
+      "description": "Input output_final_state"
+    },
+    "use_qk_l2norm": {
+      "description": "Input use_qk_l2norm"
+    },
+    "use_beta_sigmoid": {
+      "description": "Input use_beta_sigmoid"
+    },
+    "allow_neg_eigval": {
+      "description": "Input allow_neg_eigval"
+    },
+    "state_v_first": {
+      "description": "Input state_v_first"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    },
+    "final_state": {
+      "description": "Output final_state"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\ndef run(q,\n    k,\n    v,\n    g,\n    gk,\n    gv,\n    beta,\n    A_log,\n    dt_bias,\n    initial_state,\n    scale,\n    gate_mode,\n    use_gate_in_kernel,\n    use_bias,\n    use_initial_state,\n    output_final_state,\n    use_qk_l2norm,\n    use_beta_sigmoid,\n    allow_neg_eigval,\n    state_v_first,\n):\n    torch.manual_seed(42)\n    batch, tokens, heads, key_dim = q.shape\n    value_heads, value_dim = v.shape[2], v.shape[3]\n    if value_heads % heads != 0:\n        raise ValueError(\"value heads must be divisible by query heads\")\n    query = q.float()\n    key = k.float()\n    if use_qk_l2norm:\n        query = F.normalize(query, p=2.0, dim=-1, eps=1e-6)\n        key = F.normalize(key, p=2.0, dim=-1, eps=1e-6)\n    query = query.repeat_interleave(value_heads // heads, dim=2)\n    key = key.repeat_interleave(value_heads // heads, dim=2)\n    scalar_gate = g.float()\n    if gate_mode & 1 and use_gate_in_kernel:\n        if use_bias:\n            scalar_gate = scalar_gate + dt_bias.float()\n        scalar_gate = -torch.exp(A_log.float()) * F.softplus(\n            scalar_gate\n        )\n    key_gate = gk.float()\n    value_gate = gv.float()\n    beta_value = beta.float()\n    if use_beta_sigmoid:\n        beta_value = torch.sigmoid(beta_value)\n        if allow_neg_eigval:\n            beta_value = beta_value * 2.0\n    if use_initial_state:\n        state = initial_state.float().clone()\n        if state_v_first:\n            state = state.transpose(-2, -1).contiguous()\n    else:\n        state = torch.zeros(\n            batch,\n            value_heads,\n            key_dim,\n            value_dim,\n            device=q.device,\n            dtype=torch.float32,\n        )\n    output = torch.empty_like(v)\n    for token in range(tokens):\n        if gate_mode & 1:\n            state = state * torch.exp(\n                scalar_gate[:, token, :, None, None]\n            )\n        if gate_mode & 2:\n            state = state * torch.exp(\n                key_gate[:, token, :, :, None]\n            )\n        if gate_mode & 4:\n            state = state * torch.exp(\n                value_gate[:, token, :, None, :]\n            )\n        key_token = key[:, token]\n        residual = v[:, token].float() - torch.einsum(\n            \"bhk,bhkv->bhv\", key_token, state\n        )\n        residual = residual * beta_value[:, token, :, None]\n        state = state + torch.einsum(\n            \"bhk,bhv->bhkv\", key_token, residual\n        )\n        output[:, token] = (\n            torch.einsum(\n                \"bhk,bhkv->bhv\", query[:, token] * scale, state\n            ).to(v.dtype)\n        )\n    if state_v_first:\n        state = state.transpose(-2, -1).contiguous()\n    final_state = state if output_final_state else None\n    return output, final_state",
+  "description": "Reference implementation for FusedRecurrentGatedDeltaRule."
+}

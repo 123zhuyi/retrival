@@ -1,0 +1,14 @@
+{
+  "name": "RepeatInterleave",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "repeats": {"description": "int, number of repetitions for each element."},
+    "dim": {"description": "int, dimension along which to repeat values."}
+  },
+  "outputs": {
+    "y": {"description": "Tensor with repeated elements. Same dtype as x, dim multiplied by repeats."}
+  },
+  "reference": "import torch\n\ndef run(x, repeats, dim):\n    return torch.repeat_interleave(x, repeats, dim=dim)\n",
+  "description": "RepeatInterleave: Repeats elements of a tensor.\n\ntorch.repeat_interleave = repeat_interleave(input, repeats, dim=None, *, output_size=None) -> Tensor\n\nThis is different from torch.Tensor.repeat but similar to numpy.repeat.\n\nIf the repeats is tensor([n1, n2, n3, ...]), then the output will be tensor([0, 0, ..., 1, 1, ..., 2, 2, ..., ...]) where 0 appears n1 times, 1 appears n2 times, 2 appears n3 times, etc.\n\nArgs:\n    input (Tensor): the input tensor.\n    repeats (Tensor or int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.\n    dim (int, optional): The dimension along which to repeat values. By default, use the flattened input array, and return a flat output array.\n\nKeyword args:\n    output_size (int, optional): Total output size for the given axis (e.g. sum of repeats). If given, it will avoid stream synchronization needed to calculate output shape of the tensor.\n\nReturns:\n    Tensor: Repeated tensor which has the same shape as input, except along the given axis.\n\nExample:\n    >>> x = torch.tensor([1, 2, 3])\n    >>> x.repeat_interleave(2)\n    tensor([1, 1, 2, 2, 3, 3])\n    >>> y = torch.tensor([[1, 2], [3, 4]])\n    >>> torch.repeat_interleave(y, 3, dim=1)\n    tensor([[1, 1, 1, 2, 2, 2], [3, 3, 3, 4, 4, 4]])"
+}

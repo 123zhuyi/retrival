@@ -1,0 +1,38 @@
+{
+  "name": "EMSA",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "queries": {
+      "description": "query tensor (B, S, D)"
+    },
+    "keys": {
+      "description": "key tensor (B, S, D)"
+    },
+    "values": {
+      "description": "value tensor (B, S, D)"
+    },
+    "n_heads": {
+      "description": "number of attention heads"
+    },
+    "height": {
+      "description": "spatial height"
+    },
+    "width": {
+      "description": "spatial width"
+    },
+    "ratio": {
+      "description": "downsampling ratio for spatial reduction"
+    },
+    "apply_transform": {
+      "description": "whether to apply head-wise transform"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, S, D)"
+    }
+  },
+  "reference": "import torch\nimport math\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(queries, keys, values, n_heads, height, width, ratio, apply_transform):\n    torch.manual_seed(42)\n    if queries.shape[1] != height * width:\n        raise ValueError('height * width must match the sequence length')\n    B, S, D = queries.shape\n    head_dim = D // n_heads\n    q_proj = nn.Linear(D, D, bias=False).to(device=queries.device, dtype=queries.dtype)\n    k_proj = nn.Linear(D, D, bias=False).to(device=queries.device, dtype=queries.dtype)\n    v_proj = nn.Linear(D, D, bias=False).to(device=queries.device, dtype=queries.dtype)\n    out_proj = nn.Linear(D, D, bias=False).to(device=queries.device, dtype=queries.dtype)\n    kernel_size = ratio + 1\n    pad = ratio // 2\n    reduce_k = nn.Conv2d(D, D, kernel_size, stride=ratio, padding=pad, groups=D, bias=False).to(device=queries.device, dtype=queries.dtype)\n    reduce_v = nn.Conv2d(D, D, kernel_size, stride=ratio, padding=pad, groups=D, bias=False).to(device=queries.device, dtype=queries.dtype)\n    norm_k = nn.LayerNorm(D).to(device=queries.device, dtype=queries.dtype)\n    norm_v = nn.LayerNorm(D).to(device=queries.device, dtype=queries.dtype)\n    transform = None\n    if apply_transform and n_heads > 1:\n        transform = nn.Conv2d(n_heads, n_heads, 1, bias=False).to(device=queries.device, dtype=queries.dtype)\n\n    q = q_proj(queries).view(B, S, n_heads, head_dim).transpose(1, 2)\n    keys_2d = keys.transpose(1, 2).reshape(B, D, height, width)\n    values_2d = values.transpose(1, 2).reshape(B, D, height, width)\n    reduced_k = norm_k(reduce_k(keys_2d).flatten(2).transpose(1, 2))\n    reduced_v = norm_v(reduce_v(values_2d).flatten(2).transpose(1, 2))\n    reduced_sequence = reduced_k.shape[1]\n    k = k_proj(reduced_k).view(B, reduced_sequence, n_heads, head_dim).transpose(1, 2)\n    v = v_proj(reduced_v).view(B, reduced_sequence, n_heads, head_dim).transpose(1, 2)\n    scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(head_dim)\n    if transform is not None:\n        scores = transform(scores)\n    weights = F.softmax(scores.float(), dim=-1)\n    output = torch.matmul(weights, v.float()).to(dtype=queries.dtype)\n    output = output.transpose(1, 2).contiguous().view(B, S, D)\n    return out_proj(output)\n",
+  "description": "Efficient Multi-head Self-Attention with spatial reduction via depthwise convolutions."
+}

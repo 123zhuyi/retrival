@@ -1,0 +1,44 @@
+{
+  "name": "LSTM",
+  "op_type": "sequence",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "weight_ih_l0": {
+      "description": "shape varies; supports float16"
+    },
+    "weight_hh_l0": {
+      "description": "shape varies; supports float16"
+    },
+    "bias_ih_l0": {
+      "description": "shape varies; supports float16"
+    },
+    "bias_hh_l0": {
+      "description": "shape varies; supports float16"
+    },
+    "h_0": {
+      "description": "shape varies; supports float16"
+    },
+    "c_0": {
+      "description": "shape varies; supports float16"
+    },
+    "batch_first": {
+      "description": "bool, default=False"
+    },
+    "dropout": {
+      "description": "float, default=0.0"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "LSTM output tensor"
+    },
+    "1": {
+      "description": "Tuple of final hidden state h_n and final cell state c_n"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n_LSTMS = {}\n\ndef _run_lstm(x: torch.Tensor, weight_ih_l0: torch.Tensor, weight_hh_l0: torch.Tensor, bias_ih_l0: torch.Tensor, bias_hh_l0: torch.Tensor, h_0: torch.Tensor, c_0: torch.Tensor, batch_first: bool=False, dropout: float=0.0):\n    \"\"\"\n        Performs LSTM computation on NPU using a cached torch.nn.LSTM instance.\n\n        Args:\n            x (Tensor): Input tensor, shape [seq_len, batch, input_size] or [batch, seq_len, input_size] if batch_first.\n            weight_ih_l0 (Tensor): Input-hidden weight, shape [4*hidden_size, input_size].\n            weight_hh_l0 (Tensor): Hidden-hidden weight, shape [4*hidden_size, hidden_size].\n            bias_ih_l0 (Tensor): Input-hidden bias, shape [4*hidden_size]. Can be None.\n            bias_hh_l0 (Tensor): Hidden-hidden bias, shape [4*hidden_size]. Can be None.\n            h_0 (Tensor): Initial hidden state, shape [num_layers, batch, hidden_size].\n            c_0 (Tensor): Initial cell state, shape [num_layers, batch, hidden_size].\n            batch_first (bool): Whether input is (batch, seq, feature).\n            dropout (float): Dropout probability (only effective when num_layers > 1).\n\n        Returns:\n            tuple: (output, (h_n, c_n))\n\n        Note:\n            - The nn.LSTM instance is cached by structural key to avoid re-initialization\n              randomness between two forward calls.\n            - Before execution, l0 weights are copied from inputs; any higher-layer\n              parameters (not provided by inputs) are zeroed out to eliminate residual\n              random values.\n            - eval() is enforced to disable dropout randomness when num_layers > 1.\n        \"\"\"\n    four_hidden = weight_ih_l0.shape[0]\n    input_size = weight_ih_l0.shape[1]\n    hidden_size = four_hidden // 4\n    num_layers = h_0.shape[0]\n    has_bias = bias_ih_l0 is not None and bias_hh_l0 is not None\n    key = (input_size, hidden_size, num_layers, has_bias, batch_first, dropout)\n    lstm = _LSTMS.get(key)\n    if lstm is None:\n        rng_state = torch.get_rng_state()\n        torch.manual_seed(hash(key) & 4294967295)\n        lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, bias=has_bias, batch_first=batch_first, dropout=dropout if num_layers > 1 else 0.0)\n        torch.set_rng_state(rng_state)\n        _LSTMS[key] = lstm\n    lstm = lstm.to(x.device).to(x.dtype)\n    x = x.to(x.dtype)\n    h_0 = h_0.to(x.dtype)\n    c_0 = c_0.to(x.dtype)\n    weight_ih_l0 = weight_ih_l0.to(x.dtype)\n    weight_hh_l0 = weight_hh_l0.to(x.dtype)\n    if has_bias:\n        bias_ih_l0 = bias_ih_l0.to(x.dtype)\n        bias_hh_l0 = bias_hh_l0.to(x.dtype)\n    with torch.no_grad():\n        for p in lstm.parameters():\n            p.zero_()\n        lstm.weight_ih_l0.copy_(weight_ih_l0)\n        lstm.weight_hh_l0.copy_(weight_hh_l0)\n        if has_bias:\n            lstm.bias_ih_l0.copy_(bias_ih_l0)\n            lstm.bias_hh_l0.copy_(bias_hh_l0)\n    lstm.eval()\n    return lstm(x, (h_0, c_0))\n\ndef run(x: torch.Tensor, weight_ih_l0: torch.Tensor, weight_hh_l0: torch.Tensor, bias_ih_l0: torch.Tensor, bias_hh_l0: torch.Tensor, h_0: torch.Tensor, c_0: torch.Tensor, batch_first: bool=False, dropout: float=0.0):\n    return _run_lstm(x, weight_ih_l0, weight_hh_l0, bias_ih_l0, bias_hh_l0, h_0, c_0, batch_first, dropout)\n",
+  "description": "Model that performs LSTM computation using torch.nn.LSTM on NPU.\nComputes LSTM with custom weights provided as inputs.\n\nImplementation note:\n    LSTM input_size / hidden_size / num_layers are inferred from input tensors\n    (weight_ih_l0 and h_0) at runtime, so the nn.LSTM instance cannot be\n    created in __init__. Instead, we cache instances by structural key in\n    self._lstms, and fix the RNG seed during first creation to ensure that\n    the default random initialization is deterministic across runs.\n    Before each forward, we copy user-provided l0 weights into the cached\n    module, zero out any higher-layer parameters (not provided by inputs),\n    and set eval() to eliminate dropout randomness when num_layers > 1.\n\nPyTorch native implementation of forward function (single-layer, no dropout):\n    def forward(self, x, weight_ih_l0, weight_hh_l0, bias_ih_l0, bias_hh_l0,\n                h_0, c_0, batch_first=False, dropout=0.0):\n        four_hidden = weight_ih_l0.shape[0]\n        input_size = weight_ih_l0.shape[1]\n        hidden_size = four_hidden // 4\n        num_layers = h_0.shape[0]\n        has_bias = bias_ih_l0 is not None and bias_hh_l0 is not None\n\n        lstm = nn.LSTM(\n            input_size=input_size,\n            hidden_size=hidden_size,\n            num_layers=num_layers,\n            bias=has_bias,\n            batch_first=batch_first,\n            dropout=dropout if num_layers > 1 else 0.0,\n        )\n\n        with torch.no_grad():\n            lstm.weight_ih_l0.copy_(weight_ih_l0)\n            lstm.weight_hh_l0.copy_(weight_hh_l0)\n            if has_bias:\n                lstm.bias_ih_l0.copy_(bias_ih_l0)\n                lstm.bias_hh_l0.copy_(bias_hh_l0)\n\n        return lstm(x, (h_0, c_0))\n\nTorch 原生小算子拼接实现（等价于 nn.LSTM 单层前向，无 dropout）：\n    # 假设输入 x: (seq_len, batch, input_size)\n    # h_0: (num_layers, batch, hidden_size), c_0: (num_layers, batch, hidden_size)\n    # 取第 0 层参数（单层场景）\n    W_ih = weight_ih_l0  # (4*hidden_size, input_size)\n    W_hh = weight_hh_l0  # (4*hidden_size, hidden_size)\n    b_ih = bias_ih_l0    # (4*hidden_size,) or None\n    b_hh = bias_hh_l0    # (4*hidden_size,) or None\n    h_prev = h_0[0]      # (batch, hidden_size)\n    c_prev = c_0[0]      # (batch, hidden_size)\n\n    outputs = []\n    seq_len = x.shape[0 if not batch_first else 1]\n    # 若 batch_first=True，先转置为 (seq_len, batch, input_size)\n    x_t = x.transpose(0, 1) if batch_first else x\n\n    for t in range(seq_len):\n        x_t_step = x_t[t]  # (batch, input_size)\n        # 1. gates 线性变换: x @ W_ih^T + h @ W_hh^T\n        gates = torch.matmul(x_t_step, W_ih.t()) + torch.matmul(h_prev, W_hh.t())\n        if b_ih is not None:\n            gates = gates + b_ih + b_hh\n        # 2. 拆分为四个门 (input, forget, cell, output)\n        i, f, g, o = gates.chunk(4, dim=-1)\n        # 3. 激活函数\n        i = torch.sigmoid(i)   # 输入门\n        f = torch.sigmoid(f)   # 遗忘门\n        g = torch.tanh(g)      # 候选细胞状态\n        o = torch.sigmoid(o)   # 输出门\n        # 4. 细胞状态与隐藏状态更新\n        c_t = f * c_prev + i * g\n        h_t = o * torch.tanh(c_t)\n        outputs.append(h_t.unsqueeze(0))\n        h_prev, c_prev = h_t, c_t\n\n    output = torch.cat(outputs, dim=0)  # (seq_len, batch, hidden_size)\n    # 若 batch_first=True，转置回 (batch, seq_len, hidden_size)\n    if batch_first:\n        output = output.transpose(0, 1)\n    h_n = h_prev.unsqueeze(0)  # (1, batch, hidden_size)\n    c_n = c_t.unsqueeze(0)     # (1, batch, hidden_size)\n    return output, (h_n, c_n)"
+}

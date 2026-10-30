@@ -1,0 +1,26 @@
+{
+  "name": "LayerNorm",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input 'x'."
+    },
+    "normalized_shape": {
+      "description": "Input 'normalized_shape'."
+    },
+    "weight": {
+      "description": "Input 'weight'."
+    },
+    "bias": {
+      "description": "Input 'bias'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch_npu\nimport json\nimport os\n\n\ndef run(x: torch.Tensor, normalized_shape: list, weight: torch.Tensor=None, bias: torch.Tensor=None) -> torch.Tensor:\n    \"\"\"\n        Applies Layer Normalization over a mini-batch of inputs.\n\n        Args:\n            x (torch.Tensor): Input tensor of shape [*, normalized_shape[0], ...].\n            normalized_shape (list): Shape over which to normalize.\n            weight (torch.Tensor, optional): Weight tensor of shape normalized_shape.\n            bias (torch.Tensor, optional): Bias tensor of shape normalized_shape.\n\n        Returns:\n            torch.Tensor: Normalized tensor with same shape as input.\n        \"\"\"\n    return torch.nn.functional.layer_norm(x, normalized_shape, weight=weight, bias=bias)",
+  "description": "Simple model that applies Layer Normalization. torch.nn.functional.layer_norm = layer_norm( input: Tensor, normalized_shape: list[int], weight: Tensor | None = None, bias: Tensor | None = None, eps: float = 1e-05 ) -> Tensor Apply Layer Normalization for last certain number of dimensions. .. math:: y = \\frac{x - \\mathrm{E}[x]}{ \\sqrt{\\mathrm{Var}[x] + \\epsilon}} * \\gamma + \\beta The mean and standard-deviation are calculated over the last D dimensions, where D is the dimension of normalized_shap"
+}

@@ -1,0 +1,2113 @@
+{
+ "op_name": "5_WeightQuantBatchmatmul",
+ "source": "model.py forward NPU 实测基线（2026-09-15 shape 放大重测, 910B2C, wall-clock 逐 case, warmup=1, repeat=1）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 30,
+ "impl_latency_geomean_us": 600.7767168701668,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 293.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 551.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 565.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 556.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 32
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 318.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 526.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 64
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 313.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 562.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 553.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      64,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      64,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 64
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 576.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      10256
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 719.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      32768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: The k of x and weight should be equal. but x_k_dim is 32768, weight_k_dim is 4096\n[ERROR] 2026-09-15-12:15:24 (PID:54149, Device:0, RankID:-1) ERR01001 OPS invalid parameter"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      65536
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:24 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      39944
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:24 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      65536
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:24 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      32768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: The k of x and weight should be equal. but x_k_dim is 32768, weight_k_dim is 4096\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR01001 OPS invalid parameter"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      131072
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      2048
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      10896
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 777.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      32768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      64,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      64,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 64
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: The k of x and weight should be equal. but x_k_dim is 32768, weight_k_dim is 4096\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR01001 OPS invalid parameter"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      32768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: The k of x and weight should be equal. but x_k_dim is 32768, weight_k_dim is 4096\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR01001 OPS invalid parameter"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      8192
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 2093.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      32768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: The k of x and weight should be equal. but x_k_dim is 32768, weight_k_dim is 4096\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR01001 OPS invalid parameter"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      8192
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 658.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      672,
+      5360
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      5360,
+      10720
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      168,
+      10720
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      168,
+      10720
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      10720
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 32
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 692.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      65536
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      65536
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 2198.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 1912.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      15288
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      15288,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 1702.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      30576
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      30576
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 1263.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      30576
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      30576
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      32,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      32,
+      16384
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      11416
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      11416,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      122296
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:25 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      25816
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:26 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2048,
+      122296
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:26 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      11040
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      11040,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:26 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2688,
+      5360
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      5360,
+      20008
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      168,
+      10720
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      168,
+      10720
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      10720
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 32
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "accuracy": "fail",
+   "error": "RuntimeError: npu_weight_quant_batchmatmul:third_party/op-plugin/op_plugin/ops/opapi/WeightQuantBatchMatmulV2KernelNpuOpApi.cpp:99 NPU function error: call aclnnWeightQuantBatchMatmulV2 failed, error code is 161002\n[ERROR] 2026-09-15-12:15:26 (PID:54149, Device:0, RankID:-1) ERR00100 PTA call acl api failed.\n[PID"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      20336
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 850.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      32,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      32,
+      16384
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 2897.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      4096
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4096,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      16384
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 10481.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      2048
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 6073.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      2048
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 112.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      600,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      1024
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      1024
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 75.8,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      512,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_group_size",
+     "value": 128
+    },
+    {
+     "name": "inner_precise",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 81.9,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 88.5,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 141.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 152.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      12800,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      1536,
+      3072
+     ]
+    },
+    {
+     "name": "antiquant_scale",
+     "shape": [
+      1,
+      3072
+     ]
+    },
+    {
+     "name": "antiquant_offset",
+     "shape": [
+      1,
+      3072
+     ]
+    },
+    {
+     "name": "bias",
+     "shape": [
+      3072
+     ]
+    },
+    {
+     "name": "inner_precise",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 477.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  }
+ ]
+}

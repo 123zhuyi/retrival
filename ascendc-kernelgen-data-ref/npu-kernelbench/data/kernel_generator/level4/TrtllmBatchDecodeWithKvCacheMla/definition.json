@@ -1,0 +1,50 @@
+{
+  "name": "TrtllmBatchDecodeWithKvCacheMla",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "Input query"
+    },
+    "kv_cache": {
+      "description": "Input kv_cache"
+    },
+    "block_tables": {
+      "description": "Input block_tables"
+    },
+    "seq_lens": {
+      "description": "Input seq_lens"
+    },
+    "kv_lora_rank": {
+      "description": "Input kv_lora_rank"
+    },
+    "qk_rope_head_dim": {
+      "description": "Input qk_rope_head_dim"
+    },
+    "bmm1_scale": {
+      "description": "Input bmm1_scale"
+    },
+    "bmm2_scale": {
+      "description": "Input bmm2_scale"
+    },
+    "sparse_mla_top_k": {
+      "description": "Input sparse_mla_top_k"
+    },
+    "cum_seq_lens_q": {
+      "description": "Input cum_seq_lens_q"
+    },
+    "return_lse": {
+      "description": "Input return_lse"
+    },
+    "return_lse_base_on_e": {
+      "description": "Input return_lse_base_on_e"
+    }
+  },
+  "outputs": {
+    "o": {
+      "description": "Output o"
+    }
+  },
+  "reference": "import torch\nimport math\nLOG2E = 1.0 / math.log(2.0)\ndef run(query, kv_cache, block_tables, seq_lens,\n            kv_lora_rank, qk_rope_head_dim,\n            bmm1_scale=1.0, bmm2_scale=1.0, sparse_mla_top_k=0,\n            cum_seq_lens_q=None, return_lse=False, return_lse_base_on_e=False):\n    head_dim_qk = kv_lora_rank + qk_rope_head_dim\n    cache = kv_cache.squeeze(1) if kv_cache.dim() == 4 else kv_cache\n    page_size = cache.shape[1]\n    q_f = query.float()\n    o_dtype = query.dtype\n    if cum_seq_lens_q is None:\n        B, q_len, H, _ = query.shape\n        o = torch.zeros(B, q_len, H, kv_lora_rank, dtype=torch.float32, device=query.device)\n        lse = torch.zeros(B, q_len, H, dtype=torch.float32, device=query.device)\n    else:\n        B = cum_seq_lens_q.numel() - 1\n        H = query.shape[1]\n        q_len = None\n        o = torch.zeros(query.shape[0], H, kv_lora_rank, dtype=torch.float32, device=query.device)\n        lse = torch.zeros(query.shape[0], H, dtype=torch.float32, device=query.device)\n    for b in range(B):\n        if cum_seq_lens_q is None:\n            q_batch = q_f[b]\n            cur_q_len = q_len\n        else:\n            qs, qe = cum_seq_lens_q[b].item(), cum_seq_lens_q[b + 1].item()\n            q_batch = q_f[qs:qe]\n            cur_q_len = qe - qs\n        for t in range(cur_q_len):\n            if sparse_mla_top_k > 0:\n                pages = block_tables[b, t].long()\n                valid = (pages >= 0) & (pages < cache.shape[0])\n                pages = pages[valid]\n                if pages.numel() == 0:\n                    continue\n                flat = cache[pages].float().reshape(-1, head_dim_qk)\n            else:\n                kv_len = seq_lens[b].item()\n                n_pages = (kv_len + page_size - 1) // page_size\n                pages = block_tables[b, :n_pages].long()\n                flat = cache[pages].float().reshape(-1, head_dim_qk)[:kv_len]\n            Kn = flat[:, :kv_lora_rank]\n            Kp = flat[:, kv_lora_rank:]\n            q = q_batch[t]\n            Qn, Qp = q[:, :kv_lora_rank], q[:, kv_lora_rank:]\n            logits = (Qn @ Kn.t() + Qp @ Kp.t()) * bmm1_scale\n            s2 = logits * LOG2E\n            m = s2.max(dim=-1, keepdim=True).values\n            e = torch.exp2(s2 - m)\n            denom = e.sum(dim=-1, keepdim=True)\n            out_t = (e / denom) @ Kn * bmm2_scale\n            lse2 = m.squeeze(-1) + torch.log2(denom.squeeze(-1))\n            if cum_seq_lens_q is None:\n                o[b, t] = out_t\n                lse[b, t] = lse2 / LOG2E if return_lse_base_on_e else lse2\n            else:\n                o[cum_seq_lens_q[b].item() + t] = out_t\n                lse[cum_seq_lens_q[b].item() + t] = \\\n                    lse2 / LOG2E if return_lse_base_on_e else lse2\n    o = o.to(o_dtype)\n    if return_lse:\n        return o, lse\n    return o",
+  "description": "Model that performs TRTLLM-GEN batch decode MLA attention.\n    FlashInfer trtllm_batch_decode_with_kv_cache_mla (flashinfer/mla/_core.py):\n        trtllm_batch_decode_with_kv_cache_mla(query, kv_cache, workspace_buffer,\n            qk_nope_head_dim, kv_lora_rank, qk_rope_head_dim, block_tables,\n            seq_lens, max_seq_len, sparse_mla_top_k=0, bmm1_scale=..., bmm2_scale=...)\n        -> o (, lse)\n\n    torch \u539f\u751f\u5c0f\u7b97\u5b50\u62fc\u63a5\u53c2\u8003\u5b9e\u73b0(\u4e0e\u5b98\u65b9 trace \u6a21\u677f\u53c2\u8003\u4e00\u81f4, \u5df2\u9010\u9879\u5bf9\u7167\u9a8c\u8bc1):\n    query \u4e3a [q_nope | q_pe] \u6cbf head_dim \u62fc\u63a5 (kv_lora_rank + qk_rope_head_dim = 576),\n    kv_cache \u4e3a [ckv | kpe] \u62fc\u63a5\u7684\u5355\u5f20\u91cf [num_pages, page_size, 576]\u3002\n    \u6bcf\u4e2a\u8bf7\u6c42 b \u7684\u7b2c t \u4e2a query \u5bf9\u6bcf\u4e2a head:\n        logits = (Qn @ Kn^T + Qp @ Kp^T) * bmm1_scale\n        o = softmax(logits) @ Kn * bmm2_scale      # ckv \u5438\u6536\u540e\u540c\u65f6\u4f5c\u4e3a K \u548c V\n    \u7a20\u5bc6\u8def\u5f84 (sparse_mla_top_k == 0): block_tables \u4e3a\u7a20\u5bc6 2D \u9875\u8868 [B, max_pages],\n        \u53d6\u6bcf\u8bf7\u6c42\u524d ceil(kv_len/page_size) \u9875, decode \u8bed\u4e49\u65e0\u56e0\u679c\u63a9\u7801;\n    \u7a00\u758f\u8def\u5f84 (sparse_mla_top_k > 0): block_tables \u4e3a [B, q_len, top_k] \u7a00\u758f\u9875\u7d22\u5f15,\n        \u65e0\u6548\u9879 (<0 \u6216\u8d8a\u754c) \u8df3\u8fc7, \u4ec5\u5bf9\u6709\u6548\u9875\u505a\u6ce8\u610f\u529b\u3002\n    \u6ce8:\n      1. bmm1_scale \u5e38\u7528 softmax scale (\u5982 1/sqrt(192), \u5438\u6536\u524d\u7ef4\u5ea6), bmm2_scale \u5e38\u7528 1.0;\n      2. lse \u7ea6\u5b9a\u4e0e FlashInfer MLA kernel \u65cf\u4e00\u81f4: \u9ed8\u8ba4 base-2,\n         return_lse_base_on_e=True \u65f6\u8f6c\u81ea\u7136\u5bf9\u6570;\n      3. workspace_buffer/max_seq_len/is_var_seq/enable_pdl/backend \u7b49\u4ec5\u4e3a kernel\n         \u8c03\u5ea6\u53c2\u6570, \u4e0d\u5f71\u54cd\u6570\u5b66\u8bed\u4e49, \u672a\u7eb3\u5165;\n      4. sinks (softmax \u5206\u6bcd\u9644\u52a0\u9879) \u4e0e skip_softmax \u7a00\u758f\u672a\u7eb3\u5165;\n      5. \u652f\u6301 cum_seq_lens_q \u7684 ragged query \u8f93\u5165 [total_q, H, 576]\u3002"
+}

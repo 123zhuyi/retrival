@@ -1,0 +1,26 @@
+{
+  "name": "RotaryMul",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "input": {
+      "description": "shape varies; supports float16"
+    },
+    "r1": {
+      "description": "shape varies; supports float16"
+    },
+    "r2": {
+      "description": "shape varies; supports float16"
+    },
+    "rotary_mode": {
+      "description": "str; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor with rotary position embedding applied, same shape and dtype as input"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(input, r1, r2, rotary_mode='half'):\n    return torch_npu.npu_rotary_mul(input, r1, r2, rotary_mode=rotary_mode)\n",
+  "description": "Rotary Position Embedding multiplication. torch_npu.npu_rotary_mul(input, r1, r2, rotary_mode) applies rotary transform. Pure PyTorch: if rotary_mode=='half', split input into halves and compute x*r1 + rotated(x)*r2; if rotary_mode=='interleave', split by even/odd indices. Supports float16, bfloat16, float32."
+}

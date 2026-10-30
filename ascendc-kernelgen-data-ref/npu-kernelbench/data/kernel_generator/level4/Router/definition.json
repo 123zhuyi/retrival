@@ -1,0 +1,23 @@
+{
+  "name": "Router",
+  "op_type": "moe",
+  "axes": {},
+  "inputs": {
+    "gate_logits": {
+      "description": "expert gate logits (num_tokens, num_experts)"
+    },
+    "topk": {
+      "description": "number of experts to select per token"
+    }
+  },
+  "outputs": {
+    "topk_ids": {
+      "description": "selected expert indices (num_tokens, topk) int64"
+    },
+    "topk_vals": {
+      "description": "routing weights (num_tokens, topk)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport torch.nn.functional as F\n\ndef run(gate_logits, topk):\n    torch.manual_seed(42)\n    probs = F.softmax(gate_logits.float(), dim=-1)\n    topk_vals, topk_ids = torch.topk(probs, k=topk, dim=-1)\n    return topk_ids, topk_vals.to(gate_logits.dtype)\n",
+  "description": "Migrated Router operator from old npu_benchmark architecture."
+}

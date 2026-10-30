@@ -1,0 +1,51 @@
+{
+  "name": "ChunkKdaWithFusedGateFwd",
+  "op_type": "attention",
+  "axes": {},
+  "custom_inputs_entrypoint": "make_inputs",
+  "inputs": {
+    "q": {
+      "description": "Query tensor [B, T, H, K]"
+    },
+    "k": {
+      "description": "Key tensor [B, T, H, K]"
+    },
+    "v": {
+      "description": "Value tensor [B, T, H, V]"
+    },
+    "raw_g": {
+      "description": "Raw gate projection [B, T, H*K] (or [B, T, H, K])"
+    },
+    "beta": {
+      "description": "Beta tensor [B, T, H]"
+    },
+    "A_log": {
+      "description": "Log decay parameter [H] (or [1, 1, H, 1])"
+    },
+    "g_bias": {
+      "description": "Gate bias [H*K] (or [1, 1, H, K]), optional"
+    },
+    "scale": {
+      "description": "Attention scale, optional (default K ** -0.5)"
+    },
+    "initial_state": {
+      "description": "Initial state [B, H, K, V] (varlen: [N, H, K, V]), optional"
+    },
+    "output_final_state": {
+      "description": "Whether to return the final state"
+    },
+    "cu_seqlens": {
+      "description": "Cumulative sequence lengths (varlen, B == 1), optional"
+    }
+  },
+  "outputs": {
+    "o": {
+      "description": "Output [B, T, H, V], dtype matches v"
+    },
+    "final_state": {
+      "description": "Final state [B, H, K, V] (varlen: [N, H, K, V]), fp32"
+    }
+  },
+  "reference": "import zlib\n\nimport torch\nimport torch.nn.functional as F\n\n\ndef run(q, k, v, raw_g, beta, A_log, g_bias=None, scale=None,\n        initial_state=None, output_final_state=False, cu_seqlens=None):\n    B, T, H, K = q.shape\n    V = v.shape[-1]\n    if scale is None:\n        scale = K ** -0.5\n\n    rg = raw_g.float()\n    if rg.dim() == 3:\n        rg = rg.reshape(B, T, H, K)\n    if g_bias is not None:\n        rg = rg + g_bias.float().reshape(H, K)\n    a = -torch.exp(A_log.float().reshape(H))\n    g = a.view(1, 1, H, 1) * F.softplus(rg)\n\n    qf = q.transpose(1, 2).float() * scale\n    kf = k.transpose(1, 2).float()\n    vf = v.transpose(1, 2).float()\n    betaf = beta.transpose(1, 2).float()\n    gf = g.transpose(1, 2)\n\n    if cu_seqlens is not None:\n        cu = cu_seqlens.cpu().tolist()\n        spans = [(0, i, cu[i], cu[i + 1]) for i in range(len(cu) - 1)]\n    else:\n        spans = [(b, b, 0, T) for b in range(B)]\n\n    o = torch.zeros(B, H, T, V, device=q.device, dtype=torch.float32)\n    final_states = []\n\n    for b, si, bos, eos in spans:\n        h = torch.zeros(H, K, V, device=q.device, dtype=torch.float32)\n        if initial_state is not None:\n            h = initial_state[si].float().clone()\n\n        for t in range(bos, eos):\n            qt = qf[b, :, t]\n            kt = kf[b, :, t]\n            vt = vf[b, :, t]\n            gt = gf[b, :, t]\n            bt = betaf[b, :, t]\n\n            h = h * gt.exp()[..., None]\n            delta = vt - (h * kt[..., None]).sum(-2)\n            delta = delta * bt[..., None]\n            h = h + kt.unsqueeze(-1) * delta.unsqueeze(-2)\n            o[b, :, t] = torch.einsum(\"hk,hkv->hv\", qt, h)\n\n        final_states.append(h)\n\n    o = o.transpose(1, 2).contiguous().to(v.dtype)\n    final_state = torch.stack(final_states, dim=0) if output_final_state else None\n    return o, final_state\n\n\n_DTYPE_CODE = {0: torch.float16, 1: torch.bfloat16, 2: torch.float32}\n\n\ndef make_inputs(axes, device):\n    \"\"\"Custom input generator (custom_inputs_entrypoint).\n\n    Deterministic per case: RNG is reseeded from the axes dict so repeated\n    calls (once per custom input) produce identical tensors. Tensors are\n    generated on CPU; the evaluator moves them to the target device.\n\n    axes:\n        B, T, H, K, V   shapes of q/k [B,T,H,K], v [B,T,H,V]\n        DT    dtype code for q/k/v/beta (0=fp16, 1=bf16, 2=fp32)\n        DTG   dtype code for raw_g/A_log/g_bias\n    \"\"\"\n    torch.manual_seed(zlib.crc32(repr(sorted(axes.items())).encode()) & 0x7FFFFFFF)\n    B, T, H, K, V = axes[\"B\"], axes[\"T\"], axes[\"H\"], axes[\"K\"], axes[\"V\"]\n    dt = _DTYPE_CODE[axes[\"DT\"]]\n    dtg = _DTYPE_CODE[axes[\"DTG\"]]\n\n    def tight(shape, dtype):\n        # KDA 递推对幅值极其敏感，收紧输入分布以保持长序列数值稳定\n        if torch.rand(1).item() < 0.5:\n            mu = float(torch.empty(1).uniform_(-0.1, 0.1).item())\n            sigma = float(torch.empty(1).uniform_(0.01, 0.05).item())\n            if dtype is torch.bfloat16:\n                return torch.normal(mu, sigma, shape, dtype=torch.float32).to(dtype)\n            return torch.normal(mu, sigma, shape, dtype=dtype)\n        return torch.empty(shape, dtype=dtype).uniform_(-0.1, 0.1)\n\n    q = tight([B, T, H, K], dt)\n    k = tight([B, T, H, K], dt)\n    v = tight([B, T, H, V], dt)\n    raw_g = tight([B, T, H * K], dtg)\n    # beta 必须为正且较小，防止状态爆炸\n    beta = torch.empty([B, T, H], dtype=torch.float32).uniform_(0.01, 0.1).to(dt)\n    A_log = tight([H], dtg)\n    g_bias = tight([H * K], dtg)\n    return {\"q\": q, \"k\": k, \"v\": v, \"raw_g\": raw_g, \"beta\": beta,\n            \"A_log\": A_log, \"g_bias\": g_bias}\n",
+  "description": "Chunk KDA forward with fused gate computation (golden for chunk_kda_with_fused_gate_fwd). Fused gate in fp32: g = -exp(A_log) * softplus(raw_g + g_bias) (softplus beta=1, threshold=20; g <= 0). KDA recurrence in fp32: h_t = Diag(exp(g_t)) * h_{t-1}; delta_t = (v_t - h_t^T k_t) * beta_t; h_t += k_t outer delta_t; o_t = h_t^T (scale * q_t). varlen supported via cu_seqlens (B == 1). use_qk_l2norm_in_kernel belongs to the upper wrapper. Inputs are generated by make_inputs (custom_inputs_entrypoint): q/k/v/raw_g/A_log/g_bias tight mixed (mu in (-0.1,0.1), sigma in (0.01,0.05) or uniform(-0.1,0.1)), beta = uniform(0.01, 0.1)."
+}

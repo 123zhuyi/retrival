@@ -1,0 +1,23 @@
+{
+  "name": "LinearAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, S, D)"
+    },
+    "n_heads": {
+      "description": "number of attention heads"
+    },
+    "feature_map": {
+      "description": "feature map kernel: elu, relu, or identity"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output (B, S, D)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(x, n_heads, feature_map):\n    batch, sequence, d_model = x.shape\n    head_dim = d_model // n_heads\n    q = x.view(batch, sequence, n_heads, head_dim).transpose(1, 2)\n    k = q\n    v = q\n    if feature_map == \"elu\":\n        q, k = F.elu(q) + 1.0, F.elu(k) + 1.0\n    elif feature_map == \"relu\":\n        q, k = F.relu(q), F.relu(k)\n    elif feature_map != \"identity\":\n        raise ValueError(\"feature_map must be elu, relu, or identity\")\n\n    kv = torch.matmul(k.transpose(-2, -1), v)\n    z = 1.0 / (torch.einsum(\"bhnd,bhd->bhn\", q, k.sum(dim=2)).unsqueeze(-1) + 1e-6)\n    output = torch.matmul(q, kv) * z\n    output = output.transpose(1, 2).contiguous().view(batch, sequence, d_model)\n    return output\n",
+  "description": "Linear Attention core. Only the kernel-able linear attention mechanism; input/output projections are outside the operator boundary (q = k = v = x split into heads). Computed entirely in the input dtype (no fp32 upcast); normalizer Z = 1 / (denominator + 1e-6) (original form, no sign correction); no clamp."
+}

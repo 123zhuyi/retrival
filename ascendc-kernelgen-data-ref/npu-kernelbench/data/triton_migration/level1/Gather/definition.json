@@ -1,0 +1,26 @@
+{
+  "name": "Gather",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input 'x'."
+    },
+    "dim": {
+      "description": "Input 'dim'."
+    },
+    "index": {
+      "description": "Input 'index'."
+    },
+    "sparse_grad": {
+      "description": "Input 'sparse_grad'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(x: torch.Tensor, dim: int, index: torch.Tensor, sparse_grad: bool=False) -> torch.Tensor:\n    \"\"\"\n        Gathers values along an axis specified by dim.\n\n        Args:\n            x (torch.Tensor): Input tensor (src).\n            dim (int): The axis along which to index.\n            index (torch.Tensor): The indices of elements to gather.\n            sparse_grad (bool, optional): If True, gradient w.r.t. input will be a sparse tensor.\n\n        Returns:\n            torch.Tensor: Tensor with gathered values, same shape as index.\n        \"\"\"\n    return torch.gather(x, dim, index, sparse_grad=sparse_grad)",
+  "description": "Simple model that gathers values along a dimension using indices. torch.gather = gather(...) gather(input, dim, index, *, sparse_grad=False, out=None) -> Tensor"
+}

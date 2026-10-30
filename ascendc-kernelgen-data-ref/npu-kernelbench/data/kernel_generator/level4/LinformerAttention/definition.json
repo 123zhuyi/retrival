@@ -1,0 +1,23 @@
+{
+  "name": "LinformerAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, S, D)"
+    },
+    "n_heads": {
+      "description": "number of attention heads"
+    },
+    "projection_dim": {
+      "description": "projected sequence length for keys and values"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, S, D)"
+    }
+  },
+  "reference": "import torch\nimport math\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, n_heads, projection_dim):\n    torch.manual_seed(42)\n    B, S, D = x.shape\n    head_dim = D // n_heads\n    q_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    k_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    v_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    out_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    key_reduce = nn.Linear(S, projection_dim, bias=False).to(device=x.device, dtype=x.dtype)\n    value_reduce = nn.Linear(S, projection_dim, bias=False).to(device=x.device, dtype=x.dtype)\n    q = q_proj(x).view(B, S, n_heads, head_dim).transpose(1, 2)\n    k = k_proj(x).view(B, S, n_heads, head_dim).permute(0, 2, 3, 1)\n    v = v_proj(x).view(B, S, n_heads, head_dim).permute(0, 2, 3, 1)\n    k = key_reduce(k).transpose(-2, -1)\n    v = value_reduce(v).transpose(-2, -1)\n    scores = torch.matmul(q.float(), k.float().transpose(-2, -1))\n    weights = F.softmax(scores / math.sqrt(head_dim), dim=-1)\n    output = torch.matmul(weights, v.float()).to(dtype=x.dtype)\n    output = output.transpose(1, 2).contiguous().view(B, S, D)\n    return out_proj(output)\n",
+  "description": "Linformer attention: projects keys and values along the sequence dimension to reduce complexity."
+}

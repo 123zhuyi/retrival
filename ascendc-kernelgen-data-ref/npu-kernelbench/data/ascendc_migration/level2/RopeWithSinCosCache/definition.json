@@ -1,0 +1,69 @@
+{
+  "name": "RopeWithSinCosCache",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "positions": {
+      "description": "shape varies; supports int32"
+    },
+    "query": {
+      "description": "shape varies; supports float32"
+    },
+    "key": {
+      "description": "shape varies; supports float32"
+    },
+    "cos_sin_cache": {
+      "description": "shape varies; supports float32"
+    },
+    "mrope_section": {
+      "description": "list"
+    },
+    "head_size": {
+      "description": "int, default=32"
+    },
+    "is_neox_style": {
+      "description": "bool, default=True"
+    },
+    "cache_mode": {
+      "description": "int, default=0"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Rotated query, same shape as input query"
+    },
+    "1": {
+      "description": "Rotated key, same shape as input key"
+    }
+  },
+  "reference": "import torch\n\ndef run(positions, query, key, cos_sin_cache, mrope_section, head_size, is_neox_style=True, cache_mode=0):\n    num_tokens = positions.shape[-1]\n    rotary_dim = cos_sin_cache.shape[-1]\n    num_q_heads = query.shape[1] // head_size\n    num_kv_heads = key.shape[1] // head_size\n    qwen2_vl = (cache_mode != 1 and len(mrope_section) != 4)\n    qwen3_vl = (cache_mode == 1)\n    hunyuan = (len(mrope_section) == 4)\n    if qwen2_vl:\n        positions_flatten = positions.flatten()\n        cos_sin = cos_sin_cache.index_select(0, positions_flatten)\n        cos_sin = cos_sin.reshape(-1, rotary_dim)\n    elif qwen3_vl or hunyuan:\n        cos_sin = cos_sin_cache[positions]\n    cos, sin = cos_sin.chunk(2, dim=-1)\n    if positions.ndim == 2:\n        if qwen2_vl:\n            cos = cos.reshape(3, -1, rotary_dim // 2)\n            cos_0 = cos[0, :, :mrope_section[0]]\n            cos_1 = cos[1, :, mrope_section[0]:(mrope_section[0] + mrope_section[1])]\n            cos_2 = cos[2, :, (mrope_section[0] + mrope_section[1]):(mrope_section[0] + mrope_section[1] + mrope_section[2])]\n            cos = torch.concat((cos_0, cos_1, cos_2), dim=-1)\n            sin = sin.reshape(3, -1, rotary_dim // 2)\n            sin_0 = sin[0, :, :mrope_section[0]]\n            sin_1 = sin[1, :, mrope_section[0]:(mrope_section[0] + mrope_section[1])]\n            sin_2 = sin[2, :, (mrope_section[0] + mrope_section[1]):(mrope_section[0] + mrope_section[1] + mrope_section[2])]\n            sin = torch.concat((sin_0, sin_1, sin_2), dim=-1)\n        elif qwen3_vl:\n            cos_t = cos[0].clone()\n            cos_t[..., 1:mrope_section[1] * 3:3] = cos[1, ..., 1:mrope_section[1] * 3:3]\n            cos_t[..., 2:mrope_section[1] * 3:3] = cos[2, ..., 2:mrope_section[1] * 3:3]\n            cos = cos_t\n            sin_t = sin[0].clone()\n            sin_t[..., 1:mrope_section[1] * 3:3] = sin[1, ..., 1:mrope_section[1] * 3:3]\n            sin_t[..., 2:mrope_section[1] * 3:3] = sin[2, ..., 2:mrope_section[1] * 3:3]\n            sin = sin_t\n        elif hunyuan:\n            cos = torch.cat([m[i] for i, m in enumerate(cos.split(mrope_section, dim=-1))], dim=-1)\n            sin = torch.cat([m[i] for i, m in enumerate(sin.split(mrope_section, dim=-1))], dim=-1)\n    cos = cos.unsqueeze(-2)\n    sin = sin.unsqueeze(-2)\n    query_shape = query.shape\n    query = query.view(num_tokens, -1, head_size)\n    query_rot = query[..., :rotary_dim]\n    query_pass = query[..., rotary_dim:]\n    if is_neox_style:\n        x1, x2 = torch.chunk(query_rot, 2, dim=-1)\n    else:\n        x1 = query_rot[..., ::2]\n        x2 = query_rot[..., 1::2]\n    o1 = x1 * cos - x2 * sin\n    o2 = x2 * cos + x1 * sin\n    if is_neox_style:\n        query_rot = torch.cat((o1, o2), dim=-1)\n    else:\n        query_rot = torch.stack((o1, o2), dim=-1).flatten(-2)\n    query = torch.cat((query_rot, query_pass), dim=-1).reshape(query_shape)\n    key_shape = key.shape\n    key = key.view(num_tokens, -1, head_size)\n    key_rot = key[..., :rotary_dim]\n    key_pass = key[..., rotary_dim:]\n    if is_neox_style:\n        x1, x2 = torch.chunk(key_rot, 2, dim=-1)\n    else:\n        x1 = key_rot[..., ::2]\n        x2 = key_rot[..., 1::2]\n    o1 = x1 * cos - x2 * sin\n    o2 = x2 * cos + x1 * sin\n    if is_neox_style:\n        key_rot = torch.cat((o1, o2), dim=-1)\n    else:\n        key_rot = torch.stack((o1, o2), dim=-1).flatten(-2)\n    key = torch.cat((key_rot, key_pass), dim=-1).reshape(key_shape)\n    return query, key\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-transformer.git",
+  "kernel_reference": {
+    "op_graph": [
+      "posembedding/rope_with_sin_cos_cache/op_graph/rope_with_sin_cos_cache_proto.h"
+    ],
+    "op_host": [
+      "posembedding/rope_with_sin_cos_cache/op_host/CMakeLists.txt",
+      "posembedding/rope_with_sin_cos_cache/op_host/rope_with_sin_cos_cache_def.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_host/rope_with_sin_cos_cache_infershape.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_host/rope_with_sin_cos_cache_tiling.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_host/rope_with_sin_cos_cache_tiling.h"
+    ],
+    "op_kernel": [
+      "posembedding/rope_with_sin_cos_cache/op_kernel/rope_with_sin_cos_cache.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_kernel/rope_with_sin_cos_cache_apt.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_kernel/rope_with_sin_cos_cache_base.h",
+      "posembedding/rope_with_sin_cos_cache/op_kernel/rope_with_sin_cos_cache_f_bf16.h",
+      "posembedding/rope_with_sin_cos_cache/op_kernel/rope_with_sin_cos_cache_fp32.h"
+    ],
+    "op_api": [
+      "posembedding/rope_with_sin_cos_cache/op_host/op_api/aclnn_rope_with_sin_cos_cache.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_host/op_api/aclnn_rope_with_sin_cos_cache.h",
+      "posembedding/rope_with_sin_cos_cache/op_host/op_api/aclnn_rope_with_sin_cos_cache_v2.h",
+      "posembedding/rope_with_sin_cos_cache/op_host/op_api/rope_with_sin_cos_cache.cpp",
+      "posembedding/rope_with_sin_cos_cache/op_host/op_api/rope_with_sin_cos_cache.h",
+      "posembedding/rope_with_sin_cos_cache/op_host/op_api/rsqrt.h"
+    ]
+  },
+  "description": "Rotary Position Embedding with precomputed sin/cos cache. Supports multi-modal RoPE variants: Qwen2-VL (cache_mode=0), Qwen3-VL (cache_mode=1), Hunyuan (mrope_section with 4 dims). Applies rotary transform: [x1*cos - x2*sin, x2*cos + x1*sin]. is_neox_style controls interleaved vs split format. Returns (rotated_query, rotated_key)."
+}

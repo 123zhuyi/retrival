@@ -1,0 +1,26 @@
+{
+  "name": "DenseSparseAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "query tensor (B, S_q, _, qk_dim)"
+    },
+    "kv_cache": {
+      "description": "combined key/value cache (num_blocks, page_size, _, qk_dim)"
+    },
+    "indices": {
+      "description": "gather indices into flattened cache (B, S_q, K)"
+    },
+    "headdim_v": {
+      "description": "value head dimension"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "attention output (B, S_q, _, headdim_v)"
+    }
+  },
+  "reference": "import torch.nn as nn\nimport torch\nimport math\nimport torch.nn.functional as F\n\ndef run(q, kv_cache, indices, headdim_v):\n    qk_dim = q.shape[-1]\n    if kv_cache.shape[-1] != qk_dim or not 0 < headdim_v <= qk_dim:\n        raise ValueError('cache and value dimensions are inconsistent')\n    flat_cache = kv_cache.reshape(-1, qk_dim)\n    selected = flat_cache[indices.long()]\n    selected_k = selected.float()\n    selected_v = selected[..., :headdim_v].float()\n    scores = torch.einsum('bqhd,bqkd->bhqk', q.float(), selected_k) / math.sqrt(qk_dim)\n    weights = F.softmax(scores, dim=-1)\n    output = torch.einsum('bhqk,bqkv->bqhv', weights, selected_v)\n    return output.to(dtype=q.dtype)\n",
+  "description": "Dense sparse attention that gathers key/value blocks via indices."
+}

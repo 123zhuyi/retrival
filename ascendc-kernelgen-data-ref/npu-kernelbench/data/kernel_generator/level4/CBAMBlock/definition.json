@@ -1,0 +1,26 @@
+{
+  "name": "CBAMBlock",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "channel": {
+      "description": "number of channels; defaults to x.shape[1]"
+    },
+    "reduction": {
+      "description": "reduction factor; default 16"
+    },
+    "kernel_size": {
+      "description": "kernel size for channel attention conv1d; default 3"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, channel=None, reduction=16, kernel_size=3):\n    torch.manual_seed(42)\n    if channel is None:\n        channel = x.shape[1]\n    b, c, h, w = x.size()\n    conv = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2, bias=False).to(device=x.device, dtype=x.dtype)\n\n    y = F.adaptive_avg_pool2d(x, 1)\n    y = conv(y.squeeze(-1).transpose(-1, -2))\n    channel_att = torch.sigmoid(y)\n    channel_att = channel_att.transpose(-1, -2).unsqueeze(-1)\n    channel_out = x * channel_att.expand_as(x)\n\n    avg_out = torch.mean(channel_out, dim=1, keepdim=True)\n    max_out, _ = torch.max(channel_out, dim=1, keepdim=True)\n    spatial_att = torch.sigmoid(avg_out + max_out)\n    spatial_att = spatial_att.expand_as(channel_out)\n\n    out = channel_out * spatial_att\n    return out\n",
+  "description": "Migrated CBAMBlock operator."
+}

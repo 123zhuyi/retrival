@@ -1,0 +1,44 @@
+{
+  "name": "TimeDecayExponentialStabilization",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "time_decay": {
+      "description": "shape varies; supports float32"
+    },
+    "key": {
+      "description": "shape varies; supports float32"
+    },
+    "time_first": {
+      "description": "shape varies; supports float32"
+    },
+    "value": {
+      "description": "shape varies; supports float32"
+    },
+    "max_state": {
+      "description": "shape varies; supports float32"
+    },
+    "num_state": {
+      "description": "shape varies; supports float32"
+    },
+    "den_state": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Output tensor"
+    },
+    "1": {
+      "description": "Updated max_state"
+    },
+    "2": {
+      "description": "Updated num_state"
+    },
+    "3": {
+      "description": "Updated den_state"
+    }
+  },
+  "reference": "import torch\n\ndef run(time_decay, key, time_first, value, max_state, num_state, den_state):\n    batch_size, seq_len, hidden_size = key.size()\n    max_state = max_state.clone().float()\n    num_state = num_state.clone().float()\n    den_state = den_state.clone().float()\n    time_decay_exp = -torch.exp(time_decay.float())\n    output = torch.zeros_like(key, dtype=torch.float32)\n    for t in range(seq_len):\n        current_key = key[:, t].float()\n        current_value = value[:, t].float()\n        max_for_output = torch.maximum(max_state, current_key + time_first)\n        e1_output = torch.exp(max_state - max_for_output)\n        e2_output = torch.exp(current_key + time_first - max_for_output)\n        numerator = e1_output * num_state + e2_output * current_value\n        denominator = e1_output * den_state + e2_output\n        output[:, t] = numerator / denominator\n        max_for_state = torch.maximum(max_state + time_decay_exp, current_key)\n        e1_state = torch.exp(max_state + time_decay_exp - max_for_state)\n        e2_state = torch.exp(current_key - max_for_state)\n        num_state = e1_state * num_state + e2_state * current_value\n        den_state = e1_state * den_state + e2_state\n        max_state = max_for_state\n    return output, max_state, num_state, den_state\n",
+  "description": "RWKV-style time decay with exponential stabilization. Computes output with state updates using time_decay, time_first, and key/value. Returns (output, max_state, num_state, den_state). Pure PyTorch: RWKV time-mixing loop."
+}

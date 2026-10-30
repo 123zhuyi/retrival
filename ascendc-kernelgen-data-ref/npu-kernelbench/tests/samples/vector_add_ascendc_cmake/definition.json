@@ -1,0 +1,13 @@
+{
+  "name": "vector_add_half",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "a": {"description": "shape (N,); supports float16"},
+    "b": {"description": "shape (N,); supports float16"}
+  },
+  "outputs": {
+    "c": {"description": "shape (N,); same dtype as inputs"}
+  },
+  "reference": "import torch\ndef run(a, b):\n    return a + b\n"
+}

@@ -1,0 +1,15 @@
+{
+  "name": "TopK",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "k": {"description": "int, number of elements to return."},
+    "dim": {"description": "int, dimension along which to find top-k."},
+    "largest": {"description": "bool, true for largest, false for smallest."}
+  },
+  "outputs": {
+    "y": {"description": "Top-k values tensor, shape equal to x with dim replaced by k. Same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, k, dim=-1, largest=True):\n    return torch.topk(x, k, dim=dim, largest=largest)[0]\n",
+  "description": "TopK: Returns the k largest elements of the given input tensor along a given dimension.\n\ntorch.topk = topk(input, k, dim=None, largest=True, sorted=True, *, out=None) -> (Tensor, LongTensor)\n\nIf dim is not given, the last dimension of the input is chosen. If largest is False then the k smallest elements are returned.\n\nA namedtuple of (values, indices) is returned with the values and indices of the largest k elements of each row of the input tensor in the given dimension dim. The boolean option sorted if True will make sure that the returned k elements are themselves sorted. This benchmark only returns values.\n\nNote: When using torch.topk, the indices of tied elements are not guaranteed to be stable and may vary across different invocations.\n\nArgs:\n    input (Tensor): the input tensor.\n    k (int): the k in \"top-k\".\n    dim (int, optional): the dimension to sort along.\n    largest (bool, optional): controls whether to return largest or smallest elements.\n    sorted (bool, optional): controls whether to return the elements in sorted order.\n\nKeyword args:\n    out (tuple, optional): the output tuple of (Tensor, LongTensor) that can be optionally given to be used as output buffers.\n\nExample:\n    >>> x = torch.arange(1., 6.)\n    >>> torch.topk(x, 3)\n    torch.return_types.topk(values=tensor([5., 4., 3.]), indices=tensor([4, 3, 2]))\n\nReturns: Tensor, shape = x with dim replaced by k."
+}

@@ -1,0 +1,38 @@
+{
+  "name": "QuantScatter",
+  "op_type": "quantization",
+  "axes": {},
+  "inputs": {
+    "input": {
+      "description": "shape varies; supports int8"
+    },
+    "indices": {
+      "description": "shape varies; supports int32"
+    },
+    "updates": {
+      "description": "shape varies; supports float16"
+    },
+    "quant_scales": {
+      "description": "shape varies; supports float32"
+    },
+    "quant_zero_points": {
+      "description": "shape varies; supports int32; optional, may be None"
+    },
+    "axis": {
+      "description": "int, default=-2; optional"
+    },
+    "quant_axis": {
+      "description": "int, default=-1; optional"
+    },
+    "reduce": {
+      "description": "str; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output after quantized scatter, same shape as input"
+    }
+  },
+  "reference": "import torch\n\ndef run(input, indices, updates, quant_scales, quant_zero_points=None, axis=0, quant_axis=1, reduce='update'):\n    if axis < 0:\n        axis = input.ndim + axis\n\n    output = input.clone()\n\n    neg_inf_mask = (updates == -torch.inf)\n    pos_inf_mask = (updates == torch.inf)\n\n    quant_scales_expanded = quant_scales\n    while quant_scales_expanded.ndim < updates.ndim:\n        quant_scales_expanded = quant_scales_expanded.unsqueeze(0)\n\n    if quant_zero_points is not None:\n        quant_zp_expanded = quant_zero_points\n        while quant_zp_expanded.ndim < updates.ndim:\n            quant_zp_expanded = quant_zp_expanded.unsqueeze(0)\n        quantized = torch.round(updates.float() / quant_scales_expanded.float() + quant_zp_expanded.float())\n    else:\n        quantized = torch.round(updates.float() / quant_scales_expanded.float())\n    quantized = quantized.clamp(-128, 127).to(torch.int8)\n\n    quantized[neg_inf_mask] = -128\n    quantized[pos_inf_mask] = 127\n\n    indices_int64 = indices.to(torch.int64)\n    update_len = updates.shape[axis]\n\n    for i in range(indices_int64.shape[0]):\n        idx_val = indices_int64[i].item()\n        for j in range(update_len):\n            dst_idx = idx_val + j\n            if dst_idx < 0 or dst_idx >= output.shape[axis]:\n                continue\n\n            src_slices = [slice(None)] * quantized.ndim\n            src_slices[0] = i\n            src_slices[axis] = j\n\n            dst_slices = [slice(None)] * output.ndim\n            dst_slices[0] = i\n            dst_slices[axis] = dst_idx\n\n            output[tuple(dst_slices)] = quantized[tuple(src_slices)]\n\n    return output\n",
+  "description": "Quantized scatter update. torch_npu.npu_quant_scatter(input, indices, updates, quant_scales, ...) performs scatter with quantization. Pure PyTorch: dequantize input/updates, scatter update, requantize."
+}

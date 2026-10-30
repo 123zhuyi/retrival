@@ -1,0 +1,26 @@
+{
+  "name": "PSA",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "channel": {
+      "description": "number of input channels"
+    },
+    "reduction": {
+      "description": "reduction factor for SE blocks; default 4"
+    },
+    "S": {
+      "description": "number of groups; default 4"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, channel, reduction=4, S=4):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    ci = channel // S\n    convs = nn.ModuleList()\n    for i in range(S):\n        ks = 2 * (i + 1) + 1\n        pad = i + 1\n        convs.append(nn.Conv2d(ci, ci, kernel_size=ks, padding=pad))\n    se_blocks = nn.ModuleList()\n    for _ in range(S):\n        se_blocks.append(nn.Sequential(\n            nn.Conv2d(ci, ci // reduction, kernel_size=1, bias=False),\n            nn.ReLU(inplace=True),\n            nn.Conv2d(ci // reduction, ci, kernel_size=1, bias=False),\n            nn.Sigmoid()\n        ))\n    convs = convs.to(device=x.device, dtype=x.dtype)\n    se_blocks = se_blocks.to(device=x.device, dtype=x.dtype)\n\n    SPC_out = x.view(b, S, -1, h, w).clone()\n    for idx, conv in enumerate(convs):\n        SPC_out[:, idx, :, :, :] = conv(SPC_out[:, idx, :, :, :])\n    se_outs = []\n    for idx, se in enumerate(se_blocks):\n        group = SPC_out[:, idx, :, :, :]\n        pooled = F.adaptive_avg_pool2d(group, 1)\n        se_out = se(pooled)\n        se_outs.append(se_out)\n    SE_out = torch.stack(se_outs, dim=1)\n    SE_out = SE_out.expand_as(SPC_out)\n    softmax_out = F.softmax(SE_out, dim=1)\n    PSA_out = SPC_out * softmax_out\n    PSA_out = PSA_out.view(b, -1, h, w)\n    return PSA_out\n",
+  "description": "Migrated PSA operator."
+}

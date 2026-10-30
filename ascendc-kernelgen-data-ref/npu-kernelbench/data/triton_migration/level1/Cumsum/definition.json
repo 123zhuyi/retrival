@@ -1,0 +1,20 @@
+{
+  "name": "Cumsum",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "Input 'x'."
+    },
+    "dim": {
+      "description": "Input 'dim'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\nimport numpy as np\n\n\ndef run(x: torch.Tensor, dim: int) -> torch.Tensor:\n    \"\"\"\n        Applies cumulative sum along the specified dimension.\n\n        Args:\n            x (torch.Tensor): Input tensor of any shape.\n            dim (int): The dimension to do the operation over.\n\n        Returns:\n            torch.Tensor: Output tensor with cumulative sum, same shape as input.\n        \"\"\"\n    return torch.cumsum(x, dim=dim)",
+  "description": "Simple model that performs cumulative sum along a specified dimension. torch.cumsum = cumsum(...) cumsum(input, dim, *, dtype=None, out=None) -> Tensor"
+}

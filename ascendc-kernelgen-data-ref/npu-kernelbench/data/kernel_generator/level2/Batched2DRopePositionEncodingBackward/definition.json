@@ -1,0 +1,23 @@
+{
+  "name": "Batched2DRopePositionEncodingBackward",
+  "op_type": "norm",
+  "axes": {},
+  "inputs": {
+    "grad_cos": {
+      "description": "shape varies; supports float32"
+    },
+    "grad_sin": {
+      "description": "shape varies; supports float32"
+    },
+    "idx_theta": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Gradient w.r.t. idx_theta"
+    }
+  },
+  "reference": "import torch\n\ndef run(grad_cos, grad_sin, idx_theta):\n    sin_theta = torch.sin(idx_theta)\n    cos_theta = torch.cos(idx_theta)\n    grad_cos_f32 = grad_cos.to(torch.float32)\n    grad_sin_f32 = grad_sin.to(torch.float32)\n    grad_idx_theta = -grad_cos_f32 * sin_theta + grad_sin_f32 * cos_theta\n    return grad_idx_theta\n",
+  "description": "Backward pass for batched 2D rotary position encoding. Computes gradient w.r.t. idx_theta from grad_cos and grad_sin. Pure PyTorch: reverse rotary transform gradient computation."
+}

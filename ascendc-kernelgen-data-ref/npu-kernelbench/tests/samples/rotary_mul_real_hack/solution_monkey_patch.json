@@ -1,0 +1,17 @@
+{
+  "name": "RotaryMul_monkey_patch",
+  "definition": "RotaryMul",
+  "author": "cannbot",
+  "spec": {
+    "languages": ["python"],
+    "target_hardware": ["ascend910b"],
+    "entry_point": "kernel.py::run",
+    "destination_passing_style": false
+  },
+  "sources": [
+    {
+      "path": "kernel.py",
+      "content": "import torch\nimport torch_npu\n\ndef run(input, r1, r2, rotary_mode='half'):\n    return torch_npu.npu_rotary_mul(input, r1, r2, rotary_mode=rotary_mode)\n"
+    }
+  ]
+}

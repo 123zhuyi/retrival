@@ -1,0 +1,26 @@
+{
+  "name": "FlashAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, S, D)"
+    },
+    "n_heads": {
+      "description": "number of attention heads"
+    },
+    "block_size_q": {
+      "description": "query block size for tiling"
+    },
+    "block_size_kv": {
+      "description": "key/value block size for tiling"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, S, D)"
+    }
+  },
+  "reference": "import torch\nimport math\nimport torch.nn as nn\n\ndef run(x, n_heads, block_size_q, block_size_kv):\n    torch.manual_seed(42)\n    if block_size_q <= 0 or block_size_kv <= 0:\n        raise ValueError('block sizes must be positive')\n    B, S, D = x.shape\n    head_dim = D // n_heads\n    q_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    k_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    v_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    out_proj = nn.Linear(D, D, bias=False).to(device=x.device, dtype=x.dtype)\n    q = q_proj(x).view(B, S, n_heads, head_dim).transpose(1, 2)\n    k = k_proj(x).view(B, S, n_heads, head_dim).transpose(1, 2)\n    v = v_proj(x).view(B, S, n_heads, head_dim).transpose(1, 2)\n\n    scale = 1.0 / math.sqrt(head_dim)\n    chunks = []\n    for query_start in range(0, S, block_size_q):\n        query_block = q[:, :, query_start:query_start + block_size_q].float()\n        block_shape = query_block.shape[:-1]\n        running_max = torch.full(block_shape, float('-inf'), device=x.device, dtype=torch.float32)\n        normalizer = torch.zeros(block_shape, device=x.device, dtype=torch.float32)\n        accumulator = torch.zeros_like(query_block)\n        for key_start in range(0, S, block_size_kv):\n            key_block = k[:, :, key_start:key_start + block_size_kv].float()\n            value_block = v[:, :, key_start:key_start + block_size_kv].float()\n            scores = torch.matmul(query_block, key_block.transpose(-2, -1)) * scale\n            block_max = scores.max(dim=-1).values\n            next_max = torch.maximum(running_max, block_max)\n            correction = torch.exp(running_max - next_max)\n            probabilities = torch.exp(scores - next_max.unsqueeze(-1))\n            accumulator = accumulator * correction.unsqueeze(-1) + torch.matmul(probabilities, value_block)\n            normalizer = normalizer * correction + probabilities.sum(dim=-1)\n            running_max = next_max\n        chunks.append(accumulator / normalizer.clamp_min(1e-6).unsqueeze(-1))\n\n    output = torch.cat(chunks, dim=-2).to(dtype=x.dtype)\n    output = output.transpose(1, 2).contiguous().view(B, S, D)\n    return out_proj(output)\n",
+  "description": "Tiled flash-attention reference with online softmax normalization."
+}

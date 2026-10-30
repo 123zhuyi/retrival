@@ -1,0 +1,56 @@
+{
+  "name": "KdaBwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "查询张量, shape (B, T, H, K); bfloat16/float16"
+    },
+    "k": {
+      "description": "键张量, shape (B, T, H, K); 与 q 同 dtype"
+    },
+    "v": {
+      "description": "值张量, shape (B, T, HV, V); HV = H*G (GQA 扩展); float16/bfloat16"
+    },
+    "g": {
+      "description": "log 域衰减门控 (恒 ≤ 0), shape (B, T, HV, K); float32"
+    },
+    "beta": {
+      "description": "delta 规则门控 ((0,1)), shape (B, T, HV); bfloat16/float16"
+    },
+    "do": {
+      "description": "输出梯度, shape (B, T, HV, V); 与 v 同 dtype"
+    },
+    "dht": {
+      "description": "末状态梯度, shape (B, HV, K, V) float32; shape[0]==0 表示无"
+    },
+    "scale": {
+      "description": "q 缩放因子, float 标量"
+    },
+    "initial_state": {
+      "description": "初始状态 h0, shape (B, HV, K, V) float32; shape[0]==0 表示无"
+    }
+  },
+  "outputs": {
+    "dq": {
+      "description": "q 梯度, 同 q 形状与 dtype (GQA 组内求和收回 H 头)"
+    },
+    "dk": {
+      "description": "k 梯度, 同 k 形状与 dtype"
+    },
+    "dv": {
+      "description": "v 梯度, 同 v 形状与 dtype"
+    },
+    "dg": {
+      "description": "g 梯度, 同 g 形状与 dtype (float32)"
+    },
+    "dbeta": {
+      "description": "beta 梯度, 同 beta 形状与 dtype"
+    },
+    "dh0": {
+      "description": "初始状态梯度, shape (B, HV, K, V) float32; 无 h0 时为空张量 [0, HV, K, V]"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\n\ndef run(q, k, v, g, beta, do, dht, scale, initial_state):\n    B, T, H, K = q.shape\n    HV, V = v.shape[2], v.shape[3]\n    G = HV // H\n\n    qf, kf, vf = q.float(), k.float(), v.float()\n    gf, bf = g.float(), beta.float()\n    dof = do.float()\n\n    q_exp = qf.repeat_interleave(G, dim=2) * scale\n    k_exp = kf.repeat_interleave(G, dim=2)\n\n    has_init = initial_state is not None and initial_state.shape[0] > 0\n    has_dht = dht is not None and dht.shape[0] > 0\n\n    S = qf.new_zeros(B, HV, K, V)\n    if has_init:\n        S = S + initial_state.float()\n\n    S_dec_list = []\n    v_new_list = []\n    for t in range(T):\n        k_t = k_exp[:, t]\n        v_t = vf[:, t]\n        g_t = gf[:, t]\n        b_t = bf[:, t]\n\n        S_dec = S * g_t.unsqueeze(-1).exp()\n        v_new = v_t - (S_dec.transpose(-2, -1) @ k_t.unsqueeze(-1)).squeeze(-1)\n        S = S_dec + b_t.unsqueeze(-1).unsqueeze(-1) * k_t.unsqueeze(-1) * v_new.unsqueeze(-2)\n\n        S_dec_list.append(S_dec)\n        v_new_list.append(v_new)\n\n    S_dec_stack = torch.stack(S_dec_list, dim=0)\n    v_new_stack = torch.stack(v_new_list, dim=0)\n\n    dq_exp = torch.zeros_like(q_exp)\n    dk_exp = torch.zeros_like(k_exp)\n    dv = torch.zeros_like(vf)\n    dg = torch.zeros_like(gf)\n    dbeta = torch.zeros_like(bf)\n\n    if has_dht:\n        dS = dht.float().clone()\n    else:\n        dS = torch.zeros(B, HV, K, V, device=q.device)\n    for t in range(T - 1, -1, -1):\n        S_dec = S_dec_stack[t]\n        v_new = v_new_stack[t]\n\n        beta_t = bf[:, t]\n        k_t = k_exp[:, t]\n        S_t = S_dec + beta_t.unsqueeze(-1).unsqueeze(-1) * k_t.unsqueeze(-1) * v_new.unsqueeze(-2)\n        do_t = dof[:, t]\n        dq_exp[:, t] = scale * (S_t @ do_t.unsqueeze(-1)).squeeze(-1)\n        dS = dS + scale * q_exp[:, t].unsqueeze(-1) * do_t.unsqueeze(-2)\n        dk_exp[:, t] = beta_t.unsqueeze(-1) * (dS @ v_new.unsqueeze(-1)).squeeze(-1)\n        dv_new = beta_t.unsqueeze(-1) * (dS.transpose(-2, -1) @ k_t.unsqueeze(-1)).squeeze(-1)\n        dbeta[:, t] = (dS * (k_t.unsqueeze(-1) * v_new.unsqueeze(-2))).sum(dim=(-2, -1))\n        dv[:, t] = dv_new\n        dS_dec = dS - k_t.unsqueeze(-1) * dv_new.unsqueeze(-2)\n        g_t = gf[:, t]\n        dg[:, t] = (dS_dec * S_dec).sum(dim=-1)\n        dS = dS_dec * g_t.unsqueeze(-1).exp()\n\n    dq = dq_exp.reshape(B, T, H, G, K).sum(dim=3)\n    dk = dk_exp.reshape(B, T, H, G, K).sum(dim=3)\n\n    if has_init:\n        dh0 = dS\n    else:\n        dh0 = torch.empty(0, HV, K, V, dtype=torch.float32, device=q.device)\n    return (dq.to(q.dtype), dk.to(k.dtype), dv.to(v.dtype),\n            dg.to(g.dtype), dbeta.to(beta.dtype), dh0)\n",
+  "description": "chunk_kda 反向 —— KDA 门控 delta 规则线性注意力的梯度 golden reference, 显式反向公式。\n数学语义:\n  前向 (fp32): S ← S·exp(g_t); S ← S + (β_t k_t)⊗(v_t − S^T k_t); o_t = S^T q_t\n  损失: L = <o, do> + <final_state, dht>\n  反向递推 (从 T-1 到 0): dS 初始化为 dht (若存在) 或零, 对每个 t:\n    S_t = S_dec_t + β_t * k_t ⊗ v_new_t\n    dq_t = scale * (S_t @ do_t)\n    dS += scale * q_t ⊗ do_t\n    dk_t += β_t * (dS @ v_new_t)\n    dv_new = β_t * (dS^T @ k_t)\n    dβ_t = (dS * (k_t ⊗ v_new_t)).sum()\n    dv_t = dv_new\n    dS_dec = dS - k_t ⊗ dv_new\n    dg_t = (dS_dec * S_dec_t).sum(dim=-1)\n    dS = dS_dec * exp(g_t)\n  dh0 = 递推结束时的 dS (若 h0 存在, 否则为空张量)\nq/k 在 forward 中经 GQA 扩展 (repeat_interleave(G, dim=2)), q 预乘 scale; dq/dk 最终按组求和收回 (B,T,H,K)。\nreference 在 run() 内先重算前向递推得到每步 S_dec/v_new 中间量, 再执行反向, solution 同样只接收叶子输入, 需自行重算前向中间量。\n输入约束: g 为 log 域衰减, 生成范围 uniform(-1, -0.02) (真实场景为 logsigmoid 输出, 恒负); beta 生成范围 uniform(0, 1); q/k 生成范围 uniform(-0.05, 0.05) —— 真实场景 q/k 为 L2 归一化向量, 此处以小量级保证 delta 规则递推的擦除反馈因子 |1 - β·|k|²| < 1 (大随机值会导致状态指数爆炸)。"
+}

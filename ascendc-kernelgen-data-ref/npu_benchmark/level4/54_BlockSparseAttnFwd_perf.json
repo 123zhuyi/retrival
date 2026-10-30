@@ -1,0 +1,3384 @@
+{
+ "op_name": "99_BlockSparseAttnFwd",
+ "source": "torch reference 逐 case 实测（run_perf_gpu.py，cuda，warmup=1，repeats=1，cuda event 端到端）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 46,
+ "accuracy_approx_cases": 0,
+ "speedup_vs_reference_geomean": 3.4759,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "500-1000us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  ">1000us": {
+   "count": 50,
+   "ratio": 1.0
+  }
+ },
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      6
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      1,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1285.1,
+   "impl_latency_us": 545.8,
+   "speedup_vs_reference": 2.355,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      6
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      1,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1777.7,
+   "impl_latency_us": 904.2,
+   "speedup_vs_reference": 1.966,
+   "accuracy": "fail(diff=3.91e-03,matched=0.827[torch.bfloat16 cap=True mr=False mere=True])",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      6
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      1,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1185.8,
+   "impl_latency_us": 1087.5,
+   "speedup_vs_reference": 1.09,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      1,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      6
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      2,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1641.5,
+   "impl_latency_us": 666.6,
+   "speedup_vs_reference": 2.462,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      6
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      1,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1830.9,
+   "impl_latency_us": 934.9,
+   "speedup_vs_reference": 1.958,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      6
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      2,
+      1,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 1281.0,
+   "impl_latency_us": 837.6,
+   "speedup_vs_reference": 1.529,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 2518.0,
+   "impl_latency_us": 1344.5,
+   "speedup_vs_reference": 1.873,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 2440.2,
+   "impl_latency_us": 1622.0,
+   "speedup_vs_reference": 1.504,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      12,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 2405.4,
+   "impl_latency_us": 747.5,
+   "speedup_vs_reference": 3.218,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      96,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1386.5,
+   "impl_latency_us": 601.1,
+   "speedup_vs_reference": 2.307,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      12,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1783.8,
+   "impl_latency_us": 632.8,
+   "speedup_vs_reference": 2.819,
+   "accuracy": "fail(diff=3.12e-02,matched=0.892[torch.bfloat16 cap=True mr=False mere=True])",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1024,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1024,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 2018.3,
+   "impl_latency_us": 785.4,
+   "speedup_vs_reference": 2.57,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      192,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      2,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 1879.0,
+   "impl_latency_us": 614.4,
+   "speedup_vs_reference": 3.058,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1408.0,
+   "impl_latency_us": 629.8,
+   "speedup_vs_reference": 2.236,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      256,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      2,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1554.4,
+   "impl_latency_us": 578.6,
+   "speedup_vs_reference": 2.687,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      768,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      768,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      1,
+      6
+     ]
+    }
+   ],
+   "reference_latency_us": 1817.6,
+   "impl_latency_us": 525.3,
+   "speedup_vs_reference": 3.46,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1801.2,
+   "impl_latency_us": 529.4,
+   "speedup_vs_reference": 3.402,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      1,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1163.3,
+   "impl_latency_us": 547.8,
+   "speedup_vs_reference": 2.123,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      128,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      128,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      1
+     ]
+    }
+   ],
+   "reference_latency_us": 1254.4,
+   "impl_latency_us": 532.5,
+   "speedup_vs_reference": 2.356,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      256,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      2,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 1200.1,
+   "impl_latency_us": 859.1,
+   "speedup_vs_reference": 1.397,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      96,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      3,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 1379.3,
+   "impl_latency_us": 712.7,
+   "speedup_vs_reference": 1.935,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      640,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      640,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      5
+     ]
+    }
+   ],
+   "reference_latency_us": 3604.5,
+   "impl_latency_us": 789.5,
+   "speedup_vs_reference": 4.565,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      384,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      384,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      3
+     ]
+    }
+   ],
+   "reference_latency_us": 1445.9,
+   "impl_latency_us": 822.3,
+   "speedup_vs_reference": 1.758,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      256,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1024,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      2,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 1760.3,
+   "impl_latency_us": 615.4,
+   "speedup_vs_reference": 2.86,
+   "accuracy": "fail(diff=7.81e-03,matched=0.894[torch.bfloat16 cap=True mr=False mere=True])",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      192,
+      12,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1024,
+      2,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      12
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      4,
+      2,
+      8
+     ]
+    }
+   ],
+   "reference_latency_us": 2109.4,
+   "impl_latency_us": 972.8,
+   "speedup_vs_reference": 2.168,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      224,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      768,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      768,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      2,
+      6
+     ]
+    }
+   ],
+   "reference_latency_us": 1504.3,
+   "impl_latency_us": 759.8,
+   "speedup_vs_reference": 1.98,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 1819.6,
+   "impl_latency_us": 691.2,
+   "speedup_vs_reference": 2.633,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      48,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1270.8,
+   "impl_latency_us": 722.9,
+   "speedup_vs_reference": 1.758,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      48,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      512,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      512,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      1,
+      4
+     ]
+    }
+   ],
+   "reference_latency_us": 1506.3,
+   "impl_latency_us": 611.3,
+   "speedup_vs_reference": 2.464,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 2054.1,
+   "impl_latency_us": 736.3,
+   "speedup_vs_reference": 2.79,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      128,
+      48,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      256,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      1,
+      2
+     ]
+    }
+   ],
+   "reference_latency_us": 1536.0,
+   "impl_latency_us": 728.1,
+   "speedup_vs_reference": 2.11,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      96,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      384,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      384,
+      3,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      1,
+      3
+     ]
+    }
+   ],
+   "reference_latency_us": 1736.7,
+   "impl_latency_us": 543.7,
+   "speedup_vs_reference": 3.194,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      256,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      768,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      2,
+      6
+     ]
+    }
+   ],
+   "reference_latency_us": 1338.4,
+   "impl_latency_us": 1447.9,
+   "speedup_vs_reference": 0.924,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      160,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      640,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      2,
+      5
+     ]
+    }
+   ],
+   "reference_latency_us": 1286.1,
+   "impl_latency_us": 755.7,
+   "speedup_vs_reference": 1.702,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      192,
+      24,
+      64
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      896,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      896,
+      6,
+      64
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      2,
+      7
+     ]
+    }
+   ],
+   "reference_latency_us": 1239.0,
+   "impl_latency_us": 816.1,
+   "speedup_vs_reference": 1.518,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      384,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1536,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1536,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      3,
+      12
+     ]
+    }
+   ],
+   "reference_latency_us": 2695.2,
+   "impl_latency_us": 608.3,
+   "speedup_vs_reference": 4.431,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      512,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2048,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2048,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      8,
+      4,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 2498.6,
+   "impl_latency_us": 624.6,
+   "speedup_vs_reference": 4.0,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      512,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      2048,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      2048,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      4,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 4006.9,
+   "impl_latency_us": 673.8,
+   "speedup_vs_reference": 5.947,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      768,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      1536,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      1536,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      6,
+      12
+     ]
+    }
+   ],
+   "reference_latency_us": 4001.8,
+   "impl_latency_us": 971.8,
+   "speedup_vs_reference": 4.118,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1024,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      3072,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      3072,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      21,
+      8,
+      24
+     ]
+    }
+   ],
+   "reference_latency_us": 13687.8,
+   "impl_latency_us": 881.7,
+   "speedup_vs_reference": 15.525,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      768,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      3072,
+      6,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      3072,
+      6,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      6,
+      24
+     ]
+    }
+   ],
+   "reference_latency_us": 9326.6,
+   "impl_latency_us": 3843.1,
+   "speedup_vs_reference": 2.427,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1024,
+      64,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4096,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4096,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      21,
+      8,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 17145.9,
+   "impl_latency_us": 1474.6,
+   "speedup_vs_reference": 11.628,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1024,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4096,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4096,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      2,
+      16,
+      4,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 7953.4,
+   "impl_latency_us": 841.7,
+   "speedup_vs_reference": 9.449,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1536,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4096,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4096,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      192
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      32,
+      12,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 37527.6,
+   "impl_latency_us": 1809.4,
+   "speedup_vs_reference": 20.74,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2048,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      4096,
+      12,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      4096,
+      12,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      192
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      32,
+      16,
+      32
+     ]
+    }
+   ],
+   "reference_latency_us": 57770.0,
+   "impl_latency_us": 2239.5,
+   "speedup_vs_reference": 25.796,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1792,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      5120,
+      6,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      5120,
+      6,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      3
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      2,
+      16,
+      8,
+      24
+     ]
+    }
+   ],
+   "reference_latency_us": 17049.6,
+   "impl_latency_us": 2144.3,
+   "speedup_vs_reference": 7.951,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2560,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      6144,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      6144,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      192
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      32,
+      20,
+      48
+     ]
+    }
+   ],
+   "reference_latency_us": 89553.9,
+   "impl_latency_us": 2870.3,
+   "speedup_vs_reference": 31.2,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3072,
+      96,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8192,
+      12,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8192,
+      12,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      192
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      32,
+      24,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 145682.4,
+   "impl_latency_us": 3163.1,
+   "speedup_vs_reference": 46.056,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3072,
+      24,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      6144,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      6144,
+      2,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      24
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      3,
+      8,
+      8,
+      16
+     ]
+    }
+   ],
+   "reference_latency_us": 11985.9,
+   "impl_latency_us": 892.9,
+   "speedup_vs_reference": 13.423,
+   "accuracy": "pass",
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2048,
+      48,
+      128
+     ]
+    },
+    {
+     "name": "k",
+     "shape": [
+      8192,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "v",
+     "shape": [
+      8192,
+      4,
+      128
+     ]
+    },
+    {
+     "name": "cu_seqlens_q",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "cu_seqlens_k",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "head_mask_type",
+     "shape": [
+      48
+     ]
+    },
+    {
+     "name": "streaming_info",
+     "shape": [
+      96
+     ]
+    },
+    {
+     "name": "base_blockmask",
+     "shape": [
+      1,
+      16,
+      16,
+      64
+     ]
+    }
+   ],
+   "reference_latency_us": 50942.0,
+   "impl_latency_us": 1451.0,
+   "speedup_vs_reference": 35.108,
+   "accuracy": "fail(diff=3.91e-03,matched=0.882[torch.bfloat16 cap=True mr=False mere=True])",
+   "latency_band": ">1000us"
+  }
+ ],
+ "profiling_pipes": "aiv_vec 0.226, aiv_scalar 0.474, aiv_mte2 0.172, aiv_mte3 0.119",
+ "bound_type": "vector",
+ "profiling_source": "board msprof op --aic-metrics=PipeUtilization @ Ascend910B2C (warmup=1, launch=1), kernel=_bsa_fwd_kernel, 最大 case case47(max): q[3072,96,128] k/v[8192,12,128]; 各 pipe 取最忙核 ratio; 主导 pipe=scalar; 核数 AIV/AIC=48/24 ; 另采 ArithmeticUtilization（算力利用率）",
+ "profiling_pipes_aic": "aic_cube 0.029, aic_scalar 0.500, aic_mte1 0.041, aic_mte2 0.098, aic_mte3 0.000, aic_fixpipe 0.226",
+ "profiling_util": "aiv_vec_ratio 0.226, aiv_vec_fp32_ratio 0.107, aiv_vec_fp16_ratio 0.000, aiv_vec_int32_ratio 0.014, aic_cube_ratio 0.029, aic_cube_fp16_ratio 0.029, aic_cube_int8_ratio 0.000",
+ "profiling_util_fops": "aiv_vec_fops 1.165e+09, aic_cube_fops 2.831e+08"
+}

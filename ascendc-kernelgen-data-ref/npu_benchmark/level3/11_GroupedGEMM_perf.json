@@ -1,0 +1,1129 @@
+{
+ "op_name": "11_GroupedGEMM",
+ "source": "model.py forward NPU 实测基线（2026-09-15, 910B2C, wall-clock 逐 case, warmup=1, repeat=1）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 1106.7858111923401,
+ "reference_latency_geomean_us": 1106.7858111923401,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 0,
+   "ratio": 0.0
+  },
+  "100-500us": {
+   "count": 13,
+   "ratio": 0.26
+  },
+  "500-1000us": {
+   "count": 12,
+   "ratio": 0.24
+  },
+  ">1000us": {
+   "count": 25,
+   "ratio": 0.5
+  }
+ },
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      5,
+      60
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      5
+     ]
+    }
+   ],
+   "impl_latency_us": 731.7,
+   "reference_latency_us": 731.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      7,
+      72
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      7
+     ]
+    }
+   ],
+   "impl_latency_us": 355.1,
+   "reference_latency_us": 355.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      11,
+      96
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      11
+     ]
+    }
+   ],
+   "impl_latency_us": 308.7,
+   "reference_latency_us": 308.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      13,
+      120
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      13
+     ]
+    }
+   ],
+   "impl_latency_us": 275.0,
+   "reference_latency_us": 275.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      3,
+      48
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      3
+     ]
+    }
+   ],
+   "impl_latency_us": 253.9,
+   "reference_latency_us": 253.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      19,
+      144
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      19
+     ]
+    }
+   ],
+   "impl_latency_us": 356.9,
+   "reference_latency_us": 356.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      23,
+      160
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      23
+     ]
+    }
+   ],
+   "impl_latency_us": 344.7,
+   "reference_latency_us": 344.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      29,
+      192
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      29
+     ]
+    }
+   ],
+   "impl_latency_us": 352.0,
+   "reference_latency_us": 352.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      31,
+      224
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      31
+     ]
+    }
+   ],
+   "impl_latency_us": 464.8,
+   "reference_latency_us": 464.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      37,
+      240
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      37
+     ]
+    }
+   ],
+   "impl_latency_us": 340.0,
+   "reference_latency_us": 340.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      43,
+      256
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      43
+     ]
+    }
+   ],
+   "impl_latency_us": 446.0,
+   "reference_latency_us": 446.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      47,
+      288
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      47
+     ]
+    }
+   ],
+   "impl_latency_us": 502.2,
+   "reference_latency_us": 502.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      53,
+      320
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      53
+     ]
+    }
+   ],
+   "impl_latency_us": 402.1,
+   "reference_latency_us": 402.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      59,
+      360
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      59
+     ]
+    }
+   ],
+   "impl_latency_us": 391.2,
+   "reference_latency_us": 391.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      17,
+      128
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      17
+     ]
+    }
+   ],
+   "impl_latency_us": 332.1,
+   "reference_latency_us": 332.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      67,
+      420
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      67
+     ]
+    }
+   ],
+   "impl_latency_us": 523.4,
+   "reference_latency_us": 523.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      71,
+      448
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      71
+     ]
+    }
+   ],
+   "impl_latency_us": 503.3,
+   "reference_latency_us": 503.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      73,
+      480
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      73
+     ]
+    }
+   ],
+   "impl_latency_us": 815.0,
+   "reference_latency_us": 815.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      79,
+      512
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      79
+     ]
+    }
+   ],
+   "impl_latency_us": 658.0,
+   "reference_latency_us": 658.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      83,
+      540
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      83
+     ]
+    }
+   ],
+   "impl_latency_us": 946.2,
+   "reference_latency_us": 946.2,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      89,
+      576
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      89
+     ]
+    }
+   ],
+   "impl_latency_us": 1531.1,
+   "reference_latency_us": 1531.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      97,
+      600
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      97
+     ]
+    }
+   ],
+   "impl_latency_us": 1126.8,
+   "reference_latency_us": 1126.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      101,
+      640
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      101
+     ]
+    }
+   ],
+   "impl_latency_us": 684.9,
+   "reference_latency_us": 684.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      107,
+      672
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      107
+     ]
+    }
+   ],
+   "impl_latency_us": 1186.5,
+   "reference_latency_us": 1186.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      113,
+      704
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      113
+     ]
+    }
+   ],
+   "impl_latency_us": 869.0,
+   "reference_latency_us": 869.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      127,
+      720
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      127
+     ]
+    }
+   ],
+   "impl_latency_us": 923.6,
+   "reference_latency_us": 923.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      131,
+      768
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      131
+     ]
+    }
+   ],
+   "impl_latency_us": 2119.6,
+   "reference_latency_us": 2119.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      137,
+      800
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      137
+     ]
+    }
+   ],
+   "impl_latency_us": 1389.9,
+   "reference_latency_us": 1389.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      149,
+      832
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      149
+     ]
+    }
+   ],
+   "impl_latency_us": 765.4,
+   "reference_latency_us": 765.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      157,
+      864
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      157
+     ]
+    }
+   ],
+   "impl_latency_us": 1684.2,
+   "reference_latency_us": 1684.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      167,
+      896
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      167
+     ]
+    }
+   ],
+   "impl_latency_us": 1074.2,
+   "reference_latency_us": 1074.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      179,
+      960
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      179
+     ]
+    }
+   ],
+   "impl_latency_us": 1329.3,
+   "reference_latency_us": 1329.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      191,
+      1024
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      191
+     ]
+    }
+   ],
+   "impl_latency_us": 2469.9,
+   "reference_latency_us": 2469.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      211,
+      1088
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      211
+     ]
+    }
+   ],
+   "impl_latency_us": 1795.2,
+   "reference_latency_us": 1795.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      61,
+      384
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      61
+     ]
+    }
+   ],
+   "impl_latency_us": 725.9,
+   "reference_latency_us": 725.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      239,
+      1200
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      239
+     ]
+    }
+   ],
+   "impl_latency_us": 5501.4,
+   "reference_latency_us": 5501.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      257,
+      1248
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      257
+     ]
+    }
+   ],
+   "impl_latency_us": 3398.8,
+   "reference_latency_us": 3398.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      277,
+      1280
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      277
+     ]
+    }
+   ],
+   "impl_latency_us": 3439.9,
+   "reference_latency_us": 3439.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      293,
+      1344
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      293
+     ]
+    }
+   ],
+   "impl_latency_us": 5103.3,
+   "reference_latency_us": 5103.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      317,
+      1408
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      317
+     ]
+    }
+   ],
+   "impl_latency_us": 2080.8,
+   "reference_latency_us": 2080.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      347,
+      1440
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      347
+     ]
+    }
+   ],
+   "impl_latency_us": 3604.4,
+   "reference_latency_us": 3604.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      383,
+      1472
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      383
+     ]
+    }
+   ],
+   "impl_latency_us": 8099.7,
+   "reference_latency_us": 8099.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      419,
+      1536
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      419
+     ]
+    }
+   ],
+   "impl_latency_us": 4721.4,
+   "reference_latency_us": 4721.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      463,
+      1280
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      463
+     ]
+    }
+   ],
+   "impl_latency_us": 2964.8,
+   "reference_latency_us": 2964.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      509,
+      1024
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      509
+     ]
+    }
+   ],
+   "impl_latency_us": 3097.7,
+   "reference_latency_us": 3097.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      577,
+      896
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      577
+     ]
+    }
+   ],
+   "impl_latency_us": 2952.4,
+   "reference_latency_us": 2952.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      641,
+      768
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      641
+     ]
+    }
+   ],
+   "impl_latency_us": 2888.4,
+   "reference_latency_us": 2888.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      769,
+      640
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      769
+     ]
+    }
+   ],
+   "impl_latency_us": 6000.0,
+   "reference_latency_us": 6000.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      897,
+      512
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      897
+     ]
+    }
+   ],
+   "impl_latency_us": 1996.6,
+   "reference_latency_us": 1996.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "lhs",
+     "shape": [
+      223,
+      1152
+     ]
+    },
+    {
+     "name": "m_indices",
+     "shape": [
+      223
+     ]
+    }
+   ],
+   "impl_latency_us": 1535.3,
+   "reference_latency_us": 1535.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  }
+ ],
+ "remeasure_note": "2026-09-15 重测：Model.forward NPU wall-clock 逐 case 实测（910B2C, warmup=1, repeat=1, perf_counter + npu.synchronize）；口径为端到端单次的 host+device 时延（含 launch 开销）。"
+}

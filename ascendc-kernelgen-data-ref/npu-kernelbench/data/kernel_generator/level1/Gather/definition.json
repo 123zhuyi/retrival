@@ -1,0 +1,14 @@
+{
+  "name": "Gather",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape (1D-4D). Supports float32, float16, bfloat16."},
+    "dim": {"description": "int, axis along which to index."},
+    "index": {"description": "Int64 tensor of indices. Same rank as x. Output shape = index shape."}
+  },
+  "outputs": {
+    "y": {"description": "Gathered tensor, same shape as index, same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, dim, index):\n    return torch.gather(x, dim, index)\n",
+  "description": "Gather: Gathers values along an axis specified by dim.\n\ntorch.gather = gather(input, dim, index, *, sparse_grad=False, out=None) -> Tensor\n\nFor a 3-D tensor the output is specified by:\n    out[i][j][k] = input[index[i][j][k]][j][k]  # if dim == 0\n    out[i][j][k] = input[i][index[i][j][k]][k]  # if dim == 1\n    out[i][j][k] = input[i][j][index[i][j][k]]  # if dim == 2\n\ninput and index must have the same number of dimensions. It is also required that index.size(d) <= input.size(d) for all dimensions d != dim. out will have the same shape as index. Note that input and index do not broadcast against each other.\n\nArgs:\n    input (Tensor): the source tensor.\n    dim (int): the axis along which to index.\n    index (LongTensor): the indices of elements to gather.\n\nKeyword args:\n    sparse_grad (bool, optional): If True, gradient w.r.t. input will be a sparse tensor.\n    out (Tensor, optional): the destination tensor.\n\nExample:\n    >>> t = torch.tensor([[1, 2], [3, 4]])\n    >>> torch.gather(t, 1, torch.tensor([[0, 0], [1, 0]]))\n    tensor([[1, 1], [4, 3]])\n\nReturns: Tensor, same shape as index, same dtype as input."
+}

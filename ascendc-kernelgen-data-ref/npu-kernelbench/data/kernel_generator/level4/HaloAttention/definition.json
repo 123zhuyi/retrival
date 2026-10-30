@@ -1,0 +1,29 @@
+{
+  "name": "HaloAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input feature map (B, C, H, W)"
+    },
+    "block_size": {
+      "description": "size of local attention blocks"
+    },
+    "halo_size": {
+      "description": "size of halo padding around blocks"
+    },
+    "dim_head": {
+      "description": "dimension per attention head"
+    },
+    "heads": {
+      "description": "number of attention heads"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output feature map (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, block_size, halo_size, dim_head=None, heads=None):\n    torch.manual_seed(42)\n    if dim_head is None:\n        dim_head = 64\n    if heads is None:\n        heads = 8\n    dim = x.shape[1]\n    b, c, h, w = x.shape\n    if b == 0 or c == 0 or h == 0 or w == 0:\n        return x\n    inner_dim = dim_head * heads\n    to_q = nn.Linear(dim, inner_dim, bias=False).to(device=x.device, dtype=x.dtype)\n    to_kv = nn.Linear(dim, inner_dim * 2, bias=False).to(device=x.device, dtype=x.dtype)\n    to_out = nn.Linear(inner_dim, dim).to(device=x.device, dtype=x.dtype)\n    block = block_size\n    halo = halo_size\n    q_inp = x.reshape(b, c, h // block, block, w // block, block).permute(0, 2, 4, 3, 5, 1).reshape(b * (h // block) * (w // block), block * block, c)\n    kv_inp = F.unfold(x, kernel_size=block + halo * 2, stride=block, padding=halo)\n    kv_inp = kv_inp.reshape(b, c, -1, kv_inp.shape[-1]).permute(0, 3, 2, 1).reshape(b * kv_inp.shape[-1], -1, c)\n    q = to_q(q_inp)\n    k, v = to_kv(kv_inp).chunk(2, dim=-1)\n    q = q.reshape(q.shape[0], q.shape[1], heads, -1).permute(0, 2, 1, 3).reshape(q.shape[0] * heads, q.shape[1], -1)\n    k = k.reshape(k.shape[0], k.shape[1], heads, -1).permute(0, 2, 1, 3).reshape(k.shape[0] * heads, k.shape[1], -1)\n    v = v.reshape(v.shape[0], v.shape[1], heads, -1).permute(0, 2, 1, 3).reshape(v.shape[0] * heads, v.shape[1], -1)\n    scale = dim_head ** -0.5\n    q = q * scale\n    sim = torch.bmm(q.float(), k.float().transpose(1, 2))\n    attn = F.softmax(sim, dim=-1)\n    out = torch.bmm(attn, v.float()).to(dtype=x.dtype)\n    out = out.reshape(-1, heads, out.shape[1], out.shape[2]).permute(0, 2, 1, 3).reshape(-1, out.shape[1], heads * out.shape[2])\n    out = to_out(out)\n    out = out.reshape(b, h // block, w // block, block, block, c).permute(0, 5, 1, 3, 2, 4).reshape(b, c, h, w)\n    return out\n",
+  "description": "Migrated HaloAttention operator from old npu_benchmark architecture."
+}

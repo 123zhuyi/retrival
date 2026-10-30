@@ -1,0 +1,35 @@
+{
+  "name": "GqaSparseDecode",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input 'q'."
+    },
+    "kv_cache": {
+      "description": "Input 'kv_cache'."
+    },
+    "topk_idx": {
+      "description": "Input 'topk_idx'."
+    },
+    "block_table": {
+      "description": "Input 'block_table'."
+    },
+    "seq_lens": {
+      "description": "Input 'seq_lens'."
+    },
+    "sm_scale": {
+      "description": "Input 'sm_scale'."
+    },
+    "decode_query_len": {
+      "description": "Input 'decode_query_len'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\nSPARSE_BLOCK_SIZE = 128\n\n\ndef run(q, kv_cache, topk_idx, block_table, seq_lens, sm_scale, decode_query_len):\n    total_q, H, D = q.shape\n    KH = kv_cache.shape[1]\n    BS = SPARSE_BLOCK_SIZE\n    G = H // KH\n    topk = topk_idx.shape[-1]\n    dql = decode_query_len\n    o = torch.zeros(total_q, H, D, dtype=torch.float32, device=q.device)\n    arange_bs = torch.arange(BS, device=q.device)\n    for pid_b in range(total_q):\n        req_id = pid_b // dql\n        q_offset = pid_b - req_id * dql\n        seq_len = int(seq_lens[req_id].item())\n        query_pos = seq_len - dql + q_offset\n        kv_len = max(query_pos + 1, 0)\n        num_blocks = (kv_len + BS - 1) // BS\n        real_topk = min(topk, num_blocks)\n        if real_topk <= 0:\n            continue\n        for kh in range(KH):\n            blks = topk_idx[kh, pid_b, :real_topk].long()\n            pages = block_table[req_id, blks].long()\n            kv = kv_cache[pages, kh].float()\n            k = kv[..., :D].reshape(-1, D)\n            v = kv[..., D:].reshape(-1, D)\n            pos = (blks[:, None] * BS + arange_bs[None, :]).reshape(-1)\n            mask = pos < kv_len\n            if not bool(mask.any()):\n                continue\n            q_g = q[pid_b, kh * G:(kh + 1) * G].float()\n            logits = q_g @ k.t() * sm_scale\n            logits = logits.masked_fill(~mask[None, :], float('-inf'))\n            o[pid_b, kh * G:(kh + 1) * G] = torch.softmax(logits, dim=-1) @ v\n    return o.to(q.dtype)",
+  "description": "Model that performs MiniMax-M3 GQA block-sparse attention (decode). vLLM _gqa_sparse_decode_kernel + _merge_topk_attn_out_kernel (vllm/models/minimax_m3/common/ops/sparse_attn.py, wrapper minimax_m3_sparse_attn_decode): minimax_m3_sparse_attn_decode(q, kv_cache, topk_idx, block_table, seq_lens, num_kv_heads, sm_scale, output, decode_query_len) -> output [total_q, num_heads, head_dim]"
+}

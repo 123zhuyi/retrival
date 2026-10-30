@@ -1,0 +1,68 @@
+{
+  "name": "SparseFlashAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "shape varies; supports float16/bfloat16"
+    },
+    "key": {
+      "description": "shape varies; supports float16/bfloat16"
+    },
+    "value": {
+      "description": "shape varies; supports float16/bfloat16"
+    },
+    "sparse_indices": {
+      "description": "shape varies; supports int32"
+    },
+    "scale_value": {
+      "description": "float, default=0.041666666666666664"
+    },
+    "block_table": {
+      "description": "optional int32 block table for PA_BSND layout"
+    },
+    "actual_seq_lengths_query": {
+      "description": "list of int"
+    },
+    "actual_seq_lengths_kv": {
+      "description": "list of int"
+    },
+    "query_rope": {
+      "description": "optional rope tensor; supports float16/bfloat16"
+    },
+    "key_rope": {
+      "description": "optional rope tensor; supports float16/bfloat16"
+    },
+    "sparse_block_size": {
+      "description": "int, default=1"
+    },
+    "layout_query": {
+      "description": "str, default=BSND"
+    },
+    "layout_kv": {
+      "description": "str, default=BSND"
+    },
+    "sparse_mode": {
+      "description": "int, default=3"
+    },
+    "pre_tokens": {},
+    "next_tokens": {},
+    "attention_mode": {
+      "description": "int, default=0"
+    },
+    "return_softmax_lse": {}
+  },
+  "outputs": {
+    "0": {
+      "description": "Attention output"
+    },
+    "1": {
+      "description": "Softmax max"
+    },
+    "2": {
+      "description": "Softmax sum"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport math\n\ndef _to_cumsum(lengths, total):\n    if lengths is None:\n        return [total]\n    if isinstance(lengths, torch.Tensor):\n        lengths = lengths.tolist()\n    if len(lengths) == 0:\n        return [total]\n    if lengths[-1] >= total * 0.9:\n        return lengths\n    return [sum(lengths[:i + 1]) for i in range(len(lengths))]\n\ndef _get_tnd_idx(cumsum_list, t_idx):\n    b_idx = 0\n    while b_idx < len(cumsum_list) and t_idx >= cumsum_list[b_idx]:\n        b_idx += 1\n    s1_offset = 0 if b_idx == 0 else cumsum_list[b_idx - 1]\n    s1_idx = t_idx - s1_offset\n    return (b_idx, s1_idx)\n\ndef _gather_kv(cur_k, cur_v, topk, cur_s2, block_size):\n    s2_sparse = []\n    for sparse_id in topk.view(-1).tolist():\n        if sparse_id == -1:\n            break\n        begin_idx = sparse_id * block_size\n        end_idx = min(begin_idx + block_size, cur_s2)\n        s2_sparse.extend(range(begin_idx, end_idx))\n    if not s2_sparse:\n        return (cur_k[:0], cur_v[:0], 0)\n    return (cur_k[s2_sparse, :], cur_v[s2_sparse, :], len(s2_sparse))\n\ndef _cal_attenmask(topk, s1_idx, block_size, actual_sel_s2, g, cur_s2, cur_s1):\n    \"\"\"sparse_mode=3 (right-down causal) 的 attention mask\"\"\"\n    atten_msk = torch.zeros(actual_sel_s2)\n    sparse_tail_idx = math.ceil(cur_s2 / block_size)\n    sparse_tail_seq_len = cur_s2 % block_size\n    if sparse_tail_seq_len == 0:\n        sparse_tail_seq_len = block_size\n    delta_s = cur_s2 - cur_s1\n    threshold = delta_s + s1_idx + 1\n    s_idx = 0\n    for sparse_id in topk.view(-1).tolist():\n        if sparse_id == -1:\n            break\n        begin_idx = sparse_id * block_size\n        block_len = block_size if sparse_id != sparse_tail_idx - 1 else sparse_tail_seq_len\n        end_idx = begin_idx + block_len\n        if begin_idx < threshold and end_idx <= threshold:\n            s_idx += block_len\n            continue\n        elif end_idx > threshold:\n            local_offset = 0 if threshold <= begin_idx else threshold - begin_idx\n            mask_begin = s_idx + local_offset\n            mask_end = s_idx + block_len\n            atten_msk[mask_begin:mask_end] = 1\n        s_idx += block_len\n    return atten_msk\n\ndef _tsoftmax(x):\n    x_max = torch.max(x, dim=-1, keepdim=True)[0]\n    x_sub = x - x_max\n    y = torch.exp(x_sub)\n    x_sum = y.sum(dim=-1, keepdim=True)\n    return (y / x_sum, x_max, x_sum)\n\ndef run(query, key, value, sparse_indices, scale_value, block_table=None, actual_seq_lengths_query=None, actual_seq_lengths_kv=None, query_rope=None, key_rope=None, sparse_block_size=1, layout_query='BSND', layout_kv='BSND', sparse_mode=3, pre_tokens=None, next_tokens=None, attention_mode=0, return_softmax_lse=False):\n    dtype = query.dtype\n    device = query.device\n    atten_enable = sparse_mode != 0\n    if layout_query == 'BSND':\n        b, s1, n1, d = query.shape\n        t1 = b * s1\n        n2 = key.shape[2]\n        g = n1 // n2\n        q_fp = query.permute(0, 2, 1, 3).reshape(t1, n2, g, d).float()\n        asq_cumsum = _to_cumsum(actual_seq_lengths_query, t1)\n        s2 = key.shape[1]\n        ask_cumsum = _to_cumsum(actual_seq_lengths_kv, b * s2)\n    elif layout_query == 'TND':\n        t1, n1, d = query.shape\n        n2 = key.shape[1]\n        g = n1 // n2\n        b = actual_seq_lengths_query.shape[0] if actual_seq_lengths_query is not None else 1\n        q_fp = query.reshape(t1, n2, g, d).float()\n        asq_cumsum = _to_cumsum(actual_seq_lengths_query, t1)\n        t2 = key.shape[0]\n        ask_cumsum = _to_cumsum(actual_seq_lengths_kv, t2)\n    else:\n        raise ValueError(f'Unsupported layout_query: {layout_query}')\n    if layout_kv == 'BSND':\n        t2 = b * s2\n        k_fp = key.permute(0, 2, 1, 3).reshape(t2, n2, d).float()\n        v_fp = value.permute(0, 2, 1, 3).reshape(t2, n2, d).float()\n    elif layout_kv == 'PA_BSND':\n        t2 = key.shape[0] * key.shape[1]\n        k_fp = key.permute(0, 2, 1, 3).reshape(t2, n2, d).float()\n        v_fp = value.permute(0, 2, 1, 3).reshape(t2, n2, d).float()\n    elif layout_kv == 'TND':\n        t2 = key.shape[0]\n        k_fp = key.reshape(t2, n2, d).float()\n        v_fp = value.reshape(t2, n2, d).float()\n    else:\n        raise ValueError(f'Unsupported layout_kv: {layout_kv}')\n    if query_rope is not None and key_rope is not None:\n        q_rope = query_rope.float()\n        k_rope = key_rope.float()\n        if layout_query == 'BSND':\n            q_rope = q_rope.permute(0, 2, 1, 3).reshape(t1, n2, g, -1)\n        else:\n            q_rope = q_rope.reshape(t1, n2, g, -1)\n        if layout_kv == 'BSND' or layout_kv == 'PA_BSND':\n            k_rope = k_rope.permute(0, 2, 1, 3).reshape(t2, n2, -1)\n        else:\n            k_rope = k_rope.reshape(t2, n2, -1)\n        q_fp = torch.cat([q_fp, q_rope], dim=-1)\n        k_fp = torch.cat([k_fp, k_rope], dim=-1)\n    sparse_indices_tnd = sparse_indices.reshape(t1, n2, -1)\n    out = torch.zeros(t1, n2, g, d, dtype=torch.float32, device=device)\n    x_max_out = torch.zeros(t1, n2, g, 1, dtype=torch.float32, device=device)\n    x_sum_out = torch.zeros(t1, n2, g, 1, dtype=torch.float32, device=device)\n    for i in range(t1):\n        b_idx, s1_idx = _get_tnd_idx(asq_cumsum, i)\n        for n2_idx in range(n2):\n            topk = sparse_indices_tnd[i, n2_idx]\n            q_cal = q_fp[i, n2_idx]\n            s2_start = 0 if b_idx == 0 else ask_cumsum[b_idx - 1]\n            s2_end = ask_cumsum[b_idx]\n            cur_s2 = ask_cumsum[b_idx] if b_idx == 0 else ask_cumsum[b_idx] - ask_cumsum[b_idx - 1]\n            cur_s1 = asq_cumsum[b_idx] if b_idx == 0 else asq_cumsum[b_idx] - asq_cumsum[b_idx - 1]\n            cur_k = k_fp[s2_start:s2_end, n2_idx, :]\n            cur_v = v_fp[s2_start:s2_end, n2_idx, :]\n            k_cal, v_cal, actual_sel_s2 = _gather_kv(cur_k, cur_v, topk, cur_s2, sparse_block_size)\n            if actual_sel_s2 > 0:\n                qk = torch.matmul(q_cal, k_cal.t()) * scale_value\n                if atten_enable:\n                    atten_msk = _cal_attenmask(topk, s1_idx, sparse_block_size, actual_sel_s2, g, cur_s2, cur_s1)\n                    atten_msk = atten_msk.to(device=device, dtype=torch.float32)\n                    qk = qk + atten_msk.view(1, -1) * -2e+35\n                softmax_res, x_max, x_sum = _tsoftmax(qk)\n                x_max_out[i, n2_idx, :, 0] = x_max.squeeze(-1)\n                x_sum_out[i, n2_idx, :, 0] = x_sum.squeeze(-1)\n                out[i, n2_idx] = torch.matmul(softmax_res, v_cal)\n    x_max_out = x_max_out.expand(t1, n2, g, 8)\n    x_sum_out = x_sum_out.expand(t1, n2, g, 8)\n    softmax_max = x_max_out.reshape(t1, n2 * g, 8)\n    softmax_sum = x_sum_out.reshape(t1, n2 * g, 8)\n    if layout_query == 'BSND':\n        attention_out = out.reshape(b, s1, n2, g, d).permute(0, 2, 1, 3, 4).reshape(b, s1, n1, d)\n    else:\n        attention_out = out.reshape(t1, n1, d)\n    attention_out = attention_out.to(dtype)\n    if not return_softmax_lse:\n        empty = torch.empty(0, dtype=torch.float32, device=device)\n        return (attention_out, empty, empty)\n    return (attention_out, softmax_max, softmax_sum)\n",
+  "description": "Model that performs Sparse Flash Attention computation.\ntorch_npu.npu_sparse_flash_attention(query, key, value, sparse_indices, scale_value, *, ...)\n-> (attention_out, softmax_max, softmax_sum)"
+}

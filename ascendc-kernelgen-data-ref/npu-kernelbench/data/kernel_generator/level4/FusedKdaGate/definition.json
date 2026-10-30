@@ -1,0 +1,41 @@
+{
+  "name": "FusedKdaGate",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "g": {
+      "description": "Input g"
+    },
+    "A": {
+      "description": "Input A"
+    },
+    "g_bias": {
+      "description": "Input g_bias"
+    },
+    "head_k_dim": {
+      "description": "Input head_k_dim"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "threshold": {
+      "description": "Input threshold"
+    },
+    "lower_bound": {
+      "description": "Input lower_bound"
+    },
+    "use_bias": {
+      "description": "Input use_bias"
+    },
+    "use_lower_bound": {
+      "description": "Input use_lower_bound"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\ndef run(g,\n    A,\n    g_bias,\n    head_k_dim,\n    beta,\n    threshold,\n    lower_bound,\n    use_bias,\n    use_lower_bound,\n):\n    torch.manual_seed(42)\n    heads = A.numel()\n    if g.shape[-1] != heads * head_k_dim:\n        raise ValueError(\"the flattened gate dimension is inconsistent\")\n    original_shape = g.shape[:-1]\n    gate_input = g.float().reshape(-1, heads, head_k_dim)\n    if use_bias:\n        gate_input = gate_input + g_bias.float().reshape(\n            heads, head_k_dim\n        )\n    rate = torch.exp(A.float())[:, None]\n    if use_lower_bound:\n        output = lower_bound * torch.sigmoid(rate * gate_input)\n    else:\n        output = -rate * F.softplus(\n            gate_input, beta=beta, threshold=threshold\n        )\n    return output.reshape(*original_shape, heads, head_k_dim)",
+  "description": "Reference implementation for FusedKdaGate."
+}

@@ -1,0 +1,32 @@
+{
+  "name": "GroupedMatmulSwigluQuant",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports int8"
+    },
+    "weight": {
+      "description": "shape varies; supports int8"
+    },
+    "weight_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "x_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "group_list": {
+      "description": "list"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Quantized output int8"
+    },
+    "1": {
+      "description": "Dynamic quant scale"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(x: torch.Tensor, weight: list, weight_scale: list, x_scale: torch.Tensor, group_list: torch.Tensor):\n    \"\"\"\n        Performs grouped matmul + SwiGLU + quant using NPU ops.\n\n        Args:\n            x (Tensor): Left matrix for matmul, shape [m, k], dtype int8.\n            weight (list[Tensor]): Weight matrices per expert, each [k, n], dtype int8.\n            weight_scale (list[Tensor]): Weight quantization scales per expert, each [n], dtype float32.\n            x_scale (Tensor): Left matrix quantization scale, shape [m], dtype float32.\n            group_list (Tensor): Token count per group (cumsum), shape [e], dtype int64.\n\n        Returns:\n            tuple: (output, output_scale) where output is int8 [m, n//2] and output_scale is float [m].\n        \"\"\"\n    import torch_npu\n\n    def _to_device(obj, device):\n        if isinstance(obj, torch.Tensor):\n            return obj.to(device)\n        elif isinstance(obj, list):\n            return [_to_device(item, device) for item in obj]\n        return obj\n    device = x.device\n    weight = _to_device(weight, device)\n    weight_scale = _to_device(weight_scale, device)\n    x_scale = _to_device(x_scale, device)\n    group_list = _to_device(group_list, device)\n    x_list = [x]\n    w_list = weight\n    ws_list = weight_scale\n    matmul_out = torch_npu.npu_grouped_matmul(x_list, w_list, scale=ws_list, group_list=group_list, group_type=0, group_list_type=0, split_item=2, output_dtype=torch.float16)\n    if isinstance(matmul_out, (list, tuple)):\n        matmul_out = torch.cat(matmul_out, dim=0)\n    matmul_out = (matmul_out * x_scale.unsqueeze(1)).to(torch.float16)\n    swiglu_out = torch_npu.npu_swiglu(matmul_out, dim=-1)\n    q_out, q_scale = torch_npu.npu_dynamic_quant(swiglu_out, dst_type=torch.int8)\n    return (q_out, q_scale)\n",
+  "description": "Model that performs Grouped Matmul + SwiGLU + Quant computation using NPU ops.\nUses npu_grouped_matmul for grouped matmul, npu_swiglu for activation,\nand npu_dynamic_quant for quantization.\n\nPyTorch native implementation (aligned with atk reference & aclnnSwigluGatedMlp):\ndef _gmm_swiglu_quant(x, weight, weight_scale, x_scale, m):\n    # Step 1: int32 matmul to avoid int8 overflow\n    c_temp1 = torch.matmul(x.to(torch.int32), weight.to(torch.int32))\n    c_temp1 = c_temp1.to(torch.float32)\n    # Step 2: apply per-channel (weight) and per-token (x) scales\n    c_temp2 = c_temp1 * weight_scale                    # [t, n]\n    c_temp3 = c_temp2 * x_scale.reshape(m, 1)           # [t, n]\n    # Step 3: SwiGLU activation — silu(gate) * up (Ascend standard)\n    gate, up = c_temp3.chunk(2, dim=-1)\n    swiglu_out = gate * torch.sigmoid(gate) * up        # = silu(gate) * up\n    # Step 4: dynamic quantize to int8 (per-token)\n    max_abs = torch.max(torch.abs(swiglu_out), dim=-1, keepdim=True).values\n    quant_scale = 127.0 / max_abs\n    q_out = torch.round(swiglu_out * quant_scale).clamp(-128, 127).to(torch.int8)\n    dequant_scale = (1.0 / quant_scale).squeeze(-1)\n    return q_out, dequant_scale\n\ndef process_groups(x, weight_list, weight_scale_list, x_scale, group_list):\n    m = x.shape[0]\n    outputs = []\n    start = 0\n    prev = 0\n    for i, curr in enumerate(group_list.tolist()):\n        count = curr - prev\n        prev = curr\n        if count > 0:\n            q_out, q_scale = _gmm_swiglu_quant(\n                x[start:start + count],\n                weight_list[i],\n                weight_scale_list[i],\n                x_scale[start:start + count],\n                count\n            )\n            outputs.append((q_out, q_scale))\n        start += count\n    if outputs:\n        output = torch.cat([o[0] for o in outputs], dim=0)\n        output_scale = torch.cat([o[1] for o in outputs], dim=0)\n    else:\n        n = weight_list[0].shape[1]\n        output = torch.empty(m, n // 2, dtype=torch.int8)\n        output_scale = torch.empty(m, dtype=torch.float32)\n    return output, output_scale"
+}

@@ -1,0 +1,2874 @@
+{
+ "op_name": "15_CrossformerAttention",
+ "source": "ops-ref flash_attention_score aclnn（custom_transformer2_transformer）在**当前已对齐的壳**（host/model_new_ascendc.py md5 2166e3748e6097cd20054d72ce11567f）下的重测：逐 case 隔离进程 msprof (--ai-core=on --task-time=on --ascendcl=on)，warmup=3/repeats=3 取中位数，核序列周期性切段；口径 = **参考核那一个 kernel**（aclnnFlashAttentionScoreV2_FlashAttentionScore_FlashAttentionScore）的 device task_time。输入由 golden 自己的 get_input_groups() 产出（seed 20260920），零拷贝路径。",
+ "benchmark": "15_CrossformerAttention",
+ "total_cases": 49,
+ "accuracy_passed_cases": 46,
+ "impl_latency_geomean_us": 475.202,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 5,
+   "ratio": 0.102
+  },
+  "100-500us": {
+   "count": 14,
+   "ratio": 0.2857
+  },
+  "500-1000us": {
+   "count": 17,
+   "ratio": 0.3469
+  },
+  ">1000us": {
+   "count": 10,
+   "ratio": 0.2041
+  }
+ },
+ "max_mfu_pct": 35.7587,
+ "sweet_spot_shape": {
+  "case_idx": 31,
+  "q_shape": [
+   3,
+   5041,
+   384
+  ],
+  "impl_latency_us": 1850.634,
+  "mfu_pct": 35.7587
+ },
+ "caliber_status": "REFRESHED_20260920_A1_KERNEL_FP32_COMPUTE",
+ "caliber_review_needed": "【已解决·旧疑问】旧文件标注的 FP32_CASES_NEED_CONFIRMATION（fp32 case 是否真走 fp32 mma）本轮**正面确认**：对齐壳把 q/k/v 一律 upcast 成 fp32 再喂核（host/x45_align.py:fa_attn_core `work = torch.float32`），且 case 0（输入 fp16）的 op_summary 显示 FA 计算核 Input Data Types = FLOAT;FLOAT;FLOAT;...、HF32 Eligible = NO ⇒ 真 fp32 mma 通路。故本文件 mfu_pct 的分母**全部**取 fp32 峰值 176.947（不再按输入 dtype 分档）。||【新开·待人工确认】本轮 A 口径（参考核单核）与旧值 298.395 在 **float32 case 上一致（geomean 比 1.0332，10/10 例 0.965~1.146）**，但在 **float16/bf16 case 上系统性偏大（1.8243 / 1.7468）**。最可能成因：旧测量喂的是**原生 dtype**，而现壳统一 upcast 成 fp32 ⇒ mma 计费变化；受控探针（同核同 shape 只换 dtype，逐 shape 隔离 msprof）给出 fp32/fp16 核时比 geomean 2.193（n=6，1.628~2.787）。**残差 ~17% 未解释**（未找到旧测量脚本本身，故该成因是推断而非直读代码）。发布前请确认是否接受该口径切换。||【已知缺口】case 34/38/41 因 head_dim=896 > 核能力上限 768 而 invoke_fail（非数值失配），支持面 46/49，与前一致。||【另一可选口径】若消费端需要『一次 forward 内全部设备核之和』（对齐 16_LongformerAttention 的 full_semantics），见本文件 impl_latency_geomean_us_B_full_forward。",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      196,
+      96
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 14
+    },
+    {
+     "name": "q",
+     "shape": [
+      1,
+      196,
+      96
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      196,
+      96
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      196,
+      96
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 35.721,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 14751744.0,
+   "mfu_pct": 0.2334,
+   "impl_latency_A2_fa_op_us": 35.721,
+   "impl_latency_B_full_forward_us": 47.681,
+   "old_impl_latency_us": 26.721,
+   "impl_latency_ratio_vs_old": 1.3368
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      2464,
+      64
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      8,
+      14
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      16,
+      154
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      112,
+      112
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      112,
+      112
+     ],
+     "dtype": "float32"
+    }
+   ],
+   "impl_latency_us": 81.903,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 70647808.0,
+   "mfu_pct": 0.4875,
+   "impl_latency_A2_fa_op_us": 160.083,
+   "impl_latency_B_full_forward_us": 305.163,
+   "old_impl_latency_us": 75.282,
+   "impl_latency_ratio_vs_old": 1.0879
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      729,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 27
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      729,
+      729
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      729,
+      729
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 282.431,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 10883911680.0,
+   "mfu_pct": 21.7786,
+   "impl_latency_A2_fa_op_us": 282.431,
+   "impl_latency_B_full_forward_us": 541.975,
+   "old_impl_latency_us": 156.983,
+   "impl_latency_ratio_vs_old": 1.7991
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      729,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 27
+    },
+    {
+     "name": "q",
+     "shape": [
+      2,
+      729,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      729,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      729,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      729,
+      729
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      729,
+      729
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 184.067,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 3265173504.0,
+   "mfu_pct": 10.0251,
+   "impl_latency_A2_fa_op_us": 184.067,
+   "impl_latency_B_full_forward_us": 359.888,
+   "old_impl_latency_us": 127.783,
+   "impl_latency_ratio_vs_old": 1.4405
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      3465,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      11,
+      7
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      55,
+      63
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      77,
+      77
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 446.097,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 5464166400.0,
+   "mfu_pct": 6.9223,
+   "impl_latency_A2_fa_op_us": 446.097,
+   "impl_latency_B_full_forward_us": 1100.317,
+   "old_impl_latency_us": 454.13,
+   "impl_latency_ratio_vs_old": 0.9823
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      4576,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      11,
+      8
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      44,
+      104
+     ]
+    },
+    {
+     "name": "q",
+     "shape": [
+      4,
+      4576,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      4576,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      4576,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    }
+   ],
+   "impl_latency_us": 201.448,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 2886467584.0,
+   "mfu_pct": 8.0977,
+   "impl_latency_A2_fa_op_us": 499.578,
+   "impl_latency_B_full_forward_us": 926.99,
+   "old_impl_latency_us": 178.684,
+   "impl_latency_ratio_vs_old": 1.1274
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      3744,
+      512
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      13,
+      16
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      117,
+      32
+     ]
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      208,
+      208
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 95.323,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 3189768192.0,
+   "mfu_pct": 18.9112,
+   "impl_latency_A2_fa_op_us": 95.323,
+   "impl_latency_B_full_forward_us": 229.043,
+   "old_impl_latency_us": 61.001,
+   "impl_latency_ratio_vs_old": 1.5626
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      4312,
+      448
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      7,
+      14
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      77,
+      56
+     ]
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      98,
+      98
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 385.695,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 6058049536.0,
+   "mfu_pct": 8.8766,
+   "impl_latency_A2_fa_op_us": 385.695,
+   "impl_latency_B_full_forward_us": 734.885,
+   "old_impl_latency_us": 206.605,
+   "impl_latency_ratio_vs_old": 1.8668
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      961,
+      1024
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 31
+    },
+    {
+     "name": "q",
+     "shape": [
+      1,
+      961,
+      1024
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      961,
+      1024
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      961,
+      1024
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    }
+   ],
+   "impl_latency_us": 119.344,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 3782742016.0,
+   "mfu_pct": 17.9128,
+   "impl_latency_A2_fa_op_us": 119.344,
+   "impl_latency_B_full_forward_us": 201.004,
+   "old_impl_latency_us": 117.342,
+   "impl_latency_ratio_vs_old": 1.0171
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      6,
+      294,
+      768
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      14,
+      21
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 16
+    }
+   ],
+   "impl_latency_us": 120.324,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 1593188352.0,
+   "mfu_pct": 7.4829,
+   "impl_latency_A2_fa_op_us": 120.324,
+   "impl_latency_B_full_forward_us": 223.865,
+   "old_impl_latency_us": 115.883,
+   "impl_latency_ratio_vs_old": 1.0383
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      3721,
+      128
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 61
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 4
+    }
+   ],
+   "impl_latency_us": 537.401,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 14178141184.0,
+   "mfu_pct": 14.91,
+   "impl_latency_A2_fa_op_us": 537.401,
+   "impl_latency_B_full_forward_us": 666.002,
+   "old_impl_latency_us": 383.447,
+   "impl_latency_ratio_vs_old": 1.4015
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      1369,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 37
+    },
+    {
+     "name": "q",
+     "shape": [
+      5,
+      1369,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      5,
+      1369,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      5,
+      1369,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      1369,
+      1369
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 1051.962,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 23989260800.0,
+   "mfu_pct": 12.8876,
+   "impl_latency_A2_fa_op_us": 1051.962,
+   "impl_latency_B_full_forward_us": 1452.433,
+   "old_impl_latency_us": 506.59,
+   "impl_latency_ratio_vs_old": 2.0766
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      7921,
+      96
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 89
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    }
+   ],
+   "impl_latency_us": 681.107,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 24093020544.0,
+   "mfu_pct": 19.9909,
+   "impl_latency_A2_fa_op_us": 681.107,
+   "impl_latency_B_full_forward_us": 729.827,
+   "old_impl_latency_us": 257.245,
+   "impl_latency_ratio_vs_old": 2.6477
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      999,
+      768
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      27,
+      37
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      999,
+      999
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 850.694,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 24526872576.0,
+   "mfu_pct": 16.2939,
+   "impl_latency_A2_fa_op_us": 850.694,
+   "impl_latency_B_full_forward_us": 1373.41,
+   "old_impl_latency_us": 337.267,
+   "impl_latency_ratio_vs_old": 2.5223
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      3721,
+      512
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 61
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      3721,
+      3721
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 938.937,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 28356282368.0,
+   "mfu_pct": 17.0675,
+   "impl_latency_A2_fa_op_us": 938.937,
+   "impl_latency_B_full_forward_us": 1511.835,
+   "old_impl_latency_us": 446.369,
+   "impl_latency_ratio_vs_old": 2.1035
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      1681,
+      512
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 41
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      1681,
+      1681
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 337.173,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 17361475584.0,
+   "mfu_pct": 29.0998,
+   "impl_latency_A2_fa_op_us": 337.173,
+   "impl_latency_B_full_forward_us": 416.693,
+   "old_impl_latency_us": 159.383,
+   "impl_latency_ratio_vs_old": 2.1155
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      4480,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      16,
+      14
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      64,
+      70
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      224,
+      224
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      224,
+      224
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 735.229,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 20552089600.0,
+   "mfu_pct": 15.7976,
+   "impl_latency_A2_fa_op_us": 735.229,
+   "impl_latency_B_full_forward_us": 1741.44,
+   "old_impl_latency_us": 423.888,
+   "impl_latency_ratio_vs_old": 1.7345
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      7488,
+      448
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      13,
+      16
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      117,
+      64
+     ]
+    },
+    {
+     "name": "q",
+     "shape": [
+      8,
+      7488,
+      448
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      8,
+      7488,
+      448
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      8,
+      7488,
+      448
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 692.347,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 22328377344.0,
+   "mfu_pct": 18.2259,
+   "impl_latency_A2_fa_op_us": 692.347,
+   "impl_latency_B_full_forward_us": 1556.118,
+   "old_impl_latency_us": 281.546,
+   "impl_latency_ratio_vs_old": 2.4591
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      30976,
+      384
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      176,
+      176
+     ]
+    }
+   ],
+   "impl_latency_us": 601.704,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 24360517632.0,
+   "mfu_pct": 22.8802,
+   "impl_latency_A2_fa_op_us": 601.704,
+   "impl_latency_B_full_forward_us": 1292.088,
+   "old_impl_latency_us": 230.244,
+   "impl_latency_ratio_vs_old": 2.6133
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      11440,
+      448
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      16,
+      13
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      80,
+      143
+     ]
+    }
+   ],
+   "impl_latency_us": 663.786,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 21320499200.0,
+   "mfu_pct": 18.1521,
+   "impl_latency_A2_fa_op_us": 663.786,
+   "impl_latency_B_full_forward_us": 1405.091,
+   "old_impl_latency_us": 275.666,
+   "impl_latency_ratio_vs_old": 2.4079
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      2401,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 49
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    }
+   ],
+   "impl_latency_us": 763.83,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 30991570176.0,
+   "mfu_pct": 22.93,
+   "impl_latency_A2_fa_op_us": 763.83,
+   "impl_latency_B_full_forward_us": 828.09,
+   "old_impl_latency_us": 342.306,
+   "impl_latency_ratio_vs_old": 2.2314
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      1369,
+      640
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 37
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      1369,
+      1369
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      1369,
+      1369
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 983.139,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 19191408640.0,
+   "mfu_pct": 11.0319,
+   "impl_latency_A2_fa_op_us": 983.139,
+   "impl_latency_B_full_forward_us": 1475.133,
+   "old_impl_latency_us": 598.792,
+   "impl_latency_ratio_vs_old": 1.6419
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      6,
+      1369,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 37
+    },
+    {
+     "name": "q",
+     "shape": [
+      6,
+      1369,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      6,
+      1369,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      6,
+      1369,
+      448
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 461.698,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 20150979072.0,
+   "mfu_pct": 24.6658,
+   "impl_latency_A2_fa_op_us": 461.698,
+   "impl_latency_B_full_forward_us": 529.298,
+   "old_impl_latency_us": 213.304,
+   "impl_latency_ratio_vs_old": 2.1645
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      1369,
+      640
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 37
+    }
+   ],
+   "impl_latency_us": 631.445,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 23989260800.0,
+   "mfu_pct": 21.4703,
+   "impl_latency_A2_fa_op_us": 631.445,
+   "impl_latency_B_full_forward_us": 701.925,
+   "old_impl_latency_us": 265.505,
+   "impl_latency_ratio_vs_old": 2.3783
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      12672,
+      448
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      16,
+      8
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      176,
+      72
+     ]
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      128,
+      128
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 914.576,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 23253221376.0,
+   "mfu_pct": 14.3688,
+   "impl_latency_A2_fa_op_us": 914.576,
+   "impl_latency_B_full_forward_us": 2363.83,
+   "old_impl_latency_us": 475.37,
+   "impl_latency_ratio_vs_old": 1.9239
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      8112,
+      768
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      16,
+      13
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      208,
+      39
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      208,
+      208
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      208,
+      208
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 1480.779,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 25916866560.0,
+   "mfu_pct": 9.8912,
+   "impl_latency_A2_fa_op_us": 1480.779,
+   "impl_latency_B_full_forward_us": 3308.424,
+   "old_impl_latency_us": 757.195,
+   "impl_latency_ratio_vs_old": 1.9556
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      6,
+      6292,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 11
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      44,
+      143
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      121,
+      121
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 914.696,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 18710495232.0,
+   "mfu_pct": 11.5602,
+   "impl_latency_A2_fa_op_us": 914.696,
+   "impl_latency_B_full_forward_us": 3007.132,
+   "old_impl_latency_us": 482.109,
+   "impl_latency_ratio_vs_old": 1.8973
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      3025,
+      96
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 55
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      3025,
+      3025
+     ],
+     "dtype": "float32"
+    }
+   ],
+   "impl_latency_us": 322.672,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 14055360000.0,
+   "mfu_pct": 24.6171,
+   "impl_latency_A2_fa_op_us": 322.672,
+   "impl_latency_B_full_forward_us": 420.014,
+   "old_impl_latency_us": 323.427,
+   "impl_latency_ratio_vs_old": 0.9977
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      2173,
+      96
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      41,
+      53
+     ]
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      2173,
+      2173
+     ],
+     "dtype": "float32"
+    }
+   ],
+   "impl_latency_us": 337.053,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 14505765888.0,
+   "mfu_pct": 24.322,
+   "impl_latency_A2_fa_op_us": 337.053,
+   "impl_latency_B_full_forward_us": 405.154,
+   "old_impl_latency_us": 345.486,
+   "impl_latency_ratio_vs_old": 0.9756
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      7392,
+      768
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      14,
+      16
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      154,
+      48
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 4
+    }
+   ],
+   "impl_latency_us": 424.056,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 15259926528.0,
+   "mfu_pct": 20.337,
+   "impl_latency_A2_fa_op_us": 424.056,
+   "impl_latency_B_full_forward_us": 1289.386,
+   "old_impl_latency_us": 369.908,
+   "impl_latency_ratio_vs_old": 1.1464
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      8820,
+      192
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 14
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      70,
+      126
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      8,
+      196,
+      196
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      196,
+      196
+     ],
+     "dtype": "float32"
+    }
+   ],
+   "impl_latency_us": 1958.998,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 10621255680.0,
+   "mfu_pct": 3.0641,
+   "impl_latency_A2_fa_op_us": 2571.941,
+   "impl_latency_B_full_forward_us": 3305.585,
+   "old_impl_latency_us": 1987.88,
+   "impl_latency_ratio_vs_old": 0.9855
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      5041,
+      384
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 71
+    },
+    {
+     "name": "q",
+     "shape": [
+      3,
+      5041,
+      384
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      3,
+      5041,
+      384
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      3,
+      5041,
+      384
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 1850.634,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 117097026048.0,
+   "mfu_pct": 35.7587,
+   "impl_latency_A2_fa_op_us": 1850.634,
+   "impl_latency_B_full_forward_us": 1934.894,
+   "old_impl_latency_us": 820.737,
+   "impl_latency_ratio_vs_old": 2.2548
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      5041,
+      384
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 71
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      5041,
+      5041
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 656.746,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 39032342016.0,
+   "mfu_pct": 33.588,
+   "impl_latency_A2_fa_op_us": 656.746,
+   "impl_latency_B_full_forward_us": 755.147,
+   "old_impl_latency_us": 323.747,
+   "impl_latency_ratio_vs_old": 2.0286
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      6,
+      3025,
+      320
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 55
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      3025,
+      3025
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 1233.269,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 70276800000.0,
+   "mfu_pct": 32.2041,
+   "impl_latency_A2_fa_op_us": 1514.036,
+   "impl_latency_B_full_forward_us": 1620.696,
+   "old_impl_latency_us": 647.433,
+   "impl_latency_ratio_vs_old": 1.9049
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      3721,
+      896
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 61
+    },
+    {
+     "name": "q",
+     "shape": [
+      1,
+      3721,
+      896
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      1,
+      3721,
+      896
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      1,
+      3721,
+      896
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": null,
+   "latency_band": "N/A",
+   "accuracy": "invoke_fail",
+   "impl_latency_A2_fa_op_us": null,
+   "impl_latency_B_full_forward_us": null,
+   "old_impl_latency_us": null,
+   "invoke_fail_reason": "RuntimeError: fwd V2 GetWorkspaceSize ret=161002 err=[PID: 926598] 2026-09-20-13:07:46.624.668 Invalid_Argument(EZ0026): Parameter D dim of FlashAttentionScore has incorrect value 896. Reason: The value of D dim can only be in the range of (0, 768].\n        Solution: Check whether the parameter valu"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      8448,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      176,
+      48
+     ]
+    },
+    {
+     "name": "q",
+     "shape": [
+      4,
+      8448,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      8448,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      8448,
+      1024
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      256,
+      256
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      256,
+      256
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 1010.06,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 35433480192.0,
+   "mfu_pct": 19.8255,
+   "impl_latency_A2_fa_op_us": 1010.06,
+   "impl_latency_B_full_forward_us": 3030.511,
+   "old_impl_latency_us": 627.772,
+   "impl_latency_ratio_vs_old": 1.609
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      20384,
+      640
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      14,
+      16
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      182,
+      112
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      224,
+      224
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 1898.735,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 35067002880.0,
+   "mfu_pct": 10.4374,
+   "impl_latency_A2_fa_op_us": 1898.735,
+   "impl_latency_B_full_forward_us": 4329.505,
+   "old_impl_latency_us": 781.716,
+   "impl_latency_ratio_vs_old": 2.4289
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      2401,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 49
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    }
+   ],
+   "impl_latency_us": 832.733,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 47225249792.0,
+   "mfu_pct": 32.0498,
+   "impl_latency_A2_fa_op_us": 832.733,
+   "impl_latency_B_full_forward_us": 1100.238,
+   "old_impl_latency_us": 423.788,
+   "impl_latency_ratio_vs_old": 1.965
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      2173,
+      896
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      41,
+      53
+     ]
+    }
+   ],
+   "impl_latency_us": null,
+   "latency_band": "N/A",
+   "accuracy": "invoke_fail",
+   "impl_latency_A2_fa_op_us": null,
+   "impl_latency_B_full_forward_us": null,
+   "old_impl_latency_us": null,
+   "invoke_fail_reason": "RuntimeError: fwd V2 GetWorkspaceSize ret=161002 err=[PID: 989758] 2026-09-20-13:11:19.001.595 Invalid_Argument(EZ0026): Parameter D dim of FlashAttentionScore has incorrect value 896. Reason: The value of D dim can only be in the range of (0, 768].\n        Solution: Check whether the parameter valu"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      2401,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 49
+    },
+    {
+     "name": "q",
+     "shape": [
+      2,
+      2401,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      2,
+      2401,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      2,
+      2401,
+      1024
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      2401,
+      2401
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 1315.212,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 47225249792.0,
+   "mfu_pct": 20.2925,
+   "impl_latency_A2_fa_op_us": 1315.212,
+   "impl_latency_B_full_forward_us": 1801.605,
+   "old_impl_latency_us": 651.553,
+   "impl_latency_ratio_vs_old": 2.0186
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4,
+      20736,
+      512
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 16
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      144,
+      144
+     ]
+    },
+    {
+     "name": "q",
+     "shape": [
+      4,
+      20736,
+      512
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "k",
+     "shape": [
+      4,
+      20736,
+      512
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "v",
+     "shape": [
+      4,
+      20736,
+      512
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "pos_bias",
+     "shape": [
+      8,
+      256,
+      256
+     ],
+     "dtype": "bfloat16"
+    }
+   ],
+   "impl_latency_us": 1115.884,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 43486543872.0,
+   "mfu_pct": 22.0238,
+   "impl_latency_A2_fa_op_us": 1115.884,
+   "impl_latency_B_full_forward_us": 3653.658,
+   "old_impl_latency_us": 655.973,
+   "impl_latency_ratio_vs_old": 1.7011
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      5,
+      9856,
+      896
+     ],
+     "dtype": "bfloat16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      16,
+      14
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      176,
+      56
+     ]
+    },
+    {
+     "name": "scale",
+     "shape": [],
+     "value": 0.05
+    }
+   ],
+   "impl_latency_us": null,
+   "latency_band": "N/A",
+   "accuracy": "invoke_fail",
+   "impl_latency_A2_fa_op_us": null,
+   "impl_latency_B_full_forward_us": null,
+   "old_impl_latency_us": null,
+   "invoke_fail_reason": "RuntimeError: fwd V2 GetWorkspaceSize ret=161002 err=[PID: 1012804] 2026-09-20-13:13:26.962.660 Invalid_Argument(EZ0026): Parameter D dim of FlashAttentionScore has incorrect value 896. Reason: The value of D dim can only be in the range of (0, 768].\n        Solution: Check whether the parameter val"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      2,
+      2401,
+      384
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 49
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 4
+    }
+   ],
+   "impl_latency_us": 447.877,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 17709468672.0,
+   "mfu_pct": 22.3462,
+   "impl_latency_A2_fa_op_us": 447.877,
+   "impl_latency_B_full_forward_us": 645.461,
+   "old_impl_latency_us": 445.989,
+   "impl_latency_ratio_vs_old": 1.0042
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      3025,
+      64
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 55
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      3025,
+      3025
+     ],
+     "dtype": "float32"
+    }
+   ],
+   "impl_latency_us": 638.105,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 18740480000.0,
+   "mfu_pct": 16.5976,
+   "impl_latency_A2_fa_op_us": 638.105,
+   "impl_latency_B_full_forward_us": 734.647,
+   "old_impl_latency_us": 661.193,
+   "impl_latency_ratio_vs_old": 0.9651
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      6,
+      9152,
+      448
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": [
+      13,
+      16
+     ]
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      143,
+      64
+     ]
+    },
+    {
+     "name": "q",
+     "shape": [
+      6,
+      9152,
+      448
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "k",
+     "shape": [
+      6,
+      9152,
+      448
+     ],
+     "dtype": "float32"
+    },
+    {
+     "name": "v",
+     "shape": [
+      6,
+      9152,
+      448
+     ],
+     "dtype": "float32"
+    }
+   ],
+   "impl_latency_us": 623.004,
+   "latency_band": "500-1000us",
+   "accuracy": "pass",
+   "flops": 20467679232.0,
+   "mfu_pct": 18.5667,
+   "impl_latency_A2_fa_op_us": 623.004,
+   "impl_latency_B_full_forward_us": 1304.268,
+   "old_impl_latency_us": 550.391,
+   "impl_latency_ratio_vs_old": 1.1319
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      1,
+      8
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 20.2,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 32.0,
+   "mfu_pct": 0.0,
+   "impl_latency_A2_fa_op_us": 48.54,
+   "impl_latency_B_full_forward_us": 58.1,
+   "old_impl_latency_us": 17.6,
+   "impl_latency_ratio_vs_old": 1.1477
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      1,
+      121,
+      512
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 11
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 512
+    }
+   ],
+   "impl_latency_us": 88.303,
+   "latency_band": "<100us",
+   "accuracy": "pass",
+   "flops": 29984768.0,
+   "mfu_pct": 0.1919,
+   "impl_latency_A2_fa_op_us": 174.103,
+   "impl_latency_B_full_forward_us": 267.083,
+   "old_impl_latency_us": 149.263,
+   "impl_latency_ratio_vs_old": 0.5916
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8,
+      20449,
+      512
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 11
+    },
+    {
+     "name": "feature_shape",
+     "shape": [],
+     "value": [
+      143,
+      143
+     ]
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    }
+   ],
+   "impl_latency_us": 1710.988,
+   "latency_band": ">1000us",
+   "accuracy": "pass",
+   "flops": 40539406336.0,
+   "mfu_pct": 13.3902,
+   "impl_latency_A2_fa_op_us": 1710.988,
+   "impl_latency_B_full_forward_us": 7113.158,
+   "old_impl_latency_us": 1058.981,
+   "impl_latency_ratio_vs_old": 1.6157
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      3,
+      841,
+      512
+     ],
+     "dtype": "float16"
+    },
+    {
+     "name": "group_size",
+     "shape": [],
+     "value": 29
+    },
+    {
+     "name": "num_heads",
+     "shape": [],
+     "value": 8
+    },
+    {
+     "name": "mask",
+     "shape": [
+      1,
+      841,
+      841
+     ],
+     "dtype": "float16"
+    }
+   ],
+   "impl_latency_us": 192.367,
+   "latency_band": "100-500us",
+   "accuracy": "pass",
+   "flops": 4345534464.0,
+   "mfu_pct": 12.7664,
+   "impl_latency_A2_fa_op_us": 192.367,
+   "impl_latency_B_full_forward_us": 339.307,
+   "old_impl_latency_us": 118.903,
+   "impl_latency_ratio_vs_old": 1.6178
+  }
+ ],
+ "impl_latency_geomean_us_A1_kernel": 475.202,
+ "impl_latency_geomean_us_A2_fa_op": 514.0119,
+ "impl_latency_geomean_us_B_full_forward": 879.0498,
+ "old_impl_latency_geomean_us": 298.395,
+ "impl_latency_geomean_us_delta_vs_old": 1.5925,
+ "refreshed_at": "20260920",
+ "refreshed_by": "REFRESH_15_CrossformerAttention.md 同源；本文件为 canonical 兼容 drop-in，未覆盖 canonical，也未 commit/push",
+ "invoke_fail_cases": [
+  34,
+  38,
+  41
+ ],
+ "timed_cases": 46,
+ "calibers": {
+  "A1_kernel": {
+   "caliber": "只统计参考核那一个 kernel",
+   "n": 46,
+   "geomean_us": 475.2019,
+   "sum_us": 31869.752,
+   "min_us": 20.2,
+   "max_us": 1958.998,
+   "per_case_us": [
+    35.721,
+    81.903,
+    282.431,
+    184.067,
+    446.097,
+    201.448,
+    95.323,
+    385.695,
+    119.344,
+    120.324,
+    537.401,
+    1051.962,
+    681.107,
+    850.694,
+    938.937,
+    337.173,
+    735.229,
+    692.347,
+    601.704,
+    663.786,
+    763.83,
+    983.139,
+    461.698,
+    631.445,
+    914.576,
+    1480.779,
+    914.696,
+    322.672,
+    337.053,
+    424.056,
+    1958.998,
+    1850.634,
+    656.746,
+    1233.269,
+    1010.06,
+    1898.735,
+    832.733,
+    1315.212,
+    1115.884,
+    447.877,
+    638.105,
+    623.004,
+    20.2,
+    88.303,
+    1710.988,
+    192.367
+   ]
+  },
+  "A2_fa_op": {
+   "caliber": "参考核所属 aclnn op 的全部设备核（含其 Pad/Slice/MemSet 辅助核）",
+   "n": 46,
+   "geomean_us": 514.0119,
+   "sum_us": 33253.912,
+   "min_us": 35.721,
+   "max_us": 2571.941,
+   "per_case_us": [
+    35.721,
+    160.083,
+    282.431,
+    184.067,
+    446.097,
+    499.578,
+    95.323,
+    385.695,
+    119.344,
+    120.324,
+    537.401,
+    1051.962,
+    681.107,
+    850.694,
+    938.937,
+    337.173,
+    735.229,
+    692.347,
+    601.704,
+    663.786,
+    763.83,
+    983.139,
+    461.698,
+    631.445,
+    914.576,
+    1480.779,
+    914.696,
+    322.672,
+    337.053,
+    424.056,
+    2571.941,
+    1850.634,
+    656.746,
+    1514.036,
+    1010.06,
+    1898.735,
+    832.733,
+    1315.212,
+    1115.884,
+    447.877,
+    638.105,
+    623.004,
+    48.54,
+    174.103,
+    1710.988,
+    192.367
+   ]
+  },
+  "B_full_forward": {
+   "caliber": "一次 forward 内全部设备核之和（对齐 16_ 的 full_semantics）",
+   "n": 46,
+   "geomean_us": 879.0498,
+   "sum_us": 63137.997,
+   "min_us": 47.681,
+   "max_us": 7113.158,
+   "per_case_us": [
+    47.681,
+    305.163,
+    541.975,
+    359.888,
+    1100.317,
+    926.99,
+    229.043,
+    734.885,
+    201.004,
+    223.865,
+    666.002,
+    1452.433,
+    729.827,
+    1373.41,
+    1511.835,
+    416.693,
+    1741.44,
+    1556.118,
+    1292.088,
+    1405.091,
+    828.09,
+    1475.133,
+    529.298,
+    701.925,
+    2363.83,
+    3308.424,
+    3007.132,
+    420.014,
+    405.154,
+    1289.386,
+    3305.585,
+    1934.894,
+    755.147,
+    1620.696,
+    3030.511,
+    4329.505,
+    1100.238,
+    1801.605,
+    3653.658,
+    645.461,
+    734.647,
+    1304.268,
+    58.1,
+    267.083,
+    7113.158,
+    339.307
+   ]
+  }
+ },
+ "caliber_delta_attribution": {
+  "A2_minus_A1_cases": [
+   1,
+   5,
+   30,
+   33,
+   45,
+   46
+  ],
+  "A2_minus_A1_note": "参考 aclnn op 自己派生的辅助核（Pad/Slice/MemSet），只在 D 需 pad 的 6 个 case 出现",
+  "B_minus_A2_geomean_us": 272.553,
+  "B_minus_A2_share_of_B_geomean": 0.3101,
+  "B_minus_A2_note": "壳内 host 侧布局/精度/掩码算子的设备核：主项是 Transpose（分组/回排与 BNSD 分头，33/46 例）、Cast（fp16/bf16↔fp32，41/46 例）、ZerosLike（aclnn 输出与 softmax_max/sum 工作区，46/46 例）、BroadcastTo+NotEqual（mask 物化，11/20 例）"
+ },
+ "kernel_breakdown_geomean_us": {
+  "aclnnFlashAttentionScoreV2_FlashAttentionScore_FlashAttentionScore": {
+   "n_cases": 46,
+   "geomean_us": 474.306
+  },
+  "aclnnInplaceCopy_TransposeAiCore_Transpose": {
+   "n_cases": 33,
+   "geomean_us": 289.332
+  },
+  "aclnnCast_CastAiCore_Cast": {
+   "n_cases": 41,
+   "geomean_us": 77.476
+  },
+  "aclnnFlashAttentionScoreV2_PadAiCore_Pad": {
+   "n_cases": 6,
+   "geomean_us": 70.319
+  },
+  "aclnnFlashAttentionScoreV2_PadAiCore_MemSet": {
+   "n_cases": 6,
+   "geomean_us": 47.203
+  },
+  "aclnnInplaceZero_ZerosLikeAiCore_ZerosLike": {
+   "n_cases": 46,
+   "geomean_us": 31.014
+  },
+  "aclnnInplaceCopy_BroadcastToAiCore_BroadcastTo": {
+   "n_cases": 11,
+   "geomean_us": 30.417
+  },
+  "aclnnFlashAttentionScoreV2_SliceAiCore_Slice": {
+   "n_cases": 6,
+   "geomean_us": 20.48
+  },
+  "aclnnNeScalar_NotEqualAiCore_NotEqual": {
+   "n_cases": 20,
+   "geomean_us": 19.656
+  }
+ },
+ "mfu_denominator": {
+  "value_tflops": 176.947,
+  "basis": "实际计算 dtype = fp32。依据：golden 15_CrossformerAttention.py:120 的 `to_heads()` 里 `.float()`，与 x45_align.py:135 `work = torch.float32 if dtype != torch.float32 else dtype` 一致 ⇒ 注意力核心（含 fp16/bf16 输入）恒以 fp32 计算；msprof op_summary 的 Input Data Types=FLOAT + HF32 Eligible=NO 为直接证据。故不按输入 dtype 分档，全部用 176.947。",
+  "old_denominator_was": {
+   "value_tflops": 353.8944,
+   "basis": "旧文件对全部 case 统一用 fp16/bf16 峰值"
+  }
+ },
+ "precision": {
+  "criterion": "官方 NPU-Benchmark 三项（allclose + matched_ratio>=0.9 + MERE<rel_thr），阈值按 golden 输出 dtype",
+  "pass_cases": 46,
+  "fail_cases": [],
+  "invoke_fail_cases": [
+   34,
+   38,
+   41
+  ],
+  "nan_inf_totals": {
+   "ref_nan": 0,
+   "cand_nan": 0,
+   "ref_inf": 0,
+   "cand_inf": 0
+  },
+  "worst_matched_ratio": 0.9747441279423701,
+  "max_abs_diff": 0.03125,
+  "max_MERE": 6.596613820875064e-05,
+  "judge_copy_md5": "159ec98b34652b80a2374f422bca61ed"
+ },
+ "repeatability_cross_device": {
+  "cases": [
+   0,
+   4,
+   8,
+   12,
+   20
+  ],
+  "npu_R1": "1",
+  "npu_R6": "6",
+  "same_device_repeat_geomean_ratio_A1": 1.0025,
+  "cross_device_geomean_ratio_A1": 1.0067,
+  "per_case": {
+   "0": {
+    "A1_base": 35.721,
+    "A1_dev1_repeat": 34.801,
+    "A1_dev6": 35.66,
+    "B_base": 47.681,
+    "B_dev6": 47.7
+   },
+   "4": {
+    "A1_base": 446.097,
+    "A1_dev1_repeat": 462.418,
+    "A1_dev6": 449.269,
+    "B_base": 1100.317,
+    "B_dev6": 1093.614
+   },
+   "8": {
+    "A1_base": 119.344,
+    "A1_dev1_repeat": 116.964,
+    "A1_dev6": 118.902,
+    "B_base": 201.004,
+    "B_dev6": 202.382
+   },
+   "12": {
+    "A1_base": 681.107,
+    "A1_dev1_repeat": 684.307,
+    "A1_dev6": 689.553,
+    "B_base": 729.827,
+    "B_dev6": 735.533
+   },
+   "20": {
+    "A1_base": 763.83,
+    "A1_dev1_repeat": 777.971,
+    "A1_dev6": 778.895,
+    "B_base": 828.09,
+    "B_dev6": 840.835
+   }
+  },
+  "note": "两张卡都非独占（本机多 lane 共用），但同卡重测与异卡一致性均 ≤3.7% ⇒ 本轮数值可复现、非某张卡的伪影"
+ },
+ "compute_dtype_evidence": {
+  "claim": "对齐壳把全部 fp16/bf16 输入 upcast 成 fp32 再喂核 ⇒ 核按 fp32 mma 计费（实际计算 dtype 全为 fp32）",
+  "evidence_1_code": "host/x45_align.py:fa_attn_core `work = torch.float32 if dtype != torch.float32 else dtype`，q/k/v 均 to_bnsd(work)，输出再 .to(dtype) 回落",
+  "evidence_2_msprof": "case 0（输入 float16）的 op_summary：FA 计算核 Input Data Types = FLOAT;FLOAT;FLOAT;...，Output Data Types = FLOAT;...，HF32 Eligible = NO ⇒ 真 fp32 mma（非 HF32 近似）",
+  "evidence_3_controlled_probe": {
+   "method": "同一 ops-ref FA 核、同一 shape，fp32/fp16/bf16 三种输入各自 warmup=3+取 3 次中位数，逐 shape 一个隔离进程 msprof，按 FA 计算核出现次序切段",
+   "geomean_fp32_over_fp16": 2.1931,
+   "geomean_fp32_over_bf16": 2.1704,
+   "range_fp32_over_fp16": [
+    1.628,
+    2.787
+   ],
+   "n_shape": 6,
+   "rep_spread_max_ratio": 1.0215,
+   "script": "refresh_refperf_15_28/15/work/probe_dtype2.py + probe_parse.py"
+  },
+  "interpretation": "旧 perf.json 的 A 口径值与本轮 A1 在 **float32 case 上一致（geomean 比 1.033，10/10 例 0.965~1.146）**，而在 float16/bf16 case 上系统性偏慢（1.824 / 1.747）——与「旧测量喂原生 dtype、现壳统一 upcast 成 fp32」这一解释方向一致；同口径受控探针给出 fp32/fp16 核时比 2.19。观测到的 1.75~1.82 与探针的 2.19 之间仍有 ~17% 残差，**未解释**（未找到旧测量脚本本身）。"
+ },
+ "A1_vs_old_by_input_dtype": {
+  "float16": {
+   "n": 23,
+   "geomean_A1_us": 433.6924,
+   "geomean_old_us": 237.735,
+   "A1_over_old_geomean": 1.8243,
+   "per_case_A1_over_old": {
+    "0": 1.3368,
+    "2": 1.7991,
+    "3": 1.4405,
+    "6": 1.5626,
+    "7": 1.8668,
+    "11": 2.0766,
+    "12": 2.6477,
+    "13": 2.5223,
+    "14": 2.1035,
+    "15": 2.1155,
+    "16": 1.7345,
+    "17": 2.4591,
+    "18": 2.6133,
+    "19": 2.4079,
+    "31": 2.2548,
+    "32": 2.0286,
+    "33": 1.9049,
+    "35": 1.609,
+    "36": 2.4289,
+    "45": 1.1477,
+    "46": 0.5916,
+    "47": 1.6157,
+    "48": 1.6178
+   }
+  },
+  "float32": {
+   "n": 10,
+   "geomean_A1_us": 337.0475,
+   "geomean_old_us": 326.2255,
+   "A1_over_old_geomean": 1.0332,
+   "per_case_A1_over_old": {
+    "1": 1.0879,
+    "8": 1.0171,
+    "9": 1.0383,
+    "27": 0.9977,
+    "28": 0.9756,
+    "29": 1.1464,
+    "30": 0.9855,
+    "42": 1.0042,
+    "43": 0.9651,
+    "44": 1.1319
+   }
+  },
+  "bfloat16": {
+   "n": 13,
+   "geomean_A1_us": 727.5611,
+   "geomean_old_us": 416.5079,
+   "A1_over_old_geomean": 1.7468,
+   "per_case_A1_over_old": {
+    "4": 0.9823,
+    "5": 1.1274,
+    "10": 1.4015,
+    "20": 2.2314,
+    "21": 1.6419,
+    "22": 2.1645,
+    "23": 2.3783,
+    "24": 1.9239,
+    "25": 1.9556,
+    "26": 1.8973,
+    "37": 1.965,
+    "39": 2.0186,
+    "40": 1.7011
+   }
+  }
+ },
+ "measurement": {
+  "method": "逐 case 隔离进程 msprof（--ai-core=on --task-time=on --ascendcl=on），warmup=3/repeats=3 取中位数",
+  "segmentation": "核序列周期性切段（period p: seq[i]==seq[i+p]，len(seq)%p==0，len(seq)//p==6）+ 各轮核多重集必须完全相同 + 每轮恰 1 个 FA 计算核",
+  "driver": "golden 自己的 get_input_groups()（seed 20260920）；张量先 .to(npu) 再喂壳=零拷贝测量路径",
+  "npu": "1",
+  "date": "20260920",
+  "runner": "npu_a2_asc/level4/15_CrossformerAttention/REFRESH_15_CrossformerAttention.md 同源：refresh_refperf_15_28/15/work/{run_case.py,parse.py,drive.sh,prec.py,build_refresh.py}"
+ },
+ "artifact_md5": {
+  "shell_model_new_ascendc": "2166e3748e6097cd20054d72ce11567f",
+  "shell_x45_align": "a264662d90f46a333bacca3fc6d8d751",
+  "shell_x45_fa": "bdf97e594a9050793e198045640a223a",
+  "golden_py": "9c5aa34f98b7be5459a8ec4087d5c401",
+  "case_json": "2036c227c0a6b0978b57bc1b5adb1037",
+  "perf_json_old_untouched": "488f204ce7d2436efed595478fa2dcef",
+  "libcust_opapi_so": "677959febf5c406ecce700e9f8404969",
+  "op_kernel_host_api_graph_tree": "612fa291e636e3ec937d4fcb1175220c",
+  "canonical_perf_json_untouched": "488f204ce7d2436efed595478fa2dcef",
+  "this_dropin": "self"
+ },
+ "dropin_note": "T 口径（本轮所测的 case 全集与算子范围）**未变**：同一份 benchmark case json（md5 2036c227c0a6b0978b57bc1b5adb1037，49 例，与 op 目录 45_CrossformerAttention.json 逐对象相同），同样 46 例可跑 + 3 例核拒绝，算子边界同前（golden 无投影层，壳=分组/回排 + 一次 FA 核），只是换成了**当前已对齐的壳**重测。"
+}

@@ -1,0 +1,2909 @@
+{
+ "op_name": "6_GroupedMatmulSwigluQuantV2",
+ "source": "model.py forward NPU 实测基线（2026-09-15 shape 放大重测, 910B2C, wall-clock 逐 case, warmup=1, repeat=1）",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 572.7105248355848,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      128,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 2506.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      12288,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      12288
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 1063.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      512
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 573.9,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      768,
+      768
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      768
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 462.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 326.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      1536,
+      1536
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      1536
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 532.0,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 827.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2560
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      2560,
+      2560
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      2560
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      8192
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 396.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      49152,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      49152
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 345.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 466.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      49152,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      49152
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 418.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      768,
+      768
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      768
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 418.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      1024
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 376.4,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      1536,
+      1536
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      1536
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 387.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      8192
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 318.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      2560
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      2560,
+      2560
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      2560
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 842.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 289.5,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      12288,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      12288
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 231.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      512
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 239.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      98304,
+      768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      768,
+      768
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      768
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      98304
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 912.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      1024
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 884.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      1536,
+      1536
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      1536
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 246.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 661.5,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      2560
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      2560,
+      2560
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      2560
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      8192
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 434.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      98304,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      98304
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 503.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 470.0,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      98304,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      512
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      98304
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 737.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      768,
+      768
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      768
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 648.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      1024
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 451.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      49152,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      1536,
+      1536
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      1536
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      49152
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 854.6,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 768.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      2560
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      2560,
+      2560
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      2560
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 840.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 198.1,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 287.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      131072,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      512
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      131072
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 909.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      4096,
+      768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      768,
+      768
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      768
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      4096
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 202.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      12288,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      1024
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      12288
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 260.8,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      1536,
+      1536
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      1536
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 617.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      49152,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      49152
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 7082.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      16384,
+      2560
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      2560,
+      2560
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      2560
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      16384
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 4327.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      196608,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      196608
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 1041.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      131072,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      131072
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 845.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      512
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      512,
+      512
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      512
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 468.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      49152,
+      768
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      768,
+      768
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      768
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      49152
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 759.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      1024
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      1024,
+      1024
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      1024
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 727.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      49152,
+      1536
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      1536,
+      1536
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      1536
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      49152
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 850.3,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      32768,
+      2048
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      2048,
+      2048
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      32768
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 2
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 843.4,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      24576,
+      2560
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      8,
+      2560,
+      2560
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      8,
+      2560
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      24576
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      8
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 3
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 946.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      65536,
+      256
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      2,
+      256,
+      256
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      2,
+      256
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      65536
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      2
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_mode",
+     "value": 0
+    },
+    {
+     "name": "quant_dtype",
+     "value": 0
+    },
+    {
+     "name": "group_list_type",
+     "value": 0
+    }
+   ],
+   "impl_latency_us": 406.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "x",
+     "shape": [
+      8192,
+      384
+     ]
+    },
+    {
+     "name": "weight",
+     "shape": [
+      4,
+      384,
+      384
+     ]
+    },
+    {
+     "name": "weight_scale",
+     "shape": [
+      4,
+      384
+     ]
+    },
+    {
+     "name": "x_scale",
+     "shape": [
+      8192
+     ]
+    },
+    {
+     "name": "group_list",
+     "shape": [
+      4
+     ]
+    },
+    {
+     "name": "dequant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_mode",
+     "value": 1
+    },
+    {
+     "name": "quant_dtype",
+     "value": 1
+    },
+    {
+     "name": "group_list_type",
+     "value": 1
+    }
+   ],
+   "impl_latency_us": 210.7,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  }
+ ]
+}

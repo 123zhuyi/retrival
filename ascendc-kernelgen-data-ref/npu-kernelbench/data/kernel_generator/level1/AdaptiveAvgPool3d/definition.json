@@ -1,0 +1,13 @@
+{
+  "name": "AdaptiveAvgPool3d",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor of shape (N, C, D, H, W) or (C, D, H, W). Supports float32, float16, bfloat16."},
+    "output_size": {"description": "Target output size. int (cube) or list [D, H, W]. Elements can be int or null (null = same as input)."}
+  },
+  "outputs": {
+    "y": {"description": "Pooled tensor, same dtype and batch/channel dims as x, spatial dims = output_size."}
+  },
+  "reference": "import torch\nimport torch.nn as nn\n\ndef run(x, output_size):\n    if isinstance(output_size, list):\n        output_size = tuple(s if s is not None else None for s in output_size)\n    return nn.AdaptiveAvgPool3d(output_size)(x)\n",
+  "description": "AdaptiveAvgPool3d: Applies 3D adaptive average pooling over an input signal.\n\ntorch.nn.AdaptiveAvgPool3d(output_size) -> None\n\nThe output is of size D x H x W, for any input size. The number of output features is equal to the number of input planes.\n\nArgs:\n    output_size: the target output size of the form D x H x W. Can be a tuple (D, H, W) or a single number D for a cube D x D x D. D, H and W can be either an int, or None which means the size will be the same as that of the input.\n\nShape:\n    - Input: (N, C, D_in, H_in, W_in) or (C, D_in, H_in, W_in).\n    - Output: (N, C, S_0, S_1, S_2) or (C, S_0, S_1, S_2), where S=output_size.\n\nExamples:\n    >>> m = nn.AdaptiveAvgPool3d((5, 7, 9))\n    >>> input = torch.randn(1, 64, 8, 9, 10)\n    >>> output = m(input)\n    >>> m = nn.AdaptiveAvgPool3d(7)  # cube 7x7x7\n    >>> m = nn.AdaptiveAvgPool3d((7, None, None))  # adaptive H/W\n\nReturns: Tensor, same dtype."
+}

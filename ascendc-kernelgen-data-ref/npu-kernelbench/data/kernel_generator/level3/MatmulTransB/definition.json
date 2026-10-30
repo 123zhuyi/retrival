@@ -1,0 +1,20 @@
+{
+  "name": "MatmulTransB",
+  "op_type": "matmul",
+  "axes": {},
+  "inputs": {
+    "A": {
+      "description": "shape varies; supports float32, float16, bfloat16"
+    },
+    "B": {
+      "description": "shape varies; supports float32, float16, bfloat16"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Matrix multiplication result with B transposed"
+    }
+  },
+  "reference": "import torch\n\ndef run(A, B):\n    return torch.matmul(A, B.T)\n",
+  "description": "Matrix multiplication with B transposed: matmul(A, B^T). Pure PyTorch: torch.matmul(A, B.T). Supports float32, float16, bfloat16."
+}

@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "npu-kernelbench"
+version = "0.1.0"
+description = "Ascend NPU kernel evaluation and benchmarking framework"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.8.0",
+    "torch-npu>=2.8.0",
+    "pydantic>=2.12.5",
+    "click>=8.0",
+    "jinja2>=3.1.0",
+    "rich>=13.0",
+    "triton-ascend>=3.2.0",
+    "pyyaml>=6.0.3",
+    "numpy>=2.2.6",
+    "pybind11>=3.0.4",
+]
+
+[project.scripts]
+npu-kernelbench = "npu_kernelbench.cli.main:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-xdist>=3.5",
+    "ruff>=0.11.0",
+]
+safetensors = [
+    "safetensors>=0.4",
+]
+
+[tool.pytest.ini_options]
+addopts = ""
+markers = [
+    "requires_npu: test requires Ascend NPU hardware",
+    "ascend_c: test requires CANN compilation toolchain",
+]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".ruff_cache",
+    "data",
+]
+
+[tool.ruff.lint]
+ignore = ["E741"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torch-npu = { index = "huawei-pypi" }
+triton-ascend = { index = "huawei-pypi" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "huawei-pypi"
+url = "https://repo.huaweicloud.com/repository/pypi/simple"
+explicit = true

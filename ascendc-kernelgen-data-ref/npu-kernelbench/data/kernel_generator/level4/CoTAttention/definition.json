@@ -1,0 +1,20 @@
+{
+  "name": "CoTAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "kernel_size": {
+      "description": "kernel size for contextual convolution; default 3"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, kernel_size=3):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    if b == 0 or c == 0 or h == 0 or w == 0:\n        return x\n    groups = 4 if c % 4 == 0 else (2 if c % 2 == 0 else 1)\n    mid = max(1, c // 4)\n    key_embed = nn.Sequential(\n        nn.Conv2d(c, c, kernel_size, padding=kernel_size//2, groups=groups, bias=False),\n        nn.ReLU()\n    ).to(device=x.device, dtype=x.dtype)\n    value_embed = nn.Sequential(\n        nn.Conv2d(c, c, 1, bias=False),\n    ).to(device=x.device, dtype=x.dtype)\n    attention_embed = nn.Sequential(\n        nn.Conv2d(2*c, mid, 1, bias=False),\n        nn.ReLU(),\n        nn.Conv2d(mid, kernel_size*kernel_size*c, 1)\n    ).to(device=x.device, dtype=x.dtype)\n\n    k1 = key_embed(x)\n    v = value_embed(x).view(b, c, -1)\n    y = torch.cat([k1, x], 1)\n    att = attention_embed(y)\n    att = att.reshape(b, c, -1, h, w)\n    att = att.mean(2).view(b, c, -1)\n    k2 = F.softmax(att.float(), dim=-1).to(dtype=x.dtype) * v\n    k2 = k2.view(b, c, h, w)\n    return k1 + k2\n",
+  "description": "Migrated CoTAttention operator."
+}

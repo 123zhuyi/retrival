@@ -1,0 +1,4142 @@
+{
+ "op_name": "18_ScaledDotProductAttentionBackward",
+ "source": "ops-ref flash_attention_score_grad aclnn 实测 (warmup=1, repeats=3, msprof) | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。 | 2026-09-15 case 重设：形状按「真实模型 shape + 泛化」重挑，使标杆耗时分档为 10/20/40/30，全部 case 本轮重测（无沿用值）。",
+ "benchmark": "18_ScaledDotProductAttentionBackward",
+ "total_cases": 50,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 722.096611,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 5,
+   "ratio": 0.1
+  },
+  "100-500us": {
+   "count": 10,
+   "ratio": 0.2
+  },
+  "500-1000us": {
+   "count": 20,
+   "ratio": 0.4
+  },
+  ">1000us": {
+   "count": 15,
+   "ratio": 0.3
+  }
+ },
+ "max_mfu_pct": 29.972869,
+ "sweet_spot_shape": {
+  "case_idx": 49,
+  "inputs_shape": [
+   {
+    "name": "grad_output",
+    "shape": [
+     4,
+     32,
+     4096,
+     128
+    ]
+   },
+   {
+    "name": "query",
+    "shape": [
+     4,
+     32,
+     4096,
+     128
+    ]
+   },
+   {
+    "name": "key",
+    "shape": [
+     4,
+     32,
+     4096,
+     128
+    ]
+   },
+   {
+    "name": "value",
+    "shape": [
+     4,
+     32,
+     4096,
+     128
+    ]
+   },
+   {
+    "name": "attn_output",
+    "shape": [
+     4,
+     32,
+     4096,
+     128
+    ]
+   },
+   {
+    "name": "logsumexp",
+    "shape": [
+     4,
+     32,
+     4096
+    ]
+   }
+  ],
+  "impl_latency_us": 15548.521,
+  "mfu_pct": 29.972869
+ },
+ "caliber_status": "FP32_CASES_NEED_CONFIRMATION",
+ "caliber_review_needed": "【待人工确认·分母】本文件对全部 case 统一用 fp16/bf16 cube 峰值 353.8944。但其中 10 个 case 的首个输入 dtype 为 float32，而 ops-ref 该算子存在真实的 fp32 mma 通路：flash_attention_score 有真实的 fp32 mma 通路（非 cast 降级）：op_host/arch22/flash_attention_score_tiling_general.cpp:1049-1055 「case ge::DT_FLOAT: bmmDtype = matmul_tiling::DataType::DT_FLOAT」；op_kernel/flash_attention_score.cpp:444/470/538/608/676 DataType==1 → INVOKE_FA_GENERAL_OP_IMPL(..., float, float, ...)（12 处 float,float 实例化）；部署产物 custom_transformer2_transformer/.../config/ascend910b/flash_attention_score.json 的 binList 含 float32 bin（与 bf16/fp16 并列）。 flash_attention_score_grad 同构：op_kernel/flash_attention_score_grad.cpp:838-840 #if (ORIG_DTYPE_QUERY == DT_FLOAT) → INVOKE_FAG_GENERAL_S1S2_BN2GS1S2_IMPL(float, ...)；部署 config binList 含 float32 bin。 若这些 case 实测时确以 float32 张量喂给 aclnn（即走 fp32 mma），按「分母按计算 dtype 选」规则其分母应为 176.947，对应 mfu_pct 应 ×2；缺环：未找到测量脚本本身（aclnn 调用点），无法排除 runner 在调用前把 fp32 隐式 cast 成 fp16/bf16（若已 cast 则 353.8944 正确）。故本次不刷数值，仅标注待确认。| 另一独立证据源（mfu_collection/level4_archive/FlashAttention/REPORT.md）判定 level4/10「CURRENT COMMITTED IS CORRECT」，依据是手写核 npu_fusion_attention 走 fp16 mma；但该结论只覆盖 fp16/bf16 case，未讨论上述 fp32 case —— 两方证据的冲突点即在此。",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      256
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 74.613,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 201326592.0,
+   "mfu_pct": 0.762453
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      256
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 75.873,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 402653184.0,
+   "mfu_pct": 1.499582
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      256,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      8,
+      256
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 78.663,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 805306368.0,
+   "mfu_pct": 2.89279
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      256
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 80.233,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 805306368.0,
+   "mfu_pct": 2.836184
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      256,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      16,
+      256
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 82.813,
+   "latency_band": "<100us",
+   "accuracy": "not-rechecked",
+   "flops": 1610612736.0,
+   "mfu_pct": 5.495648
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      384,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      384,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      384,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      384,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      384,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      384
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 177.427,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 1811939328.0,
+   "mfu_pct": 2.885694
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      512
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 175.467,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 805306368.0,
+   "mfu_pct": 1.296857
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      512,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      512
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 215.488,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 6442450944.0,
+   "mfu_pct": 8.448008
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      12,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      12,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      12,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      12,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      12,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      12,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 221.898,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 9663676416.0,
+   "mfu_pct": 12.305954
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      28,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      28,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      28,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      28,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      28,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      28,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 301.452,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 22548578304.0,
+   "mfu_pct": 21.136219
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      8,
+      1500,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      8,
+      1500,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      8,
+      1500,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      8,
+      1500,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      8,
+      1500,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1500
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 308.672,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 13824000000.0,
+   "mfu_pct": 12.655019
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 346.753,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 25769803776.0,
+   "mfu_pct": 20.999898
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      3,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      3,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      3,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      3,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      3,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 396.085,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 19327352832.0,
+   "mfu_pct": 13.788286
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      40,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 407.916,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 32212254720.0,
+   "mfu_pct": 22.313962
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      32,
+      768
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 457.618,
+   "latency_band": "100-500us",
+   "accuracy": "not-rechecked",
+   "flops": 28991029248.0,
+   "mfu_pct": 17.901394
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      64,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      64,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      64,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      64,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      64,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      64,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 507.93,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 25769803776.0,
+   "mfu_pct": 14.336184
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      16,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 509.55,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 25769803776.0,
+   "mfu_pct": 14.290605
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      3072
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 513.96,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 28991029248.0,
+   "mfu_pct": 15.938984
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      8,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 514.51,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 25769803776.0,
+   "mfu_pct": 14.15284
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      3,
+      16,
+      768
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 633.955,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 21743271936.0,
+   "mfu_pct": 9.69154
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 521.58,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 25769803776.0,
+   "mfu_pct": 13.960999
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      768,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      32,
+      768
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 532.691,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 28991029248.0,
+   "mfu_pct": 15.378522
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      16,
+      1536,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      16,
+      1536,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      16,
+      1536,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      16,
+      1536,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      16,
+      1536,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      16,
+      1536
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 535.881,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 28991029248.0,
+   "mfu_pct": 15.286976
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1568,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1568,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1568,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1568,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1568,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      8,
+      1568
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 814.322,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 30211571712.0,
+   "mfu_pct": 10.483431
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      96
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      96
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      96
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      96
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      96
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 538.021,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 38654705664.0,
+   "mfu_pct": 20.301562
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 539.461,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51539607552.0,
+   "mfu_pct": 26.996494
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      40,
+      640,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      40,
+      640,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      40,
+      640,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      40,
+      640,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      40,
+      640,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      40,
+      640
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 730.998,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 25165824000.0,
+   "mfu_pct": 9.727949
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      80
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      80
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      80
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      80
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      32,
+      1024,
+      80
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      32,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 608.904,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 32212254720.0,
+   "mfu_pct": 14.948534
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3584,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3584,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3584,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3584,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      3584,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      3584
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 690.267,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 39460012032.0,
+   "mfu_pct": 16.153492
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 693.427,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 12884901888.0,
+   "mfu_pct": 5.250573
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 731.669,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51539607552.0,
+   "mfu_pct": 19.904568
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      12,
+      3072,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      12,
+      3072
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 740.959,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 43486543872.0,
+   "mfu_pct": 16.583914
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      2,
+      4,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      4,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 874.104,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51539607552.0,
+   "mfu_pct": 16.661124
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      8,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 879.875,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51539607552.0,
+   "mfu_pct": 16.551846
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4,
+      8,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 903.196,
+   "latency_band": "500-1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51539607552.0,
+   "mfu_pct": 16.124469
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16,
+      8,
+      1024,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      16,
+      8,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1126.314,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 51539607552.0,
+   "mfu_pct": 12.93028
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      3072,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      3072,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      3072,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      3072,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      3072,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      3072
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 1134.395,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 115964116992.0,
+   "mfu_pct": 28.885882
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 1154.356,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 103079215104.0,
+   "mfu_pct": 25.232347
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      40,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      40,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 1956.548,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 128849018880.0,
+   "mfu_pct": 18.608738
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      16,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 1975.528,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 206158430208.0,
+   "mfu_pct": 29.487925
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      16,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 2366.234,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 206158430208.0,
+   "mfu_pct": 24.618961
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      2048,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 2389.775,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 206158430208.0,
+   "mfu_pct": 24.376446
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      128,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      128,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      128,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      128,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      128,
+      1024,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      128,
+      1024
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3041.321,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 206158430208.0,
+   "mfu_pct": 19.15425
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      2048,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 3815.552,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 206158430208.0,
+   "mfu_pct": 15.267574
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 4045.321,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 28.800791
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 4047.461,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 28.785563
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      8192,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      8192,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      8192,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      8192,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      8192,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1,
+      16,
+      8192
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 6383.145,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 412316860416.0,
+   "mfu_pct": 18.252514
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      2,
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": true
+    }
+   ],
+   "impl_latency_us": 7966.838,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 824633720832.0,
+   "mfu_pct": 29.248353
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      8,
+      16,
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      8,
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 13645.355,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 824633720832.0,
+   "mfu_pct": 17.076645
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "query",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "key",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "value",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "attn_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      32,
+      4096,
+      128
+     ]
+    },
+    {
+     "name": "logsumexp",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      4,
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "is_causal",
+     "type": "attr",
+     "dtype": "bool",
+     "value": false
+    }
+   ],
+   "impl_latency_us": 15548.521,
+   "latency_band": ">1000us",
+   "accuracy": "not-rechecked",
+   "flops": 1649267441664.0,
+   "mfu_pct": 29.972869
+  }
+ ],
+ "data_status": "CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 10, 20, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。 | 前一状态: CASE_REDESIGN_20260915 — 按「标杆耗时分档」重设 case 形状配比后全量重测：目标 <100us/100-500us/500-1000us/>1000us = 10%/20%/40%/30%，实测 [5, 10, 20, 15]（50 例）。口径不变（逐 case 隔离 msprof，只统计本算子核的 device task，warmup=3/repeats=3）。accuracy 一律 not-rechecked（本轮只测时延）。"
+}

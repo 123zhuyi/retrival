@@ -1,0 +1,4762 @@
+{
+ "op_name": "39_DecoderMhaAttention",
+ "source": "910b2 triton",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 3253.8419,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11264,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      11264,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      8192
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      8192
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 8192
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 88.4898,
+   "latency_band": "<100us"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      26112,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      26112,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      8704,
+      17408
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17408
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 8704
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 267.2614,
+   "latency_band": "100-500us"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16128,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16128,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      9216
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9216
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 9216
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 283.0176,
+   "latency_band": "100-500us"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      14336,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      14336,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      9728
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9728
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 9728
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 201.212,
+   "latency_band": "100-500us"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      34432,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      34432,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      10240
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      10240
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 10240
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 108.9902,
+   "latency_band": "100-500us"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      203136,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      203136,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ],
+     "value": [
+      0,
+      9600,
+      18944,
+      29056,
+      38912,
+      48256,
+      57984,
+      68480,
+      78976,
+      87808,
+      98048,
+      108800,
+      118912,
+      127872,
+      136448,
+      146304,
+      154752
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      154752
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 10752
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 1229.653,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      12,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      174592,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      174592,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13
+     ],
+     "value": [
+      0,
+      11264,
+      22528,
+      33792,
+      45056,
+      56320,
+      67584,
+      78848,
+      90112,
+      101376,
+      112640,
+      123904,
+      135168
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      135168
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 11264
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 2584.8038,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      122368,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      122368,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      11648,
+      23296,
+      34944,
+      46592,
+      58240,
+      69888,
+      81536,
+      93184
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      93184
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 11648
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 4073.8934,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      15872,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      15872,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      12160
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      12160
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 12160
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 1010.932,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      66560,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      66560,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      12672,
+      25344,
+      38016,
+      50688
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      50688
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 12672
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 4669.445,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16512,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      16512,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      13184
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13184
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 13184
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 326.9984,
+   "latency_band": "100-500us"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      17280,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      17280,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      13696
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13696
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 13696
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 501.1702,
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      36352,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      36352,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      14208,
+      28416
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      28416
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 14208
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 2372.8156,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      92544,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      92544,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      11776,
+      26112,
+      37888,
+      52608
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      52608
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 14720
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 815.1402,
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      38784,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      38784,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      15232,
+      30208
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      30208
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 15232
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 1363.7836,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      157952,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      157952,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      15744,
+      31488,
+      47232,
+      62976,
+      78720,
+      94464,
+      110208,
+      125952
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      125952
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 15744
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 2596.848,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      155520,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      155520,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      33
+     ],
+     "value": [
+      0,
+      3840,
+      7680,
+      11520,
+      15360,
+      19200,
+      23040,
+      26880,
+      30720,
+      34560,
+      38400,
+      42240,
+      46080,
+      49920,
+      53760,
+      57600,
+      61440,
+      65280,
+      69120,
+      72960,
+      76800,
+      80640,
+      84480,
+      88320,
+      92160,
+      96000,
+      99840,
+      103680,
+      107520,
+      111360,
+      115200,
+      119040,
+      122880
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      122880
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 3840
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 14751.5148,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      96,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      138368,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      138368,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      97
+     ],
+     "value": [
+      0,
+      1024,
+      2176,
+      3200,
+      4224,
+      5248,
+      6528,
+      7680,
+      8960,
+      9984,
+      11264,
+      12416,
+      13440,
+      14720,
+      16000,
+      17152,
+      18176,
+      19328,
+      20480,
+      21760,
+      22784,
+      24064,
+      25216,
+      26368,
+      27392,
+      28416,
+      29568,
+      30720,
+      31744,
+      32768,
+      33792,
+      34944,
+      35968,
+      37120,
+      38272,
+      39552,
+      40704,
+      41728,
+      43008,
+      44032,
+      45312,
+      46336,
+      47616,
+      48768,
+      49792,
+      50816,
+      52096,
+      53248,
+      54400,
+      55424,
+      56576,
+      57728,
+      58752,
+      60032,
+      61184,
+      62208,
+      63360,
+      64512,
+      65792,
+      66944,
+      68096,
+      69120,
+      70272,
+      71424,
+      72448,
+      73472,
+      74496,
+      75648,
+      76928,
+      78080,
+      79232,
+      80512,
+      81664,
+      82816,
+      83840,
+      84992,
+      86144,
+      87168,
+      88192,
+      89344,
+      90496,
+      91520,
+      92800,
+      93952,
+      95232,
+      96384,
+      97664,
+      98816,
+      99840,
+      100864,
+      102144,
+      103296,
+      104320,
+      105472,
+      106752,
+      108032,
+      109184
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      109184
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1280
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 11935.6464,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      21760,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      21760,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      17280
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17280
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 17280
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 616.1562,
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      354432,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      354432,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ],
+     "value": [
+      0,
+      17664,
+      35328,
+      52992,
+      70656,
+      88320,
+      105984,
+      123648,
+      141312,
+      158976,
+      176640,
+      194304,
+      211968,
+      229632,
+      247296,
+      264960,
+      282624
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      282624
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 17664
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 5970.0594,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      145152,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      145152,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ],
+     "value": [
+      0,
+      896,
+      1792,
+      2688,
+      3584,
+      4480,
+      5376,
+      6272,
+      7168,
+      8064,
+      8960,
+      9856,
+      10752,
+      11648,
+      12544,
+      13440,
+      14336,
+      15232,
+      16128,
+      17024,
+      17920,
+      18816,
+      19712,
+      20608,
+      21504,
+      22400,
+      23296,
+      24192,
+      25088,
+      25984,
+      26880,
+      27776,
+      28672,
+      29568,
+      30464,
+      31360,
+      32256,
+      33152,
+      34048,
+      34944,
+      35840,
+      36736,
+      37632,
+      38528,
+      39424,
+      40320,
+      41216,
+      42112,
+      43008,
+      43904,
+      44800,
+      45696,
+      46592,
+      47488,
+      48384,
+      49280,
+      50176,
+      51072,
+      51968,
+      52864,
+      53760,
+      54656,
+      55552,
+      56448,
+      57344,
+      58240,
+      59136,
+      60032,
+      60928,
+      61824,
+      62720,
+      63616,
+      64512,
+      65408,
+      66304,
+      67200,
+      68096,
+      68992,
+      69888,
+      70784,
+      71680,
+      72576,
+      73472,
+      74368,
+      75264,
+      76160,
+      77056,
+      77952,
+      78848,
+      79744,
+      80640,
+      81536,
+      82432,
+      83328,
+      84224,
+      85120,
+      86016,
+      86912,
+      87808,
+      88704,
+      89600,
+      90496,
+      91392,
+      92288,
+      93184,
+      94080,
+      94976,
+      95872,
+      96768,
+      97664,
+      98560,
+      99456,
+      100352,
+      101248,
+      102144,
+      103040,
+      103936,
+      104832,
+      105728,
+      106624,
+      107520,
+      108416,
+      109312,
+      110208,
+      111104,
+      112000,
+      112896,
+      113792,
+      114688
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      114688
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 896
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 16338.8306,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      46976,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      46976,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      18688,
+      37376
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      37376
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 18688
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 1598.136,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      12,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      152960,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      152960,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13
+     ],
+     "value": [
+      0,
+      10112,
+      20224,
+      30336,
+      40448,
+      50560,
+      60672,
+      70784,
+      80896,
+      91008,
+      101120,
+      111232,
+      121344
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      121344
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 10112
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 15305.8458,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      48,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      137600,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      137600,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      49
+     ],
+     "value": [
+      0,
+      2048,
+      4096,
+      6272,
+      8576,
+      10880,
+      12928,
+      14976,
+      17408,
+      19840,
+      22272,
+      24704,
+      26752,
+      28800,
+      31104,
+      33280,
+      35456,
+      37632,
+      39936,
+      42240,
+      44672,
+      46976,
+      49152,
+      51584,
+      54144,
+      56704,
+      58752,
+      61312,
+      63360,
+      65408,
+      67456,
+      69632,
+      71680,
+      74240,
+      76288,
+      78592,
+      80896,
+      83072,
+      85376,
+      87552,
+      89984,
+      92032,
+      94464,
+      96896,
+      99200,
+      101632,
+      103680,
+      106112,
+      108544
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      108544
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2560
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 11110.3656,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      616320,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      616320,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ],
+     "value": [
+      0,
+      7680,
+      15360,
+      23040,
+      30720,
+      38400,
+      46080,
+      53760,
+      61440,
+      69120,
+      76800,
+      84480,
+      92160,
+      99840,
+      107520,
+      115200,
+      122880,
+      130560,
+      138240,
+      145920,
+      153600,
+      161280,
+      168960,
+      176640,
+      184320,
+      192000,
+      199680,
+      207360,
+      215040,
+      222720,
+      230400,
+      238080,
+      245760,
+      253440,
+      261120,
+      268800,
+      276480,
+      284160,
+      291840,
+      299520,
+      307200,
+      314880,
+      322560,
+      330240,
+      337920,
+      345600,
+      353280,
+      360960,
+      368640,
+      376320,
+      384000,
+      391680,
+      399360,
+      407040,
+      414720,
+      422400,
+      430080,
+      437760,
+      445440,
+      453120,
+      460800,
+      468480,
+      476160,
+      483840,
+      491520
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      491520
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 7680
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 15254.677,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      96,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      615680,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      615680,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      97
+     ],
+     "value": [
+      0,
+      5120,
+      10240,
+      15360,
+      20480,
+      25600,
+      30720,
+      35840,
+      40960,
+      46080,
+      51200,
+      56320,
+      61440,
+      66560,
+      71680,
+      76800,
+      81920,
+      87040,
+      92160,
+      97280,
+      102400,
+      107520,
+      112640,
+      117760,
+      122880,
+      128000,
+      133120,
+      138240,
+      143360,
+      148480,
+      153600,
+      158720,
+      163840,
+      168960,
+      174080,
+      179200,
+      184320,
+      189440,
+      194560,
+      199680,
+      204800,
+      209920,
+      215040,
+      220160,
+      225280,
+      230400,
+      235520,
+      240640,
+      245760,
+      250880,
+      256000,
+      261120,
+      266240,
+      271360,
+      276480,
+      281600,
+      286720,
+      291840,
+      296960,
+      302080,
+      307200,
+      312320,
+      317440,
+      322560,
+      327680,
+      332800,
+      337920,
+      343040,
+      348160,
+      353280,
+      358400,
+      363520,
+      368640,
+      373760,
+      378880,
+      384000,
+      389120,
+      394240,
+      399360,
+      404480,
+      409600,
+      414720,
+      419840,
+      424960,
+      430080,
+      435200,
+      440320,
+      445440,
+      450560,
+      455680,
+      460800,
+      465920,
+      471040,
+      476160,
+      481280,
+      486400,
+      491520
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      491520
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 5120
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 15266.4168,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      12,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      319360,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      319360,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13
+     ],
+     "value": [
+      0,
+      21248,
+      42496,
+      63744,
+      84992,
+      106240,
+      127488,
+      148736,
+      169984,
+      191232,
+      212480,
+      233728,
+      254976
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      254976
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 21248
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 5294.1296,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      96,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      559360,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      559360,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      97
+     ],
+     "value": [
+      0,
+      4352,
+      8704,
+      13440,
+      18560,
+      23424,
+      28544,
+      32512,
+      37376,
+      42368,
+      46336,
+      50304,
+      54784,
+      59136,
+      63232,
+      67328,
+      72448,
+      76544,
+      80768,
+      85632,
+      90496,
+      95488,
+      100224,
+      105216,
+      109824,
+      114816,
+      119808,
+      124928,
+      130048,
+      134400,
+      139264,
+      144256,
+      148352,
+      152832,
+      157824,
+      162560,
+      167552,
+      172544,
+      177280,
+      181248,
+      185472,
+      190080,
+      194944,
+      199936,
+      204160,
+      208256,
+      212864,
+      217472,
+      221952,
+      227072,
+      232064,
+      237056,
+      241664,
+      245760,
+      249984,
+      254976,
+      259840,
+      264832,
+      269696,
+      273920,
+      278272,
+      282880,
+      287744,
+      292096,
+      297088,
+      302080,
+      307072,
+      311168,
+      315904,
+      320512,
+      324864,
+      329856,
+      334976,
+      339328,
+      343680,
+      347776,
+      352512,
+      357120,
+      362112,
+      366336,
+      371200,
+      376064,
+      380544,
+      384768,
+      389760,
+      394368,
+      399104,
+      403200,
+      408192,
+      413056,
+      417664,
+      422656,
+      427520,
+      432000,
+      437120,
+      441344,
+      445696
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      445696
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 5120
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 11200.9636,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      104704,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      104704,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      20480,
+      39424,
+      61184,
+      83456
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      83456
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 22272
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 1796.94,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      57088,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      57088,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      3
+     ],
+     "value": [
+      0,
+      22784,
+      45568
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      45568
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 22784
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 882.5938,
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      29184,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      29184,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      23296
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      23296
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 23296
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 879.7418,
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      138368,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      138368,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      12032,
+      24704,
+      36864,
+      51840,
+      64640,
+      79488,
+      94720,
+      109952
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      109952
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 15232
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 10343.1908,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      121088,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      121088,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      5
+     ],
+     "value": [
+      0,
+      24192,
+      48384,
+      72576,
+      96768
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      96768
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 24192
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 2151.0832,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      24,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      137472,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      137472,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      25
+     ],
+     "value": [
+      0,
+      4480,
+      8704,
+      12928,
+      17024,
+      21504,
+      25856,
+      30208,
+      35200,
+      40192,
+      45312,
+      50432,
+      54784,
+      59008,
+      63744,
+      68864,
+      73472,
+      78336,
+      82560,
+      87040,
+      91392,
+      95744,
+      100480,
+      105344,
+      109568
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      109568
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 5120
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 10428.144,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      546304,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      546304,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      33
+     ],
+     "value": [
+      0,
+      14848,
+      27392,
+      41088,
+      55296,
+      70528,
+      84864,
+      99200,
+      114432,
+      128128,
+      141184,
+      155264,
+      168704,
+      181120,
+      194176,
+      208640,
+      223872,
+      237184,
+      250112,
+      264832,
+      278400,
+      292864,
+      305536,
+      317952,
+      330880,
+      344192,
+      358272,
+      371968,
+      385536,
+      398592,
+      410752,
+      423808,
+      436608
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      436608
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 15232
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 9755.8266,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      12,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      286720,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      286720,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13
+     ],
+     "value": [
+      0,
+      20096,
+      40448,
+      60288,
+      77952,
+      98304,
+      115968,
+      135808,
+      155904,
+      175488,
+      192000,
+      210688,
+      229120
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      229120
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 20352
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 12396.5238,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      153856,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      153856,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ],
+     "value": [
+      0,
+      7680,
+      15360,
+      23040,
+      30720,
+      38400,
+      46080,
+      53760,
+      61440,
+      69120,
+      76800,
+      84480,
+      92160,
+      99840,
+      107520,
+      115200,
+      122880
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      122880
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 7680
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 15151.1668,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      24,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      610688,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      610688,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      25
+     ],
+     "value": [
+      0,
+      20352,
+      40704,
+      61056,
+      81408,
+      101760,
+      122112,
+      142464,
+      162816,
+      183168,
+      203520,
+      223872,
+      244224,
+      264576,
+      284928,
+      305280,
+      325632,
+      345984,
+      366336,
+      386688,
+      407040,
+      427392,
+      447744,
+      468096,
+      488448
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      488448
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 20352
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 15310.6584,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      545408,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      545408,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ],
+     "value": [
+      0,
+      27264,
+      54528,
+      81792,
+      109056,
+      136320,
+      163584,
+      190848,
+      218112,
+      245376,
+      272640,
+      299904,
+      327168,
+      354432,
+      381696,
+      408960,
+      436224
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      436224
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 27264
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 9941.783,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      137600,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      137600,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      33
+     ],
+     "value": [
+      0,
+      3072,
+      6528,
+      9856,
+      13696,
+      16896,
+      20352,
+      23808,
+      27136,
+      30592,
+      34176,
+      37376,
+      40448,
+      43520,
+      46848,
+      50688,
+      54144,
+      57344,
+      60672,
+      64384,
+      68224,
+      71552,
+      75008,
+      78208,
+      81280,
+      84736,
+      88320,
+      92160,
+      95872,
+      99072,
+      102784,
+      106112,
+      109824
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      109824
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 3840
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 10721.7302,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      48,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      135552,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      135552,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      49
+     ],
+     "value": [
+      0,
+      2560,
+      4736,
+      6912,
+      9216,
+      11392,
+      13952,
+      16000,
+      18176,
+      20480,
+      22912,
+      25344,
+      27520,
+      29568,
+      32128,
+      34176,
+      36480,
+      38528,
+      40832,
+      43136,
+      45184,
+      47488,
+      49664,
+      51968,
+      54144,
+      56704,
+      58752,
+      60928,
+      62976,
+      65408,
+      67456,
+      69760,
+      72320,
+      74496,
+      76800,
+      78848,
+      80896,
+      83200,
+      85248,
+      87552,
+      89600,
+      91904,
+      94464,
+      96896,
+      99328,
+      101504,
+      103680,
+      106240,
+      108288
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      108288
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2560
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 10384.4116,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      272128,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      272128,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ],
+     "value": [
+      0,
+      1792,
+      3456,
+      5120,
+      6784,
+      8576,
+      10240,
+      12032,
+      13696,
+      15360,
+      17152,
+      18816,
+      20608,
+      22144,
+      23936,
+      25600,
+      27264,
+      28800,
+      30720,
+      32256,
+      33920,
+      35840,
+      37376,
+      39168,
+      40832,
+      42496,
+      44160,
+      45824,
+      47488,
+      49152,
+      50944,
+      52736,
+      54272,
+      55808,
+      57600,
+      59520,
+      61440,
+      63360,
+      64896,
+      66560,
+      68096,
+      69760,
+      71680,
+      73344,
+      75136,
+      77056,
+      78720,
+      80256,
+      81792,
+      83456,
+      85120,
+      86912,
+      88448,
+      89984,
+      91648,
+      93440,
+      94976,
+      96512,
+      98048,
+      99840,
+      101760,
+      103552,
+      105344,
+      107136,
+      109056,
+      110848,
+      112768,
+      114432,
+      116096,
+      117888,
+      119680,
+      121472,
+      123264,
+      125056,
+      126848,
+      128768,
+      130432,
+      132224,
+      133760,
+      135552,
+      137088,
+      138752,
+      140672,
+      142336,
+      143872,
+      145408,
+      147200,
+      148864,
+      150656,
+      152448,
+      154112,
+      155648,
+      157312,
+      159104,
+      160768,
+      162432,
+      163968,
+      165632,
+      167168,
+      168960,
+      170496,
+      172288,
+      173824,
+      175488,
+      177280,
+      179072,
+      180736,
+      182400,
+      184192,
+      186112,
+      187648,
+      189184,
+      190720,
+      192256,
+      194048,
+      195712,
+      197248,
+      198912,
+      200832,
+      202496,
+      204160,
+      205824,
+      207488,
+      209152,
+      211072,
+      212864,
+      214528,
+      216320,
+      218240
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      218240
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1920
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 11398.4796,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      36864,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      36864,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      29312
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      29312
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 29312
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 2526.4184,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      12,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      447232,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      447232,
+      4,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13
+     ],
+     "value": [
+      0,
+      29696,
+      59392,
+      89088,
+      118784,
+      148480,
+      178176,
+      207872,
+      237568,
+      267264,
+      296960,
+      326656,
+      356352
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      356352
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 29696
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.0,
+   "accuracy": "pass",
+   "impl_latency_us": 2784.1038,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      12,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      416384,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      416384,
+      8,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      13
+     ],
+     "value": [
+      0,
+      24832,
+      54016,
+      79360,
+      107392,
+      133120,
+      160256,
+      185728,
+      213376,
+      242560,
+      272768,
+      300928,
+      330368
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      330368
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 30208
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 6882.7336,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      1,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      38912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      38912,
+      16,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2
+     ],
+     "value": [
+      0,
+      30720
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      30720
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 30720
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.000488,
+   "accuracy": "pass",
+   "impl_latency_us": 921.3904,
+   "latency_band": "500-1000us"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      306560,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      306560,
+      16,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      30464,
+      60928,
+      91392,
+      121856,
+      152320,
+      182784,
+      213248,
+      243712
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      243712
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 30464
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 15375.7676,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      96,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1218560,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1218560,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      97
+     ],
+     "value": [
+      0,
+      10112,
+      20224,
+      30336,
+      40448,
+      50560,
+      60672,
+      70784,
+      80896,
+      91008,
+      101120,
+      111232,
+      121344,
+      131456,
+      141568,
+      151680,
+      161792,
+      171904,
+      182016,
+      192128,
+      202240,
+      212352,
+      222464,
+      232576,
+      242688,
+      252800,
+      262912,
+      273024,
+      283136,
+      293248,
+      303360,
+      313472,
+      323584,
+      333696,
+      343808,
+      353920,
+      364032,
+      374144,
+      384256,
+      394368,
+      404480,
+      414592,
+      424704,
+      434816,
+      444928,
+      455040,
+      465152,
+      475264,
+      485376,
+      495488,
+      505600,
+      515712,
+      525824,
+      535936,
+      546048,
+      556160,
+      566272,
+      576384,
+      586496,
+      596608,
+      606720,
+      616832,
+      626944,
+      637056,
+      647168,
+      657280,
+      667392,
+      677504,
+      687616,
+      697728,
+      707840,
+      717952,
+      728064,
+      738176,
+      748288,
+      758400,
+      768512,
+      778624,
+      788736,
+      798848,
+      808960,
+      819072,
+      829184,
+      839296,
+      849408,
+      859520,
+      869632,
+      879744,
+      889856,
+      899968,
+      910080,
+      920192,
+      930304,
+      940416,
+      950528,
+      960640,
+      970752
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      970752
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 10112
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 28946.5462,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      96,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      138112,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      138112,
+      32,
+      128
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      97
+     ],
+     "value": [
+      0,
+      1024,
+      2176,
+      3200,
+      4224,
+      5504,
+      6528,
+      7552,
+      8832,
+      9856,
+      11008,
+      12032,
+      13184,
+      14336,
+      15488,
+      16512,
+      17536,
+      18816,
+      19840,
+      20992,
+      22016,
+      23168,
+      24320,
+      25344,
+      26368,
+      27392,
+      28416,
+      29696,
+      30976,
+      32000,
+      33280,
+      34432,
+      35712,
+      36736,
+      37760,
+      39040,
+      40320,
+      41472,
+      42624,
+      43776,
+      44928,
+      46208,
+      47232,
+      48384,
+      49536,
+      50688,
+      51968,
+      52992,
+      54144,
+      55168,
+      56448,
+      57472,
+      58496,
+      59648,
+      60800,
+      61824,
+      62848,
+      64128,
+      65408,
+      66432,
+      67584,
+      68608,
+      69632,
+      70784,
+      71936,
+      73088,
+      74112,
+      75264,
+      76416,
+      77568,
+      78592,
+      79744,
+      81024,
+      82176,
+      83328,
+      84480,
+      85632,
+      86912,
+      88064,
+      89216,
+      90368,
+      91520,
+      92800,
+      93952,
+      94976,
+      96128,
+      97408,
+      98432,
+      99456,
+      100480,
+      101760,
+      102784,
+      103936,
+      105216,
+      106368,
+      107520,
+      108544
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      108544
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1280
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.08838834764831843
+    }
+   ],
+   "max_abs_err": 0.003906,
+   "accuracy": "pass",
+   "impl_latency_us": 11822.26,
+   "latency_band": ">1000us"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "k_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      296064,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "v_buffer",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      296064,
+      8,
+      64
+     ]
+    },
+    {
+     "name": "kv_indptr",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ],
+     "value": [
+      0,
+      27264,
+      54016,
+      80896,
+      113664,
+      141696,
+      171392,
+      203648,
+      235264
+     ]
+    },
+    {
+     "name": "kv_indices",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      235264
+     ]
+    },
+    {
+     "name": "max_kv_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32768
+    },
+    {
+     "name": "sm_scale",
+     "type": "attr",
+     "dtype": "float",
+     "value": 0.125
+    }
+   ],
+   "max_abs_err": 0.001953,
+   "accuracy": "pass",
+   "impl_latency_us": 3873.3774,
+   "latency_band": ">1000us"
+  }
+ ]
+}

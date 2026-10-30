@@ -1,0 +1,20 @@
+{
+  "name": "SpatialGroupEnhance",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "groups": {
+      "description": "number of channel groups"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, groups):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    weight = nn.Parameter(torch.zeros(1, groups, 1, 1, device=x.device, dtype=x.dtype))\n    bias = nn.Parameter(torch.zeros(1, groups, 1, 1, device=x.device, dtype=x.dtype))\n    x_reshaped = x.view(b * groups, -1, h, w)\n    avg_pool = F.adaptive_avg_pool2d(x_reshaped, 1)\n    xn = x_reshaped * avg_pool\n    xn = xn.sum(dim=1, keepdim=True)\n    t = xn.view(b * groups, -1)\n    t = t - t.mean(dim=1, keepdim=True)\n    std = t.std(dim=1, keepdim=True) + 1e-5\n    t = t / std\n    t = t.view(b, groups, h, w)\n    t = t * weight + bias\n    t = t.view(b * groups, 1, h, w)\n    out = x_reshaped * torch.sigmoid(t)\n    out = out.view(b, c, h, w)\n    return out\n",
+  "description": "Migrated SpatialGroupEnhance operator."
+}

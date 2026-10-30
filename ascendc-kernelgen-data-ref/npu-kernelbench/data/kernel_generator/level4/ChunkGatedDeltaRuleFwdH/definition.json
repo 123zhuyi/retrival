@@ -1,0 +1,53 @@
+{
+  "name": "ChunkGatedDeltaRuleFwdH",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "k": {
+      "description": "Input k"
+    },
+    "w": {
+      "description": "Input w"
+    },
+    "u": {
+      "description": "Input u"
+    },
+    "g": {
+      "description": "Input g"
+    },
+    "gk": {
+      "description": "Input gk"
+    },
+    "initial_state": {
+      "description": "Input initial_state"
+    },
+    "chunk_size": {
+      "description": "Input chunk_size"
+    },
+    "gate_mode": {
+      "description": "Input gate_mode"
+    },
+    "use_initial_state": {
+      "description": "Input use_initial_state"
+    },
+    "output_final_state": {
+      "description": "Input output_final_state"
+    },
+    "state_v_first": {
+      "description": "Input state_v_first"
+    }
+  },
+  "outputs": {
+    "states": {
+      "description": "Output states"
+    },
+    "v_new": {
+      "description": "Output v_new"
+    },
+    "final_state": {
+      "description": "Output final_state"
+    }
+  },
+  "reference": "import torch\ndef run(k,\n    w,\n    u,\n    g,\n    gk,\n    initial_state,\n    chunk_size,\n    gate_mode,\n    use_initial_state,\n    output_final_state,\n    state_v_first,\n):\n    torch.manual_seed(42)\n    batch, tokens, heads, key_dim = k.shape\n    value_heads, value_dim = u.shape[2], u.shape[3]\n    if value_heads % heads != 0:\n        raise ValueError(\"value heads must be divisible by key heads\")\n    key = k.repeat_interleave(value_heads // heads, dim=2).float()\n    if use_initial_state:\n        state = initial_state.float().clone()\n        if state_v_first:\n            state = state.transpose(-2, -1).contiguous()\n    else:\n        state = torch.zeros(\n            batch,\n            value_heads,\n            key_dim,\n            value_dim,\n            device=k.device,\n            dtype=torch.float32,\n        )\n    num_chunks = (tokens + chunk_size - 1) // chunk_size\n    states = torch.empty(\n        batch,\n        num_chunks,\n        value_heads,\n        key_dim,\n        value_dim,\n        device=k.device,\n        dtype=k.dtype,\n    )\n    v_new = torch.empty_like(u)\n    for chunk in range(num_chunks):\n        start = chunk * chunk_size\n        end = min(tokens, start + chunk_size)\n        states[:, chunk] = state.to(dtype=k.dtype)\n        residual = u[:, start:end].float() - torch.einsum(\n            \"bthk,bhkv->bthv\", w[:, start:end].float(), state\n        )\n        v_new[:, start:end] = residual.to(dtype=u.dtype)\n        update_value = residual\n        if gate_mode == 1:\n            chunk_gate = g[:, start:end].float()\n            final_gate = chunk_gate[:, -1]\n            update_value = update_value * torch.exp2(\n                final_gate[:, None, :, None]\n                - chunk_gate[:, :, :, None]\n            )\n            state = state * torch.exp2(\n                final_gate[:, :, None, None]\n            )\n        elif gate_mode == 2:\n            final_gate = gk[:, end - 1].float()\n            state = state * torch.exp2(final_gate)[..., None]\n        elif gate_mode != 0:\n            raise ValueError(\"gate_mode must be 0, 1, or 2\")\n        state = state + torch.einsum(\n            \"bthk,bthv->bhkv\",\n            key[:, start:end],\n            update_value,\n        )\n    if state_v_first:\n        states = states.transpose(-2, -1).contiguous()\n        final_state = state.transpose(-2, -1).contiguous()\n    else:\n        final_state = state\n    if not output_final_state:\n        final_state = None\n    return states, v_new, final_state",
+  "description": "Reference implementation for ChunkGatedDeltaRuleFwdH."
+}

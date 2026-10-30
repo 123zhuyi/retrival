@@ -1,0 +1,15 @@
+{
+  "name": "AvgPool3d",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor of shape (N, C, D, H, W). Supports float32, float16, bfloat16."},
+    "kernel_size": {"description": "int or list[int], size of the pooling region (kT, kH, kW)."},
+    "stride": {"description": "int or list[int], stride of the pooling operation. Default: kernel_size."},
+    "padding": {"description": "int or list[int], implicit zero padding. Default: 0."}
+  },
+  "outputs": {
+    "y": {"description": "Pooled tensor, same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, kernel_size, stride=None, padding=0):\n    return torch.nn.functional.avg_pool3d(x, kernel_size, stride=stride, padding=padding)\n",
+  "description": "AvgPool3d: Applies 3D average pooling over an input signal.\n\ntorch.nn.functional.avg_pool3d = avg_pool3d(input, kernel_size, stride=None, padding=0, ceil_mode=False, count_include_pad=True, divisor_override=None) -> Tensor\n\nApplies 3D average-pooling operation in kT x kH x kW regions by step size sT x sH x sW steps.\n\nArgs:\n    input: input tensor (minibatch, in_channels, iT x iH, iW).\n    kernel_size: size of the pooling region. Can be a single number or a tuple (kT, kH, kW).\n    stride: stride of the pooling operation. Can be a single number or a tuple (sT, sH, sW). Default: kernel_size.\n    padding: implicit zero paddings on both sides of the input. Can be a single number or a tuple (padT, padH, padW). Default: 0.\n\nReturns: Tensor, same dtype as input."
+}

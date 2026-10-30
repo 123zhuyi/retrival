@@ -1,0 +1,23 @@
+{
+  "name": "MultiMaskAttentionAggregation",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "attn": {
+      "description": "shape varies; supports float32"
+    },
+    "ref_target_masks": {
+      "description": "shape varies; supports float32"
+    },
+    "mode": {
+      "description": "str; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Aggregated attention output"
+    }
+  },
+  "reference": "import torch\n\ndef run(attn, ref_target_masks, mode=\"mean\"):\n    attn = attn.softmax(-1).to(attn.dtype)\n    ref_target_masks = ref_target_masks.to(attn.dtype)\n    x_ref_attn_maps = []\n    for ref_target_mask in ref_target_masks:\n        ref_target_mask = ref_target_mask[None, None, None, ...]\n        x_ref_attnmap = attn * ref_target_mask\n        x_ref_attnmap = x_ref_attnmap.sum(-1) / ref_target_mask.sum()\n        x_ref_attnmap = x_ref_attnmap.permute(0, 2, 1)\n        if mode == \"mean\":\n            x_ref_attnmap = x_ref_attnmap.mean(-1)\n        elif mode == \"max\":\n            x_ref_attnmap = x_ref_attnmap.max(-1)[0]\n        x_ref_attn_maps.append(x_ref_attnmap)\n    return torch.stack(x_ref_attn_maps, dim=0)\n",
+  "description": "Multi-mask attention aggregation. Aggregates attention weights across multiple reference target masks. Supports 'mean' and 'max' modes. Pure PyTorch: weighted sum of attention across masks."
+}

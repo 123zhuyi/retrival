@@ -1,0 +1,163 @@
+"""Built-in custom input generators.
+
+Importing this package registers all built-in generators with the global
+``InputGeneratorRegistry``.
+"""
+
+from npu_kernelbench.evaluator.custominputs.registry import get_input_generator_registry
+
+from .level1.ctcloss_v3 import CTClossV3InputGenerator
+from .level1.iou import IOUInputGenerator
+from .level1.nms import NMSInputGenerator
+from .level2.adaptive_instance_normalization_2d_backward import (
+    AdaptiveInstanceNormalization2DBackwardInputGenerator,
+)
+from .level2.dequant_swiglu_quant import DequantSwigluQuantInputGenerator
+from .level2.fused_residual_rms_norm_backward import (
+    FusedResidualRmsNormBackwardInputGenerator,
+)
+from .level2.fused_rope_with_qk_norm_and_kv_cache_update import (
+    FusedRopeWithQkNormAndKvCacheUpdateInputGenerator,
+)
+from .level2.group_norm_swish import GroupNormSwishInputGenerator
+from .level2.kv_cache_update_with_rope_backward import (
+    KvCacheUpdateWithRopeBackwardInputGenerator,
+)
+from .level2.kv_rmsnorm_rope_cache import KvRmsnormRopeCacheInputGenerator
+from .level2.moe_compute_expert_tokens import MoeComputeExpertTokensInputGenerator
+from .level2.moe_finalize_routing import MoeFinalizeRoutingInputGenerator
+from .level2.moe_init_routing import MoeInitRoutingInputGenerator
+from .level2.multimodal_rope_position_computation_with_grid_based_indexing import (
+    MultimodalRopePositionComputationWithGridBasedIndexingInputGenerator,
+)
+from .level2.multi_mask_attention_aggregation import (
+    MultiMaskAttentionAggregationInputGenerator,
+)
+from .level2.quant_scatter import QuantScatterInputGenerator
+from .level2.swiglu_quant import SwigluQuantInputGenerator
+from .level2.tanh_gated_residual_add_backward import (
+    TanhGatedResidualAddBackwardInputGenerator,
+)
+from .level2.top_k_top_p import TopKTopPInputGenerator
+from .level3.conv_depthwise2d import ConvDepthwise2dInputGenerator
+from .level3.conv_standard1d import ConvStandard1dInputGenerator
+from .level3.conv_standard2d import ConvStandard2dInputGenerator
+from .level3.conv_standard3d import ConvStandard3dInputGenerator
+from .level3.conv_transpose2d import ConvTranspose2dInputGenerator
+from .level2.create_flashmla_kv_indices import CreateFlashmlaKvIndicesInputGenerator
+from .level2.decode_index_score import DecodeIndexScoreInputGenerator
+from .level2.index_block_score import IndexBlockScoreInputGenerator
+from .level2.merge_topk_attn_out import MergeTopkAttnOutInputGenerator
+from .level3.chunk_gla_fwd_kernel_o import ChunkGlaFwdKernelOInputGenerator
+from .level3.conv_depthwise2d import ConvDepthwise2dInputGenerator
+from .level3.conv_standard1d import ConvStandard1dInputGenerator
+from .level3.conv_standard2d import ConvStandard2dInputGenerator
+from .level3.conv_standard3d import ConvStandard3dInputGenerator
+from .level3.conv_transpose2d import ConvTranspose2dInputGenerator
+from .level3.fused_gdn_gating import FusedGdnGatingInputGenerator
+from .level3.fused_moe_kernel import FusedMoeKernelInputGenerator
+from .level3.fused_moe_kernel_gptq_awq import FusedMoeKernelGptqAwqInputGenerator
+from .level3.grouped_matmul import GroupedMatmulInputGenerator
+from .level3.gqa_sparse_decode import GqaSparseDecodeInputGenerator
+from .level3.gqa_sparse_fwd import GqaSparseFwdInputGenerator
+from .level3.recompute_w_u_fwd import RecomputeWUFwdInputGenerator
+from .level4.batch_decode_mla_paged import BatchDecodeMlaPagedInputGenerator
+from .level4.batch_mla_paged_attention import BatchMLAPagedAttentionInputGenerator
+from .level4.chunk_gated_delta_rule import ChunkGatedDeltaRuleInputGenerator
+from .level4.chunk_gated_delta_rule_fwd_h import ChunkGatedDeltaRuleFwdHInputGenerator
+from .level4.chunk_intra import ChunkIntraInputGenerator
+from .level4.chunk_kda_bwd_intra import ChunkKdaBwdIntraInputGenerator
+from .level4.chunk_kda_fwd_intra import ChunkKdaFwdIntraInputGenerator
+from .level4.chunk_kda_with_fused_gate import ChunkKdaWithFusedGateInputGenerator
+from .level4.chunk_o import ChunkOInputGenerator
+from .level4.ffn import FFNInputGenerator
+from .level4.fused_gdn_gating_kernel import FusedGdnGatingKernelInputGenerator
+from .level4.fused_infer_attention_score import FusedInferAttentionScoreInputGenerator
+from .level4.fused_kda_gate import FusedKdaGateInputGenerator
+from .level4.fused_recurrent_gated_delta_rule import FusedRecurrentGatedDeltaRuleInputGenerator
+from .level4.fused_recurrent_kda import FusedRecurrentKdaInputGenerator
+from .level4.fusion_attention import FusionAttentionInputGenerator
+from .level4.gqa_sparse_decode_kernel import GqaSparseDecodeKernelInputGenerator
+from .level4.gqa_sparse_fwd_kernel import GqaSparseFwdKernelInputGenerator
+from .level4.grouped_matmul_swiglu_quant import GroupedMatmulSwigluQuantInputGenerator
+from .level4.grouped_matmul_swiglu_quant_v2 import GroupedMatmulSwigluQuantV2InputGenerator
+from .level4.dense_sparse_attention import DenseSparseAttentionInputGenerator
+from .level4.lightning_indexer import LightningIndexerInputGenerator
+from .level4.lstm import LSTMInputGenerator
+from .level4.multi_head_latent_attention import MultiHeadLatentAttentionInputGenerator
+from .level4.paged_attention_kv_cache import PagedAttentionKVCacheInputGenerator
+from .level4.quant_matmul import QuantMatmulInputGenerator
+from .level4.sparse_flash_attention import SparseFlashAttentionInputGenerator
+from .level4.trtllm_batch_decode_sparse_mla_dsv4 import TrtllmBatchDecodeSparseMlaDsv4InputGenerator
+from .level4.trtllm_batch_decode_with_kv_cache_mla import TrtllmBatchDecodeWithKvCacheMlaInputGenerator
+from .level4.weight_quant_batchmatmul import WeightQuantBatchmatmulInputGenerator
+
+
+get_input_generator_registry().register(IOUInputGenerator())
+get_input_generator_registry().register(NMSInputGenerator())
+get_input_generator_registry().register(CTClossV3InputGenerator())
+get_input_generator_registry().register(TopKTopPInputGenerator())
+get_input_generator_registry().register(SwigluQuantInputGenerator())
+get_input_generator_registry().register(DequantSwigluQuantInputGenerator())
+get_input_generator_registry().register(GroupNormSwishInputGenerator())
+get_input_generator_registry().register(KvCacheUpdateWithRopeBackwardInputGenerator())
+get_input_generator_registry().register(AdaptiveInstanceNormalization2DBackwardInputGenerator())
+get_input_generator_registry().register(KvRmsnormRopeCacheInputGenerator())
+get_input_generator_registry().register(MoeInitRoutingInputGenerator())
+get_input_generator_registry().register(MoeComputeExpertTokensInputGenerator())
+get_input_generator_registry().register(MoeFinalizeRoutingInputGenerator())
+get_input_generator_registry().register(FusedResidualRmsNormBackwardInputGenerator())
+get_input_generator_registry().register(QuantScatterInputGenerator())
+get_input_generator_registry().register(
+    MultimodalRopePositionComputationWithGridBasedIndexingInputGenerator()
+)
+get_input_generator_registry().register(FusedRopeWithQkNormAndKvCacheUpdateInputGenerator())
+get_input_generator_registry().register(MultiMaskAttentionAggregationInputGenerator())
+get_input_generator_registry().register(TanhGatedResidualAddBackwardInputGenerator())
+get_input_generator_registry().register(MergeTopkAttnOutInputGenerator())
+get_input_generator_registry().register(CreateFlashmlaKvIndicesInputGenerator())
+get_input_generator_registry().register(IndexBlockScoreInputGenerator())
+get_input_generator_registry().register(DecodeIndexScoreInputGenerator())
+get_input_generator_registry().register(ChunkGlaFwdKernelOInputGenerator())
+get_input_generator_registry().register(FusedGdnGatingInputGenerator())
+get_input_generator_registry().register(FusedMoeKernelInputGenerator())
+get_input_generator_registry().register(FusedMoeKernelGptqAwqInputGenerator())
+get_input_generator_registry().register(RecomputeWUFwdInputGenerator())
+get_input_generator_registry().register(GqaSparseFwdInputGenerator())
+get_input_generator_registry().register(GqaSparseDecodeInputGenerator())
+get_input_generator_registry().register(GroupedMatmulInputGenerator())
+get_input_generator_registry().register(ConvStandard1dInputGenerator())
+get_input_generator_registry().register(ConvStandard2dInputGenerator())
+get_input_generator_registry().register(ConvStandard3dInputGenerator())
+get_input_generator_registry().register(ConvDepthwise2dInputGenerator())
+get_input_generator_registry().register(ConvTranspose2dInputGenerator())
+get_input_generator_registry().register(GroupedMatmulSwigluQuantInputGenerator())
+get_input_generator_registry().register(GroupedMatmulSwigluQuantV2InputGenerator())
+get_input_generator_registry().register(FFNInputGenerator())
+get_input_generator_registry().register(QuantMatmulInputGenerator())
+get_input_generator_registry().register(WeightQuantBatchmatmulInputGenerator())
+get_input_generator_registry().register(DenseSparseAttentionInputGenerator())
+get_input_generator_registry().register(LSTMInputGenerator())
+get_input_generator_registry().register(MultiHeadLatentAttentionInputGenerator())
+get_input_generator_registry().register(PagedAttentionKVCacheInputGenerator())
+get_input_generator_registry().register(FusionAttentionInputGenerator())
+get_input_generator_registry().register(SparseFlashAttentionInputGenerator())
+get_input_generator_registry().register(FusedInferAttentionScoreInputGenerator())
+get_input_generator_registry().register(LightningIndexerInputGenerator())
+get_input_generator_registry().register(BatchDecodeMlaPagedInputGenerator())
+get_input_generator_registry().register(BatchMLAPagedAttentionInputGenerator())
+get_input_generator_registry().register(ChunkKdaFwdIntraInputGenerator())
+get_input_generator_registry().register(ChunkKdaBwdIntraInputGenerator())
+get_input_generator_registry().register(ChunkOInputGenerator())
+get_input_generator_registry().register(ChunkIntraInputGenerator())
+get_input_generator_registry().register(ChunkGatedDeltaRuleFwdHInputGenerator())
+get_input_generator_registry().register(ChunkKdaWithFusedGateInputGenerator())
+get_input_generator_registry().register(FusedKdaGateInputGenerator())
+get_input_generator_registry().register(FusedRecurrentKdaInputGenerator())
+get_input_generator_registry().register(ChunkGatedDeltaRuleInputGenerator())
+get_input_generator_registry().register(FusedRecurrentGatedDeltaRuleInputGenerator())
+get_input_generator_registry().register(TrtllmBatchDecodeWithKvCacheMlaInputGenerator())
+get_input_generator_registry().register(TrtllmBatchDecodeSparseMlaDsv4InputGenerator())
+get_input_generator_registry().register(FusedGdnGatingKernelInputGenerator())
+get_input_generator_registry().register(GqaSparseFwdKernelInputGenerator())
+get_input_generator_registry().register(GqaSparseDecodeKernelInputGenerator())

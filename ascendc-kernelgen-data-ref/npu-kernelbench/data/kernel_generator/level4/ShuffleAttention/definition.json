@@ -1,0 +1,26 @@
+{
+  "name": "ShuffleAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "channel": {
+      "description": "number of channels"
+    },
+    "reduction": {
+      "description": "retained for interface compatibility; default 16"
+    },
+    "G": {
+      "description": "number of groups; default 8"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef _channel_shuffle(x, groups):\n    b, c, h, w = x.shape\n    x = x.reshape(b, groups, -1, h, w)\n    x = x.permute(0, 2, 1, 3, 4)\n    return x.reshape(b, -1, h, w)\n\ndef run(x, channel, reduction=16, G=8):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    gn = nn.GroupNorm(channel // (2 * G), channel // (2 * G)).to(device=x.device, dtype=x.dtype)\n    cweight = nn.Parameter(torch.zeros(1, channel // (2 * G), 1, 1))\n    cbias = nn.Parameter(torch.ones(1, channel // (2 * G), 1, 1))\n    sweight = nn.Parameter(torch.zeros(1, channel // (2 * G), 1, 1))\n    sbias = nn.Parameter(torch.ones(1, channel // (2 * G), 1, 1))\n    cweight = cweight.to(device=x.device, dtype=x.dtype)\n    cbias = cbias.to(device=x.device, dtype=x.dtype)\n    sweight = sweight.to(device=x.device, dtype=x.dtype)\n    sbias = sbias.to(device=x.device, dtype=x.dtype)\n\n    x = x.view(b * G, -1, h, w)\n    x_0, x_1 = x.chunk(2, dim=1)\n    avg_pool = F.adaptive_avg_pool2d(x_0, 1)\n    x_channel = cweight * avg_pool + cbias\n    x_channel = x_0 * torch.sigmoid(x_channel)\n    x_spatial = gn(x_1)\n    x_spatial = sweight * x_spatial + sbias\n    x_spatial = x_1 * torch.sigmoid(x_spatial)\n    out = torch.cat([x_channel, x_spatial], dim=1)\n    out = out.contiguous().view(b, -1, h, w)\n    out = _channel_shuffle(out, 2)\n    return out\n",
+  "description": "Migrated ShuffleAttention operator."
+}

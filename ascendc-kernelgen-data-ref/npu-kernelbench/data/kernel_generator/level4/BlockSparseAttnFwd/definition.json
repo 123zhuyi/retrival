@@ -1,0 +1,47 @@
+{
+  "name": "BlockSparseAttnFwd",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "查询张量 (varlen 打包), shape (total_q, H, D); float16/bfloat16"
+    },
+    "k": {
+      "description": "键张量, shape (total_k, HK, D), H % HK == 0 (MHA/GQA/MQA); 与 q 同 dtype"
+    },
+    "v": {
+      "description": "值张量, shape (total_k, HK, D); 与 q 同 dtype"
+    },
+    "softmax_scale": {
+      "description": "softmax 缩放 (乘在 q 上), float 标量"
+    },
+    "is_causal": {
+      "description": "是否因果掩码, bool"
+    },
+    "exact_streaming": {
+      "description": "streaming 头是否用 token 粒度精确掩码 (仅因果), bool"
+    },
+    "q_lens": {
+      "description": "各序列 q 长度, int 列表, sum == total_q"
+    },
+    "k_lens": {
+      "description": "各序列 k 长度, int 列表, sum == total_k"
+    },
+    "sparsity": {
+      "description": "blocksparse 头块稀疏度 (保留比例), float ∈ [0,1]"
+    },
+    "sink": {
+      "description": "streaming 头 sink 块数 (exact 时为 token 数), int"
+    },
+    "local": {
+      "description": "streaming 头 local 块数 (exact 时为 token 数), int"
+    }
+  },
+  "outputs": {
+    "out": {
+      "description": "注意力输出, shape (total_q, H, D), 与 q 同 dtype"
+    }
+  },
+  "reference": "import torch\n\nBLOCK = 128\n\n\ndef _ceil_div(x, y):\n    return (x + y - 1) // y\n\n\ndef _gen_base_blockmask(B, nblk, nrow, ncol, sparsity, causal):\n    bm = torch.zeros(B, nblk, nrow, ncol, dtype=torch.bool)\n    for b in range(B):\n        for h in range(nblk):\n            s = sparsity\n            if s != 0.0 and s != 1.0:\n                for i in range(nrow):\n                    idx = nrow - i - 1\n                    avail = max(0, ncol - i) if causal else ncol\n                    num_one = max(1, int(s * avail))\n                    bm[b, h, idx, torch.randperm(avail)[:num_one]] = True\n            elif s == 1.0:\n                bm[b, h] = True\n    return bm\n\n\ndef _streaming_keep_mask(sq, sk, sink, local, causal, device):\n    nrow, ncol = _ceil_div(sq, BLOCK), _ceil_div(sk, BLOCK)\n    keep = torch.zeros(nrow, ncol, dtype=torch.bool, device=device)\n    start = max((sq - sk) // BLOCK, 0) if causal else 0\n    for i in range(start, nrow):\n        if causal:\n            mr = _ceil_div(max(sk - sq, 0), BLOCK) + 1 + (i - start)\n        else:\n            mr = ncol\n        keep[i, max(mr - local, 0):min(mr, ncol)] = True\n        keep[i, :sink] = True\n    keep = keep.repeat_interleave(BLOCK, 0).repeat_interleave(BLOCK, 1)\n    return keep[:sq, :sk]\n\n\ndef _exact_streaming_keep_mask(sq, sk, sink, local, device):\n    row = torch.arange(sq, device=device).unsqueeze(1)\n    col = torch.arange(sk, device=device).unsqueeze(0)\n    blocked = torch.logical_or(\n        col > torch.minimum(row + sk - sq, torch.full_like(col, sk)),\n        torch.logical_and(col < row + sk - sq - (local - 1), col >= sink))\n    return ~blocked\n\n\ndef run(q, k, v, softmax_scale, is_causal, exact_streaming,\n        q_lens, k_lens, sparsity, sink, local):\n    device = q.device\n    total_q, H, D = q.shape\n    total_k, HK, _ = k.shape\n    assert k.shape == v.shape and k.shape[2] == D\n    assert H % HK == 0\n    assert q.dtype == k.dtype == v.dtype\n    B = len(q_lens)\n    assert len(k_lens) == B\n    assert sum(q_lens) == total_q and sum(k_lens) == total_k\n\n    torch.manual_seed(3407)\n    cu_seqlens_q = torch.tensor(\n        [0] + list(torch.tensor(q_lens).cumsum(0)), dtype=torch.int32, device=device)\n    cu_seqlens_k = torch.tensor(\n        [0] + list(torch.tensor(k_lens).cumsum(0)), dtype=torch.int32, device=device)\n    ns, nb = H // 3, H // 3\n    head_mask_type = torch.tensor([0] * (H - ns - nb) + [1] * nb + [-1] * ns,\n                                  dtype=torch.int32, device=device)\n    streaming_info = torch.tensor([sink, local] * H, dtype=torch.int32, device=device)\n    max_q, max_k = max(q_lens), max(k_lens)\n    nrow = _ceil_div(max_q, BLOCK)\n    ncol = _ceil_div(max_k, BLOCK)\n    base_blockmask = _gen_base_blockmask(B, nb, nrow, ncol,\n                                         sparsity, is_causal).to(device)\n    if exact_streaming:\n        assert is_causal\n\n    dtype = q.dtype\n    G = H // HK\n    scale = softmax_scale if softmax_scale is not None else D ** -0.5\n    out = torch.zeros_like(q, dtype=torch.float32)\n\n    blk_rank = 0\n    blk_ranks = []\n    for h in range(H):\n        blk_ranks.append(blk_rank)\n        if int(head_mask_type[h]) == 1:\n            blk_rank += 1\n\n    for b in range(B):\n        qs, qe = int(cu_seqlens_q[b]), int(cu_seqlens_q[b + 1])\n        ks, ke = int(cu_seqlens_k[b]), int(cu_seqlens_k[b + 1])\n        sq, sk = qe - qs, ke - ks\n        q_b = q[qs:qe].float()\n        k_b = k[ks:ke].float().repeat_interleave(G, dim=1)\n        v_b = v[ks:ke].float().repeat_interleave(G, dim=1)\n\n        scores = torch.einsum('t h d, s h d -> h t s',\n                              q_b * scale, k_b)\n        keeps = []\n        for h in range(H):\n            t = int(head_mask_type[h])\n            if t == 0:\n                keep = None\n            elif t == 1:\n                keep = base_blockmask[b, blk_ranks[h]] \\\n                    .repeat_interleave(BLOCK, 0).repeat_interleave(BLOCK, 1)[:sq, :sk]\n            else:\n                snk, lcl = int(streaming_info[2 * h]), int(streaming_info[2 * h + 1])\n                if exact_streaming:\n                    keep = _exact_streaming_keep_mask(sq, sk, snk, lcl, device)\n                else:\n                    keep = _streaming_keep_mask(sq, sk, snk, lcl, is_causal, device)\n            if is_causal:\n                row = torch.arange(sq, device=device).unsqueeze(1)\n                col = torch.arange(sk, device=device).unsqueeze(0)\n                causal_keep = col <= row + (sk - sq)\n                keep = causal_keep if keep is None else (keep & causal_keep)\n            keeps.append(keep)\n\n        for h in range(H):\n            if keeps[h] is not None:\n                scores[h].masked_fill_(~keeps[h], float('-inf'))\n        attn = torch.softmax(scores, dim=-1)\n        for h in range(H):\n            if keeps[h] is not None:\n                attn[h].masked_fill_(~keeps[h], 0.0)\n        out[qs:qe] = torch.einsum('h t s, s h d -> t h d', attn, v_b)\n    return out.to(dtype)\n",
+  "description": "block_sparse_attn_func 前向 —— MIT Han Lab Block-Sparse-Attention (varlen 打包布局的块稀疏注意力) golden reference。对标 mit-han-lab/Block-Sparse-Attention (基于 FlashAttention 2.4.2) block_sparse_attn/block_sparse_attn_interface.py 的 block_sparse_attn_func, 语义依据官方单测 block_sparse_tests/fwd_bwd/test_correctness/utils.py 的 attention_blocksparse_ref 及掩码生成器 generate_base_sparsity_mask / generate_streaming_mask / construct_exact_streaming_mask。\n数学语义 (varlen 打包, 逐序列、逐头; GQA 组内 k/v 沿头维 repeat_interleave(G) 复用):\n  对序列 b、头 h 的 token 级保留掩码 keep ∈ {0,1}^{sq×sk}:\n    dense (head_mask_type=0): 全 1\n    blocksparse (=1): base_blockmask[b, r] 按 128×128 展开后裁到 [sq, sk], r 为该头在 blocksparse 头中的序号\n    streaming (=-1, 块粒度, exact_streaming=False): 行块 i 保留前 sink 个列块与对角前 local 个列块\n    streaming (=-1, token 粒度, exact_streaming=True, 仅因果): keep = (col <= min(row+sk-sq, sk)) & ~((col < row+sk-sq-(local-1)) & (col >= sink))\n    causal 时以上掩码再与因果掩码取交 (底右对齐)\n  注意力 (fp32): scores = (q·scale) @ k^T; scores[masked] = -inf; attn = softmax(scores); attn[masked] = 0 (全掩码行 NaN 置 0, 输出定义为 0); o = attn @ v 回铸 q.dtype\n派生输入过程 (reference 与 solution 必须按此完全相同的过程从标量配置派生, run() 内以 torch.manual_seed(3407) 固定随机性):\n    cu_seqlens_q = [0] + cumsum(q_lens), cu_seqlens_k = [0] + cumsum(k_lens) (int32)\n    head_mask_type = [0]*(H-2*(H//3)) + [1]*(H//3) + [-1]*(H//3) (int32, 1/3 streaming + 1/3 blocksparse + 其余 dense)\n    streaming_info = [sink, local] * H (int32)\n    base_blockmask [B, H//3, ceil(max_q/128), ceil(max_k/128)] bool, 逐 batch/头/行块生成: sparsity∉{0,1} 时第 i 行块 (自底向上) 在可用列块 (causal 时 ncol-i 个, 否则 ncol 个) 中随机保留 max(1, int(sparsity*avail)) 个 (torch.randperm); sparsity==1 全保留; sparsity==0 全掩码\n"
+}

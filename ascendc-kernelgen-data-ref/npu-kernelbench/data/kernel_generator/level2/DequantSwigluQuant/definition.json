@@ -1,0 +1,56 @@
+{
+  "name": "DequantSwigluQuant",
+  "op_type": "quantization",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports int32"
+    },
+    "weight_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "activation_scale": {
+      "description": "shape varies; supports float32"
+    },
+    "bias": {
+      "description": "shape varies; supports int32; optional, may be None"
+    },
+    "quant_scale": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "quant_offset": {
+      "description": "shape varies; supports float32; optional, may be None"
+    },
+    "group_index": {
+      "description": "shape varies; supports int64; optional, may be None"
+    },
+    "activate_left": {
+      "description": "bool, default=False; optional"
+    },
+    "quant_mode": {
+      "description": "int, default=1; optional"
+    },
+    "swiglu_mode": {
+      "description": "int, default=0; optional"
+    },
+    "clamp_limit": {
+      "description": "float, default=7.0; optional"
+    },
+    "glu_alpha": {
+      "description": "float, default=1.702; optional"
+    },
+    "glu_bias": {
+      "description": "float, default=1.0; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Re-quantized output, int8"
+    },
+    "1": {
+      "description": "Quantization scales"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\n\ndef run(x, weight_scale=None, activation_scale=None, bias=None, quant_scale=None, quant_offset=None, group_index=None, activate_left=False, quant_mode=0, swiglu_mode=0, clamp_limit=7.0, glu_alpha=1.702, glu_bias=1.0):\n    x_float = x.float()\n    if weight_scale is not None:\n        x_float = x_float * weight_scale.float()\n    if activation_scale is not None:\n        x_float = x_float * activation_scale.float()\n    if bias is not None:\n        x_float = x_float + bias.float()\n    gate, up = torch.chunk(x_float, 2, dim=-1)\n    if not activate_left:\n        gate, up = up, gate\n    if swiglu_mode == 0:\n        output = F.silu(gate) * up\n    elif swiglu_mode == 1:\n        gate = torch.clamp(gate, -clamp_limit, clamp_limit)\n        up = torch.clamp(up, -clamp_limit, clamp_limit)\n        activated = (gate + glu_bias) * torch.sigmoid(glu_alpha * (gate + glu_bias))\n        output = activated * up\n    else:\n        raise ValueError(f\"Unsupported swiglu_mode: {swiglu_mode}\")\n    if quant_scale is not None:\n        output = output * quant_scale.float()\n    prefix_dims = 1\n    for s in x.shape[:-1]:\n        prefix_dims *= s\n    if quant_mode == 1:\n        max_val = torch.amax(torch.abs(output), dim=-1)\n        scale = max_val / 127.0\n        scale = torch.clamp(scale, min=1e-10)\n        output = output / scale.unsqueeze(-1)\n        output = torch.clamp(output, -128, 127)\n        quantized_output = torch.round(output).to(torch.int8)\n        quant_scales = scale.reshape(prefix_dims)\n        return quantized_output, quant_scales\n    else:\n        if quant_offset is not None:\n            output = output + quant_offset.float()\n        output = torch.clamp(output, -128, 127)\n        quantized_output = torch.round(output).to(torch.int8)\n        quant_scales = torch.zeros(prefix_dims, dtype=torch.float32, device=x.device)\n        return quantized_output, quant_scales\n",
+  "description": "Fused dequantize + SwiGLU + requantize. torch_npu.npu_dequant_swiglu_quant(x, weight_scale, activation_scale, ...) returns (quantized_output, quant_scales). Dequantize int32 input, apply SwiGLU, requantize to int8."
+}

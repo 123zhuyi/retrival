@@ -1,0 +1,2509 @@
+{
+ "op_name": "47_JaggedJaggedBmmBwd",
+ "source": "910b2 triton",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "impl_latency_geomean_us": 5412.506106998137,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      1024,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      16,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 21.5,
+   "latency_band": "<100us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      4096,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      64,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 138.3,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16384,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16384,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 490.6,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      131072,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      512,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 3485.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 323.9,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      7719,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      7719,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float32",
+     "shape": [
+      64,
+      64,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 238.2,
+   "latency_band": "100-500us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      256,
+      128,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 4765.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      256,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 1441.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 3056.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      30634,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      30634,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      128,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 2359.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      122330,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      122330,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "float16",
+     "shape": [
+      256,
+      128,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 9463.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 20630.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 6157.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 119290.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      64,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 6839.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2097152,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2097152,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2048
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 2374.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      32,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 15417.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2097152,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2097152,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      32,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 59287.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      256,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 4240824.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      256,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 530718.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2097152,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2097152,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 25356.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4194304,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      4194304,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2048
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      64,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 32482.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      64,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 27613.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2048
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      32,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 14461.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16384,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16384,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      16,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 570.8,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      16,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 561.1,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      22099,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      22099,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      9
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 4096
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      8,
+      128,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 1188.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32768,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      33
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      32,
+      256,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 903.7,
+   "latency_band": "500-1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19366,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      19366,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2048
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      256,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 2088.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      17
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 4096
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      16,
+      256,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 3223.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 1323.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 2880.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      16,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 4240.0,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      524288,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      32,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 2643.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      32,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 3803.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      16
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1048576,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      16,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 2828.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      32,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 7351.8,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      257
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      256,
+      128,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 133961.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      156652,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      156652,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 512
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 2619.5,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      77484,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      77484,
+      64
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      128,
+      64
+     ]
+    }
+   ],
+   "impl_latency_us": 4820.7,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      79221,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      79221,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      64,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 10328.9,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      628572,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      628572,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 1024
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      32,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 2908.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      79104,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      79104,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2048
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      256,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 8441.1,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      78009,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      78009,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      513
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      512,
+      128,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 9405.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      16
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      129
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 2048
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      128,
+      256,
+      16
+     ]
+    }
+   ],
+   "impl_latency_us": 4666.4,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      32
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      128
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 256
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      32,
+      128
+     ]
+    }
+   ],
+   "impl_latency_us": 7285.3,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      1025
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 128
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      1024,
+      256,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 4776.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      128
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      65536,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 32
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      128,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 263800.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      64
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      262144,
+      256
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      65
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 4096
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      64,
+      64,
+      256
+     ]
+    }
+   ],
+   "impl_latency_us": 23652.6,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "x",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      256
+     ]
+    },
+    {
+     "name": "y",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      131072,
+      32
+     ]
+    },
+    {
+     "name": "x_offsets",
+     "type": "tensor",
+     "dtype": "int32",
+     "shape": [
+      2049
+     ]
+    },
+    {
+     "name": "max_seq_len",
+     "type": "attr",
+     "dtype": "int",
+     "value": 64
+    },
+    {
+     "name": "grad_output",
+     "type": "tensor",
+     "dtype": "bfloat16",
+     "shape": [
+      2048,
+      256,
+      32
+     ]
+    }
+   ],
+   "impl_latency_us": 4771.2,
+   "latency_band": ">1000us",
+   "accuracy": "pass"
+  }
+ ]
+}

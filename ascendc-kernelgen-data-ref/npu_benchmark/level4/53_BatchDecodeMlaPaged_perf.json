@@ -1,0 +1,1259 @@
+{
+ "op_name": "75_BatchDecodeMlaPaged_triton",
+ "source": "GPU 实测延迟（run_perf_gpu.py, cuda event 端到端, warmup/repeats 见测量记录）：reference_latency_us = torch 参考实现实测；impl_latency_us = GPU Triton 实现 (triton_impl/{op}_triton_gpu_impl.py) 实测。性能基线取 impl_latency_us（逐 case）。",
+ "total_cases": 50,
+ "accuracy_passed_cases": 50,
+ "accuracy_approx_cases": 0,
+ "cases": [
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      96
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      8,
+      16,
+      1,
+      96
+     ]
+    }
+   ],
+   "reference_latency_us": 458.8,
+   "impl_latency_us": 204.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      160
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      8,
+      16,
+      1,
+      160
+     ]
+    }
+   ],
+   "reference_latency_us": 372.7,
+   "impl_latency_us": 195.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      96
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      8,
+      16,
+      1,
+      96
+     ]
+    }
+   ],
+   "reference_latency_us": 385.0,
+   "impl_latency_us": 180.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      96
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      13,
+      16,
+      1,
+      96
+     ]
+    }
+   ],
+   "reference_latency_us": 399.4,
+   "impl_latency_us": 173.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      96
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      18,
+      16,
+      1,
+      96
+     ]
+    }
+   ],
+   "reference_latency_us": 364.5,
+   "impl_latency_us": 182.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1283,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 483.3,
+   "impl_latency_us": 237.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      323,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 401.4,
+   "impl_latency_us": 223.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      2563,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 684.0,
+   "impl_latency_us": 294.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      1283,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 825.3,
+   "impl_latency_us": 419.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      1,
+      288
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      16,
+      32,
+      1,
+      288
+     ]
+    }
+   ],
+   "reference_latency_us": 398.3,
+   "impl_latency_us": 228.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      5123,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 1134.6,
+   "impl_latency_us": 354.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      5123,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 10948.6,
+   "impl_latency_us": 633.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      10243,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 3254.3,
+   "impl_latency_us": 466.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      10243,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 2794.5,
+   "impl_latency_us": 426.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      5123,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 1621.0,
+   "impl_latency_us": 681.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      14083,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 2571.3,
+   "impl_latency_us": 505.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      6,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      19203,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 5254.1,
+   "impl_latency_us": 636.9,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      24,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      19203,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 5167.1,
+   "impl_latency_us": 588.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      12,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      19203,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4786.2,
+   "impl_latency_us": 597.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      48,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      19203,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4812.8,
+   "impl_latency_us": 568.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      20483,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 5217.3,
+   "impl_latency_us": 603.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      20483,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 5126.1,
+   "impl_latency_us": 576.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      20483,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 5706.8,
+   "impl_latency_us": 623.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      10243,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 19350.5,
+   "impl_latency_us": 1420.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      17923,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4162.6,
+   "impl_latency_us": 531.5,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      10243,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4280.3,
+   "impl_latency_us": 1421.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      15363,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 5466.1,
+   "impl_latency_us": 487.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      15363,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 2412.5,
+   "impl_latency_us": 456.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      12803,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 2046.0,
+   "impl_latency_us": 427.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      3,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      15363,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4556.8,
+   "impl_latency_us": 501.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      10243,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 2602.0,
+   "impl_latency_us": 858.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      20483,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4714.5,
+   "impl_latency_us": 565.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      10,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      22403,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 4920.3,
+   "impl_latency_us": 608.3,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      15363,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 2656.3,
+   "impl_latency_us": 711.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      10243,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 1816.6,
+   "impl_latency_us": 562.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 14262.3,
+   "impl_latency_us": 857.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      64,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 25313.3,
+   "impl_latency_us": 2521.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 9360.4,
+   "impl_latency_us": 947.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      1,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      20483,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 3157.0,
+   "impl_latency_us": 545.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      32,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 39258.1,
+   "impl_latency_us": 1418.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 10839.0,
+   "impl_latency_us": 903.2,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      64,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 8444.9,
+   "impl_latency_us": 854.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      32,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 8895.5,
+   "impl_latency_us": 872.4,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      16,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      40963,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 8996.9,
+   "impl_latency_us": 901.1,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      48,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      38403,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 8196.1,
+   "impl_latency_us": 837.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      24,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      38403,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 8860.7,
+   "impl_latency_us": 845.8,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      12,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      34563,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 7362.6,
+   "impl_latency_us": 836.6,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      4,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      33283,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 8823.8,
+   "impl_latency_us": 796.7,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 49,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      8,
+      16,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      30723,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 7038.0,
+   "impl_latency_us": 724.0,
+   "accuracy": "pass"
+  },
+  {
+   "case_idx": 50,
+   "inputs": [
+    {
+     "name": "q",
+     "shape": [
+      2,
+      128,
+      576
+     ]
+    },
+    {
+     "name": "kv_cache",
+     "shape": [
+      20483,
+      16,
+      1,
+      576
+     ]
+    }
+   ],
+   "reference_latency_us": 36175.9,
+   "impl_latency_us": 2425.9,
+   "accuracy": "pass"
+  }
+ ]
+}

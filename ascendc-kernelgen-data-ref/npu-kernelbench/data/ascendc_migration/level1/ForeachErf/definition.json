@@ -1,0 +1,44 @@
+{
+  "name": "ForeachErf",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "tensors": {
+      "description": "list of tensors, same dtype (float32), varying shapes"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "List of tensors with erf applied, same shapes and dtype as input list"
+    }
+  },
+  "reference": "import torch\n\ndef run(tensors):\n    return torch._foreach_erf(tensors)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-nn.git",
+  "kernel_reference": {
+    "op_graph": [
+      "foreach/foreach_erf/op_graph/CMakeLists.txt",
+      "foreach/foreach_erf/op_graph/foreach_erf_proto.h"
+    ],
+    "op_host": [
+      "foreach/foreach_erf/op_host/foreach_erf_def.cpp",
+      "foreach/foreach_erf/op_host/CMakeLists.txt",
+      "foreach/foreach_erf/op_host/arch35/foreach_erf_tiling.cpp",
+      "foreach/foreach_erf/op_host/arch22/foreach_erf_tiling_arch22.cpp"
+    ],
+    "op_kernel": [
+      "foreach/foreach_erf/op_kernel/CMakeLists.txt",
+      "foreach/foreach_erf/op_kernel/foreach_erf.cpp",
+      "foreach/foreach_erf/op_kernel/arch35/foreach_erf.cpp",
+      "foreach/foreach_erf/op_kernel/arch35/foreach_erf_simt.h",
+      "foreach/foreach_erf/op_kernel/arch35/foreach_erf_tiling_key.h",
+      "optim/apply_adam_w_v2/op_kernel/CMakeLists.txt"
+    ],
+    "op_api": [
+      "optim/apply_adam_w_v2/op_host/op_api/apply_adam_w_v2.h",
+      "optim/apply_adam_w_v2/op_host/op_api/apply_adam_w_v2.cpp",
+      "optim/apply_adam_w_v2/op_host/op_api/aclnn_apply_adam_w_v2.h",
+      "optim/apply_adam_w_v2/op_host/op_api/aclnn_apply_adam_w_v2.cpp"
+    ]
+  },
+  "description": "Applies the error function (erf) element-wise to each tensor in a list simultaneously. More efficient than individual torch.erf calls. All tensors must have the same dtype. Input is a list of tensors with varying shapes. Output is a list of tensors with erf applied."
+}

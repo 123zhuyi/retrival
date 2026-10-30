@@ -1,0 +1,41 @@
+{
+  "name": "FluxTimestepGuidanceProjectionEmbedding",
+  "op_type": "elementwise",
+  "axes": {},
+  "inputs": {
+    "timestep": {
+      "description": "shape varies; supports float16"
+    },
+    "pooled_projections": {
+      "description": "shape varies; supports float16"
+    },
+    "freqs": {
+      "description": "shape varies; supports float16"
+    },
+    "timestep_linear1_weight": {
+      "description": "shape varies; supports float16"
+    },
+    "timestep_linear1_bias": {
+      "description": "shape varies; supports float32"
+    },
+    "timestep_linear2_weight": {
+      "description": "shape varies; supports float16"
+    },
+    "timestep_linear2_bias": {
+      "description": "shape varies; supports float32"
+    },
+    "text_embedder_weight": {
+      "description": "shape varies; supports float16"
+    },
+    "text_embedder_bias": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Timestep guidance projection embedding output"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(timestep: torch.Tensor, pooled_projections: torch.Tensor, freqs: torch.Tensor, timestep_linear1_weight: torch.Tensor, timestep_linear1_bias: torch.Tensor, timestep_linear2_weight: torch.Tensor, timestep_linear2_bias: torch.Tensor, text_embedder_weight: torch.Tensor, text_embedder_bias: torch.Tensor):\n    batch_size = timestep.shape[0]\n    t_emb = timestep.to(torch.float32) * 1000.0\n    t_emb = t_emb.unsqueeze(-1) * freqs.to(torch.float32).unsqueeze(0)\n    t_emb = torch.cat([torch.sin(t_emb), torch.cos(t_emb)], dim=-1)\n    t_emb = F.linear(t_emb, timestep_linear1_weight.to(torch.float32), timestep_linear1_bias.to(torch.float32))\n    t_emb = F.silu(t_emb)\n    t_emb = F.linear(t_emb, timestep_linear2_weight.to(torch.float32), timestep_linear2_bias.to(torch.float32)).to(timestep_linear2_bias.dtype)\n    text_emb = F.linear(pooled_projections.to(torch.float32), text_embedder_weight.to(torch.float32), text_embedder_bias.to(torch.float32)).to(text_embedder_bias.dtype)\n    out_dtype = torch.result_type(t_emb, text_emb)\n    conditioning = (t_emb.to(torch.float32) + text_emb.to(torch.float32)).to(out_dtype)\n    return conditioning\n",
+  "description": ""
+}

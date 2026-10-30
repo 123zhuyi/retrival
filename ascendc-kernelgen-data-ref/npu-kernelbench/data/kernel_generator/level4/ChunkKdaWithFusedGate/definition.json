@@ -1,0 +1,62 @@
+{
+  "name": "ChunkKdaWithFusedGate",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "q": {
+      "description": "Input q"
+    },
+    "k": {
+      "description": "Input k"
+    },
+    "v": {
+      "description": "Input v"
+    },
+    "raw_g": {
+      "description": "Input raw_g"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "A_log": {
+      "description": "Input A_log"
+    },
+    "g_bias": {
+      "description": "Input g_bias"
+    },
+    "initial_state": {
+      "description": "Input initial_state"
+    },
+    "scale": {
+      "description": "Input scale"
+    },
+    "lower_bound": {
+      "description": "Input lower_bound"
+    },
+    "use_bias": {
+      "description": "Input use_bias"
+    },
+    "use_lower_bound": {
+      "description": "Input use_lower_bound"
+    },
+    "use_initial_state": {
+      "description": "Input use_initial_state"
+    },
+    "output_final_state": {
+      "description": "Input output_final_state"
+    },
+    "use_qk_l2norm": {
+      "description": "Input use_qk_l2norm"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    },
+    "final_state": {
+      "description": "Output final_state"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\ndef run(q,\n    k,\n    v,\n    raw_g,\n    beta,\n    A_log,\n    g_bias,\n    initial_state,\n    scale,\n    lower_bound,\n    use_bias,\n    use_lower_bound,\n    use_initial_state,\n    output_final_state,\n    use_qk_l2norm,\n):\n    torch.manual_seed(42)\n    batch, tokens, heads, key_dim = q.shape\n    value_heads, value_dim = v.shape[2], v.shape[3]\n    if value_heads % heads != 0:\n        raise ValueError(\"value heads must be divisible by query heads\")\n    query = q.float()\n    key = k.float()\n    if use_qk_l2norm:\n        query = F.normalize(query, p=2.0, dim=-1, eps=1e-6)\n        key = F.normalize(key, p=2.0, dim=-1, eps=1e-6)\n    query = query.repeat_interleave(value_heads // heads, dim=2)\n    key = key.repeat_interleave(value_heads // heads, dim=2)\n    gate_input = raw_g.float()\n    if use_bias:\n        gate_input = gate_input + g_bias.float().reshape(\n            value_heads, key_dim\n        )\n    decay_rate = torch.exp(A_log.float())[:, None]\n    if use_lower_bound:\n        gate = lower_bound * torch.sigmoid(decay_rate * gate_input)\n    else:\n        gate = -decay_rate * F.softplus(gate_input)\n    if use_initial_state:\n        state = initial_state.float().clone()\n    else:\n        state = torch.zeros(\n            batch,\n            value_heads,\n            key_dim,\n            value_dim,\n            device=q.device,\n            dtype=torch.float32,\n        )\n    output = torch.empty_like(v)\n    beta_value = beta.float()\n    for token in range(tokens):\n        state = state * torch.exp(gate[:, token].float())[..., None]\n        key_token = key[:, token]\n        value_token = v[:, token].float()\n        residual = value_token - torch.einsum(\n            \"bhk,bhkv->bhv\", key_token, state\n        )\n        residual = residual * beta_value[:, token, :, None]\n        state = state + torch.einsum(\n            \"bhk,bhv->bhkv\", key_token, residual\n        )\n        output[:, token] = (\n            torch.einsum(\n                \"bhk,bhkv->bhv\", query[:, token] * scale, state\n            ).to(v.dtype)\n        )\n    final_state = state if output_final_state else None\n    return output, final_state",
+  "description": "Reference implementation for ChunkKdaWithFusedGate."
+}

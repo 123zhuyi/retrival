@@ -1,0 +1,26 @@
+{
+  "name": "MultiHeadAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "query tensor (B, S_q, D)"
+    },
+    "key": {
+      "description": "key tensor (B, S_k, D)"
+    },
+    "value": {
+      "description": "value tensor (B, S_k, D)"
+    },
+    "n_heads": {
+      "description": "number of attention heads"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, S_q, D)"
+    }
+  },
+  "reference": "import torch\nimport math\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(query, key, value, n_heads):\n    torch.manual_seed(42)\n    B, S_q, D = query.shape\n    S_k = key.shape[1]\n    head_dim = D // n_heads\n    q_proj = nn.Linear(D, D, bias=False).to(device=query.device, dtype=query.dtype)\n    k_proj = nn.Linear(D, D, bias=False).to(device=query.device, dtype=query.dtype)\n    v_proj = nn.Linear(D, D, bias=False).to(device=query.device, dtype=query.dtype)\n    out_proj = nn.Linear(D, D, bias=False).to(device=query.device, dtype=query.dtype)\n    q = q_proj(query).view(B, S_q, n_heads, head_dim).transpose(1, 2)\n    k = k_proj(key).view(B, S_k, n_heads, head_dim).transpose(1, 2)\n    v = v_proj(value).view(B, S_k, n_heads, head_dim).transpose(1, 2)\n    scores = torch.matmul(q.float(), k.float().transpose(-2, -1)) / math.sqrt(head_dim)\n    weights = F.softmax(scores, dim=-1)\n    output = torch.matmul(weights, v.float()).to(dtype=query.dtype)\n    output = output.transpose(1, 2).contiguous().view(B, S_q, D)\n    return out_proj(output)\n",
+  "description": "Multi-head attention with separate query/key/value inputs."
+}

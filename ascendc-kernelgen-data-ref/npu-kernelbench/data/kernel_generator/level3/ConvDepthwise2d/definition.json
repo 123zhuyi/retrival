@@ -1,0 +1,32 @@
+{
+  "name": "ConvDepthwise2d",
+  "op_type": "conv",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float32"
+    },
+    "in_channels": {
+      "description": "int, default=3"
+    },
+    "kernel_size": {
+      "description": "int, default=3"
+    },
+    "stride": {
+      "description": "int, default=1; optional"
+    },
+    "padding": {
+      "description": "int, default=1; optional"
+    },
+    "bias": {
+      "description": "bool, default=True; optional"
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Depthwise 2D convolution output"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch_npu\n\ntorch_npu.npu.conv.allow_hf32 = False\n\n_CONVS = {}\n\ndef run(x, in_channels, kernel_size, stride=1, padding=0, bias=True):\n    key = (in_channels, kernel_size, stride, padding, bias)\n    conv = _CONVS.get(key)\n    if conv is None:\n        rng_state = torch.get_rng_state()\n        torch.manual_seed(hash(key) & 0xFFFFFFFF)\n        conv = nn.Conv2d(\n            in_channels=in_channels,\n            out_channels=in_channels,\n            kernel_size=(kernel_size, kernel_size),\n            stride=stride,\n            padding=padding,\n            groups=in_channels,\n            bias=bias,\n        )\n        torch.set_rng_state(rng_state)\n        conv = conv.to(x.device)\n        _CONVS[key] = conv\n    return conv(x)\n",
+  "description": "Simple model that performs depthwise 2D convolution.\n\nTorch 原生小算子拼接实现（等价于 nn.Conv2d with groups=in_channels）：\n方式一：函数式 API\n    import torch.nn.functional as F\n    output = F.conv2d(\n        x,\n        self.conv.weight,\n        self.conv.bias,\n        stride=self.conv.stride,\n        padding=self.conv.padding,\n        dilation=self.conv.dilation,\n        groups=self.conv.groups  # groups = in_channels\n    )\n方式二：unfold + matmul 显式小算子拼接\n    import torch.nn.functional as F\n    batch_size, C, H, W = x.shape\n    kh, kw = self.conv.kernel_size\n    # 1. 提取滑动窗口\n    x_unfold = F.unfold(\n        x,\n        kernel_size=(kh, kw),\n        stride=self.conv.stride,\n        padding=self.conv.padding,\n        dilation=self.conv.dilation\n    )  # shape: (batch, C * kh * kw, H_out * W_out)\n    # 2. reshape 为 (batch, C, kh*kw, H_out*W_out)\n    x_unfold = x_unfold.view(batch_size, C, kh * kw, -1)\n    # 3. weight reshape 为 (C, kh*kw)\n    weight = self.conv.weight.view(C, kh * kw)\n    # 4. 逐通道矩阵乘法: (batch, C, kh*kw, N) @ (C, kh*kw) -> (batch, C, N)\n    output = torch.einsum('bckn,ck->bcn', x_unfold, weight)\n    # 5. reshape 回空间维度\n    H_out = (H + 2 * self.conv.padding[0] - self.conv.dilation[0] * (kh - 1) - 1) // self.conv.stride[0] + 1\n    W_out = (W + 2 * self.conv.padding[1] - self.conv.dilation[1] * (kw - 1) - 1) // self.conv.stride[1] + 1\n    output = output.view(batch_size, C, H_out, W_out)\n    # 6. 加 bias\n    if self.conv.bias is not None:\n        output = output + self.conv.bias.view(1, C, 1, 1)"
+}

@@ -1,0 +1,3878 @@
+{
+ "op_name": "17_OlmoHybridGdnFullForward",
+ "source": "17_OlmoHybridGdnFullForward 标杆换为进化后生成核（lingxi-evo round_3/parallel_1 \"n5_merge\"）：kernel/op_host/olmo_gdn.cpp md5 9cd80ec98dd2、op_kernel k1_conv_silu.h c3320c88d59c、k2_gdn_recur.h fcf277cb90c2、k3_gated_rmsnorm.h c2947c53e35c、olmo_common.h a7eda31ac259、model_new_ascendc.py 54640a00d2d4（编译产物 olmo_gdn_ext*.so md5 c67c23490fab105e043ddb53c7423807，与冻结副本 verification/best_r3p1_frozen.so 逐字节一致）。口径：逐 case 隔离 msprof（--ai-core=on --task-time=on，禁 quick-batch），warmup=3/repeats=3，49/49 case 全部可测；case 集 md5 ae886be5c16b0b3bb2466db081732d6d（对应当前 npu_benchmark/level4/17_OlmoHybridGdnFullForward.json）；NPU 14，2026-09-20。",
+ "total_cases": 49,
+ "accuracy_passed_cases": 0,
+ "impl_latency_geomean_us": 466.7677825081998,
+ "latency_band_distribution": {
+  "<100us": {
+   "count": 4,
+   "ratio": 0.08163265306122448
+  },
+  "100-500us": {
+   "count": 23,
+   "ratio": 0.46938775510204084
+  },
+  "500-1000us": {
+   "count": 10,
+   "ratio": 0.20408163265306123
+  },
+  ">1000us": {
+   "count": 12,
+   "ratio": 0.24489795918367346
+  }
+ },
+ "max_mfu_pct": 6.446196307717238,
+ "sweet_spot_shape": {
+  "case_idx": 10,
+  "inputs_shape": [
+   {
+    "name": "hidden_states",
+    "shape": [
+     1024,
+     3840
+    ]
+   },
+   {
+    "name": "output_buffer",
+    "shape": [
+     1024,
+     3840
+    ]
+   },
+   {
+    "name": "w_qkvg",
+    "shape": [
+     13440,
+     3840
+    ]
+   },
+   {
+    "name": "w_b",
+    "shape": [
+     30,
+     3840
+    ]
+   },
+   {
+    "name": "w_a",
+    "shape": [
+     30,
+     3840
+    ]
+   },
+   {
+    "name": "w_conv1d",
+    "shape": [
+     9600,
+     4
+    ]
+   },
+   {
+    "name": "dt_bias",
+    "shape": [
+     30
+    ]
+   },
+   {
+    "name": "A_log",
+    "shape": [
+     30
+    ]
+   },
+   {
+    "name": "w_o_norm",
+    "shape": [
+     128
+    ]
+   },
+   {
+    "name": "w_o_proj",
+    "shape": [
+     3840,
+     3840
+    ]
+   }
+  ],
+  "impl_latency_us": 5957.001333333334,
+  "mfu_pct": 6.446196307717238
+ },
+ "caliber_status": "MEASURED_LOCAL",
+ "caliber_review_needed": "【本次替换为生成核自升级，存在循环性】本核自身不得再以本记录为标杆计算加速比（恒等 1x）；对外口径只能报 vs PyTorch geomean 12.5548x。【精度未按 benchmark golden 报通过数】accuracy 字段保持 impl-only、accuracy_passed_cases 保持 0，含义是\"未对 benchmark definition.reference 做 golden 判定计入\"。实际已做该项判定（l3m_acc.py，判据逐字照抄 npu-kernelbench evaluator/correctness.py），对 benchmark golden（17_OlmoHybridGdnFullForward.py md5 c2e5b0fa62698298117635eaf619f49e）官方判据 official_pass 46/49。3 例未过（case 25 [8,4096]fp16、case 44 [256,3840]fp16、case 46 [64,3840]fp16）经逐侧诊断均为不可判——golden 自身把输出溢出成 fp16 inf（case25 12288 个、case44 983040 个即全部元素、case46 72960 个），生成核逐位置复现同一组 inf（inf_mask_same=True、符号无错配 sign_mismatch=0），两侧有限元素 max|a-g|=0.0、neq_n=0 ⇒ 因 |inf-inf|=NaN 使 cap 与 matched_ratio 双条件必然双挂，任何数值正确实现都过不去；可判部分 46/46 全过且逐元素相等。注：新 golden（635d7ca6）删除了 rms_norm 前的 fp32 上提，被删注释原文自述\"fp16 下 x.pow(2) 溢出…得 inf → rsqrt=0 → 头块归零，CPU golden 因此产生垃圾\"，与本次观测到的 golden 自身 inf 溢出吻合。【旧值来源】替换前的 impl_latency_geomean_us=43305.018379 系被测对象为已废弃的 12 核纯向量原型 olmo_hybrid_gdn_full_forward（不在 CMakeLists 构建内、register.cpp 未注册、K6 输出投影从不走 Cube、accuracy_passed_cases=0、level4_updated 自标 KERNEL_NOT_LOCATABLE），非本算子交付核。【上一版 50 例记录作废】本记录前一次尝试按旧 50 例 case 集（md5 76a36ab51dc5c40fafa4467828702145）+ 旧 golden 测得，因上游 635d7ca6 改集改 golden 已作废，未推送。【仪器注记】诊断中 torch.equal 与 (g==a).all() 结论冲突（neq_n=0 而 torch.equal=False），以 neq_n/eq_all 为准，成因未查明，显式归档。",
+ "cases": [
+  {
+   "case_idx": 0,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      1,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      1,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 196.48333333333335,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 132710400.0,
+   "mfu_pct": 0.19085588260242597
+  },
+  {
+   "case_idx": 1,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      2,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      2,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 202.015,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 265420800.0,
+   "mfu_pct": 0.3712595599336682
+  },
+  {
+   "case_idx": 2,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      4,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      4,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 211.74066666666667,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 530841600.0,
+   "mfu_pct": 0.7084137514128918
+  },
+  {
+   "case_idx": 3,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      8,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      8,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 230.9853333333333,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 1061683200.0,
+   "mfu_pct": 1.298783761162325
+  },
+  {
+   "case_idx": 4,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      16,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      16,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 274.76233333333334,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 2123366400.0,
+   "mfu_pct": 2.1837054326951657
+  },
+  {
+   "case_idx": 5,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      32,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      32,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 351.981,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 4246732800.0,
+   "mfu_pct": 3.4092749324537395
+  },
+  {
+   "case_idx": 6,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      64,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      64,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 524.1653333333334,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 8493465600.0,
+   "mfu_pct": 4.5787079903541885
+  },
+  {
+   "case_idx": 7,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      128,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      128,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 835.4203333333331,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 16986931200.0,
+   "mfu_pct": 5.7456106925815
+  },
+  {
+   "case_idx": 8,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      256,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      256,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 1510.146,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 33973862400.0,
+   "mfu_pct": 6.3570012435883685
+  },
+  {
+   "case_idx": 9,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      64,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      64,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 687.4743333333332,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 8493465600.0,
+   "mfu_pct": 3.491039423047552
+  },
+  {
+   "case_idx": 10,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      1024,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      1024,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 5957.001333333334,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 135895449600.0,
+   "mfu_pct": 6.446196307717238
+  },
+  {
+   "case_idx": 11,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 93.04066666666667,
+   "latency_band": "<100us",
+   "accuracy": "impl-only",
+   "flops": 41943040.0,
+   "mfu_pct": 0.12738356545007398
+  },
+  {
+   "case_idx": 12,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 94.89433333333334,
+   "latency_band": "<100us",
+   "accuracy": "impl-only",
+   "flops": 83886080.0,
+   "mfu_pct": 0.24979050772652778
+  },
+  {
+   "case_idx": 13,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 105.218,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 167772160.0,
+   "mfu_pct": 0.4505636621814462
+  },
+  {
+   "case_idx": 14,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 125.48366666666668,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 335544320.0,
+   "mfu_pct": 0.7555948701011402
+  },
+  {
+   "case_idx": 15,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 166.31966666666668,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 671088640.0,
+   "mfu_pct": 1.1401515733534995
+  },
+  {
+   "case_idx": 16,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 240.42533333333333,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 1342177280.0,
+   "mfu_pct": 1.5774513192977138
+  },
+  {
+   "case_idx": 17,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      64,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      64,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 381.46566666666666,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 2684354560.0,
+   "mfu_pct": 1.988431947615692
+  },
+  {
+   "case_idx": 18,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      128,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      128,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 694.248,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 5368709120.0,
+   "mfu_pct": 2.1851514689808784
+  },
+  {
+   "case_idx": 19,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 1277.5960438596492,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 10737418240.0,
+   "mfu_pct": 2.3748305175617648
+  },
+  {
+   "case_idx": 20,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 2560.0213333333336,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 21474836480.0,
+   "mfu_pct": 2.370350617448558
+  },
+  {
+   "case_idx": 21,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      1024,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 4986.672333333333,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 42949672960.0,
+   "mfu_pct": 2.4337464916576557
+  },
+  {
+   "case_idx": 22,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      1,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 209.38866666666664,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 134217728.0,
+   "mfu_pct": 0.1811269278785827
+  },
+  {
+   "case_idx": 23,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      2,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 212.429,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 268435456.0,
+   "mfu_pct": 0.35706919418653693
+  },
+  {
+   "case_idx": 24,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      4,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      4,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 222.82666666666668,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 536870912.0,
+   "mfu_pct": 0.6808148502739215
+  },
+  {
+   "case_idx": 25,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      8,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      8,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 244.48533333333333,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 1073741824.0,
+   "mfu_pct": 1.241004534998994
+  },
+  {
+   "case_idx": 26,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      16,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 296.9203333333333,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 2147483648.0,
+   "mfu_pct": 2.043695721348874
+  },
+  {
+   "case_idx": 27,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 392.40366666666665,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 4294967296.0,
+   "mfu_pct": 3.092809096150893
+  },
+  {
+   "case_idx": 28,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      64,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 596.7106666666665,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 8589934592.0,
+   "mfu_pct": 4.067732311236143
+  },
+  {
+   "case_idx": 29,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 393.9636666666667,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 4294967296.0,
+   "mfu_pct": 3.080562326719544
+  },
+  {
+   "case_idx": 30,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      256,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      256,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 1874.5166666666664,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 34359738368.0,
+   "mfu_pct": 5.1794882433891605
+  },
+  {
+   "case_idx": 31,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      512,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      512,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 3603.742666666667,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 68719476736.0,
+   "mfu_pct": 5.388307620764469
+  },
+  {
+   "case_idx": 32,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      128,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      128,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 983.5189999999999,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 17179869184.0,
+   "mfu_pct": 4.935866534879874
+  },
+  {
+   "case_idx": 33,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      1,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 99.346,
+   "latency_band": "<100us",
+   "accuracy": "impl-only",
+   "flops": 41943040.0,
+   "mfu_pct": 0.11929873222728495
+  },
+  {
+   "case_idx": 34,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      2,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 95.421,
+   "latency_band": "<100us",
+   "accuracy": "impl-only",
+   "flops": 83886080.0,
+   "mfu_pct": 0.24841181400010168
+  },
+  {
+   "case_idx": 35,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      4,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 104.92566666666669,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 167772160.0,
+   "mfu_pct": 0.45181897731480447
+  },
+  {
+   "case_idx": 36,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      8,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 124.43733333333334,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 335544320.0,
+   "mfu_pct": 0.7619483018077222
+  },
+  {
+   "case_idx": 37,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      16,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 164.686,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 671088640.0,
+   "mfu_pct": 1.1514617492053338
+  },
+  {
+   "case_idx": 38,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 236.6723333333333,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 1342177280.0,
+   "mfu_pct": 1.6024655434697728
+  },
+  {
+   "case_idx": 39,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      128,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      128,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 689.0753333333332,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 5368709120.0,
+   "mfu_pct": 2.2015546975082128
+  },
+  {
+   "case_idx": 40,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      256,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 1301.5346666666665,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 10737418240.0,
+   "mfu_pct": 2.3311511800485336
+  },
+  {
+   "case_idx": 41,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      512,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 2651.9320000000002,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 21474836480.0,
+   "mfu_pct": 2.2881989991252216
+  },
+  {
+   "case_idx": 42,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      128,
+      2048
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      128,
+      2048
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      8192,
+      2048
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      2048
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      6144,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      64
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      2048,
+      2048
+     ]
+    }
+   ],
+   "impl_latency_us": 677.6429999999999,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 5368709120.0,
+   "mfu_pct": 2.2386965364314797
+  },
+  {
+   "case_idx": 43,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      48,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      48,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 435.453,
+   "latency_band": "100-500us",
+   "accuracy": "impl-only",
+   "flops": 6370099200.0,
+   "mfu_pct": 4.133626361513183
+  },
+  {
+   "case_idx": 44,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      256,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      256,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 1523.4916666666666,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 33973862400.0,
+   "mfu_pct": 6.301314414803713
+  },
+  {
+   "case_idx": 45,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      320,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      320,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 1944.0496666666668,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 42467328000.0,
+   "mfu_pct": 6.172681802196754
+  },
+  {
+   "case_idx": 46,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      64,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      64,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 524.2516666666667,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 8493465600.0,
+   "mfu_pct": 4.5779539724877685
+  },
+  {
+   "case_idx": 47,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      448,
+      3840
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      448,
+      3840
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      13440,
+      3840
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      30,
+      3840
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      9600,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      30
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      3840,
+      3840
+     ]
+    }
+   ],
+   "impl_latency_us": 2630.3806666666665,
+   "latency_band": ">1000us",
+   "accuracy": "impl-only",
+   "flops": 59454259200.0,
+   "mfu_pct": 6.386908257385306
+  },
+  {
+   "case_idx": 48,
+   "inputs": [
+    {
+     "name": "hidden_states",
+     "shape": [
+      128,
+      4096
+     ]
+    },
+    {
+     "name": "output_buffer",
+     "shape": [
+      128,
+      4096
+     ]
+    },
+    {
+     "name": "w_qkvg",
+     "shape": [
+      12288,
+      4096
+     ]
+    },
+    {
+     "name": "w_b",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_a",
+     "shape": [
+      32,
+      4096
+     ]
+    },
+    {
+     "name": "w_conv1d",
+     "shape": [
+      8192,
+      4
+     ]
+    },
+    {
+     "name": "dt_bias",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "A_log",
+     "shape": [
+      32
+     ]
+    },
+    {
+     "name": "w_o_norm",
+     "shape": [
+      128
+     ]
+    },
+    {
+     "name": "w_o_proj",
+     "shape": [
+      4096,
+      4096
+     ]
+    }
+   ],
+   "impl_latency_us": 978.5656666666665,
+   "latency_band": "500-1000us",
+   "accuracy": "impl-only",
+   "flops": 17179869184.0,
+   "mfu_pct": 4.960851053618802
+  }
+ ],
+ "data_status": "REPLACED_20260920 — 标杆替换为进化后生成核（原记录为 AIV 原型，见 caliber_review_needed）。按当前 case 集（49 例，md5 ae886be5c16b0b3bb2466db081732d6d）逐 case 隔离 msprof，warmup=3/repeats=3，仅统计本算子 device task；geomean/分档/MFU 按 49 例重算。inputs 逐例取自当前 case 文件（仅 10 个张量项，与旧 schema 一致）；flops 按该算子已验证的精确关系 flops=T×k(H) 计算（k(2048)=41943040、k(3840)=132710400、k(4096)=134217728，由旧 50 例中同 hidden 的 16 个样本反推，组内零离散）。"
+}

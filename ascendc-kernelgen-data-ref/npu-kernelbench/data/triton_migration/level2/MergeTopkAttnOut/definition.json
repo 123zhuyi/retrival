@@ -1,0 +1,20 @@
+{
+  "name": "MergeTopkAttnOut",
+  "op_type": "other",
+  "axes": {},
+  "inputs": {
+    "o_partial": {
+      "description": "Input 'o_partial'."
+    },
+    "lse_partial": {
+      "description": "Input 'lse_partial'."
+    }
+  },
+  "outputs": {
+    "y": {
+      "description": "Output tensor."
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport json\nimport os\n\n\ndef run(o_partial, lse_partial):\n    lse = lse_partial.float()\n    lse_max = lse.max(dim=0, keepdim=True).values\n    weights = torch.exp2(lse - lse_max)\n    w_sum = weights.sum(dim=0, keepdim=True)\n    weights = torch.where(w_sum > 0, weights / w_sum.clamp_min(1e-30), torch.zeros_like(weights))\n    out = (o_partial.float() * weights.unsqueeze(-1)).sum(dim=0)\n    return out.to(o_partial.dtype)",
+  "description": "Model that merges split-K partial attention outputs (log2 域 LSE 加权合并)。 对标 vLLM _merge_topk_attn_out_kernel (vllm/models/minimax_m3/common/ops/sparse_attn.py:419, v0.26.0), 即 MiniMax-M3 GQA block-sparse decode kernel (split-K over topk 块) 的合并阶段。"
+}

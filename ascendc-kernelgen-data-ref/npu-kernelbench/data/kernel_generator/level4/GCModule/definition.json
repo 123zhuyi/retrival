@@ -1,0 +1,26 @@
+{
+  "name": "GCModule",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "input tensor (B, C, H, W)"
+    },
+    "channel": {
+      "description": "number of channels; defaults to x.shape[1]"
+    },
+    "reduction": {
+      "description": "reduction factor for bottleneck"
+    },
+    "context": {
+      "description": "optional pre-computed context (B, C, 1, 1); default None"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, C, H, W)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\ndef run(x, channel=None, reduction=4, context=None):\n    torch.manual_seed(42)\n    b, c, h, w = x.shape\n    if channel is None:\n        channel = c\n    conv1 = nn.Conv2d(channel, 1, kernel_size=1).to(device=x.device, dtype=x.dtype)\n    transform = nn.Sequential(\n        nn.Conv2d(channel, channel // reduction, kernel_size=1).to(device=x.device, dtype=x.dtype),\n        nn.LayerNorm([channel // reduction, 1, 1]).to(device=x.device, dtype=x.dtype),\n        nn.ReLU(inplace=True),\n        nn.Conv2d(channel // reduction, channel, kernel_size=1).to(device=x.device, dtype=x.dtype)\n    )\n    if context is None:\n        attn = conv1(x)\n        b_att, _, h_att, w_att = attn.shape\n        attn = attn.view(b_att, 1, h_att * w_att)\n        attn = F.softmax(attn, dim=-1)\n        x_flat = x.view(b, c, -1)\n        context = torch.bmm(x_flat, attn.transpose(1, 2))\n        context = context.unsqueeze(-1)\n    else:\n        context = context.to(device=x.device, dtype=x.dtype)\n    y = transform(context)\n    out = x + y\n    return out\n",
+  "description": "Migrated GCModule operator."
+}

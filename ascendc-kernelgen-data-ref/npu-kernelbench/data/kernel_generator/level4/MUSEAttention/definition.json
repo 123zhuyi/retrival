@@ -1,0 +1,35 @@
+{
+  "name": "MUSEAttention",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "queries": {
+      "description": "query tensor (B, Nq, D)"
+    },
+    "keys": {
+      "description": "key tensor (B, Nk, D)"
+    },
+    "values": {
+      "description": "value tensor (B, Nk, D)"
+    },
+    "d_model": {
+      "description": "model dimension"
+    },
+    "d_k": {
+      "description": "query/key dimension per head"
+    },
+    "d_v": {
+      "description": "value dimension per head"
+    },
+    "h": {
+      "description": "number of heads"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "output tensor (B, Nq, D)"
+    }
+  },
+  "reference": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\nimport math\n\ndef run(queries, keys, values, d_model, d_k, d_v, h):\n    torch.manual_seed(42)\n    b_s, nq = queries.shape[:2]\n    nk = keys.shape[1]\n    fc_q = nn.Linear(d_model, h * d_k).to(device=queries.device, dtype=queries.dtype)\n    fc_k = nn.Linear(d_model, h * d_k).to(device=queries.device, dtype=queries.dtype)\n    fc_v = nn.Linear(d_model, h * d_v).to(device=queries.device, dtype=queries.dtype)\n    fc_o = nn.Linear(h * d_v, d_model).to(device=queries.device, dtype=queries.dtype)\n    in_ch = h * d_v\n    out_ch = d_model\n    conv1_pointwise = nn.Conv1d(in_ch, out_ch, 1).to(device=queries.device, dtype=queries.dtype)\n    conv3_depth = nn.Conv1d(in_ch, in_ch, 3, groups=in_ch, padding=1).to(device=queries.device, dtype=queries.dtype)\n    conv3_pointwise = nn.Conv1d(in_ch, out_ch, 1).to(device=queries.device, dtype=queries.dtype)\n    conv5_depth = nn.Conv1d(in_ch, in_ch, 5, groups=in_ch, padding=2).to(device=queries.device, dtype=queries.dtype)\n    conv5_pointwise = nn.Conv1d(in_ch, out_ch, 1).to(device=queries.device, dtype=queries.dtype)\n    dy_paras = nn.Parameter(torch.ones(3, device=queries.device, dtype=queries.dtype))\n\n    q = fc_q(queries).view(b_s, nq, h, d_k).permute(0, 2, 1, 3)\n    k = fc_k(keys).view(b_s, nk, h, d_k).permute(0, 2, 3, 1)\n    v = fc_v(values).view(b_s, nk, h, d_v).permute(0, 2, 1, 3)\n\n    att = torch.matmul(q.float(), k.float()) / math.sqrt(d_k)\n    att = F.softmax(att, dim=-1)\n    out = torch.matmul(att, v.float()).permute(0, 2, 1, 3).contiguous().view(b_s, nq, h * d_v)\n    out = out.to(dtype=queries.dtype)\n    out = fc_o(out)\n\n    v2 = v.permute(0, 1, 3, 2).contiguous().view(b_s, -1, nk)\n    conv1_out = conv1_pointwise(v2)\n    conv3_out = conv3_pointwise(conv3_depth(v2))\n    conv5_out = conv5_pointwise(conv5_depth(v2))\n    w = F.softmax(dy_paras, dim=0)\n    out2 = w[0] * conv1_out + w[1] * conv3_out + w[2] * conv5_out\n    if nk != nq:\n        out2 = F.adaptive_avg_pool1d(out2, nq)\n    out2 = out2.permute(0, 2, 1)\n    return out + out2\n",
+  "description": "Migrated MUSEAttention operator."
+}

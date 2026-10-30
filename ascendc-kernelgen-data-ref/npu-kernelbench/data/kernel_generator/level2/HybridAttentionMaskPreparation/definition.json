@@ -1,0 +1,35 @@
+{
+  "name": "HybridAttentionMaskPreparation",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "batch_size_scalar": {
+      "description": "int, default=1"
+    },
+    "seq_length_scalar": {
+      "description": "int, default=64"
+    },
+    "past_key_values_length_scalar": {
+      "description": "int, default=0"
+    },
+    "num_attention_heads": {
+      "description": "int, default=64; optional"
+    },
+    "swa_num_attention_heads": {
+      "description": "int, default=64; optional"
+    },
+    "sliding_window": {
+      "description": "int, default=128; optional"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Full attention mask"
+    },
+    "1": {
+      "description": "Sliding window attention mask"
+    }
+  },
+  "reference": "import torch\n\ndef run(batch_size, seq_length, past_key_values_length, num_attention_heads=64, swa_num_attention_heads=64, sliding_window=128):\n    batch_size = int(batch_size)\n    seq_length = int(seq_length)\n    past_key_values_length = int(past_key_values_length)\n    num_attention_heads = int(num_attention_heads)\n    swa_num_attention_heads = int(swa_num_attention_heads)\n    sliding_window = int(sliding_window)\n    target_length = seq_length\n    source_length = seq_length + past_key_values_length\n    full_mask = torch.ones((target_length, source_length), dtype=torch.bool, device=\"npu\")\n    target_indices = torch.arange(target_length, device=\"npu\")[:, None]\n    source_indices = torch.arange(source_length, device=\"npu\")[None, :]\n    causal_cond = target_indices >= (source_indices - past_key_values_length)\n    full_mask = full_mask.masked_fill(causal_cond, False)\n    full_attention_mask = full_mask[None, None, :, :].expand(batch_size, num_attention_heads, target_length, source_length).contiguous()\n    swa_mask = torch.zeros((target_length, source_length), dtype=torch.bool, device=\"npu\")\n    window_cond = (source_indices - past_key_values_length) >= (target_indices - sliding_window)\n    valid_positions = causal_cond & window_cond\n    swa_mask = swa_mask.masked_fill(valid_positions, True)\n    sliding_window_attention_mask = swa_mask[None, None, :, :].expand(batch_size, swa_num_attention_heads, target_length, source_length).contiguous()\n    return full_attention_mask, sliding_window_attention_mask\n",
+  "description": "Prepare hybrid attention masks combining full attention and sliding window. Generates causal mask with optional sliding window restriction. Pure PyTorch: torch.triu causal mask + sliding window mask construction."
+}

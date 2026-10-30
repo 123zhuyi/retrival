@@ -1,0 +1,86 @@
+{
+  "name": "LightningIndexerGrad",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "query": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "key": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "queryIndex": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "keyIndex": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "weights": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "queryRope": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "keyRope": {
+      "description": "shape varies; supports bfloat16"
+    },
+    "scaleValue": {
+      "description": "float, default=1.865"
+    },
+    "layout": {
+      "description": "str"
+    },
+    "actualSeqLengthsQ": {
+      "description": "list_int"
+    },
+    "actualSeqLengthsK": {
+      "description": "list_int"
+    },
+    "sparseIndices": {
+      "description": "shape varies; supports int32"
+    },
+    "softmaxMax": {
+      "description": "shape varies; supports float32"
+    },
+    "softmaxSum": {
+      "description": "shape varies; supports float32"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Sparse indices int32"
+    },
+    "1": {
+      "description": "Sparse values"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(query, key, weights, actual_seq_lengths_query=None, actual_seq_lengths_key=None, block_table=None, layout_query=\"BSND\", layout_key=\"BSND\", sparse_count=2048, sparse_mode=3, pre_tokens=None, next_tokens=None, return_value=False):\n    if pre_tokens is None:\n        pre_tokens = (1 << 63) - 1\n    if next_tokens is None:\n        next_tokens = (1 << 63) - 1\n    return torch_npu.npu_lightning_indexer(query, key, weights, actual_seq_lengths_query=actual_seq_lengths_query, actual_seq_lengths_key=actual_seq_lengths_key, block_table=block_table, layout_query=layout_query, layout_key=layout_key, sparse_count=sparse_count, sparse_mode=sparse_mode, pre_tokens=pre_tokens, next_tokens=next_tokens, return_value=return_value)\n",
+  "kernel_reference_repo": "https://gitcode.com/cann/ops-transformer.git",
+  "kernel_reference": {
+    "op_graph": [],
+    "op_host": [
+      "attention/lightning_indexer_grad/op_host/lightning_indexer_grad_def.cpp",
+      "attention/lightning_indexer_grad/op_host/lightning_indexer_grad_infershape.cpp",
+      "attention/lightning_indexer_grad/op_host/lightning_indexer_grad_tiling.cpp",
+      "attention/lightning_indexer_grad/op_host/lightning_indexer_grad_tiling_data.h"
+    ],
+    "op_kernel": [
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad.cpp",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_common.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_kernel.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_kernel_post.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_kernel_pre.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_service_cube.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_service_vector.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_template_tiling_key.h",
+      "attention/lightning_indexer_grad/op_kernel/lightning_indexer_grad_tiling.h"
+    ],
+    "op_api": [
+      "attention/lightning_indexer_grad/op_host/op_api/aclnn_lightning_indexer_grad.cpp",
+      "attention/lightning_indexer_grad/op_host/op_api/aclnn_lightning_indexer_grad.h",
+      "attention/lightning_indexer_grad/op_host/op_api/lightning_indexer_grad.cpp",
+      "attention/lightning_indexer_grad/op_host/op_api/lightning_indexer_grad.h"
+    ]
+  },
+  "description": "torch_npu.npu_lightning_indexer computes sparse attention indexing and values. Supports BSND/TND layouts, sparse modes, variable-length sequences. Returns (sparse_indices int32, sparse_values). Pure PyTorch: Q@K^T with ReLU, topk selection, sparse indexing."
+}

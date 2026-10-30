@@ -1,0 +1,32 @@
+{
+  "name": "FusedGdnGatingKernel",
+  "op_type": "attention",
+  "axes": {},
+  "inputs": {
+    "A_log": {
+      "description": "Input A_log"
+    },
+    "a": {
+      "description": "Input a"
+    },
+    "b": {
+      "description": "Input b"
+    },
+    "dt_bias": {
+      "description": "Input dt_bias"
+    },
+    "beta": {
+      "description": "Input beta"
+    },
+    "threshold": {
+      "description": "Input threshold"
+    }
+  },
+  "outputs": {
+    "output": {
+      "description": "Output output"
+    }
+  },
+  "reference": "import torch\nimport torch.nn.functional as F\ndef run(A_log, a, b, dt_bias, beta, threshold):\n    torch.manual_seed(42)\n    x = a.float() + dt_bias.float()\n    gate = -torch.exp(A_log.float()) * F.softplus(\n        x, beta=beta, threshold=threshold\n    )\n    beta_output = torch.sigmoid(b.float()).to(dtype=b.dtype)\n    return gate.unsqueeze(0), beta_output.unsqueeze(0)",
+  "description": "Reference implementation for FusedGdnGatingKernel."
+}

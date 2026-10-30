@@ -1,0 +1,32 @@
+{
+  "name": "MoeInitRouting",
+  "op_type": "routing",
+  "axes": {},
+  "inputs": {
+    "x": {
+      "description": "shape varies; supports float16"
+    },
+    "row_idx": {
+      "description": "shape varies; supports int32"
+    },
+    "expert_idx": {
+      "description": "shape varies; supports int32"
+    },
+    "active_num": {
+      "description": "int, default=3"
+    }
+  },
+  "outputs": {
+    "0": {
+      "description": "Expanded x features"
+    },
+    "1": {
+      "description": "Expanded row indices, int32"
+    },
+    "2": {
+      "description": "Expanded expert indices, int32"
+    }
+  },
+  "reference": "import torch\nimport torch_npu\n\ndef run(x, row_idx, expert_idx, active_num):\n    return torch_npu.npu_moe_init_routing(x, row_idx, expert_idx, active_num)\n",
+  "description": "Initialize routing for Mixture of Experts. torch_npu.npu_moe_init_routing(x, row_idx, expert_idx, active_num) returns (expanded_x, expanded_row_idx, expanded_expert_idx). Pure PyTorch: sort by expert, gather x rows, compute indices."
+}

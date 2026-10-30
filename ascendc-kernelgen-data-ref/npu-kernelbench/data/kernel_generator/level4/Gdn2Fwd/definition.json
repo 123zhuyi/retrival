@@ -1,0 +1,48 @@
+{
+  "name": "Gdn2Fwd",
+  "op_type": "attention",
+  "axes": {},
+  "custom_inputs_entrypoint": "make_inputs",
+  "inputs": {
+    "q": {
+      "description": "Query [B, T, H, K] bf16/fp16"
+    },
+    "k": {
+      "description": "Key [B, T, H, K] bf16/fp16"
+    },
+    "v": {
+      "description": "Value [B, T, H, V] bf16/fp16"
+    },
+    "g": {
+      "description": "log 域逐通道衰减 [B, T, H, K] fp32 (恒 <= 0)"
+    },
+    "b": {
+      "description": "擦除门 [B, T, H, K] (0, 1)"
+    },
+    "w": {
+      "description": "写入门 [B, T, H, V] (0, 1)"
+    },
+    "initial_state": {
+      "description": "初始状态 [N, H, K, V] fp32, 首维 0 表示无"
+    },
+    "cu_seqlens": {
+      "description": "varlen 前缀和 [N+1] int32 (B=1), 可选"
+    },
+    "scale": {
+      "description": "注意力缩放"
+    },
+    "use_qk_l2norm_in_kernel": {
+      "description": "kernel 内是否做 q/k L2 归一化 (0/1)"
+    }
+  },
+  "outputs": {
+    "o": {
+      "description": "输出 [B, T, H, V], dtype 与 v 一致"
+    },
+    "final_state": {
+      "description": "最终状态 [N, H, K, V] fp32"
+    }
+  },
+  "reference": "import zlib\n\nimport torch\nimport torch.nn.functional as F\n\n\ndef _segment_fwd(q, k, v, g, b, w, S, scale):\n    # q,k,g,b [X,T,H,K]; v,w [X,T,H,V]; S [X,H,K,V] (fp32)\n    device = q.device\n    T = q.shape[1]\n    V = v.shape[-1]\n    o = torch.empty(q.shape[0], T, q.shape[2], V, dtype=torch.float32, device=device)\n    for t in range(T):\n        S = S * g[:, t].exp().unsqueeze(-1)\n        erase = ((b[:, t] * k[:, t]).unsqueeze(-1) * S).sum(-2)\n        v_new = w[:, t] * v[:, t] - erase\n        S = S + k[:, t].unsqueeze(-1) * v_new.unsqueeze(-2)\n        o[:, t] = ((scale * q[:, t]).unsqueeze(-1) * S).sum(-2)\n    return o, S\n\n\ndef run(q, k, v, g, b, w, initial_state, cu_seqlens=None, scale=None,\n        use_qk_l2norm_in_kernel=1):\n    \"\"\"GDN-2 (Gated DeltaNet 2) chunkwise 前向 golden (逐 token 精确递推)。\n\n    数学定义 (矩阵状态 S ∈ R^{KxV}, * 为逐通道 Hadamard 积):\n        S_t = (I - k_t (b_t k_t)^T) Diag(exp(g_t)) S_{t-1} + k_t (w_t v_t)^T\n        o_t = (scale * q_t)^T S_t    (读出发生在写入之后)\n    b = w = beta (标量) 时退化为 KDA; g 再退化为标量时为 GDN v1。\n\n    布局: q,k,g,b [B,T,H,K]; v,w [B,T,H,V]; initial_state [N,H,K,V] fp32\n    (首维 0 表示无初始状态); cu_seqlens [N+1] int32 可选 (varlen, B=1)。\n    输出 o [B,T,H,V] (v.dtype), final_state [N,H,K,V] fp32。\n    \"\"\"\n    device = q.device\n    B, T, H, K = q.shape\n    V = v.shape[-1]\n    qf, kf = q.float(), k.float()\n    if use_qk_l2norm_in_kernel:\n        # fla l2norm: y = x * rsqrt(sum(x^2) + 1e-6)\n        qf = qf * torch.rsqrt((qf * qf).sum(-1, keepdim=True) + 1e-6)\n        kf = kf * torch.rsqrt((kf * kf).sum(-1, keepdim=True) + 1e-6)\n    vf, gf, bf, wf = v.float(), g.float(), b.float(), w.float()\n\n    has_init = initial_state is not None and initial_state.shape[0] > 0\n    if cu_seqlens is not None and len(cu_seqlens) > 0:\n        assert B == 1, \"varlen 要求 B=1\"\n        N = len(cu_seqlens) - 1\n        o = torch.empty(1, T, H, V, dtype=torch.float32, device=device)\n        final = torch.empty(N, H, K, V, dtype=torch.float32, device=device)\n        for n in range(N):\n            s, e = int(cu_seqlens[n]), int(cu_seqlens[n + 1])\n            S0 = (initial_state[n:n + 1].float() if has_init\n                  else torch.zeros(1, H, K, V, device=device))\n            o_n, S_n = _segment_fwd(\n                qf[:, s:e], kf[:, s:e], vf[:, s:e],\n                gf[:, s:e], bf[:, s:e], wf[:, s:e], S0, scale)\n            o[:, s:e] = o_n\n            final[n] = S_n[0]\n    else:\n        N = B\n        S0 = initial_state.float() if has_init else torch.zeros(B, H, K, V, device=device)\n        o, S_n = _segment_fwd(qf, kf, vf, gf, bf, wf, S0, scale)\n        final = S_n\n    return o.to(v.dtype), final\n\n\n_DTYPE_CODE = {0: torch.float16, 1: torch.bfloat16, 2: torch.float32}\n\n\ndef make_inputs(axes, device):\n    \"\"\"Custom input generator (custom_inputs_entrypoint).\n\n    Deterministic per case: RNG is reseeded from the axes dict so repeated\n    calls (once per custom input) produce identical tensors. Tensors are\n    generated on CPU; the evaluator moves them to the target device.\n    Scalars (scale / use_qk_l2norm_in_kernel) are returned as plain Python\n    values (workloads may not mix custom and non-custom inputs).\n\n    axes:\n        B, T, H, K, V   q/k/g/b [B,T,H,K], v/w [B,T,H,V]\n        DT      dtype code for q/k/v/b/w (0=fp16, 1=bf16, 2=fp32); g fp32\n        NSTATE  initial_state 行数 (0 = 无初始状态); fp32 [NSTATE,H,K,V]\n        NV      varlen 序列数 (0 = 等长 batch); NV>0 时需 CU_0..CU_NV, B=1\n        SCALE_U scale * 1e6 as int\n        USE_L2  use_qk_l2norm_in_kernel (0/1)\n    \"\"\"\n    torch.manual_seed(zlib.crc32(repr(sorted(axes.items())).encode()) & 0x7FFFFFFF)\n    B, T, H, K, V = axes[\"B\"], axes[\"T\"], axes[\"H\"], axes[\"K\"], axes[\"V\"]\n    dt = _DTYPE_CODE[axes[\"DT\"]]\n    use_l2 = axes[\"USE_L2\"]\n    nv = axes[\"NV\"]\n\n    def random_tensor(shape, dtype):\n        # 标准输入分布: 50% 均匀 [-5, 5] + 50% 正态 (mu ∈ [-5, 5], sigma ∈ [0.1, 2])\n        if torch.rand(1).item() < 0.5:\n            return torch.empty(shape, dtype=dtype).uniform_(-5.0, 5.0)\n        mu = float(torch.empty(1).uniform_(-5.0, 5.0).item())\n        sigma = float(torch.empty(1).uniform_(0.1, 2.0).item())\n        return torch.normal(mu, sigma, shape, dtype=dtype)\n\n    q = random_tensor([B, T, H, K], dt)\n    k = random_tensor([B, T, H, K], dt)\n    v = random_tensor([B, T, H, V], dt)\n    # 物理约束: use_qk_l2norm_in_kernel=0 时上游必须先对 q/k 做 L2 归一化,\n    # 否则 delta rule 的 (I - k*(b*k)^T) 在 ||k|| 大时特征值越界发散\n    if not use_l2:\n        q = F.normalize(q.float(), p=2, dim=-1).to(dt)\n        k = F.normalize(k.float(), p=2, dim=-1).to(dt)\n    # 物理约束: g 是 log 域逐通道衰减, 恒 <= 0 (uniform(-5, -0.1))\n    g = torch.empty([B, T, H, K], dtype=torch.float32).uniform_(-5.0, -0.1)\n    # 物理约束: b (擦除门) 与 w (写入门) 是 sigmoid 类门控, 恒在 (0, 1)\n    b = torch.rand([B, T, H, K], dtype=dt)\n    w = torch.rand([B, T, H, V], dtype=dt)\n    if axes[\"NSTATE\"] == 0:\n        initial_state = torch.zeros(0, H, K, V, dtype=torch.float32)\n    else:\n        initial_state = random_tensor([axes[\"NSTATE\"], H, K, V], torch.float32)\n\n    out = {\"q\": q, \"k\": k, \"v\": v, \"g\": g, \"b\": b, \"w\": w,\n           \"initial_state\": initial_state,\n           \"scale\": axes[\"SCALE_U\"] / 1e6,\n           \"use_qk_l2norm_in_kernel\": use_l2}\n    if nv > 0:\n        out[\"cu_seqlens\"] = torch.tensor([axes[f\"CU_{i}\"] for i in range(nv + 1)],\n                                         dtype=torch.int32)\n    return out\n",
+  "description": "GDN-2 (Gated DeltaNet 2) chunkwise forward golden, aligned with fla-org/flash-linear-attention chunk_gdn2 (math per fla/ops/gdn2/naive.py). Exact per-token recurrence in fp32: S <- S * exp(g_t); erase = (b_t k_t)^T S; v_new = w_t v_t - erase; S <- S + k_t outer v_new; o_t = (scale q_t)^T S. b = w = beta degenerates to KDA. use_qk_l2norm_in_kernel=1 applies fla l2norm (x * rsqrt(sum(x^2)+1e-6)) first. state_v_first=False fixed; use_gate_in_kernel is out of scope (see FusedGdnGating). Inputs are generated by make_inputs (custom_inputs_entrypoint): q/k/v standard mixed (pre-normalized when USE_L2=0), g = uniform(-5, -0.1), b/w = rand, initial_state standard mixed fp32 or empty."
+}

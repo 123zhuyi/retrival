@@ -1,0 +1,13 @@
+{
+  "name": "Permute",
+  "axes": {},
+  "inputs": {
+    "x": {"description": "Input tensor, any shape. Supports float32, float16, bfloat16."},
+    "dims": {"description": "list of ints, the desired ordering of dimensions (e.g. [0, 2, 1])."}
+  },
+  "outputs": {
+    "y": {"description": "Tensor with permuted dimensions, same dtype as x."}
+  },
+  "reference": "import torch\n\ndef run(x, dims):\n    return torch.permute(x, tuple(dims)).contiguous()\n",
+  "description": "Permute: Returns a view of the original tensor with its dimensions permuted.\n\ntorch.permute = permute(input, dims) -> Tensor\n\nArgs:\n    input (Tensor): the input tensor.\n    dims (tuple of int or list of int): the desired ordering of dimensions.\n\nExample:\n    >>> x = torch.randn(2, 3, 5)\n    >>> x.size()\n    torch.Size([2, 3, 5])\n    >>> torch.permute(x, (2, 0, 1)).size()\n    torch.Size([5, 2, 3])\n\nReturns: Tensor with permuted dimensions, same dtype."
+}
